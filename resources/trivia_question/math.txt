@@ -1,0 +1,73 @@
+3 | 1 | - | In a complete graph G, which has 12 vertices, how many edges are there? | 66 | 67 | 34 | 11
+3 | 1 | - | In the hexadecimal system, what number comes after 9? | The Letter A | 10 | The Number 0 | 16
+1 | 1 | - | How is the number 9 represented as a binary number? | 1001 | 1000 | 1110 | 1010
+5 | 1 | - | What is the derivative of Acceleration with respect to time? | Jerk | Shift | Bump | Slide
+5 | 1 | - | What is the approximate value of mathematical constant e? | 2.72 | 3.14 | 1.62 | 1.41
+3 | 1 | - | How many zeros are there in a googol? | 100 | 10 | 1,000 | 1,000,000
+3 | 1 | - | The Pythagorean theorem states that the square of the hypotenuse is equal to the product of the squares of the other two sides. | False | True
+3 | 1 | - | What are the first 6 digits of the number "Pi"? | 3.14159 | 3.14169 | 3.12423 | 3.25812
+1 | 1 | - | In Roman Numerals, what does XL equate to? | 40 | 60 | 15 | 90
+3 | 1 | - | What is the Roman numeral for 500? | D | L | C | X
+1 | 1 | - | What's the square root of 49? | 7 | 4 | 12 | 9
+5 | 1 | - | How many zeptometres are inside one femtometre? | 1,000,000 | 10 | 1,000,000,000 | 1000
+3 | 1 | - | What is the first Mersenne prime over 1000? | 1279 | 2203 | 1009 | 1069
+3 | 1 | - | 111,111,111 x 111,111,111 = 12,345,678,987,654,321 | True | False
+1 | 1 | - | The 'Squaring the Circle' problem is solvable. | False | True
+5 | 1 | - | The binary number "101001101" is equivalent to the Decimal number "334" | False | True
+5 | 1 | - | If you could fold a piece of paper in half 50 times, its' thickness will be 3/4th the distance from the Earth to the Sun. | True | False
+3 | 1 | - | What is the alphanumeric representation of the imaginary number? | i | e | n | x
+3 | 1 | - | To the nearest whole number, how many radians are in a whole circle? | 6 | 3 | 4 | 5
+3 | 1 | - | Zero factorial is equal to zero.  | False | True
+1 | 1 | - | The metric prefix "atto-" makes a measurement how much smaller than the base unit? | One Quintillionth | One Billionth | One Quadrillionth | One Septillionth
+5 | 1 | - | What is the plane curve proposed by Descartes to challenge Fermat's extremum-finding techniques called? | Folium of Descartes | Elliptic Paraboloid of Descartes | Cartesian Coordinates | Descarte's Helicoid
+5 | 1 | - | The French mathematician Évariste Galois is primarily known for his work in which? | Galois Theory | Galois' Continued Fractions | Galois' Method for PDE's  | Abelian Integration
+1 | 1 | - | The sum of any two odd integers is odd. | False | True
+3 | 1 | - | You can square root a negative number with an imaginary number "i". | True | False
+3 | 1 | - | The proof for the Chinese Remainder Theorem used in Number Theory was NOT developed by its first publisher, Sun Tzu. | True | False
+1 | 1 | - | What prime number comes next after 19? | 23 | 25 | 21 | 27
+3 | 1 | - | What Greek letter is used to signify summation? | Sigma | Delta | Alpha | Omega
+5 | 1 | - | The decimal number 31 in hexadecimal would be what? | 1F | 3D | 2E | 1B
+3 | 1 | - | E = MC3 | False | True
+5 | 1 | - | What is the 100th digit of Pi? | 9 | 4 | 7 | 2
+3 | 1 | - | A 'Millinillion' is a real number. | True | False
+1 | 1 | - | How many sides does a heptagon have? | 7 | 8 | 6 | 5
+5 | 1 | - | In Topology, the complement of an open set is a closed set. | True | False
+1 | 1 | - | What is the correct order of operations for solving equations? | Parentheses, Exponents, Multiplication, Division, Addition, Subtraction | Addition, Multiplication, Division, Subtraction, Addition, Parentheses | Parentheses, Exponents, Addition, Substraction, Multiplication, Division | The order in which the operations are written.
+3 | 1 | - | What is the area of a circle with a diameter of 20 inches if π= 3.1415? | 314.15 Inches | 380.1215 Inches | 3141.5 Inches | 1256.6 Inches
+1 | 1 | - | A universal set, or a set that contains all sets, exists. | False | True
+1 | 1 | - | What is the symbol for Displacement? | Δr | dr | Dp | r
+3 | 1 | - | The set of all algebraic numbers is countable. | True | False
+5 | 1 | - | L'Hôpital was the mathematician who created the homonymous rule that uses derivatives to evaluate limits with indeterminations. | False | True
+5 | 1 | - | A train running at the speed of 60 km/hr crosses a pole in 9 seconds. What is the length of the train? | 150 metres | 120 metres | 180 metres | 324 metres
+5 | 1 | - | A train 125 m long passes a man, running at 5 km/hr in the same direction in which the train is going, in 10 seconds. The speed of the train is: | 50 km/hr | 45 km/hr | 54 km/hr | 55 km/hr
+5 | 1 | - | The length of the bridge, which a train 130 metres long and travelling at 45 km/hr can cross in 30 seconds, is: | 245 m | 200 m | 225 m | 250 m
+5 | 1 | - | A train passes a station platform in 36 seconds and a man standing on the platform in 20 seconds. If the speed of the train is 54 km/hr, what is the length of the platform? | 240 m | 120 m | 300 m | None of these
+5 | 1 | - | A train 360 m long is running at a speed of 45 km/hr. In what time will it pass a bridge 140 m long? | 40 sec | 42 sec | 45 sec | 48 sec
+5 | 1 | - | A train 800 metres long is running at a speed of 78 km/hr. If it crosses a tunnel in 1 minute, then the length of the tunnel (in meters) is: | 500 | 130 | 360 | 540
+5 | 1 | - | A 300 metre long train crosses a platform in 39 seconds while it crosses a signal pole in 18 seconds. What is the length of the platform? | 350 m | 320 m | 650 m | Data inadequate
+5 | 1 | - | A train speeds past a pole in 15 seconds and a platform 100 m long in 25 seconds. Its length is: | 150 m | 50 m | 200 m | Data inadequate
+5 | 1 | - | A train moves past a telegraph post and a bridge 264 m long in 8 seconds and 20 seconds respectively. What is the speed of the train? | 79.2 km/hr | 69.5 km/hr | 70 km/hr | 79 km/hr
+5 | 1 | - | How many seconds will a 500 metre long train take to cross a man walking with a speed of 3 km/hr in the direction of the moving train if the speed of the train is 63 km/hr? | 30 | 25 | 40 | 45
+5 | 1 | - | Two goods train each 500 m long, are running in opposite directions on parallel tracks. Their speeds are 45 km/hr and 30 km/hr respectively. Find the time taken by the slower train to pass the driver of the faster one. | 24 sec | 12 sec | 48 sec | 60 sec
+5 | 1 | - | Two trains are running in opposite directions with the same speed. If the length of each train is 120 metres and they cross each other in 12 seconds, then the speed of each train (in km/hr) is: | 36 | 10 | 18 | 72
+5 | 1 | - | Two trains of equal lengths take 10 seconds and 15 seconds respectively to cross a telegraph post. If the length of each train be 120 metres, in what time (in seconds) will they cross each other travelling in opposite direction? | 12 | 10 | 15 | 20
+5 | 1 | - | A train 108 m long moving at a speed of 50 km/hr crosses a train 112 m long coming from opposite direction in 6 seconds. The speed of the second train is: | 82 km/hr | 48 km/hr | 54 km/hr | 66 km/hr
+5 | 1 | - | A train overtakes two persons who are walking in the same direction in which the train is going, at the rate of 2 kmph and 4 kmph and passes them completely in 9 and 10 seconds respectively. The length of the train is: | 50 m | 45 m | 54 m | 72 m
+5 | 1 | - | A train overtakes two persons walking along a railway track. The first one walks at 4.5 km/hr. The other one walks at 5.4 km/hr. The train needs 8.4 and 8.5 seconds respectively to overtake them. What is the speed of the train if both the persons are walking in the same direction as the train? | 81 km/hr | 66 km/hr | 72 km/hr | 78 km/hr
+5 | 1 | - | A train travelling at 48 kmph completely crosses another train having half its length and travelling in opposite direction at 42 kmph, in 12 seconds. It also passes a railway platform in 45 seconds. The length of the platform is | 400 m | 450 m | 560 m | 600 m
+5 | 1 | - | Two stations A and B are 110 km apart on a straight line. One train starts from A at 7 a.m. and travels towards B at 20 kmph. Another train starts from B at 8 a.m. and travels towards A at a speed of 25 kmph. At what time will they meet? | 10 a.m. | 9 a.m. | 10.30 a.m. | 11 a.m.
+5 | 1 | - | Two, trains, one from Howrah to Patna and the other from Patna to Howrah, start simultaneously. After they meet, the trains reach their destinations after 9 hours and 16 hours respectively. The ratio of their speeds is: | 4 : 3 | 2 : 3 | 6 : 7 | 9 : 16
+5 | 1 | - | A person crosses a 600 m long street in 5 minutes. What is his speed in km per hour? | 7.2 | 3.6 | 8.4 | 10
+5 | 1 | - | An aeroplane covers a certain distance at a speed of 240 kmph in 5 hours. To cover the same distance in 1 2/3 hours, it must travel at a speed of: | 720 kmph | 300 kmph | 360 kmph | 600 kmph
+5 | 1 | - | Excluding stoppages, the speed of a bus is 54 kmph and including stoppages, it is 45 kmph. For how many minutes does the bus stop per hour? | 10 | 9 | 12 | 20
+5 | 1 | - | A man complete a journey in 10 hours. He travels first half of the journey at the rate of 21 km/hr and second half at the rate of 24 km/hr. Find the total journey in km. | 224 km | 220 km | 230 km | 234 km
+5 | 1 | - | The ratio between the speeds of two trains is 7 : 8. If the second train runs 400 km in 4 hours, then the speed of the first train is: | 87.5 km/hr | 70 km/hr | 75 km/hr | 84 km/hr
+5 | 1 | - | A man on tour travels first 160 km at 64 km/hr and the next 160 km at 80 km/hr. The average speed for the first 320 km of the tour is: | 71.11 km/hr | 35.55 km/hr | 36 km/hr | 71 km/hr
+5 | 1 | - | Robert is travelling on his cycle and has calculated to reach point A at 2 P.M. if he travels at 10 kmph, he will reach there at 12 noon if he travels at 15 kmph. At what speed must he travel to reach A at 1 P.M.? | 12 kmph | 8 kmph | 11 kmph | 14 kmph
+5 | 1 | - | The percentage increase in the area of a rectangle, if each of its sides is increased by 20% is: | 44% | 40% | 42% | 46%
+5 | 1 | - | A rectangular park 60 m long and 40 m wide has two concrete crossroads running in the middle of the park and rest of the park has been used as a lawn. If the area of the lawn is 2109 sq. m, then what is the width of the road? | 3 m | 2.91 m | 5.82 m | None of these
+5 | 3 | - | Tickets numbered 1 to 20 are mixed up and then a ticket is drawn at random. What is the probability that the ticket drawn has a number which is a multiple of 3 or 5? | 9/20 | 1/2 | 2/5 | 8/15 | 9/20
+5 | 3 | - | A bag contains 2 red, 3 green and 2 blue balls. Two balls are drawn at random. What is the probability that none of the balls drawn is blue? | 10/21 | 10/21 | 11/21 | 2/7 | 5/7
+5 | 3 | - | In a box, there are 8 red, 7 blue and 6 green balls. One ball is picked up randomly. What is the probability that it is neither red nor green? | 1/3 | 1/3 | 3/4 | 7/19 | 8/21 | 9/21
+5 | 3 | - | What is the probability of getting a sum 9 from two throws of a dice? | 1/9 | 1/6 | 1/8 | 1/9 | 1/12
+5 | 3 | - | Three unbiased coins are tossed. What is the probability of getting at most two heads? | 7/8 | 1/4 | 3/8 | 7/8 | 3/4

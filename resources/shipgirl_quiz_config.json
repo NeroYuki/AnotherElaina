@@ -1,0 +1,12 @@
+[
+    {
+        "name": "Azur Lane",
+        "optionName": "al",
+        "allowAlt": true,
+        "allowSilhouette": true,
+        "baseArtPrefix": "Default",
+        "alias": [
+
+        ]
+    }
+]
