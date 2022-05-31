@@ -5,7 +5,8 @@
 	"main": "Bot.js",
 	"scripts": {
 		"deploy": "node register-command.js",
-		"deploy-global": "node register-command.js --global"
+		"deploy-global": "node register-command.js --global",
+		"do-start": "pm2 start Bot.js"
 	},
 	"keywords": [],
 	"author": "",
