@@ -3683,7 +3683,7 @@
   {
     "name": "Azur Lane",
     "count": 1693,
-    "base_count": 560,
+    "base_count": 556,
     "img": [
       {
         "char": "22",
@@ -4006,12 +4006,12 @@
         "is_base": false
       },
       {
-        "char": "Allen M",
+        "char": "Allen M. Sumner",
         "filename": "./resources/shipgirls/Azur Lane/Allen M. Sumner_Charming Rabbit.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Allen M",
+        "char": "Allen M. Sumner",
         "filename": "./resources/shipgirls/Azur Lane/Allen M. Sumner_Default.png",
         "is_base": true
       },
@@ -6716,7 +6716,7 @@
         "is_base": false
       },
       {
-        "char": "Hiryu",
+        "char": "Hiryu.META",
         "filename": "./resources/shipgirls/Azur Lane/Hiryu.META_Default.png",
         "is_base": true
       },
@@ -9901,7 +9901,7 @@
         "is_base": true
       },
       {
-        "char": "Royal",
+        "char": "Royal.META",
         "filename": "./resources/shipgirls/Azur Lane/Royal.META_Default.png",
         "is_base": true
       },
@@ -10506,24 +10506,24 @@
         "is_base": true
       },
       {
-        "char": "St",
+        "char": "St. Louis",
         "filename": "./resources/shipgirls/Azur Lane/St. Louis_Blue and White Pottery.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "St",
+        "char": "St. Louis",
         "filename": "./resources/shipgirls/Azur Lane/St. Louis_Default.png",
         "is_base": true
       },
       {
-        "char": "St",
+        "char": "St. Louis",
         "filename": "./resources/shipgirls/Azur Lane/St. Louis_Luxurious Wheels.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "St",
+        "char": "St. Louis",
         "filename": "./resources/shipgirls/Azur Lane/St. Louis_Spirits in the Snow.png",
-        "is_base": true
+        "is_base": false
       },
       {
         "char": "Stanly",
@@ -12717,7 +12717,7 @@
   {
     "name": "Battleship Girl",
     "count": 451,
-    "base_count": 116,
+    "base_count": 113,
     "img": [
       {
         "char": "Admiral Graf Spee",
@@ -14650,24 +14650,24 @@
         "is_base": false
       },
       {
-        "char": "William D",
+        "char": "William D. Porter",
         "filename": "./resources/shipgirls/Battleship Girl/William D. Porter_base.jpg",
         "is_base": true
       },
       {
-        "char": "William D",
+        "char": "William D. Porter",
         "filename": "./resources/shipgirls/Battleship Girl/William D. Porter_damaged.jpg",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "William D",
+        "char": "William D. Porter",
         "filename": "./resources/shipgirls/Battleship Girl/William D. Porter_Kai_base.jpg",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "William D",
+        "char": "William D. Porter",
         "filename": "./resources/shipgirls/Battleship Girl/William D. Porter_Kai_damaged.jpg",
-        "is_base": true
+        "is_base": false
       },
       {
         "char": "Yamashiro",
@@ -17218,7 +17218,7 @@
   {
     "name": "Blue Oath",
     "count": 348,
-    "base_count": 150,
+    "base_count": 148,
     "img": [
       {
         "char": "Admiral Graf Spee",
@@ -18481,19 +18481,19 @@
         "is_base": false
       },
       {
-        "char": "Samuel B",
+        "char": "Samuel B. Roberts",
         "filename": "./resources/shipgirls/Blue Oath/Samuel B. Roberts_alt_7.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Samuel B",
+        "char": "Samuel B. Roberts",
         "filename": "./resources/shipgirls/Blue Oath/Samuel B. Roberts_base.png",
         "is_base": true
       },
       {
-        "char": "Samuel B",
+        "char": "Samuel B. Roberts",
         "filename": "./resources/shipgirls/Blue Oath/Samuel B. Roberts_base_damage.png",
-        "is_base": true
+        "is_base": false
       },
       {
         "char": "San Diego",
@@ -19978,7 +19978,7 @@
   {
     "name": "Kantai Collection",
     "count": 2192,
-    "base_count": 301,
+    "base_count": 264,
     "img": [
       {
         "char": "Abukuma",
@@ -24181,144 +24181,144 @@
         "is_base": false
       },
       {
-        "char": "Kaiboukan No",
+        "char": "Kaiboukan No.30",
         "filename": "./resources/shipgirls/Kantai Collection/Kaiboukan No.30_Base Damaged.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Kaiboukan No",
+        "char": "Kaiboukan No.30",
         "filename": "./resources/shipgirls/Kantai Collection/Kaiboukan No.30_Base.png",
         "is_base": true
       },
       {
-        "char": "Kaiboukan No",
+        "char": "Kaiboukan No.30",
         "filename": "./resources/shipgirls/Kantai Collection/Kaiboukan No.30_Christmas 2021 Damaged.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Kaiboukan No",
+        "char": "Kaiboukan No.30",
         "filename": "./resources/shipgirls/Kantai Collection/Kaiboukan No.30_Christmas 2021.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Kaiboukan No",
+        "char": "Kaiboukan No.30",
         "filename": "./resources/shipgirls/Kantai Collection/Kaiboukan No.30_Halloween 2021 Damaged.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Kaiboukan No",
+        "char": "Kaiboukan No.30",
         "filename": "./resources/shipgirls/Kantai Collection/Kaiboukan No.30_Halloween 2021.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Kaiboukan No",
+        "char": "Kaiboukan No.30",
         "filename": "./resources/shipgirls/Kantai Collection/Kaiboukan No.30_Spring 2022 Damaged.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Kaiboukan No",
+        "char": "Kaiboukan No.30",
         "filename": "./resources/shipgirls/Kantai Collection/Kaiboukan No.30_Spring 2022.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Kaiboukan No",
+        "char": "Kaiboukan No.30",
         "filename": "./resources/shipgirls/Kantai Collection/Kaiboukan No.30_Valentines 2022 Damaged.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Kaiboukan No",
+        "char": "Kaiboukan No.30",
         "filename": "./resources/shipgirls/Kantai Collection/Kaiboukan No.30_Valentines 2022.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Kaiboukan No",
+        "char": "Kaiboukan No.4",
         "filename": "./resources/shipgirls/Kantai Collection/Kaiboukan No.4_Base Damaged.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Kaiboukan No",
+        "char": "Kaiboukan No.4",
         "filename": "./resources/shipgirls/Kantai Collection/Kaiboukan No.4_Base.png",
         "is_base": true
       },
       {
-        "char": "Kaiboukan No",
+        "char": "Kaiboukan No.4",
         "filename": "./resources/shipgirls/Kantai Collection/Kaiboukan No.4_Christmas 2020 Damaged.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Kaiboukan No",
+        "char": "Kaiboukan No.4",
         "filename": "./resources/shipgirls/Kantai Collection/Kaiboukan No.4_Christmas 2020.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Kaiboukan No",
+        "char": "Kaiboukan No.4",
         "filename": "./resources/shipgirls/Kantai Collection/Kaiboukan No.4_Halloween 2021 Damaged.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Kaiboukan No",
+        "char": "Kaiboukan No.4",
         "filename": "./resources/shipgirls/Kantai Collection/Kaiboukan No.4_Halloween 2021.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Kaiboukan No",
+        "char": "Kaiboukan No.4",
         "filename": "./resources/shipgirls/Kantai Collection/Kaiboukan No.4_Hinamatsuri 2021 Damaged.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Kaiboukan No",
+        "char": "Kaiboukan No.4",
         "filename": "./resources/shipgirls/Kantai Collection/Kaiboukan No.4_Hinamatsuri 2021.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Kaiboukan No",
+        "char": "Kaiboukan No.4",
         "filename": "./resources/shipgirls/Kantai Collection/Kaiboukan No.4_New Year 2022 Damaged.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Kaiboukan No",
+        "char": "Kaiboukan No.4",
         "filename": "./resources/shipgirls/Kantai Collection/Kaiboukan No.4_New Year 2022.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Kaiboukan No",
+        "char": "Kaiboukan No.4",
         "filename": "./resources/shipgirls/Kantai Collection/Kaiboukan No.4_Saury 2021 Damaged.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Kaiboukan No",
+        "char": "Kaiboukan No.4",
         "filename": "./resources/shipgirls/Kantai Collection/Kaiboukan No.4_Saury 2021.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Kaiboukan No",
+        "char": "Kaiboukan No.4",
         "filename": "./resources/shipgirls/Kantai Collection/Kaiboukan No.4_Setsubun 2022 Damaged.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Kaiboukan No",
+        "char": "Kaiboukan No.4",
         "filename": "./resources/shipgirls/Kantai Collection/Kaiboukan No.4_Setsubun 2022.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Kaiboukan No",
+        "char": "Kaiboukan No.4",
         "filename": "./resources/shipgirls/Kantai Collection/Kaiboukan No.4_Spring 2022 Damaged.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Kaiboukan No",
+        "char": "Kaiboukan No.4",
         "filename": "./resources/shipgirls/Kantai Collection/Kaiboukan No.4_Spring 2022.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Kaiboukan No",
+        "char": "Kaiboukan No.4",
         "filename": "./resources/shipgirls/Kantai Collection/Kaiboukan No.4_Summer 2021 Damaged.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Kaiboukan No",
+        "char": "Kaiboukan No.4",
         "filename": "./resources/shipgirls/Kantai Collection/Kaiboukan No.4_Summer 2021.png",
-        "is_base": true
+        "is_base": false
       },
       {
         "char": "Kako",
@@ -27836,64 +27836,64 @@
         "is_base": true
       },
       {
-        "char": "Samuel B",
+        "char": "Samuel B. Roberts",
         "filename": "./resources/shipgirls/Kantai Collection/Samuel B. Roberts_Base Damaged.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Samuel B",
+        "char": "Samuel B. Roberts",
         "filename": "./resources/shipgirls/Kantai Collection/Samuel B. Roberts_Base.png",
         "is_base": true
       },
       {
-        "char": "Samuel B",
+        "char": "Samuel B. Roberts",
         "filename": "./resources/shipgirls/Kantai Collection/Samuel B. Roberts_Kai Damaged.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Samuel B",
+        "char": "Samuel B. Roberts",
         "filename": "./resources/shipgirls/Kantai Collection/Samuel B. Roberts_Kai New Year 2020 Damaged.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Samuel B",
+        "char": "Samuel B. Roberts",
         "filename": "./resources/shipgirls/Kantai Collection/Samuel B. Roberts_Kai New Year 2020.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Samuel B",
+        "char": "Samuel B. Roberts",
         "filename": "./resources/shipgirls/Kantai Collection/Samuel B. Roberts_Kai Summer 2019 Damaged.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Samuel B",
+        "char": "Samuel B. Roberts",
         "filename": "./resources/shipgirls/Kantai Collection/Samuel B. Roberts_Kai Summer 2019.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Samuel B",
+        "char": "Samuel B. Roberts",
         "filename": "./resources/shipgirls/Kantai Collection/Samuel B. Roberts_Kai.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Samuel B",
+        "char": "Samuel B. Roberts",
         "filename": "./resources/shipgirls/Kantai Collection/Samuel B. Roberts_New Year 2020 Damaged.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Samuel B",
+        "char": "Samuel B. Roberts",
         "filename": "./resources/shipgirls/Kantai Collection/Samuel B. Roberts_New Year 2020.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Samuel B",
+        "char": "Samuel B. Roberts",
         "filename": "./resources/shipgirls/Kantai Collection/Samuel B. Roberts_Summer 2019 Damaged.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Samuel B",
+        "char": "Samuel B. Roberts",
         "filename": "./resources/shipgirls/Kantai Collection/Samuel B. Roberts_Summer 2019.png",
-        "is_base": true
+        "is_base": false
       },
       {
         "char": "Saratoga",
@@ -30945,7 +30945,7 @@
   {
     "name": "Lane Girls",
     "count": 164,
-    "base_count": 60,
+    "base_count": 58,
     "img": [
       {
         "char": "Ajax",
@@ -31678,19 +31678,19 @@
         "is_base": false
       },
       {
-        "char": "William D",
+        "char": "William D. Porter",
         "filename": "./resources/shipgirls/Lane Girls/William D. Porter.png",
         "is_base": true
       },
       {
-        "char": "Willian D",
+        "char": "Willian D. Porter",
         "filename": "./resources/shipgirls/Lane Girls/Willian D. Porter_alt_HF.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Willian D",
+        "char": "Willian D. Porter",
         "filename": "./resources/shipgirls/Lane Girls/Willian D. Porter_alt_SS.png",
-        "is_base": true
+        "is_base": false
       },
       {
         "char": "Yamato",
@@ -31949,7 +31949,7 @@
   {
     "name": "Shipgirls Collection",
     "count": 100,
-    "base_count": 52,
+    "base_count": 49,
     "img": [
       {
         "char": "Aaron Ward",
@@ -31962,14 +31962,14 @@
         "is_base": false
       },
       {
-        "char": "Abel P",
+        "char": "Abel P. Upshur",
         "filename": "./resources/shipgirls/Shipgirls Collection/Abel P. Upshur.png",
         "is_base": true
       },
       {
-        "char": "Abel P",
+        "char": "Abel P. Upshur",
         "filename": "./resources/shipgirls/Shipgirls Collection/Abel P. Upshur_damage.png",
-        "is_base": true
+        "is_base": false
       },
       {
         "char": "Amsterdam",
@@ -32182,14 +32182,14 @@
         "is_base": false
       },
       {
-        "char": "Hilary P",
+        "char": "Hilary P. Jones",
         "filename": "./resources/shipgirls/Shipgirls Collection/Hilary P. Jones.png",
         "is_base": true
       },
       {
-        "char": "Hilary P",
+        "char": "Hilary P. Jones",
         "filename": "./resources/shipgirls/Shipgirls Collection/Hilary P. Jones_damage.png",
-        "is_base": true
+        "is_base": false
       },
       {
         "char": "Howard",
@@ -32412,14 +32412,14 @@
         "is_base": false
       },
       {
-        "char": "Welborn C",
+        "char": "Welborn C. Wood",
         "filename": "./resources/shipgirls/Shipgirls Collection/Welborn C. Wood.png",
         "is_base": true
       },
       {
-        "char": "Welborn C",
+        "char": "Welborn C. Wood",
         "filename": "./resources/shipgirls/Shipgirls Collection/Welborn C. Wood_damage.png",
-        "is_base": true
+        "is_base": false
       },
       {
         "char": "Wickes",
@@ -33913,7 +33913,7 @@
         "is_base": true
       },
       {
-        "char": "St",
+        "char": "St. Louis",
         "filename": "./resources/shipgirls/Victory Belles/St. Louis.jpg",
         "is_base": true
       },
@@ -34179,7 +34179,7 @@
   {
     "name": "Warship Girls R",
     "count": 1888,
-    "base_count": 498,
+    "base_count": 483,
     "img": [
       {
         "char": "Abercrombie",
@@ -35502,14 +35502,14 @@
         "is_base": false
       },
       {
-        "char": "Charles F",
+        "char": "Charles F. Adams",
         "filename": "./resources/shipgirls/Warship Girls R/Charles F. Adams_base.png",
         "is_base": true
       },
       {
-        "char": "Charles F",
+        "char": "Charles F. Adams",
         "filename": "./resources/shipgirls/Warship Girls R/Charles F. Adams_base_damage.png",
-        "is_base": true
+        "is_base": false
       },
       {
         "char": "Charles Osborne",
@@ -40882,24 +40882,24 @@
         "is_base": false
       },
       {
-        "char": "Samuel B",
+        "char": "Samuel B. Roberts",
         "filename": "./resources/shipgirls/Warship Girls R/Samuel B. Roberts_base.png",
         "is_base": true
       },
       {
-        "char": "Samuel B",
+        "char": "Samuel B. Roberts",
         "filename": "./resources/shipgirls/Warship Girls R/Samuel B. Roberts_base_damage.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Samuel B",
+        "char": "Samuel B. Roberts",
         "filename": "./resources/shipgirls/Warship Girls R/Samuel B. Roberts_retrofit.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "Samuel B",
+        "char": "Samuel B. Roberts",
         "filename": "./resources/shipgirls/Warship Girls R/Samuel B. Roberts_retrofit_damage.png",
-        "is_base": true
+        "is_base": false
       },
       {
         "char": "San Diego",
@@ -41592,44 +41592,44 @@
         "is_base": false
       },
       {
-        "char": "St",
+        "char": "St. George",
         "filename": "./resources/shipgirls/Warship Girls R/St. George_base.png",
         "is_base": true
       },
       {
-        "char": "St",
+        "char": "St. George",
         "filename": "./resources/shipgirls/Warship Girls R/St. George_base_damage.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "St",
+        "char": "St. George",
         "filename": "./resources/shipgirls/Warship Girls R/St. George_retrofit.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "St",
+        "char": "St. George",
         "filename": "./resources/shipgirls/Warship Girls R/St. George_retrofit_damage.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "St",
+        "char": "St. Louis",
         "filename": "./resources/shipgirls/Warship Girls R/St. Louis_alt_1.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "St",
+        "char": "St. Louis",
         "filename": "./resources/shipgirls/Warship Girls R/St. Louis_alt_1_damage.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "St",
+        "char": "St. Louis",
         "filename": "./resources/shipgirls/Warship Girls R/St. Louis_base.png",
         "is_base": true
       },
       {
-        "char": "St",
+        "char": "St. Louis",
         "filename": "./resources/shipgirls/Warship Girls R/St. Louis_base_damage.png",
-        "is_base": true
+        "is_base": false
       },
       {
         "char": "Stalingrad",
@@ -42972,34 +42972,34 @@
         "is_base": false
       },
       {
-        "char": "William D",
+        "char": "William D. Porter",
         "filename": "./resources/shipgirls/Warship Girls R/William D. Porter_alt_1.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "William D",
+        "char": "William D. Porter",
         "filename": "./resources/shipgirls/Warship Girls R/William D. Porter_alt_1_damage.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "William D",
+        "char": "William D. Porter",
         "filename": "./resources/shipgirls/Warship Girls R/William D. Porter_base.png",
         "is_base": true
       },
       {
-        "char": "William D",
+        "char": "William D. Porter",
         "filename": "./resources/shipgirls/Warship Girls R/William D. Porter_base_damage.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "William D",
+        "char": "William D. Porter",
         "filename": "./resources/shipgirls/Warship Girls R/William D. Porter_retrofit.png",
-        "is_base": true
+        "is_base": false
       },
       {
-        "char": "William D",
+        "char": "William D. Porter",
         "filename": "./resources/shipgirls/Warship Girls R/William D. Porter_retrofit_damage.png",
-        "is_base": true
+        "is_base": false
       },
       {
         "char": "Wisconsin",

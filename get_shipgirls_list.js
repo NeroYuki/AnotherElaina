@@ -27,7 +27,7 @@ function main () {
         let files = fs.readdirSync(BASE_PATH + '/' + dir)
         files.forEach((file) => {
             if (!(file.endsWith('.jpg') || file.endsWith('.jpeg') || file.endsWith('.png') || file.endsWith('.gif') || file.endsWith('.webp'))) return
-            let comp = file.split('.')[0].split('_')
+            let comp = file.slice(0, file.lastIndexOf('.')).split('_')
             let char_name = comp[0]
 
             const isBase = (!comp[1] || (comp[1].toLowerCase() === entry_config.baseArtSuffix && !comp[2]))
