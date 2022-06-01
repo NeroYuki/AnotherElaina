@@ -86,9 +86,9 @@ function check_answer(answerer, correct_answers, startTimestamp) {
     answerer.forEach(entry => {
         for (const c_answer of correct_answers) {
             if (entry.content.toLowerCase() === c_answer.toLowerCase())
-                correct_answerer.push(`- ${entry.author.username + entry.author.discriminator} - ${(entry.createdTimestamp - startTimestamp) / 1000}s`)
+                correct_answerer.push(`- ${entry.author.username + "#" + entry.author.discriminator} - ${(entry.createdTimestamp - startTimestamp) / 1000}s`)
             else if (levenshtein.get(entry.content.toLowerCase(), c_answer.toLowerCase()) <= Math.floor(c_answer.length * 0.2))
-                near_correct_answerer.push(`- ${entry.author.username + entry.author.discriminator} - ${(entry.createdTimestamp - startTimestamp) / 1000}s`)
+                near_correct_answerer.push(`- ${entry.author.username + "#" + entry.author.discriminator} - ${(entry.createdTimestamp - startTimestamp) / 1000}s`)
         }
     })
 

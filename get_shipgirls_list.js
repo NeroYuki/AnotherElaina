@@ -1,32 +1,54 @@
 const fs = require('fs')
+const config = require('./resources/shipgirl_quiz_config.json')
 
 const BASE_PATH = './resources/shipgirls'
 
-let dirs = fs.readdirSync(BASE_PATH)
+function main () {
 
-let list = []
+    let dirs = fs.readdirSync(BASE_PATH)
 
-dirs.forEach((dir) => {
-    if ([".git", ".gitignore", "Current source.txt", "KanssenIndex-datamine", "KanssenIndex-web", "Franchise logo"].includes(dir)) return
+    let list = []
 
-    let list_entry = {
-        name: dir,
-        count: 0,
-        img: [],
-    }
+    dirs.forEach((dir) => {
+        if ([".git", ".gitignore", "Current source.txt", "KanssenIndex-datamine", "KanssenIndex-web", "Franchise logo"].includes(dir)) return
 
-    let files = fs.readdirSync(BASE_PATH + '/' + dir)
-    files.forEach((file) => {
-        if (!(file.endsWith('.jpg') || file.endsWith('.jpeg') || file.endsWith('.png') || file.endsWith('.gif') || file.endsWith('.webp'))) return
-        let char_name = file.split('.')[0].split('_')[0]
-        list_entry.img.push({
-            char: char_name,
-            filename: BASE_PATH + '/' + dir + '/' + file
+        let list_entry = {
+            name: dir,
+            count: 0,
+            base_count: 0,
+            img: [],
+        }
+
+        let entry_config = config.find(val => val.name === dir) || {}
+
+        let base_count = 0
+        let count = 0
+
+        let files = fs.readdirSync(BASE_PATH + '/' + dir)
+        files.forEach((file) => {
+            if (!(file.endsWith('.jpg') || file.endsWith('.jpeg') || file.endsWith('.png') || file.endsWith('.gif') || file.endsWith('.webp'))) return
+            let comp = file.split('.')[0].split('_')
+            let char_name = comp[0]
+
+            const isBase = (!comp[1] || (comp[1].toLowerCase() === entry_config.baseArtSuffix && !comp[2]))
+            
+            count += 1
+            if (isBase) base_count += 1
+
+            list_entry.img.push({
+                char: char_name,
+                filename: BASE_PATH + '/' + dir + '/' + file,
+                is_base: isBase
+            })
         })
+
+        list_entry.count = count
+        list_entry.base_count = base_count
+
+        list.push(list_entry)
     })
 
-    list_entry.count = list_entry.img.length
-    list.push(list_entry)
-})
+    fs.writeFileSync('shipgirl_quiz.json', JSON.stringify(list, {}, '  '), {encoding: 'utf-8'})
+}
 
-fs.writeFileSync('shipgirl_quiz.json', JSON.stringify(list, {}, '  '), {encoding: 'utf-8'})
+main()

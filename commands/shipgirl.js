@@ -3,6 +3,60 @@ const shipgirl = require('../resources/shipgirl_quiz.json')
 const { MessageEmbed } = require('discord.js');
 const sharp = require('sharp');
 const levenshtein = require('fast-levenshtein');
+const base_shipgirl = []
+
+const all_sum = shipgirl.reduce((pv, cv) => pv + cv.count, 0)
+let base_sum = 0
+
+function get_random_selection(category = null, require_base = false) {
+	let fr_name = ""
+	let ship = {}
+
+	let selector = 0
+	if (!category) {
+		//from random series
+		let cur_entry = 0
+		if (!require_base) {
+			selector = Math.floor(Math.random() * all_sum)
+			while (selector >= shipgirl[cur_entry].count) {
+				selector -= shipgirl[cur_entry].count
+				cur_entry += 1
+			}
+			fr_name = shipgirl[cur_entry].name
+			ship = shipgirl[cur_entry].img[selector]
+		}
+		else {
+			selector = Math.floor(Math.random() * base_sum)
+			while (selector >= base_shipgirl[cur_entry].count) {
+				selector -= base_shipgirl[cur_entry].count
+				cur_entry += 1
+			}
+			fr_name = base_shipgirl[cur_entry].name
+			ship = base_shipgirl[cur_entry].img[selector]
+		}
+
+	}
+	else {
+		//from fixed series
+		let fr_index = shipgirl.findIndex(val => val.name === category)
+		if (fr_index !== -1) {
+			fr_name = shipgirl[fr_index].name
+			if (!require_base) {
+				selector = Math.floor(Math.random() * shipgirl[fr_index].count)
+				ship = shipgirl[fr_index].img[selector]
+			}
+			else {
+				selector = Math.floor(Math.random() * base_shipgirl[fr_index].count)
+				ship = base_shipgirl[fr_index].img[selector]
+			}
+		}
+	}
+
+	return {
+		ship: ship,
+		fr_name: fr_name
+	}
+}
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -24,7 +78,23 @@ module.exports = {
 		.addBooleanOption(option =>
 			option.setName('hardmode')
 				.setDescription('Image will be in silhouette instead, lol. Only work if a specific series is chosen')
+			)
+		.addBooleanOption(option =>
+			option.setName('base_only')
+				.setDescription('No alernative outfits / forms will be included')
 			),
+
+	async init() {
+		shipgirl.forEach(entry => {
+			base_shipgirl.push({
+				name: entry.name,
+				count: entry.base_count,
+				img: entry.img.filter(val => val.is_base === true)
+			})
+		})
+
+		base_sum = base_shipgirl.reduce((pv, cv) => pv + cv.count, 0)
+	},
 
 	async execute(interaction) {
 
@@ -32,6 +102,7 @@ module.exports = {
 
 		const category = interaction.options.getString('category')
 		const isHardmode = interaction.options.getBoolean('hardmode') || false
+		const requireBase = interaction.options.getBoolean('base_only') || false
 
 		//make a temporary reply to not get timeout'd
 
@@ -39,31 +110,9 @@ module.exports = {
 
 		//select a question (randomly)
 
-		let fr_name = ""
-		let ship = {}
+		let { fr_name, ship } = get_random_selection(category, requireBase)
 
-		let sum = 0
-		const weight_array = shipgirl.map(x => {sum += x.count; return x.count});
-		let selector = Math.floor(Math.random() * sum)
-
-		if (!category) {
-			//from random series
-			let cur_entry = 0
-			while (selector >= shipgirl[cur_entry].count) {
-				selector -= shipgirl[cur_entry].count
-				cur_entry += 1
-			}
-			fr_name = shipgirl[cur_entry].name
-			ship = shipgirl[cur_entry].img[selector]
-		}
-		else {
-			//from fixed series
-			let fr_index = shipgirl.findIndex(val => val.name === category)
-			if (fr_index !== -1) {
-				fr_name = shipgirl[fr_index].name
-				ship = shipgirl[fr_index].img[selector % shipgirl[fr_index].count]
-			}
-		}
+		//console.log(fr_name, ship)
 
 		if (fr_name === "" || ship === {}) {
 			await interaction.editReply({content: 'Sorry, i can\'t get a new quiz for you :('})
@@ -73,14 +122,19 @@ module.exports = {
 		//resize and blacken the image (if hardmode is selected)
 
 		let img = null
+		let img_base = null
 
 		if (isHardmode && category) {
 			img = await sharp(ship.filename)
 				.resize({height: 512})
-				.modulate({
-					brightness: 0,
-					saturation: 0,
-				})
+				
+			img_base = await img.png()
+				.toBuffer()
+
+			img = await img.modulate({
+				brightness: 0,
+				saturation: 0,
+			})
 				.png()
 				.toBuffer()
 		}
@@ -135,9 +189,9 @@ module.exports = {
 
 			answerer.forEach(entry => {
 				if (entry.content.toLowerCase() === ship.char.toLowerCase())
-					correct_answerer.push(`- ${entry.author.username + entry.author.discriminator} - ${(entry.createdTimestamp - startTimestamp)/1000}s`)
+					correct_answerer.push(`- ${entry.author.username + "#" + entry.author.discriminator} - ${(entry.createdTimestamp - startTimestamp)/1000}s`)
 				else if (levenshtein.get(entry.content.toLowerCase(), ship.char.toLowerCase()) <= Math.floor(ship.char.length * 0.2))
-					near_correct_answerer.push(`- ${entry.author.username + entry.author.discriminator} - ${(entry.createdTimestamp - startTimestamp)/1000}s`)
+					near_correct_answerer.push(`- ${entry.author.username + "#" + entry.author.discriminator} - ${(entry.createdTimestamp - startTimestamp)/1000}s`)
 			})
 			let answerer_list = ""
 			if (correct_answerer.length === 0) answerer_list = "None"			
@@ -148,6 +202,14 @@ module.exports = {
 
 			result_embeded.addField('People who answered correctly:', answerer_list)
 			result_embeded.addField('People whose answers are nearly correct (~80% match):', near_answerer_list)
+
+			if (isHardmode) {
+				const new_question_embeded = question_embeded.setImage('attachment://img_base.png')
+				interaction.editReply({ embeds: [new_question_embeded], files: [
+					{ attachment: img_base, name: 'img_base.png' } ]
+				})
+			}
+
 			//console.log(`Collected ${collected.size} items`);
 			interaction.followUp({ embeds: [result_embeded] })
 		});
