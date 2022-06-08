@@ -32497,8 +32497,8 @@
   },
   {
     "name": "Velvet Code",
-    "count": 158,
-    "base_count": 119,
+    "count": 171,
+    "base_count": 130,
     "img": [
       {
         "char": "Admiral Scheer",
@@ -32528,6 +32528,11 @@
       {
         "char": "Aoba",
         "filename": "./resources/shipgirls/Velvet Code/Aoba.png",
+        "is_base": true
+      },
+      {
+        "char": "Arethusa",
+        "filename": "./resources/shipgirls/Velvet Code/Arethusa.png",
         "is_base": true
       },
       {
@@ -32591,6 +32596,11 @@
         "is_base": true
       },
       {
+        "char": "Bretagne",
+        "filename": "./resources/shipgirls/Velvet Code/Bretagne.png",
+        "is_base": true
+      },
+      {
         "char": "California",
         "filename": "./resources/shipgirls/Velvet Code/California.png",
         "is_base": true
@@ -32601,14 +32611,34 @@
         "is_base": true
       },
       {
+        "char": "Conte Di Cavour",
+        "filename": "./resources/shipgirls/Velvet Code/Conte Di Cavour.png",
+        "is_base": true
+      },
+      {
         "char": "Downes",
         "filename": "./resources/shipgirls/Velvet Code/Downes.png",
+        "is_base": true
+      },
+      {
+        "char": "Dunkerque",
+        "filename": "./resources/shipgirls/Velvet Code/Dunkerque.png",
+        "is_base": true
+      },
+      {
+        "char": "Eagle",
+        "filename": "./resources/shipgirls/Velvet Code/Eagle.png",
         "is_base": true
       },
       {
         "char": "Enterprise",
         "filename": "./resources/shipgirls/Velvet Code/Enterprise.png",
         "is_base": true
+      },
+      {
+        "char": "Enterprise",
+        "filename": "./resources/shipgirls/Velvet Code/Enterprise_LG.png",
+        "is_base": false
       },
       {
         "char": "Erebus",
@@ -32641,6 +32671,11 @@
         "is_base": false
       },
       {
+        "char": "Giulio Cesare",
+        "filename": "./resources/shipgirls/Velvet Code/Giulio Cesare.png",
+        "is_base": true
+      },
+      {
         "char": "Glowworm",
         "filename": "./resources/shipgirls/Velvet Code/Glowworm.png",
         "is_base": true
@@ -32658,6 +32693,11 @@
       {
         "char": "Haguro",
         "filename": "./resources/shipgirls/Velvet Code/Haguro.png",
+        "is_base": true
+      },
+      {
+        "char": "Hammann",
+        "filename": "./resources/shipgirls/Velvet Code/Hammann.png",
         "is_base": true
       },
       {
@@ -32886,6 +32926,11 @@
         "is_base": false
       },
       {
+        "char": "Liverpool",
+        "filename": "./resources/shipgirls/Velvet Code/Liverpool.png",
+        "is_base": true
+      },
+      {
         "char": "London",
         "filename": "./resources/shipgirls/Velvet Code/London.png",
         "is_base": true
@@ -32909,6 +32954,11 @@
         "char": "Miyuki",
         "filename": "./resources/shipgirls/Velvet Code/Miyuki_retrofit.png",
         "is_base": false
+      },
+      {
+        "char": "Mogador",
+        "filename": "./resources/shipgirls/Velvet Code/Mogador.png",
+        "is_base": true
       },
       {
         "char": "Mutsu",
@@ -33006,6 +33056,11 @@
         "is_base": true
       },
       {
+        "char": "Pola",
+        "filename": "./resources/shipgirls/Velvet Code/Pola.png",
+        "is_base": true
+      },
+      {
         "char": "Prince of Wales",
         "filename": "./resources/shipgirls/Velvet Code/Prince of Wales.png",
         "is_base": true
@@ -33014,6 +33069,11 @@
         "char": "Prinz Eugen",
         "filename": "./resources/shipgirls/Velvet Code/Prinz Eugen.png",
         "is_base": true
+      },
+      {
+        "char": "Prinz Eugen",
+        "filename": "./resources/shipgirls/Velvet Code/Prinz Eugen_SS.png",
+        "is_base": false
       },
       {
         "char": "Quincy",
@@ -33214,6 +33274,11 @@
         "char": "Vittorio Veneto",
         "filename": "./resources/shipgirls/Velvet Code/Vittorio Veneto_retrofit.png",
         "is_base": false
+      },
+      {
+        "char": "Warspite",
+        "filename": "./resources/shipgirls/Velvet Code/Warspite.png",
+        "is_base": true
       },
       {
         "char": "Washington",
