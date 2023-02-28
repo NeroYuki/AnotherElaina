@@ -10,7 +10,7 @@ function main () {
     let list = []
 
     dirs.forEach((dir) => {
-        if ([".git", ".gitignore", "Current source.txt", "KanssenIndex-datamine", "KanssenIndex-web", "Franchise logo"].includes(dir)) return
+        if ([".git", ".gitignore", "Current source.txt", "KanssenIndex-datamine", "KanssenIndex-web", "Franchise logo", "Additional Note.txt", "desktop.ini"].includes(dir)) return
 
         let list_entry = {
             name: dir,
