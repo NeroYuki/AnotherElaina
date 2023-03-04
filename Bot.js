@@ -11,6 +11,8 @@ const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_
 client.commands = new Collection();
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+client.cooldowns = new Collection();
+client.COOLDOWN_SECONDS = 30; // replace with desired cooldown time in seconds
 
 for (const file of commandFiles) {
 	const filePath = path.join(commandsPath, file);
@@ -34,6 +36,12 @@ for (const file of commandFiles) {
 
 client.once('ready', () => {
 	console.log('I\'m here');
+	client.user.setPresence({
+		activities: [{
+			name: 'with AI Art',
+			type: 'PLAYING'
+		}],
+	})
 });
 
 client.on('interactionCreate', async interaction => {
@@ -44,10 +52,18 @@ client.on('interactionCreate', async interaction => {
 	if (!command) return;
 
 	try {
-		await command.execute(interaction);
+		if (interaction.commandName === 'wd_create') {
+			await command.execute(interaction, client)
+		}
+		else {
+			await command.execute(interaction);
+		}
 	} catch (error) {
 		console.error(error);
-		await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+		try {
+			await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+		}
+		catch (error) {}
 	}
 });
 
