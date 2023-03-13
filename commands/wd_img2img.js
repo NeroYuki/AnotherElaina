@@ -4,22 +4,17 @@ const { byPassUser } = require('../config.json');
 const crypt = require('crypto');
 const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, load_lora_from_prompt, model_name_hash_mapping } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
-const sharp = require('sharp');
 
 function clamp(num, min, max) {
     return num <= min ? min : num >= max ? max : num;
 }
 
-function loadImage(url, getBuffer = false) {
-    // download image from the given url and convert them to base64 dataURI (with proper mime type) or buffer use axios
+function loadImage(url) {
+    // download image from the given url and convert them to base64 dataURI (with proper mime type) use axios
 
     return new Promise((resolve, reject) => {
         axios.get(url, { responseType: 'arraybuffer' })
             .then((response) => {
-                if (getBuffer) {
-                    resolve(Buffer.from(response.data, 'binary'));
-                    return;
-                }
                 let image = Buffer.from(response.data, 'binary').toString('base64');
                 let mime = response.headers['content-type'];
                 resolve(`data:${mime};base64,${image}`);
@@ -33,16 +28,12 @@ function loadImage(url, getBuffer = false) {
 
 module.exports = {
 	data: new SlashCommandBuilder()
-		.setName('wd_inpaint')
-		.setDescription('(Attempt) to regenerate the image with an inpaint mask')
+		.setName('wd_img2img')
+		.setDescription('Request my Diffusion instance to generate art from an image')
 		.addAttachmentOption(option =>
 			option.setName('image')
 				.setDescription('The image to be regenerate')
 				.setRequired(true))
-        .addAttachmentOption(option =>
-            option.setName('mask')
-                .setDescription('The mask marking where the image should be regenerated')
-                .setRequired(true))
 		.addStringOption(option =>
             option.setName('prompt')
                 .setDescription('The prompt for the AI to generate art from')
@@ -53,28 +44,6 @@ module.exports = {
         .addNumberOption(option => 
             option.setName('denoising_strength')
                 .setDescription('How much the image is noised before regen, closer to 0 = closer to original (0 - 1, default 0.7)'))
-        .addIntegerOption(option =>
-            option.setName('mask_blur')
-                .setDescription('How much pixel is the mask being blurred, closer to 0 = closer to original (0 - 64, default 4)'))
-        .addStringOption(option => 
-            option.setName('mask_content')
-                .setDescription('The content that should fill the mask (default is "original")')
-                .addChoices(
-                    { name: 'Fill', value: 'fill' },
-                    { name: 'Original', value: 'original' },
-                    { name: 'Latent Noise', value: 'latent noise' },
-                    { name: 'Latent Nothing', value: 'latent nothing' },
-                ))
-        .addStringOption(option => 
-            option.setName('mask_color')
-                .setDescription('Which color are you picking for the mask (default is "black")')
-                .addChoices(
-                    { name: 'White (#FFFFFF)', value: 'white' },
-                    { name: 'Black (#000000)', value: 'black' },
-                    { name: 'Pure Red (#FF0000)', value: 'red' },
-                    { name: 'Pure Green (#00FF00)', value: 'green' },
-                    { name: 'Pure Blue (#0000FF)', value: 'blue' },
-                ))
         .addIntegerOption(option => 
             option.setName('width')
                 .setDescription('The width of the generated image (default is 512, recommended max is 768)'))
@@ -131,9 +100,6 @@ module.exports = {
         const width = clamp(interaction.options.getInteger('width') || 512, 64, 1920)
         const height = clamp(interaction.options.getInteger('height') || 512, 64, 1080)
         const denoising_strength = clamp(interaction.options.getNumber('denoising_strength') || 0.7, 0, 1)
-        const mask_blur = clamp(interaction.options.getInteger('mask_blur') || 4, 0, 64)
-        const mask_content = interaction.options.getString('mask_content') || 'original'
-        const mask_color = interaction.options.getString('mask_color') || 'black'
         const sampler = interaction.options.getString('sampler') || 'Euler a'
         const cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || 7, 0, 30)
         const sampling_step = clamp(interaction.options.getInteger('sampling_step') || 20, 1, 100)
@@ -149,89 +115,19 @@ module.exports = {
         catch {
             seed = parseInt('-1')
         }
-        let attachment_option = interaction.options.getAttachment('image')
-        let attachment_mask_option = interaction.options.getAttachment('mask')
 
-        //make a temporary reply to not get timeout'd
-		await interaction.deferReply();
+        let attachment_option = interaction.options.getAttachment('image')
 
         //download the image from attachment.proxyURL
         let attachment = await loadImage(attachment_option.proxyURL).catch((err) => {
             console.log(err)
-            interaction.editReply({ content: "Failed to retrieve image", ephemeral: true });
+            interaction.reply({ content: "Failed to retrieve image", ephemeral: true });
             return
         })
 
-        let attachment_mask = await loadImage(attachment_mask_option.proxyURL, true).catch((err) => {
-            console.log(err)
-            interaction.editReply({ content: "Failed to retrieve mask image", ephemeral: true });
-            return
-        })
 
-        let sharp_mask_data_uri = ""
-        if (mask_color === 'black') {
-            // load attachment_mask to sharp, negate, blur (guassian 4 pixels radius), and turn all non-white pixel to black and ((export to png data URI)) (use pipline to avoid memory leak)
-            await sharp(attachment_mask)
-                .negate({alpha: false})
-                .blur(3)
-                .threshold(255)
-                .toFormat('png')
-                .toBuffer()
-                .then(data => {
-                    sharp_mask_data_uri = "data:image/png;base64," + data.toString('base64')
-                })
-                .catch(err => {
-                    console.log(err)
-                    interaction.editReply({ content: "Failed to process mask image", ephemeral: true });
-                    return
-                })
-        }
-        else if (mask_color === 'red' || mask_color === 'green' || mask_color === 'blue') {
-            // load attachment_mask to sharp, only take the pure red/green/blue channel respective to the mask_color, 
-            //blur (guassian 4 pixels radius), and turn all non-white pixel to black and ((export to png data URI)) (use pipline to avoid memory leak)
-            let mono_img = null
-            await sharp(attachment_mask)
-                .toColourspace('b-w')
-                .toBuffer()
-                .then(data => {
-                    mono_img = data
-                })
-                .catch(err => {
-                    console.log(err)
-                    interaction.editReply({ content: "Failed to process mask image", ephemeral: true });
-                    return
-                })
-
-            await sharp(mono_img)
-                .blur(3)
-                .threshold(255)
-                .toFormat('png')
-                .toBuffer()
-                .then(data => {
-                    sharp_mask_data_uri = "data:image/png;base64," + data.toString('base64')
-                })
-                .catch(err => {
-                    console.log('error in mask conversion:', err)
-                    interaction.editReply({ content: "Failed to process mask image", ephemeral: true });
-                    return
-                })
-        }
-        else {
-            // load attachment_mask to sharp, blur (guassian 4 pixels radius), turn all non-white pixel to black and ((export to png data URI)) (use pipline to avoid memory leak)
-            await sharp(attachment_mask)
-                .blur(3)
-                .threshold(255)
-                .toFormat('png')
-                .toBuffer()
-                .then(data => {
-                    sharp_mask_data_uri = "data:image/png;base64," + data.toString('base64')
-                })
-                .catch(err => {
-                    console.log(err)
-                    interaction.editReply({ content: "Failed to process mask image", ephemeral: true });
-                    return
-                })
-        }
+        //make a temporary reply to not get timeout'd
+		await interaction.deferReply();
 
         let server_index = get_worker_server(force_server_selection)
 
@@ -287,23 +183,6 @@ module.exports = {
 
         // TODO: remove button after collector period has ended
 
-        // DEBUG: convert mask_uri to png and spit it out
-
-        // const mask_uri = sharp_mask_data_uri
-        // await sharp(Buffer.from(mask_uri.replace(/^data:image\/\w+;base64,/, ""), 'base64'))
-        //     .toFormat('png')
-        //     .toBuffer()
-        //     .then(data => {
-        //         interaction.editReply({ content: "Debug mask conversion", files: [{attachment: data, name: "debug_mask.png"}] })
-        //     })
-        //     .catch(err => {
-        //         console.log(err)
-        //         return ""
-        //     })
-
-        // return 
-
-
         neg_prompt = get_negative_prompt(neg_prompt, override_neg_prompt, remove_nsfw_restriction)
 
         prompt = get_prompt(prompt, remove_nsfw_restriction)
@@ -313,7 +192,7 @@ module.exports = {
         }
     
         const create_data = get_data_body_img2img(server_index, prompt, neg_prompt, sampling_step, cfg_scale,
-            seed, sampler, session_hash, height, width, attachment, sharp_mask_data_uri, denoising_strength, 4, mask_blur, mask_content)
+            seed, sampler, session_hash, height, width, attachment, null, denoising_strength)
 
         // make option_init but for axios
         const option_init_axios = {

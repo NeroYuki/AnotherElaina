@@ -44,6 +44,7 @@ client.once('ready', () => {
 	})
 });
 
+
 client.on('interactionCreate', async interaction => {
 	if (!interaction.isCommand()) return;
 
@@ -52,7 +53,7 @@ client.on('interactionCreate', async interaction => {
 	if (!command) return;
 
 	try {
-		if (interaction.commandName === 'wd_create') {
+		if (['wd_create', 'wd_img2img', 'wd_inpaint'].includes(interaction.commandName)) {
 			await command.execute(interaction, client)
 		}
 		else {

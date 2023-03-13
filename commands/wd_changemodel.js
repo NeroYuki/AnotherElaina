@@ -1,6 +1,19 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
+const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
+const { byPassUser } = require('../config.json');
+const crypt = require('crypto');
+const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, load_lora_from_prompt, model_name_hash_mapping } = require('../utils/ai_server_config.js');
+const { default: axios } = require('axios');
 
-let isDone = true
+
+// ["362dae27f8", "RefSlave v2"],
+// ["bd518b9aee", "CetusMix v3 (Coda)"],
+// ["fbcf965a62", "Anything v4.5"],
+// ["a074b8864e", "Counterfeint v2.5"],
+// ["e03274b1e7", "MeinaMix v7"],
+// ["d01a68ae76", "PastelMix v2.1"],
+// ["4b118b2d1b", "Yozora v1"],
+
 let isReady = true
 
 module.exports = {
@@ -12,20 +25,17 @@ module.exports = {
                 .setDescription('The checkpoint to be used')
                 .addChoices(
 					{ name: 'Anything v4.5', value: 'anything.ckpt [fbcf965a62]' },
-                    { name: 'Pastel Mix v1', value: 'pastelmix.safetensors [d01a68ae76]' },
+                    { name: 'Pastel Mix v2.1', value: 'pastelmix.safetensors [d01a68ae76]' },
                     { name: 'Counterfeit v2.5', value: 'counterfeit.safetensors [a074b8864e]' },
-                    { name: 'NovelAI June 2022 leak', value: 'novelai.ckpt' },
-                    { name: 'Waifu Diffusion 1.4', value: 'model.ckpt' },
+                    { name: 'MeinaMix v7', value: 'meinamix.safetensors [e03274b1e7]' },
+                    { name: 'CetusMix v3 (Coda)', value: 'cetusmix.safetensors [bd518b9aee]' },
+                    { name: 'RefSlave v2', value: 'refslave.safetensors [362dae27f8]'}
 				)
                 .setRequired(true))
     ,
 
 	async execute(interaction) {
         const checkpoint = interaction.options.getString('checkpoint')
-        if (!isDone) {
-            await interaction.reply('Please wait for the previous request to finish')
-            return
-        }
 
         if(!isReady) {
             await interaction.reply('There is a request not long ago, please let people use it first lol')
@@ -36,39 +46,39 @@ module.exports = {
 		await interaction.deferReply();
 
         const session_hash = crypt.randomBytes(16).toString('base64');
-        isDone = false
 
-        const option = {
-            method: 'POST',
-            body: JSON.stringify({
-                fn_index: 336,
+        const option_init_axios = {
+            data: {
+                fn_index: 302,
                 session_hash: session_hash,
                 data: [
                     checkpoint
                 ]
-
-            }),
-            headers: { 'Content-Type': 'application/json' }
+            },
+            config: {
+                timeout: 900000
+            }
         }
 
-        fetch('http://127.0.0.1:7860/run/predict/', option).then(
-            res => res.json()
-        ).then(
-            async (json) => {
-                if (json.status === 'ok') {
-                    isDone = true
+        await interaction.editReply(`Changing model to ${checkpoint}... , please wait`)
 
-                    setTimeout(() => {
-                        isReady = true
-                    }, 600000)
-
-                    await interaction.editReply('Model checkpoint has been changed successfully')
+        await axios.post(`http://127.0.0.1:7860/run/predict/`, option_init_axios.data, option_init_axios.config)
+            .then(async (res) => {
+                if(res.data) {
+                    await interaction.editReply('Model changed successfully to ' + checkpoint)
+                    isReady = false
+                } else {
+                    await interaction.editReply('Model change failed')
                 }
-            }
-        ).catch(
-            err => {
+            })
+            .catch(async (err) => {
                 console.log(err)
-            }
-        )
+                await interaction.editReply('Model change failed')
+            })
+
+        // set isReady to true after 30 minutes
+        setTimeout(() => {
+            isReady = true
+        }, 1800000)
 	},
 };

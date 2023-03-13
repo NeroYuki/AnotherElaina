@@ -2,8 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { byPassUser } = require('../config.json');
 const crypt = require('crypto');
-const http = require('http');
-const { server_pool, get_data_body, get_negative_prompt, initiate_server_heartbeat, get_worker_server } = require('../utils/ai_server_config.js');
+const { server_pool, get_data_body, get_negative_prompt, initiate_server_heartbeat, get_worker_server, get_prompt, load_lora_from_prompt, model_name_hash_mapping } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 
 function clamp(num, min, max) {
@@ -55,18 +54,28 @@ module.exports = {
         .addBooleanOption(option => 
             option.setName('remove_nsfw_restriction')
                 .setDescription('Force the removal of nsfw negative prompt (default is "false")'))
+        .addBooleanOption(option => 
+            option.setName('no_dynamic_lora_load')
+                .setDescription('Do not use the bot\'s dynamic LoRA loading (default is "false")'))
+        .addNumberOption(option =>
+            option.setName('default_lora_strength')
+                .setDescription('The strength of lora if loaded dynamically (default is "0.85")'))
         .addNumberOption(option =>
             option.setName('upscale_multiplier')
                 .setDescription('The rate to upscale the generated image (default is "1, no upscaling")'))
         .addStringOption(option =>
             option.setName('upscaler')
-                .setDescription('Specify the upscaler to use (default is "Latent")')
+                .setDescription('Specify the upscaler to use (default is "Lanczos")')
                 .addChoices(
-					{ name: 'Latent', value: 'Latent' },
-                    { name: 'Lanczos', value: 'Lanczos' },
+                    { name: 'Lanczos - Fast', value: 'Lanczos' },
                     { name: 'ESRGAN_4x', value: 'ESRGAN_4x' },
                     { name: 'R-ESRGAN 4x+ Anime6B', value: 'R-ESRGAN 4x+ Anime6B' },
                     { name: 'SwinIR 4x', value: 'SwinIR 4x' },
+					{ name: 'Latent - Slow', value: 'Latent' },
+                    { name: 'Latent (antialiased)', value: 'Latent (antialiased)' },
+                    { name: 'Latent (nearest)', value: 'Latent (nearest)' },
+                    { name: 'Latent (nearest-exact)', value: 'Latent (nearest-exact)' },
+                    { name: 'Latent (bicubic)', value: 'Latent (bicubic)' },
 				))
         .addNumberOption(option =>
             option.setName('upscale_denoise_strength')
@@ -91,7 +100,7 @@ module.exports = {
             return 
         }
 
-		const prompt = interaction.options.getString('prompt')
+		let prompt = interaction.options.getString('prompt')
 		let neg_prompt = interaction.options.getString('neg_prompt') || '' 
         const width = clamp(interaction.options.getInteger('width') || 512, 64, 1024)
         const height = clamp(interaction.options.getInteger('height') || 512, 64, 1024)
@@ -100,8 +109,10 @@ module.exports = {
         const sampling_step = clamp(interaction.options.getInteger('sampling_step') || 20, 1, 100)
         const override_neg_prompt = interaction.options.getBoolean('override_neg_prompt') || false
         const remove_nsfw_restriction = interaction.options.getBoolean('remove_nsfw_restriction') || false
+        const no_dynamic_lora_load = interaction.options.getBoolean('no_dynamic_lora_load') || false
+        const default_lora_strength = clamp(interaction.options.getNumber('default_lora_strength') || 0.85, 0, 3)
         const upscale_multiplier = clamp(interaction.options.getNumber('upscale_multiplier') || 1, 1, 4)
-        const upscaler = interaction.options.getString('upscaler') || 'Latent'
+        const upscaler = interaction.options.getString('upscaler') || 'Lanczos'
         const upscale_denoise_strength = clamp(interaction.options.getNumber('upscale_denoise_strength') || 0.7, 0, 1)
         const force_server_selection = clamp(interaction.options.getInteger('force_server_selection') !== null ? interaction.options.getInteger('force_server_selection') : -1 , -1, 1)
         const upscale_step = clamp(interaction.options.getInteger('upscale_step') || 20, 1, 100)
@@ -116,9 +127,12 @@ module.exports = {
         //make a temporary reply to not get timeout'd
 		await interaction.deferReply();
 
-                
-        console.log(force_server_selection)
         let server_index = get_worker_server(force_server_selection)
+
+        if (server_index === -1) {
+            await interaction.editReply({ content: "No server is available, please try again later"});
+            return
+        }
 
         // TODO: add progress ping
         let current_preview_id = 0
@@ -167,32 +181,19 @@ module.exports = {
 
         // TODO: remove button after collector period has ended
 
-        neg_prompt = await get_negative_prompt(neg_prompt, override_neg_prompt, remove_nsfw_restriction)
+        neg_prompt = get_negative_prompt(neg_prompt, override_neg_prompt, remove_nsfw_restriction)
+
+        prompt = get_prompt(prompt, remove_nsfw_restriction)
+        
+        if (!no_dynamic_lora_load) {
+            prompt = load_lora_from_prompt(prompt, default_lora_strength)
+        }
     
         const create_data = get_data_body(server_index, prompt, neg_prompt, sampling_step, cfg_scale, 
             seed, sampler, session_hash, height, width, upscale_multiplier, upscaler, 
             upscale_denoise_strength, upscale_step)
 
         // console.log(create_data)
-
-        const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), 900000);
-
-        const option_init = {
-            method: 'POST',
-            agent: new http.Agent({
-                keepAlive: true,
-            }),
-            body: JSON.stringify({
-                fn_index: server_pool[server_index].fn_index_create,
-                session_hash: session_hash,
-                data: create_data
-            }),
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            signal: AbortSignal.timeout(900000)
-        }
 
         // make option_init but for axios
         const option_init_axios = {
@@ -228,6 +229,7 @@ module.exports = {
                         .setTitle('Output')
                         .setDescription(`Here you go. Generated in ${data.duration.toFixed(2)} seconds.`)
                         .addField('Random seed', data.seed, true)
+                        .addField('Model used', `${model_name_hash_mapping.get(data.model) || "Unknown Model"} (${data.model})`, true)
                         .setImage(`attachment://${data.img_name}`)
                         .setFooter({text: `Putting ${Array("my RTX 3060","plub's RTX 3070")[server_index]} to good use!`});
                 }
@@ -327,6 +329,7 @@ module.exports = {
                         // if server index == 0, get local image directory, else initiate request to get image from server
                         let img_buffer = null
                         const file_dir = final_res_obj.data[0][0]?.name
+                        console.log(final_res_obj.data)
                         if (!file_dir) {
                             throw 'Request return no image'
                         }
@@ -342,6 +345,7 @@ module.exports = {
 
                         // attempt to get the image seed (-1 if failed to do so)
                         const seed = JSON.parse(final_res_obj.data[1] || JSON.stringify({seed: -1})).seed.toString()
+                        const model_hash = JSON.parse(final_res_obj.data[1] || JSON.stringify({sd_model_hash: "-"})).sd_model_hash
                         console.log(final_res_obj.duration)
                         //console.log(img_buffer, seed)
 
@@ -353,6 +357,7 @@ module.exports = {
                             img: img_buffer ? img_buffer : file_dir,
                             img_name: 'img.png',
                             seed: seed,
+                            model: model_hash,
                             duration: final_res_obj.duration
                         }, 'completed').catch(err => {
                             console.log(err)
@@ -364,11 +369,9 @@ module.exports = {
                         isCancelled = true
                         throw 'Request return non-JSON data'
                     }
-                    clearTimeout(id)
                 })
                 .catch(err => {
                     isCancelled = true
-                    clearTimeout(id)
                     throw err
                 });
         }
