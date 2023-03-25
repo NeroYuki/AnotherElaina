@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { Client, Collection, Intents } = require('discord.js');
+const { byPassUser} = require('./config.json');
 
 require('dotenv').config()
 
@@ -51,6 +52,11 @@ client.on('interactionCreate', async interaction => {
 	const command = client.commands.get(interaction.commandName);
 
 	if (!command) return;
+
+	// if (interaction.user.id !== byPassUser) {
+	// 	await interaction.reply({ content: 'Bot is in maintainance mode right now', ephemeral: true });
+	// 	return;
+	// }
 
 	try {
 		if (['wd_create', 'wd_img2img', 'wd_inpaint'].includes(interaction.commandName)) {

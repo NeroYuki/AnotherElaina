@@ -1,7 +1,7 @@
 const server_pool = [
     {
         index: 0,
-        url: 'http://0.0.0.0:7860',
+        url: 'http://192.168.196.142:7860',
         fn_index_create: 115,
         fn_index_abort: 45,
         fn_index_img2img: 212,
@@ -169,7 +169,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
 }
 
 const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed, sampler, session_hash,
-    height, width, upscale_multiplier, upscaler, upscale_denoise_strength, upscale_step) => {
+    height, width, upscale_multiplier, upscaler, upscale_denoise_strength, upscale_step, face_restore = false) => {
     if (index === 0) return [
         `task(${session_hash})`,
         prompt,                 // prompt

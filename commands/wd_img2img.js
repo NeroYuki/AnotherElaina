@@ -118,16 +118,15 @@ module.exports = {
 
         let attachment_option = interaction.options.getAttachment('image')
 
+        //make a temporary reply to not get timeout'd
+		await interaction.deferReply();
+
         //download the image from attachment.proxyURL
         let attachment = await loadImage(attachment_option.proxyURL).catch((err) => {
             console.log(err)
             interaction.reply({ content: "Failed to retrieve image", ephemeral: true });
             return
         })
-
-
-        //make a temporary reply to not get timeout'd
-		await interaction.deferReply();
 
         let server_index = get_worker_server(force_server_selection)
 
