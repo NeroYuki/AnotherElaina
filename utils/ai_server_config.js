@@ -1,3 +1,5 @@
+const fetch = require('node-fetch');
+
 const server_pool = [
     {
         index: 0,
