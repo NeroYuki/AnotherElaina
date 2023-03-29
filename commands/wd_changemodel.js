@@ -63,7 +63,7 @@ module.exports = {
 
         await interaction.editReply(`Changing model to ${checkpoint}... , please wait`)
 
-        await axios.post(`http://127.0.0.1:7860/run/predict/`, option_init_axios.data, option_init_axios.config)
+        await axios.post(`http://192.168.196.142:7860/run/predict/`, option_init_axios.data, option_init_axios.config)
             .then(async (res) => {
                 if(res.data) {
                     await interaction.editReply('Model changed successfully to ' + checkpoint)
