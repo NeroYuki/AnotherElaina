@@ -174,10 +174,10 @@ module.exports = {
             fetch(`${WORKER_ENDPOINT}/run/predict/`, option_cancel)
 
             try {
-                await i.message.delete()
+                i.message.delete()
             }
-            catch {
-                // do nothing
+            catch (err) {
+                console.log(err)
             }
         });
 
@@ -327,6 +327,7 @@ module.exports = {
                     return res.data
                 }) // fuck node fetch, all my homies use axios
                 .then(async (final_res_obj) => {
+                    if (isCancelled) return
                     if (final_res_obj.data) {
                         // if server index == 0, get local image directory, else initiate request to get image from server
                         let img_buffer = null
