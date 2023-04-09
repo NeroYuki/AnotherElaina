@@ -10,6 +10,7 @@ const server_pool = [
         fn_index_abort: 45,
         fn_index_img2img: 420,
         fn_index_controlnet: 169,
+        fn_index_controlnet_annotation: 162,
         is_online: true,
     },
     {
@@ -22,16 +23,16 @@ const server_pool = [
     }
 ]
 
-const get_data_controlnet = (enable, preprocessor = "openpose", controlnet = "t2iadapter_openpose_sd14v1 [7e267e5e]", input, weight = 1, guide_start = 0, guide_end = 1) => {
+const get_data_controlnet = (preprocessor = "openpose", controlnet = "t2iadapter_openpose_sd14v1 [7e267e5e]", input, weight = 1, guide_start = 0, guide_end = 1) => {
     return [
-        enable,
+        input ? true : false,
         preprocessor,
         controlnet,
         weight,
-        {
+        input ? {
             "image": input,
             "mask": BLANK_IMG
-        },
+        } : null,
         false,
         "Scale to Fit (Inner Fit)",
         false,
@@ -42,6 +43,19 @@ const get_data_controlnet = (enable, preprocessor = "openpose", controlnet = "t2
         guide_start,
         guide_end,
         false
+    ]
+}
+
+const get_data_controlnet_annotation = (preprocessor = "openpose", input) => {
+    return [
+        input ? {
+            "image": input,
+            "mask": BLANK_IMG
+        } : null,
+        preprocessor,
+        512,        // annotator resolution
+        64,         // threshold a
+        64,         // threshold b
     ]
 }
 
@@ -1150,6 +1164,8 @@ module.exports = {
     server_pool,
     get_negative_prompt,
     get_data_body,
+    get_data_controlnet,
+    get_data_controlnet_annotation,
     get_worker_server,
     initiate_server_heartbeat,
     get_prompt,
