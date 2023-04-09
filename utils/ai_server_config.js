@@ -1,3 +1,5 @@
+const fetch = require('node-fetch');
+
 const server_pool = [
     {
         index: 0,
@@ -342,7 +344,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
 function get_negative_prompt(neg_prompt, override_neg_prompt, remove_nsfw_restriction) {
     let res = neg_prompt
     // add default neg prompt
-    const default_neg_prompt = 'lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry,missing fingers,bad hands,missing arms, long neck, '
+    const default_neg_prompt = '(worst quality, low quality:1.4), '
     if (!override_neg_prompt) {
         res = default_neg_prompt + res
     }
@@ -757,6 +759,22 @@ const word_to_lora_model = [
         "keyword": ["line art", "lineart"],
         "lora": "<lora:animeLineartStyle_v20Offset:0.85>",
     },
+    {
+        "keyword": ["oyuwari"],
+        "lora": "<lora:oyuwariArtStyleLora_v2012870:0.85>",
+    },
+    {
+        "keyword": ["kasugano sora"],
+        "lora": "<lora:KasuganoSora_ksV1:0.85>",
+    },
+    {
+        "keyword": ["xingqiu"],
+        "lora": "<lora:xingqiuV20Genshin_v20:0.85>"
+    },
+    {
+        "keyword": ["forswall"],
+        "lora": "<lora:forswallLOTMLordOf_1:0.85>"
+    }
 ]
 
 const model_name_hash_mapping = new Map([
@@ -767,7 +785,8 @@ const model_name_hash_mapping = new Map([
     ["e03274b1e7", "MeinaMix v7"],
     ["d01a68ae76", "PastelMix v2.1"],
     ["4b118b2d1b", "Yozora v1"],
-    ["f303d10812", "AbyssOrangeMix v3 A1"]
+    ["f303d10812", "AbyssOrangeMix v3 A1"],
+    ["7f96a1a9ca", "Anything v5"],
 ])
 
 

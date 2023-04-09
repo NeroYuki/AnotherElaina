@@ -4,6 +4,7 @@ const { byPassUser } = require('../config.json');
 const crypt = require('crypto');
 const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, load_lora_from_prompt, model_name_hash_mapping } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
+const fetch = require('node-fetch');
 
 
 // ["362dae27f8", "RefSlave v2"],
@@ -24,12 +25,13 @@ module.exports = {
             option.setName('checkpoint')
                 .setDescription('The checkpoint to be used')
                 .addChoices(
-					{ name: 'Anything v4.5', value: 'anything.ckpt [fbcf965a62]' },
+					          { name: 'Anything v4.5', value: 'anything.ckpt [fbcf965a62]' },
                     { name: 'Pastel Mix v2.1', value: 'pastelmix.safetensors [d01a68ae76]' },
                     { name: 'Counterfeit v2.5', value: 'counterfeit.safetensors [a074b8864e]' },
                     { name: 'MeinaMix v7', value: 'meinamix.safetensors [e03274b1e7]' },
                     { name: 'CetusMix v3 (Coda)', value: 'cetusmix.safetensors [bd518b9aee]' },
-                    { name: 'RefSlave v2', value: 'refslave.safetensors [362dae27f8]'}
+                    { name: 'RefSlave v2', value: 'refslave.safetensors [362dae27f8]' },
+                    { name: 'Anything v5', value: 'anythingv5.safetensor [7f96a1a9ca]' }
 				)
                 .setRequired(true))
     ,
@@ -62,7 +64,7 @@ module.exports = {
 
         await interaction.editReply(`Changing model to ${checkpoint}... , please wait`)
 
-        await axios.post(`http://127.0.0.1:7860/run/predict/`, option_init_axios.data, option_init_axios.config)
+        await axios.post(`http://192.168.196.142:7860/run/predict/`, option_init_axios.data, option_init_axios.config)
             .then(async (res) => {
                 if(res.data) {
                     await interaction.editReply('Model changed successfully to ' + checkpoint)

@@ -5,6 +5,7 @@ const crypt = require('crypto');
 const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, load_lora_from_prompt, model_name_hash_mapping } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const sharp = require('sharp');
+const fetch = require('node-fetch');
 
 function clamp(num, min, max) {
     return num <= min ? min : num >= max ? max : num;
@@ -453,14 +454,13 @@ module.exports = {
                         if (!file_dir) {
                             throw 'Request return no image'
                         }
-                        if (server_index !== 0) {
-                            const img_res = await fetch(`${WORKER_ENDPOINT}/file=${file_dir}`).catch(err => {
-                                throw 'Error while fetching image on remote server'
-                            })
+                        // all server is remote
+                        const img_res = await fetch(`${WORKER_ENDPOINT}/file=${file_dir}`).catch(err => {
+                            throw 'Error while fetching image on remote server'
+                        })
 
-                            if (img_res && img_res.status === 200) {
-                                img_buffer = Buffer.from(await img_res.arrayBuffer())
-                            }
+                        if (img_res && img_res.status === 200) {
+                            img_buffer = Buffer.from(await img_res.arrayBuffer())
                         }
 
                         // attempt to get the image seed (-1 if failed to do so)
