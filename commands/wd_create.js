@@ -136,6 +136,10 @@ module.exports = {
             return
         }
 
+        const cooldown = (width * height * sampling_step + (upscale_multiplier > 1 ? (upscale_multiplier * height * upscale_multiplier * width * upscale_step) : 0)) / 1000000
+
+        await interaction.editReply({ content: `Generating image, you can create another image in ${cooldown.toFixed(2)} seconds`});
+
         // TODO: add progress ping
         let current_preview_id = 0
         const session_hash = crypt.randomBytes(16).toString('base64');
@@ -391,6 +395,6 @@ module.exports = {
 
         setTimeout(() => {
             client.cooldowns.delete(interaction.user.id);
-        }, client.COOLDOWN_SECONDS * 1000);
+        }, cooldown * 1000);
 	},
 };
