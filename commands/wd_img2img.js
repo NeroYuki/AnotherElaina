@@ -155,7 +155,7 @@ module.exports = {
 
         const filter = i => i.customId === 'cancel_img2img' && i.user.id === interaction.user.id;
 
-        const collector = interaction.channel.createMessageComponentCollector({ filter, time: 300000 });
+        const collector = interaction.channel.createMessageComponentCollector({ filter, time: 800000 });
 
         collector.on('collect', async i => {
             isCancelled = true
@@ -174,7 +174,7 @@ module.exports = {
             fetch(`${WORKER_ENDPOINT}/run/predict/`, option_cancel)
 
             try {
-                await i.message.delete()
+                i.message.delete()
             }
             catch {
                 // do nothing

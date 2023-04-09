@@ -48,7 +48,7 @@ function main () {
         list.push(list_entry)
     })
 
-    fs.writeFileSync('shipgirl_quiz.json', JSON.stringify(list, {}, '  '), {encoding: 'utf-8'})
+    fs.writeFileSync('resources/shipgirl_quiz.json', JSON.stringify(list, {}, '  '), {encoding: 'utf-8'})
 }
 
 main()

@@ -279,7 +279,7 @@ module.exports = {
             fetch(`${WORKER_ENDPOINT}/run/predict/`, option_cancel)
 
             try {
-                await i.message.delete()
+                i.message.delete()
             }
             catch {
                 // do nothing
