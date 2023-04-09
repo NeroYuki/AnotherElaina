@@ -155,7 +155,7 @@ module.exports = {
 
         const filter = i => i.customId === 'cancel' && i.user.id === interaction.user.id;
 
-        const collector = interaction.channel.createMessageComponentCollector({ filter, time: 300000 });
+        const collector = interaction.channel.createMessageComponentCollector({ filter, time: 800000 });
 
         collector.on('collect', async i => {
             isCancelled = true

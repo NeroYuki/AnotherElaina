@@ -31,7 +31,7 @@ module.exports = {
                     { name: 'MeinaMix v7', value: 'meinamix.safetensors [e03274b1e7]' },
                     { name: 'CetusMix v3 (Coda)', value: 'cetusmix.safetensors [bd518b9aee]' },
                     { name: 'RefSlave v2', value: 'refslave.safetensors [362dae27f8]' },
-                    { name: 'Anything v5', value: 'anythingv5.safetensor [7f96a1a9ca]' }
+                    { name: 'Anything v5', value: 'anythingv5.safetensors [7f96a1a9ca]' }
 				)
                 .setRequired(true))
     ,
