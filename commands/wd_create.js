@@ -2,9 +2,10 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { byPassUser } = require('../config.json');
 const crypt = require('crypto');
-const { server_pool, get_data_body, get_negative_prompt, initiate_server_heartbeat, get_worker_server, get_prompt, load_lora_from_prompt, model_name_hash_mapping } = require('../utils/ai_server_config.js');
+const { server_pool, get_data_body, get_negative_prompt, initiate_server_heartbeat, get_worker_server, get_prompt, load_lora_from_prompt, model_name_hash_mapping, get_data_controlnet, get_data_controlnet_annotation } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const fetch = require('node-fetch');
+const { loadImage } = require('../utils/load_discord_img');
 
 
 function clamp(num, min, max) {
@@ -85,6 +86,39 @@ module.exports = {
         .addIntegerOption(option =>
             option.setName('upscale_step')
                 .setDescription('Number of upscaling step (default is "20")'))
+        .addAttachmentOption(option =>
+            option.setName('controlnet_input')
+                .setDescription('The input image of the controlnet'))
+        .addStringOption(option =>
+            option.setName('controlnet_model')
+                .setDescription('The model to use for the controlnet (default is "T2I-Adapter - OpenPose")')
+                .addChoices(
+                    { name: 'T2I-Adapter - Canny', value: 't2iadapter_canny_sd14v1 [80bfd79b]' },
+                    { name: 'T2I-Adapter - Color', value: 't2iadapter_color_sd14v1 [8522029d]' },
+                    { name: 'T2I-Adapter - Depth', value: 't2iadapter_depth_sd14v1 [fa476002]' },
+                    { name: 'T2I-Adapter - KeyPose', value: 't2iadapter_keypose_sd14v1 [ba1d909a]' },
+                    { name: 'T2I-Adapter - OpenPose', value: 't2iadapter_openpose_sd14v1 [7e267e5e]' },
+                    { name: 'T2I-Adapter - Seg', value: 't2iadapter_seg_sd14v1 [6387afb5]' },
+                    { name: 'T2I-Adapter - Sketch', value: 't2iadapter_sketch_sd14v1 [e5d4b846]' },
+                    { name: 'T2I-Adapter - Style', value: 't2iadapter_style_sd14v1 [202e85cc]' }
+                ))
+        .addStringOption(option =>
+            option.setName('controlnet_preprocessor')
+                .setDescription('The preprocessor to use for the controlnet (default is "OpenPose")')
+                .addChoices(
+                    { name: 'None', value: 'none' },
+                    { name: 'Canny', value: 'canny' },
+                    { name: 'Depth', value: 'depth' },
+                    { name: 'Depth (LERes)', value: 'depth_leres' },
+                    { name: 'HED', value: 'hed' },
+                    { name: 'OpenPose', value: 'openpose' },
+                    { name: 'Segmentation', value: 'segmentation' },
+                    { name: 'CLIP Vision', value: 'clip_vision' },
+                    { name: 'Color', value: 'color' },
+                ))
+        .addBooleanOption(option => 
+            option.setName('do_preview_annotation')
+                .setDescription('Preview the annotation after preprocessing (default is "false")'))
         .addIntegerOption(option =>
             option.setName('force_server_selection')
                 .setDescription('Force the server to use (default is "-1 - Random")'))
@@ -118,6 +152,11 @@ module.exports = {
         const upscale_denoise_strength = clamp(interaction.options.getNumber('upscale_denoise_strength') || 0.7, 0, 1)
         const force_server_selection = clamp(interaction.options.getInteger('force_server_selection') !== null ? interaction.options.getInteger('force_server_selection') : -1 , -1, 1)
         const upscale_step = clamp(interaction.options.getInteger('upscale_step') || 20, 1, 100)
+        const controlnet_input_option = interaction.options.getAttachment('controlnet_input') || null
+        const controlnet_model = interaction.options.getString('controlnet_model') || 't2iadapter_openpose_sd14v1 [7e267e5e]'
+        const controlnet_preprocessor = interaction.options.getString('controlnet_preprocessor') || 'openpose'
+        const do_preview_annotation = interaction.options.getBoolean('do_preview_annotation') || false
+
         let seed = -1
         try {
             seed = parseInt(interaction.options.getString('seed')) || parseInt('-1')
@@ -125,6 +164,11 @@ module.exports = {
         catch {
             seed = parseInt('-1')
         }
+
+        const controlnet_input = controlnet_input_option ? await loadImage(controlnet_input_option.proxyURL).catch((err) => {
+            console.log(err)
+            interaction.reply({ content: "Failed to retrieve control net image", ephemeral: true });
+        }) : null
 
         //make a temporary reply to not get timeout'd
 		await interaction.deferReply();
@@ -199,7 +243,7 @@ module.exports = {
             seed, sampler, session_hash, height, width, upscale_multiplier, upscaler, 
             upscale_denoise_strength, upscale_step)
 
-        // console.log(create_data)
+        const controlnet_data = get_data_controlnet(controlnet_preprocessor, controlnet_model, controlnet_input)
 
         // make option_init but for axios
         const option_init_axios = {
@@ -218,6 +262,18 @@ module.exports = {
             body: JSON.stringify({
                 id_task: `task(${session_hash})`,
                 id_live_preview: current_preview_id,
+            }),
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        }
+
+        const option_controlnet = {
+            method: 'POST',
+            body: JSON.stringify({
+                fn_index: server_pool[server_index].fn_index_controlnet,
+                session_hash: session_hash,
+                data: controlnet_data
             }),
             headers: {
                 'Content-Type': 'application/json'
@@ -277,6 +333,53 @@ module.exports = {
                     reject('Attempted to send empty embeded message')
                 }
             })
+        }
+
+        try {
+            await fetch(`${WORKER_ENDPOINT}/run/predict/`, option_controlnet)
+                .then(res => {
+                    if (res.status !== 200) {
+                        throw 'Failed to change controlnet'
+                    }
+                })
+        }
+        catch (err) {
+            console.log(err)
+        }
+
+        if (do_preview_annotation) {
+            const controlnet_annotation_data = get_data_controlnet_annotation(controlnet_preprocessor, controlnet_input)
+            const option_controlnet_annotation = {
+                method: 'POST',
+                body: JSON.stringify({
+                    fn_index: server_pool[server_index].fn_index_controlnet_annotation,
+                    session_hash: session_hash,
+                    data: controlnet_annotation_data
+                }),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+
+            try {
+                await fetch(`${WORKER_ENDPOINT}/run/predict/`, option_controlnet_annotation)
+                    .then(res => {
+                        if (res.status !== 200) {
+                            throw 'Failed to change controlnet'
+                        }
+                        return res.json()
+                    })
+                    .then(async (res) => {
+                        // upload an image to the same channel as the interaction
+                        const img_dataURI = res.data[0].value
+                        const img = Buffer.from(img_dataURI.split(",")[1], 'base64')
+                        const img_name = `preview_annotation.png`
+                        await interaction.channel.send({files: [{attachment: img, name: img_name}]})
+                    })
+            }
+            catch (err) {
+                console.log(err)
+            }
         }
 
         function fetch_progress() {
