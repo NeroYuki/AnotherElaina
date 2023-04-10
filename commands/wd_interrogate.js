@@ -39,9 +39,9 @@ module.exports = {
             return
         })
 
-        let server_index = get_worker_server(force_server_selection)
+        let server_index = get_worker_server(-1)
 
-		if (server_index === -1) {
+		    if (server_index === -1) {
             await interaction.editReply({ content: "No server is available, please try again later"});
             return
         }
@@ -85,7 +85,7 @@ module.exports = {
                 .then(async (final_res_obj) => {
                     const duration = final_res_obj.duration
                     const description = final_res_obj.data[0]
-                    await interaction.editReply({content: `Description from CLIP: ${description} (${duration.toFixed(2)}s)`})
+                    await interaction.editReply({content: `Description from CLIP: ${description} (${duration.toFixed(2)}s)`, files: [{attachment: attachment_option.proxyURL, name: attachment.name}]})
                 })
                 .catch(err => {
                     throw err

@@ -284,7 +284,7 @@ module.exports = {
             seed, sampler, session_hash, height, width, upscale_multiplier, upscaler, 
             upscale_denoise_strength, upscale_step)
 
-        const controlnet_data = get_data_controlnet(controlnet_preprocessor, controlnet_model, controlnet_input, controlnet_mode.includes("sketch") ? 0.8 : 1)
+        const controlnet_data = get_data_controlnet(controlnet_preprocessor, controlnet_model, controlnet_input, controlnet_model.includes("sketch") ? 0.8 : 1)
 
         // make option_init but for axios
         const option_init_axios = {
