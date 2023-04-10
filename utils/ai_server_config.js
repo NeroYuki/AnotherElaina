@@ -11,6 +11,7 @@ const server_pool = [
         fn_index_img2img: 420,
         fn_index_controlnet: 169,
         fn_index_controlnet_annotation: 162,
+        fn_index_interrogate: 422,
         is_online: true,
     },
     {
