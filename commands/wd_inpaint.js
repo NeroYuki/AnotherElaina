@@ -260,9 +260,10 @@ module.exports = {
 
             try {
                 i.message.delete()
+                throw "Cancelled"
             }
-            catch {
-                // do nothing
+            catch (err) {
+                console.log(err)
             }
         });
 

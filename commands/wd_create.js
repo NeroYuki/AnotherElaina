@@ -226,6 +226,7 @@ module.exports = {
 
             try {
                 i.message.delete()
+                throw "Cancelled"
             }
             catch (err) {
                 console.log(err)
