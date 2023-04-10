@@ -6,6 +6,7 @@ const { server_pool, get_data_body, get_negative_prompt, initiate_server_heartbe
 const { default: axios } = require('axios');
 const fetch = require('node-fetch');
 const { loadImage } = require('../utils/load_discord_img');
+const sharp = require('sharp');
 
 
 function clamp(num, min, max) {
@@ -100,7 +101,8 @@ module.exports = {
                     { name: 'T2I-Adapter - OpenPose', value: 't2iadapter_openpose_sd14v1 [7e267e5e]' },
                     { name: 'T2I-Adapter - Seg', value: 't2iadapter_seg_sd14v1 [6387afb5]' },
                     { name: 'T2I-Adapter - Sketch', value: 't2iadapter_sketch_sd14v1 [e5d4b846]' },
-                    { name: 'T2I-Adapter - Style', value: 't2iadapter_style_sd14v1 [202e85cc]' }
+                    { name: 'T2I-Adapter - Style', value: 't2iadapter_style_sd14v1 [202e85cc]' },
+                    { name: 'ControlNet - HED', value: 'control_hed-fp16 [13fee50b]' },
                 ))
         .addStringOption(option =>
             option.setName('controlnet_preprocessor')
@@ -154,7 +156,7 @@ module.exports = {
         const upscale_step = clamp(interaction.options.getInteger('upscale_step') || 20, 1, 100)
         const controlnet_input_option = interaction.options.getAttachment('controlnet_input') || null
         const controlnet_model = interaction.options.getString('controlnet_model') || 't2iadapter_openpose_sd14v1 [7e267e5e]'
-        const controlnet_preprocessor = interaction.options.getString('controlnet_preprocessor') || 'openpose'
+        let controlnet_preprocessor = interaction.options.getString('controlnet_preprocessor') || 'openpose'
         const do_preview_annotation = interaction.options.getBoolean('do_preview_annotation') || false
 
         let seed = -1
@@ -165,13 +167,14 @@ module.exports = {
             seed = parseInt('-1')
         }
 
-        const controlnet_input = controlnet_input_option ? await loadImage(controlnet_input_option.proxyURL).catch((err) => {
+        let controlnet_input = controlnet_input_option ? await loadImage(controlnet_input_option.proxyURL).catch((err) => {
             console.log(err)
             interaction.reply({ content: "Failed to retrieve control net image", ephemeral: true });
         }) : null
+        
 
         //make a temporary reply to not get timeout'd
-		await interaction.deferReply();
+		    await interaction.deferReply();
 
         let server_index = get_worker_server(force_server_selection)
 
@@ -194,12 +197,12 @@ module.exports = {
         const WORKER_ENDPOINT = server_pool[server_index].url
 
         const row = new MessageActionRow()
-			.addComponents(
-				new MessageButton()
-					.setCustomId('cancel')
-					.setLabel('Cancel')
-					.setStyle('DANGER'),
-			);
+    			.addComponents(
+    				new MessageButton()
+    					.setCustomId('cancel')
+    					.setLabel('Cancel')
+    					.setStyle('DANGER'),
+    			);
 
         const filter = i => i.customId === 'cancel' && i.user.id === interaction.user.id;
 
@@ -228,6 +231,44 @@ module.exports = {
                 console.log(err)
             }
         });
+        
+        if (do_preview_annotation) {
+            const controlnet_annotation_data = get_data_controlnet_annotation(controlnet_preprocessor, controlnet_input)
+            const option_controlnet_annotation = {
+                method: 'POST',
+                body: JSON.stringify({
+                    fn_index: server_pool[server_index].fn_index_controlnet_annotation,
+                    session_hash: session_hash,
+                    data: controlnet_annotation_data
+                }),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+
+            try {
+                await fetch(`${WORKER_ENDPOINT}/run/predict/`, option_controlnet_annotation)
+                    .then(res => {
+                        if (res.status !== 200) {
+                            throw 'Failed to change controlnet'
+                        }
+                        return res.json()
+                    })
+                    .then(async (res) => {
+                        // upload an image to the same channel as the interaction
+                        const img_dataURI = res.data[0].value
+                        const img = Buffer.from(img_dataURI.split(",")[1], 'base64')
+                        if (do_preview_annotation) {
+                            const img_name = `preview_annotation.png`
+                            await interaction.channel.send({files: [{attachment: img, name: img_name}]})
+                        }
+                        // dead code
+                    })
+            }
+            catch (err) {
+                console.log(err)
+            }
+        }
 
         // TODO: remove button after collector period has ended
 
@@ -243,7 +284,7 @@ module.exports = {
             seed, sampler, session_hash, height, width, upscale_multiplier, upscaler, 
             upscale_denoise_strength, upscale_step)
 
-        const controlnet_data = get_data_controlnet(controlnet_preprocessor, controlnet_model, controlnet_input)
+        const controlnet_data = get_data_controlnet(controlnet_preprocessor, controlnet_model, controlnet_input, controlnet_mode.includes("sketch") ? 0.8 : 1)
 
         // make option_init but for axios
         const option_init_axios = {
@@ -345,41 +386,6 @@ module.exports = {
         }
         catch (err) {
             console.log(err)
-        }
-
-        if (do_preview_annotation) {
-            const controlnet_annotation_data = get_data_controlnet_annotation(controlnet_preprocessor, controlnet_input)
-            const option_controlnet_annotation = {
-                method: 'POST',
-                body: JSON.stringify({
-                    fn_index: server_pool[server_index].fn_index_controlnet_annotation,
-                    session_hash: session_hash,
-                    data: controlnet_annotation_data
-                }),
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            }
-
-            try {
-                await fetch(`${WORKER_ENDPOINT}/run/predict/`, option_controlnet_annotation)
-                    .then(res => {
-                        if (res.status !== 200) {
-                            throw 'Failed to change controlnet'
-                        }
-                        return res.json()
-                    })
-                    .then(async (res) => {
-                        // upload an image to the same channel as the interaction
-                        const img_dataURI = res.data[0].value
-                        const img = Buffer.from(img_dataURI.split(",")[1], 'base64')
-                        const img_name = `preview_annotation.png`
-                        await interaction.channel.send({files: [{attachment: img, name: img_name}]})
-                    })
-            }
-            catch (err) {
-                console.log(err)
-            }
         }
 
         function fetch_progress() {
