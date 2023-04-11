@@ -94,6 +94,7 @@ module.exports = {
             option.setName('controlnet_model')
                 .setDescription('The model to use for the controlnet (default is "T2I-Adapter - OpenPose")')
                 .addChoices(
+                    { name: 'None', value: 'None' },
                     { name: 'T2I-Adapter - Canny', value: 't2iadapter_canny_sd14v1 [80bfd79b]' },
                     { name: 'T2I-Adapter - Color', value: 't2iadapter_color_sd14v1 [8522029d]' },
                     { name: 'T2I-Adapter - Depth', value: 't2iadapter_depth_sd14v1 [fa476002]' },
@@ -118,6 +119,71 @@ module.exports = {
                     { name: 'CLIP Vision', value: 'clip_vision' },
                     { name: 'Color', value: 'color' },
                 ))
+        // clone the 3 options above for 2 other controlnet
+        .addAttachmentOption(option =>
+            option.setName('controlnet_input_2')
+                .setDescription('The input image of the controlnet'))
+        .addStringOption(option =>
+            option.setName('controlnet_model_2')
+                .setDescription('The model to use for the controlnet (default is "None")')
+                .addChoices(
+                    { name: 'None', value: 'None' },
+                    { name: 'T2I-Adapter - Canny', value: 't2iadapter_canny_sd14v1 [80bfd79b]' },
+                    { name: 'T2I-Adapter - Color', value: 't2iadapter_color_sd14v1 [8522029d]' },
+                    { name: 'T2I-Adapter - Depth', value: 't2iadapter_depth_sd14v1 [fa476002]' },
+                    { name: 'T2I-Adapter - KeyPose', value: 't2iadapter_keypose_sd14v1 [ba1d909a]' },
+                    { name: 'T2I-Adapter - OpenPose', value: 't2iadapter_openpose_sd14v1 [7e267e5e]' },
+                    { name: 'T2I-Adapter - Seg', value: 't2iadapter_seg_sd14v1 [6387afb5]' },
+                    { name: 'T2I-Adapter - Sketch', value: 't2iadapter_sketch_sd14v1 [e5d4b846]' },
+                    { name: 'T2I-Adapter - Style', value: 't2iadapter_style_sd14v1 [202e85cc]' },
+                    { name: 'ControlNet - HED', value: 'control_hed-fp16 [13fee50b]' },
+                ))
+        .addStringOption(option =>
+            option.setName('controlnet_preprocessor_2')
+                .setDescription('The preprocessor to use for the controlnet (default is "None")')
+                .addChoices(
+                    { name: 'None', value: 'none' },
+                    { name: 'Canny', value: 'canny' },
+                    { name: 'Depth', value: 'depth' },
+                    { name: 'Depth (LERes)', value: 'depth_leres' },
+                    { name: 'HED', value: 'hed' },
+                    { name: 'OpenPose', value: 'openpose' },
+                    { name: 'Segmentation', value: 'segmentation' },
+                    { name: 'CLIP Vision', value: 'clip_vision' },
+                    { name: 'Color', value: 'color' },
+                ))
+        // .addAttachmentOption(option =>
+        //     option.setName('controlnet_input_3')
+        //         .setDescription('The input image of the controlnet'))
+        // .addStringOption(option =>
+        //     option.setName('controlnet_model_3')
+        //         .setDescription('The model to use for the controlnet (default is "None")')
+        //         .addChoices(
+        //             { name: 'None', value: 'None' },
+        //             { name: 'T2I-Adapter - Canny', value: 't2iadapter_canny_sd14v1 [80bfd79b]' },
+        //             { name: 'T2I-Adapter - Color', value: 't2iadapter_color_sd14v1 [8522029d]' },
+        //             { name: 'T2I-Adapter - Depth', value: 't2iadapter_depth_sd14v1 [fa476002]' },
+        //             { name: 'T2I-Adapter - KeyPose', value: 't2iadapter_keypose_sd14v1 [ba1d909a]' },
+        //             { name: 'T2I-Adapter - OpenPose', value: 't2iadapter_openpose_sd14v1 [7e267e5e]' },
+        //             { name: 'T2I-Adapter - Seg', value: 't2iadapter_seg_sd14v1 [6387afb5]' },
+        //             { name: 'T2I-Adapter - Sketch', value: 't2iadapter_sketch_sd14v1 [e5d4b846]' },
+        //             { name: 'T2I-Adapter - Style', value: 't2iadapter_style_sd14v1 [202e85cc]' },
+        //             { name: 'ControlNet - HED', value: 'control_hed-fp16 [13fee50b]' },
+        //         ))
+        // .addStringOption(option =>
+        //     option.setName('controlnet_preprocessor_3')
+        //         .setDescription('The preprocessor to use for the controlnet (default is "None")')
+        //         .addChoices(
+        //             { name: 'None', value: 'none' },
+        //             { name: 'Canny', value: 'canny' },
+        //             { name: 'Depth', value: 'depth' },
+        //             { name: 'Depth (LERes)', value: 'depth_leres' },
+        //             { name: 'HED', value: 'hed' },
+        //             { name: 'OpenPose', value: 'openpose' },
+        //             { name: 'Segmentation', value: 'segmentation' },
+        //             { name: 'CLIP Vision', value: 'clip_vision' },
+        //             { name: 'Color', value: 'color' },
+        //         ))
         .addBooleanOption(option => 
             option.setName('do_preview_annotation')
                 .setDescription('Preview the annotation after preprocessing (default is "false")'))
@@ -140,8 +206,8 @@ module.exports = {
 
 		let prompt = interaction.options.getString('prompt')
 		let neg_prompt = interaction.options.getString('neg_prompt') || '' 
-        const width = clamp(interaction.options.getInteger('width') || 512, 64, 1024)
-        const height = clamp(interaction.options.getInteger('height') || 512, 64, 1024)
+        let width = clamp(interaction.options.getInteger('width') || 512, 64, 1024)
+        let height = clamp(interaction.options.getInteger('height') || 512, 64, 1024)
         const sampler = interaction.options.getString('sampler') || 'Euler a'
         const cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || 7, 0, 30)
         const sampling_step = clamp(interaction.options.getInteger('sampling_step') || 20, 1, 100)
@@ -157,6 +223,12 @@ module.exports = {
         const controlnet_input_option = interaction.options.getAttachment('controlnet_input') || null
         const controlnet_model = interaction.options.getString('controlnet_model') || 't2iadapter_openpose_sd14v1 [7e267e5e]'
         let controlnet_preprocessor = interaction.options.getString('controlnet_preprocessor') || 'openpose'
+        const controlnet_input_option_2 = interaction.options.getAttachment('controlnet_input_2') || null
+        const controlnet_model_2 = interaction.options.getString('controlnet_model_2') || 'none'
+        let controlnet_preprocessor_2 = interaction.options.getString('controlnet_preprocessor_2') || 'None'
+        // const controlnet_input_option_3 = interaction.options.getAttachment('controlnet_input_3') || null
+        // const controlnet_model_3 = interaction.options.getString('controlnet_model_3') || 'none'
+        // let controlnet_preprocessor_3 = interaction.options.getString('controlnet_preprocessor_3') || 'None'
         const do_preview_annotation = interaction.options.getBoolean('do_preview_annotation') || false
 
         let seed = -1
@@ -171,7 +243,30 @@ module.exports = {
             console.log(err)
             interaction.reply({ content: "Failed to retrieve control net image", ephemeral: true });
         }) : null
+
+        let controlnet_input_2 = controlnet_input_option_2 ? await loadImage(controlnet_input_option_2.proxyURL).catch((err) => {
+            console.log(err)
+            interaction.reply({ content: "Failed to retrieve control net image 2", ephemeral: true });
+        }) : null
         
+        // if width or height of the controlnet_input image is not divisible by 8, then it will be resized to the nearest divisible by 8, using sharp
+        // if (controlnet_input_option.width % 8 !== 0 || controlnet_input_option.height % 8 !== 0) {
+        //     controlnet_input = await sharp(controlnet_input.split(',')[1])
+        //         .resize(Math.ceil(controlnet_input_option.width / 8) * 8, Math.ceil(controlnet_input_option.height / 8) * 8)
+        //         .png()
+        //         .toBuffer()
+        //         .then((data) => {
+        //             return `data:image/png;base64,${data.toString('base64')}`
+        //         })
+        //         .catch((err) => {
+        //             console.log(err)
+        //             interaction.reply({ content: "Failed to resize controlnet image", ephemeral: true });
+        //         })
+        // }
+        if (height % 8 !== 0 || width % 8 !== 0) {
+            height = Math.ceil(height / 8) * 8
+            width = Math.ceil(width / 8) * 8
+        }
 
         //make a temporary reply to not get timeout'd
 		    await interaction.deferReply();
@@ -269,6 +364,44 @@ module.exports = {
             catch (err) {
                 console.log(err)
             }
+
+            if (controlnet_input_2) {
+                const controlnet_annotation_data_2 = get_data_controlnet_annotation(controlnet_preprocessor_2, controlnet_input_2)
+                const option_controlnet_annotation_2 = {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        fn_index: server_pool[server_index].fn_index_controlnet_annotation_2,
+                        session_hash: session_hash,
+                        data: controlnet_annotation_data_2
+                    }),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }
+
+                try {
+                    await fetch(`${WORKER_ENDPOINT}/run/predict/`, option_controlnet_annotation_2)
+                        .then(res => {
+                            if (res.status !== 200) {
+                                throw 'Failed to change controlnet'
+                            }
+                            return res.json()
+                        })
+                        .then(async (res) => {
+                            // upload an image to the same channel as the interaction
+                            const img_dataURI = res.data[0].value
+                            const img = Buffer.from(img_dataURI.split(",")[1], 'base64')
+                            if (do_preview_annotation) {
+                                const img_name = `preview_annotation_2.png`
+                                await interaction.channel.send({files: [{attachment: img, name: img_name}]})
+                            }
+                            // dead code
+                        })
+                }
+                catch (err) {
+                    console.log(err)
+                }
+            }
         }
 
         // TODO: remove button after collector period has ended
@@ -286,6 +419,7 @@ module.exports = {
             upscale_denoise_strength, upscale_step)
 
         const controlnet_data = get_data_controlnet(controlnet_preprocessor, controlnet_model, controlnet_input, controlnet_model.includes("sketch") ? 0.8 : 1)
+        const controlnet_data_2 = get_data_controlnet(controlnet_preprocessor_2, controlnet_model_2, controlnet_input_2, controlnet_model_2.includes("sketch") ? 0.8 : 1)
 
         // make option_init but for axios
         const option_init_axios = {
@@ -388,6 +522,33 @@ module.exports = {
         catch (err) {
             console.log(err)
         }
+
+        if (controlnet_input_2) {
+            const option_controlnet_2 = {
+                method: 'POST',
+                body: JSON.stringify({
+                    fn_index: server_pool[server_index].fn_index_controlnet_2,
+                    session_hash: session_hash,
+                    data: controlnet_data_2
+                }),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+
+            try {
+                await fetch(`${WORKER_ENDPOINT}/run/predict/`, option_controlnet_2)
+                    .then(res => {
+                        if (res.status !== 200) {
+                            throw 'Failed to change controlnet'
+                        }
+                    })
+            }
+            catch (err) {
+                console.log(err)
+            }
+        }
+
 
         function fetch_progress() {
             setTimeout(async () => {
