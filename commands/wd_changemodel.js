@@ -51,7 +51,7 @@ module.exports = {
 
         const option_init_axios = {
             data: {
-                fn_index: 525,
+                fn_index: 635,
                 session_hash: session_hash,
                 data: [
                     checkpoint
