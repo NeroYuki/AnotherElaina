@@ -20,7 +20,7 @@ module.exports = {
 
         await interaction.deferReply();
 
-        const WORKER_ENDPOINT = 'http://0.0.0.0:7866'
+        const WORKER_ENDPOINT = 'http://192.168.196.142:7866'
 
         const params = {
             'max_new_tokens': 100,

@@ -22,7 +22,7 @@ if (!doClear) {
 	for (const file of commandFiles) {
 		const filePath = path.join(commandsPath, file);
 		const command = require(filePath);
-		if (!isGlobal) command.data.description += " (Debug)"
+		if (!isGlobal) command.data.description = "[DEBUG] " + command.data.description
 		commands.push(command.data.toJSON());
 	}
 }
