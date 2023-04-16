@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { Client, Collection, Intents } = require('discord.js');
 const { byPassUser} = require('./config.json');
+const { responseToMessage } = require('./event/on_message');
 
 require('dotenv').config()
 
@@ -43,6 +44,23 @@ client.once('ready', () => {
 			type: 'PLAYING'
 		}],
 	})
+});
+
+client.on('messageCreate', async message => {
+	// if message doesnt mention the bot, return
+	if (!message.mentions.has(client.user)) return;
+
+	// if message is from a bot, return
+	if (message.author.bot) return;
+
+	// remove the mention to the bot
+	let content = message.content.replace(/<@!?\d+>/, '').trim();
+
+	// if message is empty, return
+	if (content.trim().length === 0) return;
+
+	responseToMessage(client, message, content)
+
 });
 
 
