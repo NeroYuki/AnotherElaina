@@ -28,7 +28,7 @@ async function responseToMessage(client, message, content) {
         'early_stopping': true,
         'seed': -1,
         'add_bos_token': true,
-        'custom_stopping_strings': ["\nYou:"],
+        'custom_stopping_strings': ["You:", "Elaina:"],
         'truncation_length': 2048,
         'ban_eos_token': false,
     }

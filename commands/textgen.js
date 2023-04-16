@@ -37,12 +37,12 @@ module.exports = {
 
 	async execute(interaction) {
         let prompt = interaction.options.getString('prompt')
-        let max_token = clamp(interaction.options.getInteger('max_token'), 1, 2048) || 100
-        let temperature = clamp(interaction.options.getNumber('temperature'), 0.01, 1.99) || 0.7
-        let top_p = clamp(interaction.options.getNumber('top_p'), 0, 1) || 0.1
-        let top_k = clamp(interaction.options.getInteger('top_k'), 1, 100) || 40
-        let typical_p = clamp(interaction.options.getNumber('typical_p'), 0, 1) || 1
-        let repetition_penalty = clamp(interaction.options.getNumber('repetition_penalty'), 1, 1.5) || 1.18
+        let max_token = clamp(interaction.options.getInteger('max_token')  || 100, 1, 2048)
+        let temperature = clamp(interaction.options.getNumber('temperature')  || 0.7, 0.01, 1.99)
+        let top_p = clamp(interaction.options.getNumber('top_p') || 0.1, 0, 1)
+        let top_k = clamp(interaction.options.getInteger('top_k')  || 40, 1, 100)
+        let typical_p = clamp(interaction.options.getNumber('typical_p')  || 1, 0, 1)
+        let repetition_penalty = clamp(interaction.options.getNumber('repetition_penalty')  || 1.18, 1, 1.5)
 
         if (is_generating) {
             await interaction.reply({content: "The bot is currently generating text, please wait a few seconds and try again", ephemeral: true})
@@ -62,12 +62,12 @@ module.exports = {
             'repetition_penalty': repetition_penalty,
             'encoder_repetition_penalty': 1.0,
             'top_k': top_k,
-            'min_length': 0,
+            'min_length': 10,
             'no_repeat_ngram_size': 0,
             'num_beams': 1,
             'penalty_alpha': 0,
             'length_penalty': 1,
-            'early_stopping': true,
+            'early_stopping': false,
             'seed': -1,
             'add_bos_token': true,
             'custom_stopping_strings': [],
@@ -109,9 +109,10 @@ module.exports = {
                 });
                 res.on('end', () => {
                     const final_res_obj = JSON.parse(data)
+                    console.log(data)
                     const res_gen = final_res_obj.data[0]
 
-                    if (res_gen_elaina === '') {
+                    if (res_gen === '') {
                         throw 'No response from AI'
                     }
 
@@ -135,7 +136,7 @@ module.exports = {
         } catch (err) {
             is_generating = false
             console.log(err)
-            await interaction.editReply({content: err, ephemeral: true})
+            await interaction.editReply({content: err.message, ephemeral: true})
             return
 
         }
