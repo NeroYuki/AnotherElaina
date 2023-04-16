@@ -25,13 +25,15 @@ module.exports = {
             option.setName('checkpoint')
                 .setDescription('The checkpoint to be used')
                 .addChoices(
-					          { name: 'Anything v4.5', value: 'anything.ckpt [fbcf965a62]' },
+					{ name: 'Anything v4.5', value: 'anything.ckpt [fbcf965a62]' },
                     { name: 'Pastel Mix v2.1', value: 'pastelmix.safetensors [d01a68ae76]' },
                     { name: 'Counterfeit v2.5', value: 'counterfeit.safetensors [a074b8864e]' },
                     { name: 'MeinaMix v7', value: 'meinamix.safetensors [e03274b1e7]' },
                     { name: 'CetusMix v3 (Coda)', value: 'cetusmix.safetensors [bd518b9aee]' },
                     { name: 'RefSlave v2', value: 'refslave.safetensors [362dae27f8]' },
-                    { name: 'Anything v5', value: 'anythingv5.safetensors [7f96a1a9ca]' }
+                    { name: 'Anything v5', value: 'anythingv5.safetensors [7f96a1a9ca]' },
+                    { name: 'Yozora v1', value: 'yozora.safetensors [4b118b2d1b]' },
+                    { name: 'Anime-like 2D v2', value: 'animelikev2.safetensors' },
 				)
                 .setRequired(true))
     ,

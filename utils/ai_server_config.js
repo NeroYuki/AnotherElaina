@@ -1079,12 +1079,13 @@ const model_name_hash_mapping = new Map([
     ["362dae27f8", "RefSlave v2"],
     ["bd518b9aee", "CetusMix v3 (Coda)"],
     ["fbcf965a62", "Anything v4.5"],
-    ["a074b8864e", "Counterfeint v2.5"],
+    ["a074b8864e", "Counterfeit v2.5"],
     ["e03274b1e7", "MeinaMix v7"],
     ["d01a68ae76", "PastelMix v2.1"],
     ["4b118b2d1b", "Yozora v1"],
     ["f303d10812", "AbyssOrangeMix v3 A1"],
     ["7f96a1a9ca", "Anything v5"],
+    ["4d957c560b", "Anime-like 2D v2"],
 ])
 
 
