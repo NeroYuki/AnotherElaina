@@ -83,17 +83,17 @@ ${context_dialog}Elaina: `
     const row = new MessageActionRow()
         .addComponents(
             new MessageButton()
-                .setCustomId('deleteContext')
+                .setCustomId('deleteContext_' + message.id)
                 .setLabel('Forget everything we have said')
                 .setStyle('DANGER'),
         );
 
-    const filter = i => i.customId === 'deleteContext' && i.user.id === message.author.id;
+    const filter = i => i.customId === ('deleteContext_' + message.id) && i.user.id === message.author.id;
 
-    const collector = message.channel.createMessageComponentCollector({ filter, time: 850000 });
+    const collector = message.channel.createMessageComponentCollector({ filter, time: 180000 });
 
     collector.on('collect', async i => {
-        if (i.customId === 'deleteContext') {
+        if (i.customId === 'deleteContext_' + message.id) {
             collector.stop()
             context_storage.delete(message.author.id)
             message.channel.send(`<@${message.author.id}> Let's start over shall we?`)
