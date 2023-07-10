@@ -16,6 +16,7 @@ const server_pool = [
         fn_index_controlnet_3: 232,
         fn_index_controlnet_annotation_3: 225,
         fn_index_interrogate: 555,
+        fn_index_upscale: 571,
         is_online: true,
     },
     {

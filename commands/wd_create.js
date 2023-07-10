@@ -66,7 +66,7 @@ module.exports = {
                 .setDescription('The strength of lora if loaded dynamically (default is "0.85")'))
         .addNumberOption(option =>
             option.setName('upscale_multiplier')
-                .setDescription('The rate to upscale the generated image (default is "1, no upscaling")'))
+                .setDescription('The rate to upscale the generated image (default is 1). EXTREMELY SLOW. Use wd_upscale instead'))
         .addStringOption(option =>
             option.setName('upscaler')
                 .setDescription('Specify the upscaler to use (default is "Lanczos")')
