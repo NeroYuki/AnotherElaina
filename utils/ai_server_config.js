@@ -1089,6 +1089,10 @@ const word_to_lora_model = [
     {
         "keyword": ["hoshino ai"],
         "lora": "<lora:hoshinoAiOshiNoKo_v90:0.85>"
+    },
+    {
+        "keyword": ["add_detail"],
+        "lora": "<lora:add_detail:1>"
     }
 ]
 
@@ -1103,7 +1107,7 @@ const model_name_hash_mapping = new Map([
     ["f303d10812", "AbyssOrangeMix v3 A1"],
     ["7f96a1a9ca", "Anything v5"],
     ["4d957c560b", "Anime-like 2D v2"],
-    ["099e07547a", "DarkSushiMix"],
+    ["cca17b08da", "DarkSushiMix"],
     ["68c0a27380", "CetusMix (Coda v2)"],
 ])
 

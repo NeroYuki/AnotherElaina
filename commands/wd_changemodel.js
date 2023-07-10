@@ -34,7 +34,7 @@ module.exports = {
                     { name: 'Anything v5', value: 'anythingv5.safetensors [7f96a1a9ca]' },
                     { name: 'Yozora v1', value: 'yozora.safetensors [4b118b2d1b]' },
                     { name: 'Anime-like 2D v2', value: 'animelikev2.safetensors [4d957c560b]' },
-                    { name: 'DarkSushiMix', value: 'darksushi.safetensors [099e07547a]' },
+                    { name: 'DarkSushiMix', value: 'darksushi.safetensors [cca17b08da]' },
                     { name: 'CetusMix (Coda v2)', value: 'cetusmix_coda2.safetensors [68c0a27380]' },
                     
 				)
