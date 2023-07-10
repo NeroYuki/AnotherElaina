@@ -6,16 +6,16 @@ const server_pool = [
     {
         index: 0,
         url: 'http://192.168.196.142:7860',
-        fn_index_create: 270,
+        fn_index_create: 276,
         fn_index_abort: 55,
-        fn_index_img2img: 526,
+        fn_index_img2img: 551,
         fn_index_controlnet: 176,
         fn_index_controlnet_annotation: 169,
         fn_index_controlnet_2: 197,
         fn_index_controlnet_annotation_2: 194,
         fn_index_controlnet_3: 222,
         fn_index_controlnet_annotation: 219,
-        fn_index_interrogate: 528,
+        fn_index_interrogate: 555,
         is_online: true,
     },
     {
@@ -98,8 +98,10 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
         0,
         0,
         false,
+        null,
         height,
         width,
+        1,
         "Crop and resize",      // resize mode
         "Only masked",        // inpaint area
         32,                 // inpaint padding
@@ -289,10 +291,10 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
         128,
         8,
         [
-          "left",
-          "right",
-          "up",
-          "down"
+            "left",
+            "right",
+            "up",
+            "down"
         ],
         1,
         0.05,
@@ -300,10 +302,10 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
         4,
         "fill",
         [
-          "left",
-          "right",
-          "up",
-          "down"
+            "left",
+            "right",
+            "up",
+            "down"
         ],
         false,
         false,
@@ -319,10 +321,13 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
         2,
         "Seed",
         "",
+        [],
         "Nothing",
         "",
+        [],
         "Nothing",
         "",
+        [],
         true,
         false,
         false,
@@ -371,6 +376,9 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
         upscale_step,
         0,
         0,
+        "Use same sampler",
+        "",
+        "",
         [],
         "None",
         false,
@@ -544,10 +552,13 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
         "",
         "Seed",
         "",
+        [],
         "Nothing",
         "",
+        [],
         "Nothing",
         "",
+        [],
         true,
         false,
         false,
@@ -1072,6 +1083,11 @@ const word_to_lora_model = [
     {
         "keyword": ["forswall"],
         "lora": "<lora:forswallLOTMLordOf_1:0.85>"
+    
+    },
+    {
+        "keyword": ["hoshino ai"],
+        "lora": "<lora:hoshinoAiOshiNoKo_v90:0.85>"
     }
 ]
 
@@ -1086,6 +1102,8 @@ const model_name_hash_mapping = new Map([
     ["f303d10812", "AbyssOrangeMix v3 A1"],
     ["7f96a1a9ca", "Anything v5"],
     ["4d957c560b", "Anime-like 2D v2"],
+    ["099e07547a", "DarkSushiMix"],
+    ["68c0a27380", "CetusMix (Coda v2)"],
 ])
 
 

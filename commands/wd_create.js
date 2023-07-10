@@ -74,7 +74,7 @@ module.exports = {
                     { name: 'Lanczos - Fast', value: 'Lanczos' },
                     { name: 'ESRGAN_4x', value: 'ESRGAN_4x' },
                     { name: 'R-ESRGAN 4x+ Anime6B', value: 'R-ESRGAN 4x+ Anime6B' },
-                    { name: 'SwinIR 4x', value: 'SwinIR 4x' },
+                    { name: 'SwinIR 4x', value: 'SwinIR_4x' },
 					{ name: 'Latent - Slow', value: 'Latent' },
                     { name: 'Latent (antialiased)', value: 'Latent (antialiased)' },
                     { name: 'Latent (nearest)', value: 'Latent (nearest)' },
