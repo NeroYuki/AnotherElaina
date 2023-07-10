@@ -806,7 +806,7 @@ const word_to_lora_model = [
     },
     {
         "keyword": ["elaina"],
-        'lora': '<lora:elainaMajoNoTabitabi_v1:0.85>'
+        'lora': '<lora:elaina_v3:0.85>'
     },
     {
         "keyword": ["elbing"],
@@ -898,7 +898,7 @@ const word_to_lora_model = [
     },
     {
         "keyword": ["anime tarot"],
-        "lora": "<lora:animeLikeTarotCardArt_v10:0.85>"
+        "lora": "<lora:animetarotV51:0.85>"
     },
     {
         "keyword": ["texas"],
@@ -1066,8 +1066,8 @@ const word_to_lora_model = [
         "lora": "<lora:komowataHarukaChibiArt_v20:0.85>",
     },
     {
-        "keyword": ["line art", "lineart"],
-        "lora": "<lora:animeLineartStyle_v20Offset:0.85>",
+        "keyword": ["lineart"],
+        "lora": "<lora:animeoutlineV4_16:0.85>",
     },
     {
         "keyword": ["oyuwari"],
@@ -1091,9 +1091,17 @@ const word_to_lora_model = [
         "lora": "<lora:hoshinoAiOshiNoKo_v90:0.85>"
     },
     {
-        "keyword": ["add_detail"],
+        "keyword": ["add detail"],
         "lora": "<lora:add_detail:1>"
-    }
+    },
+    {
+        "keyword": ["white background full body", "simple background full body"],
+        "lora": "<lora:tachi-e:0.85>"
+    },
+    {
+        "keyword": ["hinatsuru ai", "yashajin ai", "sadatou ayano", "charlotte izoard", "mizukoshi mio", "sora ginko", "kiyotaki keika", "sainokami ika", "kuzuryuu yaichi"],
+        "lora": "<lora:RyuuouNoOshigoto_all:0.85>"
+    },
 ]
 
 const model_name_hash_mapping = new Map([
@@ -1118,6 +1126,8 @@ function load_lora_from_prompt(prompt, lora_default_strength = null) {
     let temp_prompt = prompt
     // lower case all temp_prompt
     temp_prompt = temp_prompt.toLowerCase()
+    // turn all weight number (follow :<decimal number> pattern) to space
+    temp_prompt = temp_prompt.replace(/:\d+\.\d*/g, " ")
     // turn all symbol to space
     temp_prompt = temp_prompt.replace(/[^a-zA-Z0-9 ]/g, " ")
     // normalizer space
