@@ -36,7 +36,7 @@ module.exports = {
                     { name: 'Anime-like 2D v2', value: 'animelikev2.safetensors [4d957c560b]' },
                     { name: 'DarkSushiMix', value: 'darksushi.safetensors [cca17b08da]' },
                     { name: 'CetusMix (Coda v2)', value: 'cetusmix_coda2.safetensors [68c0a27380]' },
-                    
+                    { name: 'Momokos v1)', value: 'momokos_v10.safetensors [d77922554c]' },
 				)
                 .setRequired(true))
     ,

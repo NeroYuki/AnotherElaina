@@ -1084,7 +1084,6 @@ const word_to_lora_model = [
     {
         "keyword": ["forswall"],
         "lora": "<lora:forswallLOTMLordOf_1:0.85>"
-    
     },
     {
         "keyword": ["hoshino ai"],
@@ -1121,6 +1120,7 @@ const model_name_hash_mapping = new Map([
     ["4d957c560b", "Anime-like 2D v2"],
     ["cca17b08da", "DarkSushiMix"],
     ["68c0a27380", "CetusMix (Coda v2)"],
+    ["d77922554c", "Momokos v1"]
 ])
 
 
