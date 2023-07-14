@@ -1102,6 +1102,10 @@ const word_to_lora_model = [
         "keyword": ["hinatsuru ai", "yashajin ai", "sadatou ayano", "charlotte izoard", "mizukoshi mio", "sora ginko", "kiyotaki keika", "sainokami ika", "kuzuryuu yaichi"],
         "lora": "<lora:RyuuouNoOshigoto_all:0.85>"
     },
+    {
+        "keyword": ["akagi miria", "ichihara nina", "koga koharu", "matoba risa", "ryuzaki kaoru", "sakurai momoka", "sasaki chie", "tachibana arisu", "yuuki haru", "u149ani", "yonai p"],
+        "lora": "<lora:u149-v4.0:0.85>"
+    }
 ]
 
 const model_name_hash_mapping = new Map([
