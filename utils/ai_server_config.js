@@ -1138,6 +1138,14 @@ const model_name_hash_mapping = new Map([
     ["d77922554c", "Momokos v1"]
 ])
 
+const check_model_filename = (model_filename) => {
+    for (let [key, value] of model_name_hash_mapping) {
+        if (model_filename.includes(key)) {
+            return value
+        }
+    }
+    return model_filename
+}
 
 // attempt to find trigger word and add the respective lora model
 function load_lora_from_prompt(prompt, lora_default_strength = null) {
@@ -1258,5 +1266,6 @@ module.exports = {
     get_prompt,
     load_lora_from_prompt,
     get_data_body_img2img,
+    check_model_filename,
     model_name_hash_mapping
 }

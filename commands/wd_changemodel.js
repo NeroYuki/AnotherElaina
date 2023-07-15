@@ -1,10 +1,6 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
-const { byPassUser } = require('../config.json');
-const crypt = require('crypto');
-const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, load_lora_from_prompt, model_name_hash_mapping } = require('../utils/ai_server_config.js');
-const { default: axios } = require('axios');
-const fetch = require('node-fetch');
+const { model_change, cached_model } = require('../utils/model_change');
+const { check_model_filename } = require('../utils/ai_server_config');
 
 
 // ["362dae27f8", "RefSlave v2"],
@@ -42,6 +38,7 @@ module.exports = {
     ,
 
 	async execute(interaction) {
+
         const checkpoint = interaction.options.getString('checkpoint')
 
         if(!isReady) {
@@ -50,42 +47,26 @@ module.exports = {
         }
 
         //make a temporary reply to not get timeout'd
-		await interaction.deferReply();
+        await interaction.deferReply();
 
-        const session_hash = crypt.randomBytes(16).toString('base64');
+        await interaction.editReply(`Force changing model to **${check_model_filename(checkpoint)}**... , please wait`)
 
-        const option_init_axios = {
-            data: {
-                fn_index: 751,
-                session_hash: session_hash,
-                data: [
-                    checkpoint
-                ]
-            },
-            config: {
-                timeout: 900000
-            }
+        const change_result = await model_change(checkpoint, true).catch(err => {
+            interaction.editReply('Changing model failed, ' + err)
+            return
+        })
+
+        if (!change_result) {
+            await interaction.editReply("Uh, this is not supposed to happen, please contact the developer")
         }
+        else {
+            await interaction.editReply(`Active model force changed to **${check_model_filename(checkpoint)}**
+currently cached models: ${cached_model.map(x => check_model_filename(x)).join(', ')}`)
 
-        await interaction.editReply(`Changing model to ${checkpoint}... , please wait`)
-
-        await axios.post(`http://192.168.196.142:7860/run/predict/`, option_init_axios.data, option_init_axios.config)
-            .then(async (res) => {
-                if(res.data) {
-                    await interaction.editReply('Model changed successfully to ' + checkpoint)
-                    isReady = false
-                } else {
-                    await interaction.editReply('Model change failed')
-                }
-            })
-            .catch(async (err) => {
-                console.log(err)
-                await interaction.editReply('Model change failed')
-            })
-
-        // set isReady to true after 30 minutes
-        setTimeout(() => {
-            isReady = true
-        }, 1800000)
+            // set isReady to true after 60 minutes
+            setTimeout(() => {
+                isReady = true
+            }, 3600000)
+        }
 	},
 };

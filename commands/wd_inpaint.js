@@ -2,12 +2,13 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { byPassUser } = require('../config.json');
 const crypt = require('crypto');
-const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, load_lora_from_prompt, model_name_hash_mapping } = require('../utils/ai_server_config.js');
+const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, load_lora_from_prompt, model_name_hash_mapping, check_model_filename } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const sharp = require('sharp');
 const fetch = require('node-fetch');
 const { loadImage } = require('../utils/load_discord_img');
 const { load_controlnet } = require('../utils/controlnet_execute');
+const { cached_model, model_change } = require('../utils/model_change');
 
 function clamp(num, min, max) {
     return num <= min ? min : num >= max ? max : num;
@@ -111,6 +112,23 @@ module.exports = {
         .addIntegerOption(option =>
             option.setName('force_server_selection')
                 .setDescription('Force the server to use (default is "-1 - Random")'))
+        .addStringOption(option => 
+            option.setName('checkpoint')
+                .setDescription('Force a cached checkpoint to be used (not all option is cached)')
+                .addChoices(
+                    { name: 'Anything v4.5', value: 'anything.ckpt [fbcf965a62]' },
+                    { name: 'Pastel Mix v2.1', value: 'pastelmix.safetensors [d01a68ae76]' },
+                    { name: 'Counterfeit v2.5', value: 'counterfeit.safetensors [a074b8864e]' },
+                    { name: 'MeinaMix v7', value: 'meinamix.safetensors [e03274b1e7]' },
+                    { name: 'CetusMix v3 (Coda)', value: 'cetusmix.safetensors [bd518b9aee]' },
+                    { name: 'RefSlave v2', value: 'refslave.safetensors [362dae27f8]' },
+                    { name: 'Anything v5', value: 'anythingv5.safetensors [7f96a1a9ca]' },
+                    { name: 'Yozora v1', value: 'yozora.safetensors [4b118b2d1b]' },
+                    { name: 'Anime-like 2D v2', value: 'animelikev2.safetensors [4d957c560b]' },
+                    { name: 'DarkSushiMix', value: 'darksushi.safetensors [cca17b08da]' },
+                    { name: 'CetusMix (Coda v2)', value: 'cetusmix_coda2.safetensors [68c0a27380]' },
+                    { name: 'Momokos v1', value: 'momokos_v10.safetensors [d77922554c]' },
+                ))
     ,
 
 	async execute(interaction, client) {
@@ -141,6 +159,7 @@ module.exports = {
         const controlnet_input_option_2 = interaction.options.getAttachment('controlnet_input_2') || null
         const controlnet_input_option_3 = interaction.options.getAttachment('controlnet_input_3') || null
         const controlnet_config = interaction.options.getString('controlnet_config') || client.controlnet_config.has(interaction.user.id) ? client.controlnet_config.get(interaction.user.id) : null
+        const checkpoint = interaction.options.getString('checkpoint') || null
 
         let seed = -1
         try {
@@ -246,6 +265,21 @@ module.exports = {
                     interaction.editReply({ content: "Failed to process mask image", ephemeral: true });
                     return
                 })
+        }
+
+        if (checkpoint) {
+            const change_result = await model_change(checkpoint, false).catch(err => {
+                console.log(err)
+            })
+    
+            if (!change_result) {
+                await interaction.channel.send(`Model is not cached or model change failed, fallback to to **${check_model_filename(cached_model[0])}**
+currently cached models: ${cached_model.map(x => check_model_filename(x)).join(', ')}`)
+            }
+            else {
+                await interaction.channel.send(`Active model changed to **${check_model_filename(checkpoint)}**
+currently cached models: ${cached_model.map(x => check_model_filename(x)).join(', ')}`)
+            }
         }
 
         let server_index = get_worker_server(force_server_selection)
