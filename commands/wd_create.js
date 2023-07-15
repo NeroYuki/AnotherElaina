@@ -78,8 +78,7 @@ module.exports = {
 					{ name: 'Latent - Slow', value: 'Latent' },
                     { name: 'Latent (antialiased)', value: 'Latent (antialiased)' },
                     { name: 'Latent (nearest)', value: 'Latent (nearest)' },
-                    { name: 'Latent (nearest-exact)', value: 'Latent (nearest-exact)' },
-                    { name: 'Latent (bicubic)', value: 'Latent (bicubic)' },
+                    { name: 'Latent (nearest-exact)', value: 'Latent (nearest-exact)' }
 				))
         .addNumberOption(option =>
             option.setName('upscale_denoise_strength')
@@ -98,12 +97,13 @@ module.exports = {
                     { name: 'T2I-Adapter - Canny', value: 't2iadapter_canny_sd14v1 [80bfd79b]' },
                     { name: 'T2I-Adapter - Color', value: 't2iadapter_color_sd14v1 [8522029d]' },
                     { name: 'T2I-Adapter - Depth', value: 't2iadapter_depth_sd14v1 [fa476002]' },
-                    { name: 'T2I-Adapter - KeyPose', value: 't2iadapter_keypose_sd14v1 [ba1d909a]' },
                     { name: 'T2I-Adapter - OpenPose', value: 't2iadapter_openpose_sd14v1 [7e267e5e]' },
                     { name: 'T2I-Adapter - Seg', value: 't2iadapter_seg_sd14v1 [6387afb5]' },
                     { name: 'T2I-Adapter - Sketch', value: 't2iadapter_sketch_sd14v1 [e5d4b846]' },
                     { name: 'T2I-Adapter - Style', value: 't2iadapter_style_sd14v1 [202e85cc]' },
-                    { name: 'ControlNet - HED', value: 'control_hed-fp16 [13fee50b]' },
+                    { name: 'ControlNet - OpenPose', value: 'control_v11p_sd15_openpose [cab727d4]'},
+                    { name: 'ControlNet - SoftEdge', value: 'control_v11p_sd15_softedge [a8575a2a]'},
+                    { name: 'ControlNet - Lineart Anime', value: 'control_v11p_sd15s2_lineart_anime [3825e83e]'},
                 ))
         .addStringOption(option =>
             option.setName('controlnet_preprocessor')
@@ -118,6 +118,7 @@ module.exports = {
                     { name: 'OpenPose', value: 'openpose' },
                     { name: 'OpenPose (Face)', value: 'openpose_face' },
                     { name: 'OpenPose (Hand)', value: 'openpose_hand' },
+                    { name: 'OpenPose (Full)', value: 'openpose_full' },
                     { name: 'Segmentation', value: 'seg_ufade20k' },
                     { name: 'CLIP Vision', value: 't2ia_style_clipvision' },
                     { name: 'Color', value: 't2ia_color_grid' },
@@ -135,12 +136,13 @@ module.exports = {
                     { name: 'T2I-Adapter - Canny', value: 't2iadapter_canny_sd14v1 [80bfd79b]' },
                     { name: 'T2I-Adapter - Color', value: 't2iadapter_color_sd14v1 [8522029d]' },
                     { name: 'T2I-Adapter - Depth', value: 't2iadapter_depth_sd14v1 [fa476002]' },
-                    { name: 'T2I-Adapter - KeyPose', value: 't2iadapter_keypose_sd14v1 [ba1d909a]' },
                     { name: 'T2I-Adapter - OpenPose', value: 't2iadapter_openpose_sd14v1 [7e267e5e]' },
                     { name: 'T2I-Adapter - Seg', value: 't2iadapter_seg_sd14v1 [6387afb5]' },
                     { name: 'T2I-Adapter - Sketch', value: 't2iadapter_sketch_sd14v1 [e5d4b846]' },
                     { name: 'T2I-Adapter - Style', value: 't2iadapter_style_sd14v1 [202e85cc]' },
-                    { name: 'ControlNet - HED', value: 'control_hed-fp16 [13fee50b]' },
+                    { name: 'ControlNet - OpenPose', value: 'control_v11p_sd15_openpose [cab727d4]'},
+                    { name: 'ControlNet - SoftEdge', value: 'control_v11p_sd15_softedge [a8575a2a]'},
+                    { name: 'ControlNet - Lineart Anime', value: 'control_v11p_sd15s2_lineart_anime [3825e83e]'},
                 ))
         .addStringOption(option =>
             option.setName('controlnet_preprocessor_2')
@@ -155,6 +157,7 @@ module.exports = {
                     { name: 'OpenPose', value: 'openpose' },
                     { name: 'OpenPose (Face)', value: 'openpose_face' },
                     { name: 'OpenPose (Hand)', value: 'openpose_hand' },
+                    { name: 'OpenPose (Full)', value: 'openpose_full' },
                     { name: 'Segmentation', value: 'seg_ufade20k' },
                     { name: 'CLIP Vision', value: 't2ia_style_clipvision' },
                     { name: 'Color', value: 't2ia_color_grid' },
@@ -194,10 +197,10 @@ module.exports = {
         //         ))
         .addBooleanOption(option => 
             option.setName('do_preview_annotation')
-                .setDescription('Preview the annotation after preprocessing (default is "false")'))
+                .setDescription('Show the annotation after preprocessing (default is "false")'))
         .addIntegerOption(option =>
             option.setName('force_server_selection')
-                .setDescription('Force the server to use (default is "-1 - Random")'))
+                .setDescription('Force the server to use (default is "-1")'))
     ,
 
     async init() {
