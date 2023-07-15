@@ -111,13 +111,17 @@ module.exports = {
                 .addChoices(
                     { name: 'None', value: 'none' },
                     { name: 'Canny', value: 'canny' },
-                    { name: 'Depth', value: 'depth' },
-                    { name: 'Depth (LERes)', value: 'depth_leres' },
-                    { name: 'HED', value: 'hed' },
+                    { name: 'Depth', value: 'depth_midas' },
+                    { name: 'Depth (LERes)', value: 'depth_leres++' },
+                    { name: 'HED', value: 'softedge_hed' },
+                    { name: 'Lineart Anime', value: 'lineart_anime' },
                     { name: 'OpenPose', value: 'openpose' },
-                    { name: 'Segmentation', value: 'segmentation' },
-                    { name: 'CLIP Vision', value: 'clip_vision' },
-                    { name: 'Color', value: 'color' },
+                    { name: 'OpenPose (Face)', value: 'openpose_face' },
+                    { name: 'OpenPose (Hand)', value: 'openpose_hand' },
+                    { name: 'Segmentation', value: 'seg_ufade20k' },
+                    { name: 'CLIP Vision', value: 't2ia_style_clipvision' },
+                    { name: 'Color', value: 't2ia_color_grid' },
+                    { name: 'Sketch', value: 't2ia_sketch_pidi' },
                 ))
         // clone the 3 options above for 2 other controlnet
         .addAttachmentOption(option =>
@@ -144,13 +148,17 @@ module.exports = {
                 .addChoices(
                     { name: 'None', value: 'none' },
                     { name: 'Canny', value: 'canny' },
-                    { name: 'Depth', value: 'depth' },
-                    { name: 'Depth (LERes)', value: 'depth_leres' },
-                    { name: 'HED', value: 'hed' },
+                    { name: 'Depth', value: 'depth_midas' },
+                    { name: 'Depth (LERes)', value: 'depth_leres++' },
+                    { name: 'HED', value: 'softedge_hed' },
+                    { name: 'Lineart Anime', value: 'lineart_anime' },
                     { name: 'OpenPose', value: 'openpose' },
-                    { name: 'Segmentation', value: 'segmentation' },
-                    { name: 'CLIP Vision', value: 'clip_vision' },
-                    { name: 'Color', value: 'color' },
+                    { name: 'OpenPose (Face)', value: 'openpose_face' },
+                    { name: 'OpenPose (Hand)', value: 'openpose_hand' },
+                    { name: 'Segmentation', value: 'seg_ufade20k' },
+                    { name: 'CLIP Vision', value: 't2ia_style_clipvision' },
+                    { name: 'Color', value: 't2ia_color_grid' },
+                    { name: 'Sketch', value: 't2ia_sketch_pidi' },
                 ))
         // .addAttachmentOption(option =>
         //     option.setName('controlnet_input_3')
