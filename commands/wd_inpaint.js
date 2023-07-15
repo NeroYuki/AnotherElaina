@@ -7,6 +7,7 @@ const { default: axios } = require('axios');
 const sharp = require('sharp');
 const fetch = require('node-fetch');
 const { loadImage } = require('../utils/load_discord_img');
+const { load_controlnet } = require('../utils/controlnet_execute');
 
 function clamp(num, min, max) {
     return num <= min ? min : num >= max ? max : num;
@@ -95,9 +96,22 @@ module.exports = {
         .addNumberOption(option =>
             option.setName('default_lora_strength')
                 .setDescription('The strength of lora if loaded dynamically (default is "0.85")'))
+        .addAttachmentOption(option =>
+            option.setName('controlnet_input')
+                .setDescription('The input image of the controlnet'))
+        .addAttachmentOption(option =>
+            option.setName('controlnet_input_2')
+                .setDescription('The input image of the controlnet'))
+        .addAttachmentOption(option =>
+            option.setName('controlnet_input_3')
+                .setDescription('The input image of the controlnet'))
+        .addStringOption(option =>
+            option.setName('controlnet_config')
+                .setDescription('Config string for the controlnet (use wd_controlnet to generate)'))
         .addIntegerOption(option =>
             option.setName('force_server_selection')
-                .setDescription('Force the server to use (default is "-1 - Random")')),
+                .setDescription('Force the server to use (default is "-1 - Random")'))
+    ,
 
 	async execute(interaction, client) {
         if (client.cooldowns.has(interaction.user.id) && !byPassUser.includes(interaction.user.id)) {
@@ -123,6 +137,11 @@ module.exports = {
         const no_dynamic_lora_load = interaction.options.getBoolean('no_dynamic_lora_load') || false
         const default_lora_strength = clamp(interaction.options.getNumber('default_lora_strength') || 0.85, 0, 3)
         const force_server_selection = clamp(interaction.options.getInteger('force_server_selection') !== null ? interaction.options.getInteger('force_server_selection') : -1 , -1, 1)
+        const controlnet_input_option = interaction.options.getAttachment('controlnet_input') || null
+        const controlnet_input_option_2 = interaction.options.getAttachment('controlnet_input_2') || null
+        const controlnet_input_option_3 = interaction.options.getAttachment('controlnet_input_3') || null
+        const controlnet_config = interaction.options.getString('controlnet_config') || client.controlnet_config.has(interaction.user.id) ? client.controlnet_config.get(interaction.user.id) : null
+
         let seed = -1
         try {
             seed = parseInt(interaction.options.getString('seed')) || parseInt('-1')
@@ -148,6 +167,21 @@ module.exports = {
             interaction.editReply({ content: "Failed to retrieve mask image", ephemeral: true });
             return
         })
+
+        let controlnet_input = controlnet_input_option ? await loadImage(controlnet_input_option.proxyURL).catch((err) => {
+            console.log(err)
+            interaction.reply({ content: "Failed to retrieve control net image", ephemeral: true });
+        }) : null
+
+        let controlnet_input_2 = controlnet_input_option_2 ? await loadImage(controlnet_input_option_2.proxyURL).catch((err) => {
+            console.log(err)
+            interaction.reply({ content: "Failed to retrieve control net image 2", ephemeral: true });
+        }) : null
+
+        let controlnet_input_3 = controlnet_input_option_3 ? await loadImage(controlnet_input_option_3.proxyURL).catch((err) => {
+            console.log(err)
+            interaction.reply({ content: "Failed to retrieve control net image 3", ephemeral: true });
+        }) : null
 
         let sharp_mask_data_uri = ""
         if (mask_color === 'black') {
@@ -227,6 +261,15 @@ module.exports = {
         let isDone = false
         let isCancelled = false
         let progress_ping_delay = 2000
+
+        if (controlnet_input && controlnet_config) {
+            await load_controlnet(session_hash, server_index, controlnet_input, controlnet_input_2, controlnet_input_3, controlnet_config, interaction, 1)
+                .catch(err => {
+                    console.log(err)
+                    interaction.editReply({ content: "Failed to load control net:" + err });
+                });
+        }
+
 
         const WORKER_ENDPOINT = server_pool[server_index].url
 

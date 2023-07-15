@@ -9,12 +9,12 @@ const server_pool = [
         fn_index_create: 309,
         fn_index_abort: 55,
         fn_index_img2img: 629,
-        fn_index_controlnet: 193,
-        fn_index_controlnet_annotation: 179,
-        fn_index_controlnet_2: 228,
-        fn_index_controlnet_annotation_2: 214,
-        fn_index_controlnet_3: 263,
-        fn_index_controlnet_annotation_3: 249,
+        fn_index_controlnet: [193, 508],        //[txt2img, img2img]
+        fn_index_controlnet_annotation: [179, 498],
+        fn_index_controlnet_2: [228, 551], 
+        fn_index_controlnet_annotation_2: [214, 538],
+        fn_index_controlnet_3: [263, 590],
+        fn_index_controlnet_annotation_3: [249, 576],
         fn_index_interrogate: 633,
         fn_index_upscale: 649,
         is_online: true,
@@ -29,7 +29,7 @@ const server_pool = [
     }
 ]
 
-const get_data_controlnet = (preprocessor = "openpose", controlnet = "t2iadapter_openpose_sd14v1 [7e267e5e]", input, weight = 1, guide_start = 0, guide_end = 1) => {
+const get_data_controlnet = (preprocessor = "none", controlnet = "None", input, weight = 1, guide_start = 0, guide_end = 1) => {
     return [
         null,
         null,

@@ -105,7 +105,7 @@ ${context_dialog}Elaina: `
         // measure speed
         const start = Date.now()
         // rewrite this with http
-        const req = http.request(`${WORKER_ENDPOINT}/run/textgen`, {
+        const req = http.request(`${WORKER_ENDPOINT}/api/v1/generate`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -119,6 +119,7 @@ ${context_dialog}Elaina: `
             });
             res.on('end', () => {
                 const final_res_obj = JSON.parse(data)
+                console.log(final_res_obj)
                 const res_gen = final_res_obj.data[0]
                 // get the first line with the word "Elaina" as the response
                 const res_gen_lines = res_gen.split('\n')
@@ -158,7 +159,9 @@ ${context_dialog}Elaina: `
                 message.channel.send({ content: res_gen_elaina, components: [row] })
                 console.log(`Time taken: ${Date.now() - start}ms`)
             })
-
+            res.on('error', function(err) {
+                console.log(err)
+            });
         })
 
         req.on('error', (err) => {

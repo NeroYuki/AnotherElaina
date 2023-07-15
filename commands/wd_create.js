@@ -7,12 +7,12 @@ const { default: axios } = require('axios');
 const fetch = require('node-fetch');
 const { loadImage } = require('../utils/load_discord_img');
 const sharp = require('sharp');
+const { load_controlnet } = require('../utils/controlnet_execute');
 
 
 function clamp(num, min, max) {
     return num <= min ? min : num >= max ? max : num;
 }
-
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -89,115 +89,15 @@ module.exports = {
         .addAttachmentOption(option =>
             option.setName('controlnet_input')
                 .setDescription('The input image of the controlnet'))
-        .addStringOption(option =>
-            option.setName('controlnet_model')
-                .setDescription('The model to use for the controlnet (default is "T2I-Adapter - OpenPose")')
-                .addChoices(
-                    { name: 'None', value: 'None' },
-                    { name: 'T2I-Adapter - Canny', value: 't2iadapter_canny_sd14v1 [80bfd79b]' },
-                    { name: 'T2I-Adapter - Color', value: 't2iadapter_color_sd14v1 [8522029d]' },
-                    { name: 'T2I-Adapter - Depth', value: 't2iadapter_depth_sd14v1 [fa476002]' },
-                    { name: 'T2I-Adapter - OpenPose', value: 't2iadapter_openpose_sd14v1 [7e267e5e]' },
-                    { name: 'T2I-Adapter - Seg', value: 't2iadapter_seg_sd14v1 [6387afb5]' },
-                    { name: 'T2I-Adapter - Sketch', value: 't2iadapter_sketch_sd14v1 [e5d4b846]' },
-                    { name: 'T2I-Adapter - Style', value: 't2iadapter_style_sd14v1 [202e85cc]' },
-                    { name: 'ControlNet - OpenPose', value: 'control_v11p_sd15_openpose [cab727d4]'},
-                    { name: 'ControlNet - SoftEdge', value: 'control_v11p_sd15_softedge [a8575a2a]'},
-                    { name: 'ControlNet - Lineart Anime', value: 'control_v11p_sd15s2_lineart_anime [3825e83e]'},
-                ))
-        .addStringOption(option =>
-            option.setName('controlnet_preprocessor')
-                .setDescription('The preprocessor to use for the controlnet (default is "OpenPose")')
-                .addChoices(
-                    { name: 'None', value: 'none' },
-                    { name: 'Canny', value: 'canny' },
-                    { name: 'Depth', value: 'depth_midas' },
-                    { name: 'Depth (LERes)', value: 'depth_leres++' },
-                    { name: 'HED', value: 'softedge_hed' },
-                    { name: 'Lineart Anime', value: 'lineart_anime' },
-                    { name: 'OpenPose', value: 'openpose' },
-                    { name: 'OpenPose (Face)', value: 'openpose_face' },
-                    { name: 'OpenPose (Hand)', value: 'openpose_hand' },
-                    { name: 'OpenPose (Full)', value: 'openpose_full' },
-                    { name: 'Segmentation', value: 'seg_ufade20k' },
-                    { name: 'CLIP Vision', value: 't2ia_style_clipvision' },
-                    { name: 'Color', value: 't2ia_color_grid' },
-                    { name: 'Sketch', value: 't2ia_sketch_pidi' },
-                ))
-        // clone the 3 options above for 2 other controlnet
         .addAttachmentOption(option =>
             option.setName('controlnet_input_2')
                 .setDescription('The input image of the controlnet'))
+        .addAttachmentOption(option =>
+            option.setName('controlnet_input_3')
+                .setDescription('The input image of the controlnet'))
         .addStringOption(option =>
-            option.setName('controlnet_model_2')
-                .setDescription('The model to use for the controlnet (default is "None")')
-                .addChoices(
-                    { name: 'None', value: 'None' },
-                    { name: 'T2I-Adapter - Canny', value: 't2iadapter_canny_sd14v1 [80bfd79b]' },
-                    { name: 'T2I-Adapter - Color', value: 't2iadapter_color_sd14v1 [8522029d]' },
-                    { name: 'T2I-Adapter - Depth', value: 't2iadapter_depth_sd14v1 [fa476002]' },
-                    { name: 'T2I-Adapter - OpenPose', value: 't2iadapter_openpose_sd14v1 [7e267e5e]' },
-                    { name: 'T2I-Adapter - Seg', value: 't2iadapter_seg_sd14v1 [6387afb5]' },
-                    { name: 'T2I-Adapter - Sketch', value: 't2iadapter_sketch_sd14v1 [e5d4b846]' },
-                    { name: 'T2I-Adapter - Style', value: 't2iadapter_style_sd14v1 [202e85cc]' },
-                    { name: 'ControlNet - OpenPose', value: 'control_v11p_sd15_openpose [cab727d4]'},
-                    { name: 'ControlNet - SoftEdge', value: 'control_v11p_sd15_softedge [a8575a2a]'},
-                    { name: 'ControlNet - Lineart Anime', value: 'control_v11p_sd15s2_lineart_anime [3825e83e]'},
-                ))
-        .addStringOption(option =>
-            option.setName('controlnet_preprocessor_2')
-                .setDescription('The preprocessor to use for the controlnet (default is "None")')
-                .addChoices(
-                    { name: 'None', value: 'none' },
-                    { name: 'Canny', value: 'canny' },
-                    { name: 'Depth', value: 'depth_midas' },
-                    { name: 'Depth (LERes)', value: 'depth_leres++' },
-                    { name: 'HED', value: 'softedge_hed' },
-                    { name: 'Lineart Anime', value: 'lineart_anime' },
-                    { name: 'OpenPose', value: 'openpose' },
-                    { name: 'OpenPose (Face)', value: 'openpose_face' },
-                    { name: 'OpenPose (Hand)', value: 'openpose_hand' },
-                    { name: 'OpenPose (Full)', value: 'openpose_full' },
-                    { name: 'Segmentation', value: 'seg_ufade20k' },
-                    { name: 'CLIP Vision', value: 't2ia_style_clipvision' },
-                    { name: 'Color', value: 't2ia_color_grid' },
-                    { name: 'Sketch', value: 't2ia_sketch_pidi' },
-                ))
-        // .addAttachmentOption(option =>
-        //     option.setName('controlnet_input_3')
-        //         .setDescription('The input image of the controlnet'))
-        // .addStringOption(option =>
-        //     option.setName('controlnet_model_3')
-        //         .setDescription('The model to use for the controlnet (default is "None")')
-        //         .addChoices(
-        //             { name: 'None', value: 'None' },
-        //             { name: 'T2I-Adapter - Canny', value: 't2iadapter_canny_sd14v1 [80bfd79b]' },
-        //             { name: 'T2I-Adapter - Color', value: 't2iadapter_color_sd14v1 [8522029d]' },
-        //             { name: 'T2I-Adapter - Depth', value: 't2iadapter_depth_sd14v1 [fa476002]' },
-        //             { name: 'T2I-Adapter - KeyPose', value: 't2iadapter_keypose_sd14v1 [ba1d909a]' },
-        //             { name: 'T2I-Adapter - OpenPose', value: 't2iadapter_openpose_sd14v1 [7e267e5e]' },
-        //             { name: 'T2I-Adapter - Seg', value: 't2iadapter_seg_sd14v1 [6387afb5]' },
-        //             { name: 'T2I-Adapter - Sketch', value: 't2iadapter_sketch_sd14v1 [e5d4b846]' },
-        //             { name: 'T2I-Adapter - Style', value: 't2iadapter_style_sd14v1 [202e85cc]' },
-        //             { name: 'ControlNet - HED', value: 'control_hed-fp16 [13fee50b]' },
-        //         ))
-        // .addStringOption(option =>
-        //     option.setName('controlnet_preprocessor_3')
-        //         .setDescription('The preprocessor to use for the controlnet (default is "None")')
-        //         .addChoices(
-        //             { name: 'None', value: 'none' },
-        //             { name: 'Canny', value: 'canny' },
-        //             { name: 'Depth', value: 'depth' },
-        //             { name: 'Depth (LERes)', value: 'depth_leres' },
-        //             { name: 'HED', value: 'hed' },
-        //             { name: 'OpenPose', value: 'openpose' },
-        //             { name: 'Segmentation', value: 'segmentation' },
-        //             { name: 'CLIP Vision', value: 'clip_vision' },
-        //             { name: 'Color', value: 'color' },
-        //         ))
-        .addBooleanOption(option => 
-            option.setName('do_preview_annotation')
-                .setDescription('Show the annotation after preprocessing (default is "false")'))
+            option.setName('controlnet_config')
+                .setDescription('Config string for the controlnet (use wd_controlnet to generate)'))
         .addIntegerOption(option =>
             option.setName('force_server_selection')
                 .setDescription('Force the server to use (default is "-1")'))
@@ -232,15 +132,9 @@ module.exports = {
         const force_server_selection = clamp(interaction.options.getInteger('force_server_selection') !== null ? interaction.options.getInteger('force_server_selection') : -1 , -1, 1)
         const upscale_step = clamp(interaction.options.getInteger('upscale_step') || 20, 1, 100)
         const controlnet_input_option = interaction.options.getAttachment('controlnet_input') || null
-        const controlnet_model = interaction.options.getString('controlnet_model') || 't2iadapter_openpose_sd14v1 [7e267e5e]'
-        let controlnet_preprocessor = interaction.options.getString('controlnet_preprocessor') || 'openpose'
         const controlnet_input_option_2 = interaction.options.getAttachment('controlnet_input_2') || null
-        const controlnet_model_2 = interaction.options.getString('controlnet_model_2') || 'none'
-        let controlnet_preprocessor_2 = interaction.options.getString('controlnet_preprocessor_2') || 'None'
-        // const controlnet_input_option_3 = interaction.options.getAttachment('controlnet_input_3') || null
-        // const controlnet_model_3 = interaction.options.getString('controlnet_model_3') || 'none'
-        // let controlnet_preprocessor_3 = interaction.options.getString('controlnet_preprocessor_3') || 'None'
-        const do_preview_annotation = interaction.options.getBoolean('do_preview_annotation') || false
+        const controlnet_input_option_3 = interaction.options.getAttachment('controlnet_input_3') || null
+        const controlnet_config = interaction.options.getString('controlnet_config') || client.controlnet_config.has(interaction.user.id) ? client.controlnet_config.get(interaction.user.id) : null
 
         let seed = -1
         try {
@@ -250,6 +144,9 @@ module.exports = {
             seed = parseInt('-1')
         }
 
+        //make a temporary reply to not get timeout'd
+		await interaction.deferReply();
+
         let controlnet_input = controlnet_input_option ? await loadImage(controlnet_input_option.proxyURL).catch((err) => {
             console.log(err)
             interaction.reply({ content: "Failed to retrieve control net image", ephemeral: true });
@@ -258,6 +155,11 @@ module.exports = {
         let controlnet_input_2 = controlnet_input_option_2 ? await loadImage(controlnet_input_option_2.proxyURL).catch((err) => {
             console.log(err)
             interaction.reply({ content: "Failed to retrieve control net image 2", ephemeral: true });
+        }) : null
+
+        let controlnet_input_3 = controlnet_input_option_3 ? await loadImage(controlnet_input_option_3.proxyURL).catch((err) => {
+            console.log(err)
+            interaction.reply({ content: "Failed to retrieve control net image 3", ephemeral: true });
         }) : null
         
         // if width or height of the controlnet_input image is not divisible by 8, then it will be resized to the nearest divisible by 8, using sharp
@@ -279,9 +181,6 @@ module.exports = {
             width = Math.ceil(width / 8) * 8
         }
 
-        //make a temporary reply to not get timeout'd
-		    await interaction.deferReply();
-
         let server_index = get_worker_server(force_server_selection)
 
         if (server_index === -1) {
@@ -299,6 +198,14 @@ module.exports = {
         let isDone = false
         let isCancelled = false
         let progress_ping_delay = 2000
+
+        if (controlnet_input && controlnet_config) {
+            await load_controlnet(session_hash, server_index, controlnet_input, controlnet_input_2, controlnet_input_3, controlnet_config, interaction)
+                .catch(err => {
+                    console.log(err)
+                    interaction.editReply({ content: "Failed to load control net:" + err });
+                });
+        }
 
         const WORKER_ENDPOINT = server_pool[server_index].url
 
@@ -338,82 +245,6 @@ module.exports = {
                 console.log(err)
             }
         });
-        
-        if (do_preview_annotation) {
-            const controlnet_annotation_data = get_data_controlnet_annotation(controlnet_preprocessor, controlnet_input)
-            const option_controlnet_annotation = {
-                method: 'POST',
-                body: JSON.stringify({
-                    fn_index: server_pool[server_index].fn_index_controlnet_annotation,
-                    session_hash: session_hash,
-                    data: controlnet_annotation_data
-                }),
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            }
-
-            try {
-                await fetch(`${WORKER_ENDPOINT}/run/predict/`, option_controlnet_annotation)
-                    .then(res => {
-                        if (res.status !== 200) {
-                            throw 'Failed to change controlnet'
-                        }
-                        return res.json()
-                    })
-                    .then(async (res) => {
-                        // upload an image to the same channel as the interaction
-                        const img_dataURI = res.data[0].value
-                        const img = Buffer.from(img_dataURI.split(",")[1], 'base64')
-                        if (do_preview_annotation) {
-                            const img_name = `preview_annotation.png`
-                            await interaction.channel.send({files: [{attachment: img, name: img_name}]})
-                        }
-                        // dead code
-                    })
-            }
-            catch (err) {
-                console.log(err)
-            }
-
-            if (controlnet_input_2) {
-                const controlnet_annotation_data_2 = get_data_controlnet_annotation(controlnet_preprocessor_2, controlnet_input_2)
-                const option_controlnet_annotation_2 = {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        fn_index: server_pool[server_index].fn_index_controlnet_annotation_2,
-                        session_hash: session_hash,
-                        data: controlnet_annotation_data_2
-                    }),
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                }
-
-                try {
-                    await fetch(`${WORKER_ENDPOINT}/run/predict/`, option_controlnet_annotation_2)
-                        .then(res => {
-                            if (res.status !== 200) {
-                                throw 'Failed to change controlnet'
-                            }
-                            return res.json()
-                        })
-                        .then(async (res) => {
-                            // upload an image to the same channel as the interaction
-                            const img_dataURI = res.data[0].value
-                            const img = Buffer.from(img_dataURI.split(",")[1], 'base64')
-                            if (do_preview_annotation) {
-                                const img_name = `preview_annotation_2.png`
-                                await interaction.channel.send({files: [{attachment: img, name: img_name}]})
-                            }
-                            // dead code
-                        })
-                }
-                catch (err) {
-                    console.log(err)
-                }
-            }
-        }
 
         // TODO: remove button after collector period has ended
 
@@ -428,9 +259,6 @@ module.exports = {
         const create_data = get_data_body(server_index, prompt, neg_prompt, sampling_step, cfg_scale, 
             seed, sampler, session_hash, height, width, upscale_multiplier, upscaler, 
             upscale_denoise_strength, upscale_step)
-
-        const controlnet_data = get_data_controlnet(controlnet_preprocessor, controlnet_model, controlnet_input, controlnet_model.includes("sketch") ? 0.8 : 1)
-        const controlnet_data_2 = get_data_controlnet(controlnet_preprocessor_2, controlnet_model_2, controlnet_input_2, controlnet_model_2.includes("sketch") ? 0.8 : 1)
 
         // make option_init but for axios
         const option_init_axios = {
@@ -449,18 +277,6 @@ module.exports = {
             body: JSON.stringify({
                 id_task: `task(${session_hash})`,
                 id_live_preview: current_preview_id,
-            }),
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        }
-
-        const option_controlnet = {
-            method: 'POST',
-            body: JSON.stringify({
-                fn_index: server_pool[server_index].fn_index_controlnet,
-                session_hash: session_hash,
-                data: controlnet_data
             }),
             headers: {
                 'Content-Type': 'application/json'
@@ -521,45 +337,6 @@ module.exports = {
                 }
             })
         }
-
-        try {
-            await fetch(`${WORKER_ENDPOINT}/run/predict/`, option_controlnet)
-                .then(res => {
-                    if (res.status !== 200) {
-                        throw 'Failed to change controlnet'
-                    }
-                })
-        }
-        catch (err) {
-            console.log(err)
-        }
-
-        if (controlnet_input_2) {
-            const option_controlnet_2 = {
-                method: 'POST',
-                body: JSON.stringify({
-                    fn_index: server_pool[server_index].fn_index_controlnet_2,
-                    session_hash: session_hash,
-                    data: controlnet_data_2
-                }),
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            }
-
-            try {
-                await fetch(`${WORKER_ENDPOINT}/run/predict/`, option_controlnet_2)
-                    .then(res => {
-                        if (res.status !== 200) {
-                            throw 'Failed to change controlnet'
-                        }
-                    })
-            }
-            catch (err) {
-                console.log(err)
-            }
-        }
-
 
         function fetch_progress() {
             setTimeout(async () => {
