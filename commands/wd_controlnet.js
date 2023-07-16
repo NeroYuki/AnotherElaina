@@ -13,6 +13,16 @@ module.exports = {
             option.setName('controlnet_preprocessor')
                 .setDescription('The preprocessor to use for the controlnet (default is "OpenPose")')
                 .addChoices(...controlnet_preprocessor_selection))
+        .addNumberOption(option =>
+            option.setName('controlnet_weight')
+                .setDescription('The weight of the controlnet (default is 1)'))
+        .addStringOption(option =>
+            option.setName('controlnet_mode')
+                .setDescription('The mode of the controlnet (default is "Balanced")')
+                .addChoices(
+                    { name: 'Balanced', value: 'Balanced' },
+                    { name: 'Prompt', value: 'My prompt is more important' },
+                    { name: 'ControlNet', value: 'ControlNet is more important' }))
         // clone the 3 options above for 2 other controlnet
         .addStringOption(option =>
             option.setName('controlnet_model_2')
@@ -22,6 +32,16 @@ module.exports = {
             option.setName('controlnet_preprocessor_2')
                 .setDescription('The preprocessor to use for the controlnet (default is "None")')
                 .addChoices(...controlnet_preprocessor_selection))
+        .addNumberOption(option =>
+            option.setName('controlnet_weight_2')
+                .setDescription('The weight of the controlnet (default is 1)'))
+        .addStringOption(option =>
+            option.setName('controlnet_mode_2')
+                .setDescription('The mode of the controlnet (default is "Balanced")')
+                .addChoices(
+                    { name: 'Balanced', value: 'Balanced' },
+                    { name: 'Prompt', value: 'My prompt is more important' },
+                    { name: 'ControlNet', value: 'ControlNet is more important' }))
         .addStringOption(option =>
             option.setName('controlnet_model_3')
                 .setDescription('The model to use for the controlnet (default is "None")')
@@ -32,15 +52,32 @@ module.exports = {
                 .addChoices(...controlnet_preprocessor_selection))
         .addBooleanOption(option => 
             option.setName('do_preview_annotation')
-                .setDescription('Show the annotation after preprocessing (default is "false")')),
+                .setDescription('Show the annotation after preprocessing (default is "false")'))
+        .addNumberOption(option =>
+            option.setName('controlnet_weight_3')
+                .setDescription('The weight of the controlnet (default is 1)'))
+        .addStringOption(option =>
+            option.setName('controlnet_mode_3')
+                .setDescription('The mode of the controlnet (default is "Balanced")')
+                .addChoices(
+                    { name: 'Balanced', value: 'Balanced' },
+                    { name: 'Prompt', value: 'My prompt is more important' },
+                    { name: 'ControlNet', value: 'ControlNet is more important' }))
+    ,
 
 	async execute(interaction, client) {
         const controlnet_model = interaction.options.getString('controlnet_model') || "t2iadapter_openpose_sd14v1 [7e267e5e]";
         const controlnet_preprocessor = interaction.options.getString('controlnet_preprocessor') || "openpose"; 
+        const controlnet_weight = interaction.options.getNumber('controlnet_weight') || 1;
+        const controlnet_mode = interaction.options.getString('controlnet_mode') || "Balanced";
         const controlnet_model_2 = interaction.options.getString('controlnet_model_2') || "None";
         const controlnet_preprocessor_2 = interaction.options.getString('controlnet_preprocessor_2') || "none";
+        const controlnet_weight_2 = interaction.options.getNumber('controlnet_weight_2') || 1;
+        const controlnet_mode_2 = interaction.options.getString('controlnet_mode_2') || "Balanced";
         const controlnet_model_3 = interaction.options.getString('controlnet_model_3') || "None";
         const controlnet_preprocessor_3 = interaction.options.getString('controlnet_preprocessor_3') || "none";
+        const controlnet_weight_3 = interaction.options.getNumber('controlnet_weight_3') || 1;
+        const controlnet_mode_3 = interaction.options.getString('controlnet_mode_3') || "Balanced";
         const do_preview_annotation = interaction.options.getBoolean('do_preview_annotation') || false;
 
         const config = {
@@ -48,14 +85,20 @@ module.exports = {
                 {
                     model: controlnet_model,
                     preprocessor: controlnet_preprocessor,
+                    weight: controlnet_weight,
+                    mode: controlnet_mode,
                 },
                 {
                     model: controlnet_model_2,
                     preprocessor: controlnet_preprocessor_2,
+                    weight: controlnet_weight_2,
+                    mode: controlnet_mode_2,
                 },
                 {
                     model: controlnet_model_3,
                     preprocessor: controlnet_preprocessor_3,
+                    weight: controlnet_weight_3,
+                    mode: controlnet_mode_3,
                 },
             ],
             do_preview_annotation,

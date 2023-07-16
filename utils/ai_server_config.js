@@ -29,7 +29,7 @@ const server_pool = [
     }
 ]
 
-const get_data_controlnet = (preprocessor = "none", controlnet = "None", input, weight = 1, guide_start = 0, guide_end = 1) => {
+const get_data_controlnet = (preprocessor = "none", controlnet = "None", input, weight = 1, mode = "Balanced", guide_start = 0, guide_end = 1) => {
     return [
         null,
         null,
@@ -53,7 +53,7 @@ const get_data_controlnet = (preprocessor = "none", controlnet = "None", input, 
         guide_start,
         guide_end,
         false,
-        "Balanced"
+        mode
     ]
 }
 
