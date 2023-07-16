@@ -1138,6 +1138,53 @@ const model_name_hash_mapping = new Map([
     ["d77922554c", "Momokos v1"]
 ])
 
+// limit at 25 (probably less due to character limitation)
+const model_selection = [
+    { name: 'Anything v4.5', value: 'anything.ckpt [fbcf965a62]' },
+    { name: 'Pastel Mix v2.1', value: 'pastelmix.safetensors [d01a68ae76]' },
+    { name: 'Counterfeit v2.5', value: 'counterfeit.safetensors [a074b8864e]' },
+    { name: 'MeinaMix v7', value: 'meinamix.safetensors [e03274b1e7]' },
+    { name: 'CetusMix v3 (Coda)', value: 'cetusmix.safetensors [bd518b9aee]' },
+    { name: 'RefSlave v2', value: 'refslave.safetensors [362dae27f8]' },
+    { name: 'Anything v5', value: 'anythingv5.safetensors [7f96a1a9ca]' },
+    { name: 'Yozora v1', value: 'yozora.safetensors [4b118b2d1b]' },
+    { name: 'Anime-like 2D v2', value: 'animelikev2.safetensors [4d957c560b]' },
+    { name: 'DarkSushiMix', value: 'darksushi.safetensors [cca17b08da]' },
+    { name: 'CetusMix (Coda v2)', value: 'cetusmix_coda2.safetensors [68c0a27380]' },
+    { name: 'Momokos v1', value: 'momokos_v10.safetensors [d77922554c]' },
+]
+
+const controlnet_preprocessor_selection = [
+    { name: 'None', value: 'none' },
+    { name: 'Canny', value: 'canny' },
+    { name: 'Depth', value: 'depth_midas' },
+    { name: 'Depth (LERes)', value: 'depth_leres++' },
+    { name: 'HED', value: 'softedge_hed' },
+    { name: 'Lineart Anime', value: 'lineart_anime' },
+    { name: 'OpenPose', value: 'openpose' },
+    { name: 'OpenPose (Face)', value: 'openpose_face' },
+    { name: 'OpenPose (Hand)', value: 'openpose_hand' },
+    { name: 'OpenPose (Full)', value: 'openpose_full' },
+    { name: 'Segmentation', value: 'seg_ufade20k' },
+    { name: 'CLIP Vision', value: 't2ia_style_clipvision' },
+    { name: 'Color', value: 't2ia_color_grid' },
+    { name: 'Sketch', value: 't2ia_sketch_pidi' },
+]
+
+const controlnet_model_selection = [
+    { name: 'None', value: 'None' },
+    { name: 'T2I-Adapter - Canny', value: 't2iadapter_canny_sd14v1 [80bfd79b]' },
+    { name: 'T2I-Adapter - Color', value: 't2iadapter_color_sd14v1 [8522029d]' },
+    { name: 'T2I-Adapter - Depth', value: 't2iadapter_depth_sd14v1 [fa476002]' },
+    { name: 'T2I-Adapter - OpenPose', value: 't2iadapter_openpose_sd14v1 [7e267e5e]' },
+    { name: 'T2I-Adapter - Seg', value: 't2iadapter_seg_sd14v1 [6387afb5]' },
+    { name: 'T2I-Adapter - Sketch', value: 't2iadapter_sketch_sd14v1 [e5d4b846]' },
+    { name: 'T2I-Adapter - Style', value: 't2iadapter_style_sd14v1 [202e85cc]' },
+    { name: 'ControlNet - OpenPose', value: 'control_v11p_sd15_openpose [cab727d4]'},
+    { name: 'ControlNet - SoftEdge', value: 'control_v11p_sd15_softedge [a8575a2a]'},
+    { name: 'ControlNet - Lineart Anime', value: 'control_v11p_sd15s2_lineart_anime [3825e83e]'},
+]
+
 const check_model_filename = (model_filename) => {
     for (let [key, value] of model_name_hash_mapping) {
         if (model_filename.includes(key)) {
@@ -1267,5 +1314,8 @@ module.exports = {
     load_lora_from_prompt,
     get_data_body_img2img,
     check_model_filename,
-    model_name_hash_mapping
+    model_name_hash_mapping,
+    model_selection,
+    controlnet_preprocessor_selection,
+    controlnet_model_selection
 }

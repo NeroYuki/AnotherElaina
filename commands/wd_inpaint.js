@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { byPassUser } = require('../config.json');
 const crypt = require('crypto');
-const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, load_lora_from_prompt, model_name_hash_mapping, check_model_filename } = require('../utils/ai_server_config.js');
+const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, load_lora_from_prompt, model_name_hash_mapping, check_model_filename, model_selection } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const sharp = require('sharp');
 const fetch = require('node-fetch');
@@ -115,20 +115,7 @@ module.exports = {
         .addStringOption(option => 
             option.setName('checkpoint')
                 .setDescription('Force a cached checkpoint to be used (not all option is cached)')
-                .addChoices(
-                    { name: 'Anything v4.5', value: 'anything.ckpt [fbcf965a62]' },
-                    { name: 'Pastel Mix v2.1', value: 'pastelmix.safetensors [d01a68ae76]' },
-                    { name: 'Counterfeit v2.5', value: 'counterfeit.safetensors [a074b8864e]' },
-                    { name: 'MeinaMix v7', value: 'meinamix.safetensors [e03274b1e7]' },
-                    { name: 'CetusMix v3 (Coda)', value: 'cetusmix.safetensors [bd518b9aee]' },
-                    { name: 'RefSlave v2', value: 'refslave.safetensors [362dae27f8]' },
-                    { name: 'Anything v5', value: 'anythingv5.safetensors [7f96a1a9ca]' },
-                    { name: 'Yozora v1', value: 'yozora.safetensors [4b118b2d1b]' },
-                    { name: 'Anime-like 2D v2', value: 'animelikev2.safetensors [4d957c560b]' },
-                    { name: 'DarkSushiMix', value: 'darksushi.safetensors [cca17b08da]' },
-                    { name: 'CetusMix (Coda v2)', value: 'cetusmix_coda2.safetensors [68c0a27380]' },
-                    { name: 'Momokos v1', value: 'momokos_v10.safetensors [d77922554c]' },
-                ))
+                .addChoices(...model_selection))
     ,
 
 	async execute(interaction, client) {
