@@ -9,7 +9,7 @@ const { loadImage } = require('../utils/load_discord_img');
 const sharp = require('sharp');
 const { load_controlnet } = require('../utils/controlnet_execute');
 const { model_change, cached_model } = require('../utils/model_change');
-
+const { catboxUpload } = require('../utils/catbox_upload');
 
 function clamp(num, min, max) {
     return num <= min ? min : num >= max ? max : num;
@@ -102,6 +102,9 @@ module.exports = {
         .addIntegerOption(option =>
             option.setName('force_server_selection')
                 .setDescription('Force the server to use (default is "-1")'))
+        .addBooleanOption(option =>
+            option.setName('keep_metadata')
+                .setDescription('Upload the result image to catbox to keep its metadata (default is "false")'))
         .addStringOption(option => 
             option.setName('checkpoint')
                 .setDescription('Force a cached checkpoint to be used (not all option is cached)')
@@ -154,6 +157,7 @@ module.exports = {
         const controlnet_input_option_3 = interaction.options.getAttachment('controlnet_input_3') || null
         const controlnet_config = interaction.options.getString('controlnet_config') || client.controlnet_config.has(interaction.user.id) ? client.controlnet_config.get(interaction.user.id) : null
         const checkpoint = interaction.options.getString('checkpoint') || null
+        const keep_metadata = interaction.options.getBoolean('keep_metadata') || false
 
         let seed = -1
         try {
@@ -329,7 +333,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                         .setDescription(`Here you go. Generated in ${data.duration.toFixed(2)} seconds.`)
                         .addField('Random seed', data.seed, true)
                         .addField('Model used', `${model_name_hash_mapping.get(data.model) || "Unknown Model"} (${data.model})`, true)
-                        .setImage(`attachment://${data.img_name}`)
+                        .setImage(data.catbox_url ? data.catbox_url : `attachment://${data.img_name}`)
                         .setFooter({text: `Putting ${Array("my RTX 3060","plub's RTX 3070")[server_index]} to good use!`});
                 }
                 else if (state === 'progress') {
@@ -354,7 +358,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
 
                 if (embeded) {
                     const reply_content = {embeds: [embeded], components: [row]}
-                    if (data.img) {
+                    if (data.img && !data.catbox_url) {
                         reply_content.files = [{attachment: data.img, name: data.img_name}]
                     }
 
@@ -428,6 +432,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                     if (final_res_obj.data) {
                         // if server index == 0, get local image directory, else initiate request to get image from server
                         let img_buffer = null
+                        let catbox_url = null
                         const file_dir = final_res_obj.data[0][0]?.name
                         console.log(final_res_obj.data)
                         if (!file_dir) {
@@ -440,6 +445,12 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
 
                         if (img_res && img_res.status === 200) {
                             img_buffer = Buffer.from(await img_res.arrayBuffer())
+                        }
+
+                        if (keep_metadata) {
+                            catbox_url = await catboxUpload(img_buffer).catch(err => {
+                                console.log(err)
+                            })
                         }
 
                         // attempt to get the image seed (-1 if failed to do so)
@@ -457,7 +468,8 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                             img_name: 'img.png',
                             seed: seed,
                             model: model_hash,
-                            duration: final_res_obj.duration
+                            duration: final_res_obj.duration,
+                            catbox_url: catbox_url
                         }, 'completed').catch(err => {
                             console.log(err)
                         })
