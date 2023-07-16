@@ -1119,6 +1119,10 @@ const word_to_lora_model = [
     {
         "keyword": ["akagi miria", "ichihara nina", "koga koharu", "matoba risa", "ryuzaki kaoru", "sakurai momoka", "sasaki chie", "tachibana arisu", "yuuki haru", "u149ani", "yonai p"],
         "lora": "<lora:u149-v4.0:0.85>"
+    },
+    {
+        "keyword": ["chino"],
+        "lora": "<lora:KafuuChinoV1:0.85>"
     }
 ]
 
