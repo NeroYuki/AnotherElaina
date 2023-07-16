@@ -3,13 +3,14 @@
 // const { byPassUser } = require('../config.json');
 const crypt = require('crypto');
 const { default: axios } = require('axios');
+const { server_pool } = require('./ai_server_config');
 // const { loadImage } = require('../utils/load_discord_img');
 // const sharp = require('sharp');
 
 const cached_model = [
     "anythingv5.safetensors [7f96a1a9ca]",
-    "cetusmix_coda2.safetensors [68c0a27380]",
-    "momokos_v10.safetensors [d77922554c]",
+    "meinapastel.safetensors [6292dd40d6]",
+    "cuteyukimix.safetensors [6ee4f31532]",
 ]
 
 function model_change(modelname, forced = false) {
@@ -21,7 +22,7 @@ function model_change(modelname, forced = false) {
             const session_hash = crypt.randomBytes(16).toString('base64');
             const option_init_axios = {
                 data: {
-                    fn_index: 751,
+                    fn_index: server_pool[0].fn_index_change_model,
                     session_hash: session_hash,
                     data: [
                         modelname

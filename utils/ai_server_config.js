@@ -8,15 +8,16 @@ const server_pool = [
         url: 'http://192.168.196.142:7860',
         fn_index_create: 309,
         fn_index_abort: 55,
-        fn_index_img2img: 629,
+        fn_index_img2img: 631,
         fn_index_controlnet: [193, 508],        //[txt2img, img2img]
         fn_index_controlnet_annotation: [179, 498],
         fn_index_controlnet_2: [228, 551], 
         fn_index_controlnet_annotation_2: [214, 538],
         fn_index_controlnet_3: [263, 590],
         fn_index_controlnet_annotation_3: [249, 576],
-        fn_index_interrogate: 633,
-        fn_index_upscale: 649,
+        fn_index_interrogate: 635,
+        fn_index_upscale: 651,
+        fn_index_change_model: 753,
         is_online: true,
     },
     {
@@ -75,8 +76,11 @@ const get_data_controlnet_annotation = (preprocessor = "openpose", input) => {
 }
 
 const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed, sampler, session_hash,
-    height, width, attachment, attachment2, denoising_strength, mode = 0, mask_blur = 4, mask_content = "original") => {
+    height, width, attachment, attachment2, denoising_strength, mode = 0, mask_blur = 4, mask_content = "original", upscaler = "None") => {
     // default mode 0 is img2img, 4 is inpainting
+    // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
+    const shouldUseTiledVAE = ((width * height) > 3000000 && upscaler == "None") ? true : false
+
     return [
         `task(${session_hash})`,
         mode,                      // mode (0 = img2img, 4 = inpainting)
@@ -120,7 +124,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
         "",
         "",
         [],
-        "None",
+        upscaler != "None" ? "Ultimate SD upscale" : "None",        // script used
         false,
         "MultiDiffusion",
         false,
@@ -222,8 +226,8 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
         "Background",
         0.2,
         -1,
-        false,
-        2048,
+        shouldUseTiledVAE,      //enable Tiled VAE or not
+        1024,       // Tile size
         128,
         true,
         true,
@@ -353,6 +357,24 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
         null,
         false,
         50,
+        "<p style=\"margin-bottom:0.75em\">Will upscale the image depending on the selected target size type</p>",
+        512,
+        0,
+        8,
+        32,
+        64,
+        0.35,
+        32,
+        upscaler,
+        true,
+        "Linear",
+        false,
+        8,
+        "None",
+        "From img2img2 settings",
+        2048,
+        2048,
+        2,
         [],
         "",
         "",
@@ -362,6 +384,10 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
 
 const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed, sampler, session_hash,
     height, width, upscale_multiplier, upscaler, upscale_denoise_strength, upscale_step, face_restore = false) => {
+
+    // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
+    const shouldUseTiledVAE = ((width * height) > 1600000) ? true : false
+
     if (index === 0) return [
         `task(${session_hash})`,
         prompt,                 // prompt
@@ -495,8 +521,8 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
         "Background",
         0.2,
         -1,
-        false,
-        2048,
+        shouldUseTiledVAE,
+        1024,
         128,
         true,
         true,
@@ -1139,7 +1165,9 @@ const model_name_hash_mapping = new Map([
     ["4d957c560b", "Anime-like 2D v2"],
     ["cca17b08da", "DarkSushiMix"],
     ["68c0a27380", "CetusMix (Coda v2)"],
-    ["d77922554c", "Momokos v1"]
+    ["d77922554c", "Momokos v1"],
+    ["6ee4f31532", "CuteYukiMix"],
+    ["6292dd40d6", "MeinaPastel v6"]
 ])
 
 // limit at 25 (probably less due to character limitation)
@@ -1156,6 +1184,8 @@ const model_selection = [
     { name: 'DarkSushiMix', value: 'darksushi.safetensors [cca17b08da]' },
     { name: 'CetusMix (Coda v2)', value: 'cetusmix_coda2.safetensors [68c0a27380]' },
     { name: 'Momokos v1', value: 'momokos_v10.safetensors [d77922554c]' },
+    { name: 'MeinaPastel v6', value: 'meinapastel.safetensors [6292dd40d6]' },
+    { name: 'CuteYukiMix', value: 'cuteyukimix.safetensors [6ee4f31532]' },
 ]
 
 const controlnet_preprocessor_selection = [
@@ -1187,6 +1217,15 @@ const controlnet_model_selection = [
     { name: 'ControlNet - OpenPose', value: 'control_v11p_sd15_openpose [cab727d4]'},
     { name: 'ControlNet - SoftEdge', value: 'control_v11p_sd15_softedge [a8575a2a]'},
     { name: 'ControlNet - Lineart Anime', value: 'control_v11p_sd15s2_lineart_anime [3825e83e]'},
+]
+
+const upscaler_selection = [
+    { name: 'Lanczos - Fast', value: 'Lanczos' },
+    { name: 'ESRGAN_4x', value: 'ESRGAN_4x' },
+    { name: 'R-ESRGAN 4x+ Anime6B', value: 'R-ESRGAN 4x+ Anime6B' },
+    { name: 'SwinIR 4x', value: 'SwinIR_4x' },
+    { name: 'AnimeSharp 4x', value: '4x_AnimeSharp' },
+    { name: 'UltraSharp 4x', value: '4x_UltraSharp' },
 ]
 
 const check_model_filename = (model_filename) => {
@@ -1321,5 +1360,6 @@ module.exports = {
     model_name_hash_mapping,
     model_selection,
     controlnet_preprocessor_selection,
-    controlnet_model_selection
+    controlnet_model_selection,
+    upscaler_selection
 }

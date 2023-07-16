@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { byPassUser } = require('../config.json');
 const crypt = require('crypto');
-const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, load_lora_from_prompt, model_name_hash_mapping } = require('../utils/ai_server_config.js');
+const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, load_lora_from_prompt, model_name_hash_mapping, upscaler_selection } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const fetch = require('node-fetch');
 const { loadImage } = require('../utils/load_discord_img');
@@ -25,12 +25,27 @@ module.exports = {
         .addStringOption(option =>
             option.setName('upscaler')
                 .setDescription('Specify the upscaler to use (default is "Lanczos")')
-                .addChoices(
-                    { name: 'Lanczos - Fast', value: 'Lanczos' },
-                    { name: 'ESRGAN_4x', value: 'ESRGAN_4x' },
-                    { name: 'R-ESRGAN 4x+ Anime6B', value: 'R-ESRGAN 4x+ Anime6B' },
-                    { name: 'SwinIR 4x', value: 'SwinIR_4x' }
-				)),
+                .addChoices(...upscaler_selection))
+        .addStringOption(option =>
+            option.setName('upscaler_2')
+                .setDescription('Specify the 2nd upscaler to use (default is "None")')
+                .addChoices(...upscaler_selection))
+        .addNumberOption(option =>
+            option.setName('upscaler_2_visibility')
+                .setDescription('The visibility of the 2nd upscaler (default is "0, no effect)'))
+        .addNumberOption(option =>
+            option.setName('gfpgan_visibility')
+                .setDescription('The visibility of the GFPGAN model (default is "0, no effect)'))
+        .addNumberOption(option =>
+            option.setName('codeformer_visibility')
+                .setDescription('The visibility of the Codeformer model (default is "0, no effect)'))
+        .addNumberOption(option =>
+            option.setName('codeformer_weight')
+                .setDescription('The weight of the Codeformer model (default is "0, maximum effect)'))       
+        .addNumberOption(option =>
+            option.setName('color_enhance_weight')
+                .setDescription('The weight of the color enhancement script (default is "0, no enhancement")'))
+    ,
 
 	async execute(interaction, client) {
         if (client.cooldowns.has(interaction.user.id) && !byPassUser.includes(interaction.user.id)) {
@@ -42,6 +57,12 @@ module.exports = {
         let attachment_option = interaction.options.getAttachment('image')
         const upscale_multiplier = clamp(interaction.options.getNumber('upscale_multiplier') || 1, 1, 6)
         const upscaler = interaction.options.getString('upscaler') || 'Lanczos'
+        const upscaler_2 = interaction.options.getString('upscaler_2') || 'None'
+        const upscaler_2_visibility = clamp(interaction.options.getNumber('upscaler_2_visibility') || 0, 0, 1)
+        const gfpgan_visibility = clamp(interaction.options.getNumber('gfpgan_visibility') || 0, 0, 1)
+        const codeformer_visibility = clamp(interaction.options.getNumber('codeformer_visibility') || 0, 0, 1)
+        const codeformer_weight = clamp(interaction.options.getNumber('codeformer_weight') || 0, 0, 1)
+        const color_enhance_weight = clamp(interaction.options.getNumber('color_enhance_weight') || 0, 0, 1)
 
         //make a temporary reply to not get timeout'd
 		await interaction.deferReply();
@@ -78,11 +99,12 @@ module.exports = {
             512,
             true,
             upscaler,
-            "None",
-            0,
-            0,
-            0,
-            0
+            upscaler_2,
+            upscaler_2_visibility,
+            gfpgan_visibility,
+            codeformer_visibility,
+            codeformer_weight,
+            color_enhance_weight
         ]
 
         // make option_init but for axios

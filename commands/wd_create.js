@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { byPassUser } = require('../config.json');
 const crypt = require('crypto');
-const { server_pool, get_data_body, get_negative_prompt, initiate_server_heartbeat, get_worker_server, get_prompt, load_lora_from_prompt, model_name_hash_mapping, get_data_controlnet, get_data_controlnet_annotation, check_model_filename, model_selection } = require('../utils/ai_server_config.js');
+const { server_pool, get_data_body, get_negative_prompt, initiate_server_heartbeat, get_worker_server, get_prompt, load_lora_from_prompt, model_name_hash_mapping, get_data_controlnet, get_data_controlnet_annotation, check_model_filename, model_selection, upscaler_selection } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const fetch = require('node-fetch');
 const { loadImage } = require('../utils/load_discord_img');
@@ -72,14 +72,11 @@ module.exports = {
             option.setName('upscaler')
                 .setDescription('Specify the upscaler to use (default is "Lanczos")')
                 .addChoices(
-                    { name: 'Lanczos - Fast', value: 'Lanczos' },
-                    { name: 'ESRGAN_4x', value: 'ESRGAN_4x' },
-                    { name: 'R-ESRGAN 4x+ Anime6B', value: 'R-ESRGAN 4x+ Anime6B' },
-                    { name: 'SwinIR 4x', value: 'SwinIR_4x' },
 					{ name: 'Latent - Slow', value: 'Latent' },
                     { name: 'Latent (antialiased)', value: 'Latent (antialiased)' },
                     { name: 'Latent (nearest)', value: 'Latent (nearest)' },
-                    { name: 'Latent (nearest-exact)', value: 'Latent (nearest-exact)' }
+                    { name: 'Latent (nearest-exact)', value: 'Latent (nearest-exact)' },
+                    ...upscaler_selection
 				))
         .addNumberOption(option =>
             option.setName('upscale_denoise_strength')
@@ -125,8 +122,8 @@ module.exports = {
 
 		let prompt = interaction.options.getString('prompt')
 		let neg_prompt = interaction.options.getString('neg_prompt') || '' 
-        let width = clamp(interaction.options.getInteger('width') || 512, 64, 1024)
-        let height = clamp(interaction.options.getInteger('height') || 512, 64, 1024)
+        let width = clamp(interaction.options.getInteger('width') || 512, 64, 2048)
+        let height = clamp(interaction.options.getInteger('height') || 512, 64, 2048)
         const sampler = interaction.options.getString('sampler') || 'Euler a'
         const cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || 7, 0, 30)
         const sampling_step = clamp(interaction.options.getInteger('sampling_step') || 20, 1, 100)

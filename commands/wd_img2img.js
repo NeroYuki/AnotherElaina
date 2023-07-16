@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { byPassUser } = require('../config.json');
 const crypt = require('crypto');
-const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, load_lora_from_prompt, model_name_hash_mapping, check_model_filename, model_selection } = require('../utils/ai_server_config.js');
+const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, load_lora_from_prompt, model_name_hash_mapping, check_model_filename, model_selection, upscaler_selection } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const fetch = require('node-fetch');
 const { loadImage } = require('../utils/load_discord_img');
@@ -89,6 +89,10 @@ module.exports = {
             option.setName('checkpoint')
                 .setDescription('Force a cached checkpoint to be used (not all option is cached)')
                 .addChoices(...model_selection))
+        .addStringOption(option =>
+            option.setName('upscaler')
+                .setDescription('The upscaler to use (default is "None")')
+                .addChoices(...upscaler_selection))
     ,
 
 	async execute(interaction, client) {
@@ -101,8 +105,8 @@ module.exports = {
 		// load the option with default value
         let prompt = interaction.options.getString('prompt')
 		let neg_prompt = interaction.options.getString('neg_prompt') || '' 
-        const width = clamp(interaction.options.getInteger('width') || 512, 64, 1920)
-        const height = clamp(interaction.options.getInteger('height') || 512, 64, 1080)
+        const width = clamp(interaction.options.getInteger('width') || 512, 64, 4096)
+        const height = clamp(interaction.options.getInteger('height') || 512, 64, 4096)
         const denoising_strength = clamp(interaction.options.getNumber('denoising_strength') || 0.7, 0, 1)
         const sampler = interaction.options.getString('sampler') || 'Euler a'
         const cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || 7, 0, 30)
@@ -117,6 +121,7 @@ module.exports = {
         const controlnet_input_option_3 = interaction.options.getAttachment('controlnet_input_3') || null
         const controlnet_config = interaction.options.getString('controlnet_config') || client.controlnet_config.has(interaction.user.id) ? client.controlnet_config.get(interaction.user.id) : null
         const checkpoint = interaction.options.getString('checkpoint') || null
+        const upscaler = interaction.options.getString('upscaler') || 'None'
 
         let seed = -1
         try {
@@ -134,23 +139,23 @@ module.exports = {
         //download the image from attachment.proxyURL
         let attachment = await loadImage(attachment_option.proxyURL).catch((err) => {
             console.log(err)
-            interaction.reply({ content: "Failed to retrieve image", ephemeral: true });
+            interaction.editReply({ content: "Failed to retrieve image", ephemeral: true });
             return
         })
 
         let controlnet_input = controlnet_input_option ? await loadImage(controlnet_input_option.proxyURL).catch((err) => {
             console.log(err)
-            interaction.reply({ content: "Failed to retrieve control net image", ephemeral: true });
+            interaction.editReply({ content: "Failed to retrieve control net image", ephemeral: true });
         }) : null
 
         let controlnet_input_2 = controlnet_input_option_2 ? await loadImage(controlnet_input_option_2.proxyURL).catch((err) => {
             console.log(err)
-            interaction.reply({ content: "Failed to retrieve control net image 2", ephemeral: true });
+            interaction.editReply({ content: "Failed to retrieve control net image 2", ephemeral: true });
         }) : null
 
         let controlnet_input_3 = controlnet_input_option_3 ? await loadImage(controlnet_input_option_3.proxyURL).catch((err) => {
             console.log(err)
-            interaction.reply({ content: "Failed to retrieve control net image 3", ephemeral: true });
+            interaction.editReply({ content: "Failed to retrieve control net image 3", ephemeral: true });
         }) : null
         
         if (checkpoint) {
@@ -240,7 +245,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         }
     
         const create_data = get_data_body_img2img(server_index, prompt, neg_prompt, sampling_step, cfg_scale,
-            seed, sampler, session_hash, height, width, attachment, null, denoising_strength)
+            seed, sampler, session_hash, height, width, attachment, null, denoising_strength, /*img2img mode*/ 0, 4, "original", upscaler)
 
         // make option_init but for axios
         const option_init_axios = {
