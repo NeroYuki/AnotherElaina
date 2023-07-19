@@ -1149,6 +1149,51 @@ const word_to_lora_model = [
     {
         "keyword": ["chino"],
         "lora": "<lora:KafuuChinoV1:0.85>"
+    },
+    {
+        "keyword": ["princess carry"],
+        "lora": "<lora:princess_carry_v0.1:0.85>"
+    },
+    {
+        "keyword": ["clothes tug", "skirt tug", "dress tug", "shirt tug", "sweater tug"],
+        "lora": "<lora:skirt_tug_v0.1:0.85>"
+    },
+    {
+        "keyword": ["rest feet up"],
+        "lora": "<lora:restfeetup55_rvkwi:0.85>",
+        "remove_trigger": true
+    },
+    {
+        "keyword": ["hugging own legs"],
+        "lora": "<lora:hugging_own_legs_v0.3:0.85>"
+    },
+    {
+        "keyword": ["kabedon pov"],
+        "lora": "<lora:kabedon_pov:0.85>"
+    },
+    {
+        "keyword": ["kirara"],
+        // recommended keyword 1girl, green eyes, official, two tails, paw,
+        "lora": "<lora:Genshin_Kirara_AP_v3:0.85>",
+        "remove_trigger": true
+    },
+    {
+        "keyword": ["saltbaememe"],
+        // recommended keyword salt, sunglases
+        "lora": "<lora:SaltBaeMeme:0.85>",
+    },
+    {
+        "keyword": ["queensgravememe"],
+        // recommended keyword v, smile
+        "lora": "<lora:GrantGustinNextToOliverQueensGraveMeme:0.85>",
+    },
+    {
+        "keyword": ["pepepunchmeme"],
+        "lora": "<lora:PepePunchMeme:0.85>",
+    },
+    {
+        "keyword": ["thisisfine"],
+        "lora": "<lora:thisisfineV3:0.85>",
     }
 ]
 
@@ -1186,6 +1231,7 @@ const model_selection = [
     { name: 'Momokos v1', value: 'momokos_v10.safetensors [d77922554c]' },
     { name: 'MeinaPastel v6', value: 'meinapastel.safetensors [6292dd40d6]' },
     { name: 'CuteYukiMix', value: 'cuteyukimix.safetensors [6ee4f31532]' },
+    { name: '9527 v1', value: '9527v1.ckpt [40a9f4ec37]' },
 ]
 
 const controlnet_preprocessor_selection = [
