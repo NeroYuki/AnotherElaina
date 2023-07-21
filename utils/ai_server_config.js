@@ -1212,7 +1212,9 @@ const model_name_hash_mapping = new Map([
     ["68c0a27380", "CetusMix (Coda v2)"],
     ["d77922554c", "Momokos v1"],
     ["6ee4f31532", "CuteYukiMix"],
-    ["6292dd40d6", "MeinaPastel v6"]
+    ["6292dd40d6", "MeinaPastel v6"],
+    ['40a9f4ec37', "9527 v1"],
+    ['b334cb73d8', "HimawariMix v8"],
 ])
 
 // limit at 25 (probably less due to character limitation)
@@ -1232,6 +1234,7 @@ const model_selection = [
     { name: 'MeinaPastel v6', value: 'meinapastel.safetensors [6292dd40d6]' },
     { name: 'CuteYukiMix', value: 'cuteyukimix.safetensors [6ee4f31532]' },
     { name: '9527 v1', value: '9527v1.ckpt [40a9f4ec37]' },
+    { name: 'HimawariMix v8', value: 'himawarimix.safetensors [b334cb73d8]'}
 ]
 
 const controlnet_preprocessor_selection = [
