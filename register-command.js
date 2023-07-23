@@ -3,6 +3,7 @@ const path = require('path');
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v9');
 const { clientId, guildIds } = require('./config.json');
+const { listAllFiles } = require('./utils/common_helper');
 
 require('dotenv').config()
 
@@ -16,7 +17,7 @@ if (args[0] === "--clean") doClear = true
 const token = process.env.DISCORD_BOT_TOKEN
 const commands = [];
 const commandsPath = path.join(__dirname, 'commands');
-const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+const commandFiles = listAllFiles(commandsPath).filter(file => file.endsWith('.js'));
 
 if (!doClear) {
 	for (const file of commandFiles) {
@@ -27,7 +28,7 @@ if (!doClear) {
 	}
 }
 
-// console.log(commands)
+//console.dir(commands, { depth: null })
 
 const rest = new REST({ version: '9' }).setToken(token);
 
@@ -42,6 +43,9 @@ else {
 	guildIds.forEach(guildId => {
 		rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commands })
 			.then(() => console.log('Successfully registered application commands.'))
-			.catch(console.error);
+			.catch((err) => {
+				console.log('Failed to register application commands.')
+				console.dir(err, { depth: null })
+			});
 	})
 }

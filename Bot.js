@@ -3,6 +3,8 @@ const path = require('path');
 const { Client, Collection, Intents } = require('discord.js');
 const { byPassUser} = require('./config.json');
 const { responseToMessage } = require('./event/on_message');
+const databaseConnection = require('./database/database_connection');
+const { listAllFiles } = require('./utils/common_helper');
 
 require('dotenv').config()
 
@@ -11,8 +13,11 @@ const token = process.env.DISCORD_BOT_TOKEN
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES] });
 
 client.commands = new Collection();
+// recursively filter all js files in the commands folder (including file in subfolders)
 const commandsPath = path.join(__dirname, 'commands');
-const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+const commandFiles = listAllFiles(commandsPath).filter(file => file.endsWith('.js'));
+
+console.log(commandFiles)
 client.cooldowns = new Collection();
 client.controlnet_config = new Map();
 client.COOLDOWN_SECONDS = 30; // replace with desired cooldown time in seconds
@@ -97,3 +102,7 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(token);
+
+databaseConnection.initConnection(() => {
+	console.log('database connection established');
+})

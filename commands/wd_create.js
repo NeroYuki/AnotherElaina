@@ -10,6 +10,7 @@ const sharp = require('sharp');
 const { load_controlnet } = require('../utils/controlnet_execute');
 const { model_change, cached_model } = require('../utils/model_change');
 const { catboxUpload } = require('../utils/catbox_upload');
+const { queryRecordLimit } = require('../database/database_interaction');
 
 function clamp(num, min, max) {
     return num <= min ? min : num >= max ? max : num;
@@ -106,6 +107,10 @@ module.exports = {
             option.setName('checkpoint')
                 .setDescription('Force a cached checkpoint to be used (not all option is cached)')
                 .addChoices(...model_selection))
+        .addStringOption(option =>
+            option.setName('profile')
+                .setDescription('Specify the profile to use (default is No Profile)'))
+
     ,
 
     async init() {
@@ -120,20 +125,43 @@ module.exports = {
             return 
         }
 
-		let prompt = interaction.options.getString('prompt')
-		let neg_prompt = interaction.options.getString('neg_prompt') || '' 
-        let width = clamp(interaction.options.getInteger('width') || 512, 64, 2048)
-        let height = clamp(interaction.options.getInteger('height') || 512, 64, 2048)
-        const sampler = interaction.options.getString('sampler') || 'Euler a'
-        const cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || 7, 0, 30)
-        const sampling_step = clamp(interaction.options.getInteger('sampling_step') || 20, 1, 100)
+        //make a temporary reply to not get timeout'd
+		await interaction.deferReply();
+
+        const profile_option = interaction.options.getString('profile') || null
+        let profile = null
+        if (profile_option != null) {
+            let profile_data = null
+            // attempt to query the profile name on the database
+            profile_data = await queryRecordLimit('wd_profile', { name: profile_option, user_id: interaction.user.id }, 1)
+            if (profile_data.length == 0) {
+                // attempt to query global profile
+                profile_data = await queryRecordLimit('wd_profile', { name: profile_option }, 1)
+                if (global_profile_data.length == 0) {
+                    // no profile found
+                    interaction.channel.send({ content: `Profile ${profile_option} not found, fallback to default setting` });
+                }
+            }
+
+            if (profile_data.length != 0) {
+                profile = profile_data[0]
+            }
+        }
+
+		let prompt = interaction.options.getString('prompt') + (profile?.prompt || '')
+		let neg_prompt = interaction.options.getString('neg_prompt') || '' + (profile?.neg_prompt || '')
+        let width = clamp(interaction.options.getInteger('width') || profile?.width || 512, 64, 2048)
+        let height = clamp(interaction.options.getInteger('height') || profile?.height || 512, 64, 2048)
+        const sampler = interaction.options.getString('sampler') || profile?.sampler || 'Euler a'
+        const cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || profile?.cfg_scale || 7, 0, 30)
+        const sampling_step = clamp(interaction.options.getInteger('sampling_step') || profile?.sampling_step || 20, 1, 100)
         const override_neg_prompt = interaction.options.getBoolean('override_neg_prompt') || false
         const remove_nsfw_restriction = interaction.options.getBoolean('remove_nsfw_restriction') || false
         const no_dynamic_lora_load = interaction.options.getBoolean('no_dynamic_lora_load') || false
         const default_lora_strength = clamp(interaction.options.getNumber('default_lora_strength') || 0.85, 0, 3)
-        const upscale_multiplier = clamp(interaction.options.getNumber('upscale_multiplier') || 1, 1, 4)
-        const upscaler = interaction.options.getString('upscaler') || 'Lanczos'
-        const upscale_denoise_strength = clamp(interaction.options.getNumber('upscale_denoise_strength') || 0.7, 0, 1)
+        const upscale_multiplier = clamp(interaction.options.getNumber('upscale_multiplier') || profile?.upscale_multiplier || 1, 1, 4)
+        const upscaler = interaction.options.getString('upscaler') || profile?.upscaler || 'Lanczos'
+        const upscale_denoise_strength = clamp(interaction.options.getNumber('upscale_denoise_strength') || profile?.upscale_denoise_strength || 0.7, 0, 1)
         const force_server_selection = clamp(interaction.options.getInteger('force_server_selection') !== null ? interaction.options.getInteger('force_server_selection') : -1 , -1, 1)
         const upscale_step = clamp(interaction.options.getInteger('upscale_step') || 20, 1, 100)
         const controlnet_input_option = interaction.options.getAttachment('controlnet_input') || null
@@ -150,9 +178,6 @@ module.exports = {
         catch {
             seed = parseInt('-1')
         }
-
-        //make a temporary reply to not get timeout'd
-		await interaction.deferReply();
 
         let controlnet_input = controlnet_input_option ? await loadImage(controlnet_input_option.proxyURL).catch((err) => {
             console.log(err)
