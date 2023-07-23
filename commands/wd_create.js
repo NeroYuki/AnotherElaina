@@ -137,7 +137,7 @@ module.exports = {
             if (profile_data.length == 0) {
                 // attempt to query global profile
                 profile_data = await queryRecordLimit('wd_profile', { name: profile_option }, 1)
-                if (global_profile_data.length == 0) {
+                if (profile_data.length == 0) {
                     // no profile found
                     interaction.channel.send({ content: `Profile ${profile_option} not found, fallback to default setting` });
                 }
@@ -173,7 +173,7 @@ module.exports = {
 
         let seed = -1
         try {
-            seed = parseInt(interaction.options.getString('seed')) || parseInt('-1')
+            seed = parseInt(interaction.options.getString('seed')) || parseInt(profile?.seed || '-1')
         }
         catch {
             seed = parseInt('-1')
