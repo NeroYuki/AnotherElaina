@@ -90,26 +90,31 @@ module.exports = {
             isOverwrite = true;
         }
 
-        // compose the data
-        const data = {
+        const query = {
             name: name,
             user_id: interaction.user.id,
-            prompt: prompt,
-            neg_prompt: neg_prompt,
-            width: width,
-            height: height,
-            sampler: sampler,
-            cfg_scale: cfg_scale,
-            sampling_step: sampling_step,
-            seed: seed,
-            upscale_multiplier: upscale_multiplier,
-            upscaler: upscaler,
-            upscale_denoise_strength: upscale_denoise_strength,
-            upscale_step: upscale_step,
+        }
+
+        // compose the data
+        const action = {
+            $set: {
+                prompt: prompt,
+                neg_prompt: neg_prompt,
+                width: width,
+                height: height,
+                sampler: sampler,
+                cfg_scale: cfg_scale,
+                sampling_step: sampling_step,
+                seed: seed,
+                upscale_multiplier: upscale_multiplier,
+                upscaler: upscaler,
+                upscale_denoise_strength: upscale_denoise_strength,
+                upscale_step: upscale_step,
+            }
         };
 
         // add the profile to the database
-        await editRecords('wd_profile', data, {upsert: true})
+        await editRecords('wd_profile', query, action, {upsert: true})
 
         // send the reply
         await interaction.editReply(`Profile ${name} ${isOverwrite ? 'updated' : 'added'}`);
