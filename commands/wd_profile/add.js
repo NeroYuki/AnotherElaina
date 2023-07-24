@@ -5,10 +5,10 @@ const { addRecord, queryRecord, queryRecordLimit, editRecords } = require('../..
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('wd_profile_add')
-		.setDescription('Add an AI image creation profile')
+		.setDescription('Add/Update an AI image creation profile')
         .addStringOption(option =>
             option.setName('name')
-                .setDescription('The name of the profile to add')
+                .setDescription('The name of the profile to add or update')
                 .setRequired(true))
         .addStringOption(option =>
             option.setName('prompt')
@@ -82,11 +82,12 @@ module.exports = {
 
 		await interaction.deferReply();
 
+        let isOverwrite = false;
+
         // check if the profile created by user already exists
         const profile = await queryRecordLimit('wd_profile', { name: name, user_id: interaction.user.id }, 1);
         if (profile.length > 0) {
-            await interaction.editReply(`Profile with name ${name} already exists`);
-            return;
+            isOverwrite = true;
         }
 
         // compose the data
@@ -111,6 +112,6 @@ module.exports = {
         await editRecords('wd_profile', data, {upsert: true})
 
         // send the reply
-        await interaction.editReply(`Profile ${name} added`);
+        await interaction.editReply(`Profile ${name} ${isOverwrite ? 'updated' : 'added'}`);
 	},
 };
