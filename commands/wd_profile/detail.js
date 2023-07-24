@@ -41,7 +41,7 @@ module.exports = {
         if (data.neg_prompt != '') {
             reply += `Negative Prompt: ${data.neg_prompt}\n`;
         }
-        if (data.seed != '') {
+        if (data.seed != '-1') {
             reply += `Seed: ${data.seed}\n`;
         }
         if (data.width != 512) {

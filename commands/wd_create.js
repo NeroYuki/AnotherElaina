@@ -22,8 +22,7 @@ module.exports = {
 		.setDescription('Create an AI art via my own Stable Diffusion Web UI instance')
         .addStringOption(option =>
             option.setName('prompt')
-                .setDescription('The prompt for the AI to generate art from')
-                .setRequired(true))
+                .setDescription('The prompt for the AI to generate art from'))
         .addStringOption(option => 
             option.setName('neg_prompt')
                 .setDescription('The negative prompt for the AI to avoid generate art from'))
@@ -148,7 +147,7 @@ module.exports = {
             }
         }
 
-		let prompt = interaction.options.getString('prompt') + (profile?.prompt || '')
+		let prompt = interaction.options.getString('prompt') || '' + (profile?.prompt || '')
 		let neg_prompt = interaction.options.getString('neg_prompt') || '' + (profile?.neg_prompt || '')
         let width = clamp(interaction.options.getInteger('width') || profile?.width || 512, 64, 2048)
         let height = clamp(interaction.options.getInteger('height') || profile?.height || 512, 64, 2048)

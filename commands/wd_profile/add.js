@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { upscaler_selection } = require('../../utils/ai_server_config');
-const { addRecord, queryRecord, queryRecordLimit } = require('../../database/database_interaction');
+const { addRecord, queryRecord, queryRecordLimit, editRecords } = require('../../database/database_interaction');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -108,7 +108,7 @@ module.exports = {
         };
 
         // add the profile to the database
-        await addRecord('wd_profile', data);
+        await editRecords('wd_profile', data, {upsert: true})
 
         // send the reply
         await interaction.editReply(`Profile ${name} added`);
