@@ -147,8 +147,8 @@ module.exports = {
             }
         }
 
-		let prompt = interaction.options.getString('prompt') || '' + (profile?.prompt || '')
-		let neg_prompt = interaction.options.getString('neg_prompt') || '' + (profile?.neg_prompt || '')
+		let prompt = (interaction.options.getString('prompt') || '') + (profile?.prompt || '')
+		let neg_prompt = (interaction.options.getString('neg_prompt') || '') + (profile?.neg_prompt || '')
         let width = clamp(interaction.options.getInteger('width') || profile?.width || 512, 64, 2048)
         let height = clamp(interaction.options.getInteger('height') || profile?.height || 512, 64, 2048)
         const sampler = interaction.options.getString('sampler') || profile?.sampler || 'Euler a'
