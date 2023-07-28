@@ -1194,6 +1194,10 @@ const word_to_lora_model = [
     {
         "keyword": ["thisisfine"],
         "lora": "<lora:thisisfineV3:0.85>",
+    },
+    {
+        "keyword": ["kantoku"],
+        "lora": "<lora:kantoku_v0.1:0.85>",
     }
 ]
 
