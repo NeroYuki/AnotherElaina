@@ -6,18 +6,18 @@ const server_pool = [
     {
         index: 0,
         url: 'http://192.168.196.142:7860',
-        fn_index_create: 309,
+        fn_index_create: 332,
         fn_index_abort: 55,
-        fn_index_img2img: 631,
-        fn_index_controlnet: [193, 508],        //[txt2img, img2img]
-        fn_index_controlnet_annotation: [179, 498],
-        fn_index_controlnet_2: [228, 551], 
-        fn_index_controlnet_annotation_2: [214, 538],
-        fn_index_controlnet_3: [263, 590],
-        fn_index_controlnet_annotation_3: [249, 576],
-        fn_index_interrogate: 635,
-        fn_index_upscale: 651,
-        fn_index_change_model: 753,
+        fn_index_img2img: 684,
+        fn_index_controlnet: [213, 565],        //[txt2img, img2img]
+        fn_index_controlnet_annotation: [202, 551],
+        fn_index_controlnet_2: [248, 604], 
+        fn_index_controlnet_annotation_2: [237, 590],
+        fn_index_controlnet_3: [283, 643],
+        fn_index_controlnet_annotation_3: [272, 629],
+        fn_index_interrogate: 688,
+        fn_index_upscale: 712,
+        fn_index_change_model: 813,
         is_online: true,
     },
     {
@@ -278,6 +278,9 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
         null,
         null,
         null,
+        false,              // use refiner?
+        "None",             // select refiner model
+        20,                 // percentage of step the refiner will take over
         0.9,
         5,
         "0.0001",
@@ -573,6 +576,9 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
         null,
         null,
         null,
+        false,              // use refiner?
+        "None",             // select refiner model
+        20,                 // percentage of step the refiner will take over
         0.9,
         5,
         "0.0001",
@@ -1219,6 +1225,8 @@ const model_name_hash_mapping = new Map([
     ["6292dd40d6", "MeinaPastel v6"],
     ['40a9f4ec37', "9527 v1"],
     ['b334cb73d8', "HimawariMix v8"],
+    ['52cb3c2e67', "Azure Blue v1.2 (SDXL)"],
+    ['31e35c80fc', "SDXL Base v1"],
 ])
 
 // limit at 25 (probably less due to character limitation)
@@ -1239,6 +1247,8 @@ const model_selection = [
     { name: 'CuteYukiMix', value: 'cuteyukimix.safetensors [6ee4f31532]' },
     { name: '9527 v1', value: '9527v1.ckpt [40a9f4ec37]' },
     { name: 'HimawariMix v8', value: 'himawarimix.safetensors [b334cb73d8]'}
+    { name: 'Azure Blue v1.2 (SDXL)', value: 'azureblue_v12.safetensors [52cb3c2e67]' },
+    { name: 'SDXL Base v1', value: 'sd_xl_base_1.0.safetensors [31e35c80fc]' },
 ]
 
 const controlnet_preprocessor_selection = [
