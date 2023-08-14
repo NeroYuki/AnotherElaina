@@ -1246,7 +1246,7 @@ const model_selection = [
     { name: 'MeinaPastel v6', value: 'meinapastel.safetensors [6292dd40d6]' },
     { name: 'CuteYukiMix', value: 'cuteyukimix.safetensors [6ee4f31532]' },
     { name: '9527 v1', value: '9527v1.ckpt [40a9f4ec37]' },
-    { name: 'HimawariMix v8', value: 'himawarimix.safetensors [b334cb73d8]'}
+    { name: 'HimawariMix v8', value: 'himawarimix.safetensors [b334cb73d8]'},
     { name: 'Azure Blue v1.2 (SDXL)', value: 'azureblue_v12.safetensors [52cb3c2e67]' },
     { name: 'SDXL Base v1', value: 'sd_xl_base_1.0.safetensors [31e35c80fc]' },
 ]
