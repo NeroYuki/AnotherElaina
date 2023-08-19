@@ -1228,6 +1228,8 @@ const model_name_hash_mapping = new Map([
     ['b334cb73d8', "HimawariMix v8"],
     ['52cb3c2e67', "Azure Blue v1.2 (SDXL)"],
     ['31e35c80fc', "SDXL Base v1"],
+    ['8263f26927', "IrisMix v5b"],
+    ['b8d6d19b35', "ChromaNeoFT v2"],
 ])
 
 // limit at 25 (probably less due to character limitation)
