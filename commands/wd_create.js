@@ -96,9 +96,12 @@ module.exports = {
         .addStringOption(option =>
             option.setName('controlnet_config')
                 .setDescription('Config string for the controlnet (use wd_controlnet to generate)'))
+        // .addIntegerOption(option =>
+        //     option.setName('force_server_selection')
+        //         .setDescription('Force the server to use (default is "-1")'))
         .addIntegerOption(option =>
-            option.setName('force_server_selection')
-                .setDescription('Force the server to use (default is "-1")'))
+            option.setName('clip_skip')
+                .setDescription('Early stopping parameter for CLIP model (default is 1, recommend 1 and 2)'))
         .addBooleanOption(option =>
             option.setName('keep_metadata')
                 .setDescription('Upload the result image to catbox to keep its metadata (default is "false")'))
@@ -161,15 +164,15 @@ module.exports = {
         const upscale_multiplier = clamp(interaction.options.getNumber('upscale_multiplier') || profile?.upscale_multiplier || 1, 1, 4)
         const upscaler = interaction.options.getString('upscaler') || profile?.upscaler || 'Lanczos'
         const upscale_denoise_strength = clamp(interaction.options.getNumber('upscale_denoise_strength') || profile?.upscale_denoise_strength || 0.7, 0, 1)
-        const force_server_selection = clamp(interaction.options.getInteger('force_server_selection') !== null ? interaction.options.getInteger('force_server_selection') : -1 , -1, 1)
-        const upscale_step = clamp(interaction.options.getInteger('upscale_step') || 20, 1, 100)
+        const force_server_selection = -1
+        const upscale_step = clamp(interaction.options.getInteger('upscale_step') || profile?.upscale_step || 20, 1, 100)
         const controlnet_input_option = interaction.options.getAttachment('controlnet_input') || null
         const controlnet_input_option_2 = interaction.options.getAttachment('controlnet_input_2') || null
         const controlnet_input_option_3 = interaction.options.getAttachment('controlnet_input_3') || null
         const controlnet_config = interaction.options.getString('controlnet_config') || client.controlnet_config.has(interaction.user.id) ? client.controlnet_config.get(interaction.user.id) : null
         const checkpoint = interaction.options.getString('checkpoint') || null
         const keep_metadata = interaction.options.getBoolean('keep_metadata') || false
-        const clip_skip = clamp(profile?.clip_skip || 1, 1, 12)
+        const clip_skip = clamp(interaction.options.getInteger('clip_skip') || profile?.clip_skip || 1, 1, 12)
 
         let seed = -1
         try {

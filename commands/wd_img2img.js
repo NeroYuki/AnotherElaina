@@ -7,7 +7,8 @@ const { default: axios } = require('axios');
 const fetch = require('node-fetch');
 const { loadImage } = require('../utils/load_discord_img');
 const { load_controlnet } = require('../utils/controlnet_execute');
-const { cached_model, model_change } = require('../utils/model_change');
+const { cached_model, model_change, clip_skip_change } = require('../utils/model_change');
+const { queryRecordLimit } = require('../database/database_interaction');
 
 function clamp(num, min, max) {
     return num <= min ? min : num >= max ? max : num;
@@ -70,9 +71,12 @@ module.exports = {
         .addNumberOption(option =>
             option.setName('default_lora_strength')
                 .setDescription('The strength of lora if loaded dynamically (default is "0.85")'))
+        // .addIntegerOption(option =>
+        //     option.setName('force_server_selection')
+        //         .setDescription('Force the server to use (default is "-1 - Random")'))
         .addIntegerOption(option =>
-            option.setName('force_server_selection')
-                .setDescription('Force the server to use (default is "-1 - Random")'))
+            option.setName('clip_skip')
+                .setDescription('Early stopping parameter for CLIP model (default is 1, recommend 1 and 2)'))
         .addAttachmentOption(option =>
             option.setName('controlnet_input')
                 .setDescription('The input image of the controlnet'))
@@ -93,6 +97,9 @@ module.exports = {
             option.setName('upscaler')
                 .setDescription('The upscaler to use (default is "None")')
                 .addChoices(...upscaler_selection))
+        .addStringOption(option =>
+            option.setName('profile')
+                .setDescription('Specify the profile to use (default is No Profile)'))
     ,
 
 	async execute(interaction, client) {
@@ -102,15 +109,38 @@ module.exports = {
             return 
         }
 
+        //make a temporary reply to not get timeout'd
+		await interaction.deferReply();
+
+        const profile_option = interaction.options.getString('profile') || null
+        let profile = null
+        if (profile_option != null) {
+            let profile_data = null
+            // attempt to query the profile name on the database
+            profile_data = await queryRecordLimit('wd_profile', { name: profile_option, user_id: interaction.user.id }, 1)
+            if (profile_data.length == 0) {
+                // attempt to query global profile
+                profile_data = await queryRecordLimit('wd_profile', { name: profile_option }, 1)
+                if (profile_data.length == 0) {
+                    // no profile found
+                    interaction.channel.send({ content: `Profile ${profile_option} not found, fallback to default setting` });
+                }
+            }
+
+            if (profile_data.length != 0) {
+                profile = profile_data[0]
+            }
+        }
+
 		// load the option with default value
-        let prompt = interaction.options.getString('prompt')
-		let neg_prompt = interaction.options.getString('neg_prompt') || '' 
-        const width = clamp(interaction.options.getInteger('width') || 512, 64, 4096)
-        const height = clamp(interaction.options.getInteger('height') || 512, 64, 4096)
+        let prompt = (interaction.options.getString('prompt') || '') + (profile?.prompt || '')
+		let neg_prompt = (interaction.options.getString('neg_prompt') || '') + (profile?.neg_prompt || '')
+        const width = clamp(interaction.options.getInteger('width') || profile?.width || 512, 64, 2048)
+        const height = clamp(interaction.options.getInteger('height') || profile?.height || 512, 64, 2048)
         const denoising_strength = clamp(interaction.options.getNumber('denoising_strength') || 0.7, 0, 1)
-        const sampler = interaction.options.getString('sampler') || 'Euler a'
-        const cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || 7, 0, 30)
-        const sampling_step = clamp(interaction.options.getInteger('sampling_step') || 20, 1, 100)
+        const sampler = interaction.options.getString('sampler') || profile?.sampler || 'Euler a'
+        const cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || profile?.cfg_scale || 7, 0, 30)
+        const sampling_step = clamp(interaction.options.getInteger('sampling_step') || profile?.sampling_step || 20, 1, 100)
         const override_neg_prompt = interaction.options.getBoolean('override_neg_prompt') || false
         const remove_nsfw_restriction = interaction.options.getBoolean('remove_nsfw_restriction') || false
         const no_dynamic_lora_load = interaction.options.getBoolean('no_dynamic_lora_load') || false
@@ -122,6 +152,7 @@ module.exports = {
         const controlnet_config = interaction.options.getString('controlnet_config') || client.controlnet_config.has(interaction.user.id) ? client.controlnet_config.get(interaction.user.id) : null
         const checkpoint = interaction.options.getString('checkpoint') || null
         const upscaler = interaction.options.getString('upscaler') || 'None'
+        const clip_skip = clamp(interaction.options.getInteger('clip_skip') || profile?.clip_skip || 1, 1, 12)
 
         let seed = -1
         try {
@@ -132,9 +163,6 @@ module.exports = {
         }
 
         let attachment_option = interaction.options.getAttachment('image')
-
-        //make a temporary reply to not get timeout'd
-		await interaction.deferReply();
 
         //download the image from attachment.proxyURL
         let attachment = await loadImage(attachment_option.proxyURL).catch((err) => {
@@ -157,6 +185,12 @@ module.exports = {
             console.log(err)
             interaction.editReply({ content: "Failed to retrieve control net image 3", ephemeral: true });
         }) : null
+
+        if (clip_skip != 1) {
+            await clip_skip_change(clip_skip).catch(err => {
+                console.log(err)
+            })
+        }
         
         if (checkpoint) {
             const change_result = await model_change(checkpoint, false).catch(err => {
@@ -424,7 +458,15 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                 .catch(err => {
                     isCancelled = true
                     throw err
-                });
+                })
+                .finally(async () => {
+                    if (clip_skip != 1) {
+                        // switch clip skip back to 1 after image gen is completed (or fail)
+                        await clip_skip_change(1).catch(err => {
+                            console.log(err)
+                        })
+                    }
+                });;
         }
         catch (err) {
             console.log(err)
