@@ -8,7 +8,7 @@ const fetch = require('node-fetch');
 const { loadImage } = require('../utils/load_discord_img');
 const sharp = require('sharp');
 const { load_controlnet } = require('../utils/controlnet_execute');
-const { model_change, cached_model } = require('../utils/model_change');
+const { model_change, cached_model, clip_skip_change } = require('../utils/model_change');
 const { catboxUpload } = require('../utils/catbox_upload');
 const { queryRecordLimit } = require('../database/database_interaction');
 
@@ -169,6 +169,7 @@ module.exports = {
         const controlnet_config = interaction.options.getString('controlnet_config') || client.controlnet_config.has(interaction.user.id) ? client.controlnet_config.get(interaction.user.id) : null
         const checkpoint = interaction.options.getString('checkpoint') || null
         const keep_metadata = interaction.options.getBoolean('keep_metadata') || false
+        const clip_skip = clamp(profile?.clip_skip || 1, 1, 12)
 
         let seed = -1
         try {
@@ -225,6 +226,12 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                 await interaction.channel.send(`Active model changed to **${check_model_filename(checkpoint)}**
 currently cached models: ${cached_model.map(x => check_model_filename(x)).join(', ')}`)
             }
+        }
+
+        if (clip_skip != 1) {
+            await clip_skip_change(clip_skip).catch(err => {
+                console.log(err)
+            })
         }
 
         let server_index = get_worker_server(force_server_selection)
@@ -492,6 +499,14 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                 .catch(err => {
                     isCancelled = true
                     throw err
+                })
+                .finally(async () => {
+                    if (clip_skip != 1) {
+                        // switch clip skip back to 1 after image gen is completed (or fail)
+                        await clip_skip_change(1).catch(err => {
+                            console.log(err)
+                        })
+                    }
                 });
         }
         catch (err) {

@@ -62,6 +62,9 @@ module.exports = {
         .addIntegerOption(option =>
             option.setName('upscale_step')
                 .setDescription('Number of upscaling step (default is "20")'))
+        .addIntegerOption(option =>
+            option.setName('clip_skip')
+                .setDescription('Early stopping parameter for CLIP model (default is 1, recommend 1 and 2)'))
     ,
 
 	async execute(interaction) {
@@ -79,6 +82,7 @@ module.exports = {
         const upscaler = interaction.options.getString('upscaler') || 'Lanczos';
         const upscale_denoise_strength = interaction.options.getNumber('upscale_denoise_strength') || 0.7;
         const upscale_step = interaction.options.getInteger('upscale_step') || 20;
+        const clip_skip = interaction.getInteger('clip_skip') || 1
 
 		await interaction.deferReply();
 
@@ -110,6 +114,7 @@ module.exports = {
                 upscaler: upscaler,
                 upscale_denoise_strength: upscale_denoise_strength,
                 upscale_step: upscale_step,
+                clip_skip: clip_skip,
             }
         };
 

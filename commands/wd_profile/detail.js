@@ -71,6 +71,9 @@ module.exports = {
         if (data.upscale_step != 20) {
             reply += `Upscale Step: ${data.upscale_step}\n`;
         }
+        if (data.clip_skip && data.clip_skip != 1) {
+            reply += `CLIP skip: ${data.clip_skip}\n`;
+        }
 
         // send the reply
         await interaction.editReply(reply);
