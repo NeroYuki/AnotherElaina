@@ -1230,6 +1230,7 @@ const model_name_hash_mapping = new Map([
     ['31e35c80fc', "SDXL Base v1"],
     ['8263f26927', "IrisMix v5b"],
     ['b8d6d19b35', "ChromaNeoFT v2"],
+    ['6f4f816f9d', "AnimagineXL v1"],
 ])
 
 // limit at 25 (probably less due to character limitation)
@@ -1251,8 +1252,9 @@ const model_selection = [
     { name: '9527 v1', value: '9527v1.ckpt [40a9f4ec37]' },
     { name: 'IrisMix v5b', value: 'irismix_v5b.safetensors [8263f26927]'},
     { name: 'Anime-like 2D v2', value: 'animelikev2.safetensors [4d957c560b]' },
-    { name: 'Azure Blue v1.2 (SDXL)', value: 'azureblue_v12.safetensors [52cb3c2e67]' },
+    { name: 'Azure Blue v1.2', value: 'azureblue_v12.safetensors [52cb3c2e67]' },
     { name: 'SDXL Base v1', value: 'sd_xl_base_1.0.safetensors [31e35c80fc]' },
+    { name: 'AnimagineXL v1', value: 'animaginexl_v1.safetensors [6f4f816f9d]' },
 ]
 
 const controlnet_preprocessor_selection = [
