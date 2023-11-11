@@ -1,5 +1,27 @@
 {
     "clientId": "979062657472692234",
     "guildIds": ["325667948905758730", "947526480081072158"],
-    "byPassUser": "132783516176875520"
+    "byPassUser": "132783516176875520",
+    "prefix": "%",
+    "game_integration" : {
+        "azur_lane" : false,
+        "osu" : false,
+        "osu_droid" : true,
+        "malody" : false
+    },
+    "private_mode": true,
+    "resource": {
+        "_comment" : "This is the emote name list for Malody mode, put your emote with the name corresponding to these name below",
+        "malody_mode_emote" : [
+            "mode0", "mode1", "mode2", "mode3", "mode4", "mode5", "mode6", "mode7"
+        ]
+    },
+    "speed_evaluate" : false,
+    "question_weight" : [
+        1 , 14, 11, 1 , 20, 1 , 1 ,
+        6 , 5 , 6 , 4 , 1 , 20, 17,
+        17 , 5 , 1 , 6 , 4 , 10, 17 ,
+        5 , 9 , 4 , 3 , 20, 1 , 4 ,
+        20, 8, 5
+    ]
 }
