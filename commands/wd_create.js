@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { byPassUser } = require('../config.json');
 const crypt = require('crypto');
-const { server_pool, get_data_body, get_negative_prompt, initiate_server_heartbeat, get_worker_server, get_prompt, load_lora_from_prompt, model_name_hash_mapping, get_data_controlnet, get_data_controlnet_annotation, check_model_filename, model_selection, upscaler_selection } = require('../utils/ai_server_config.js');
+const { server_pool, get_data_body, get_negative_prompt, initiate_server_heartbeat, get_worker_server, get_prompt, load_lora_from_prompt, model_name_hash_mapping, get_data_controlnet, get_data_controlnet_annotation, check_model_filename, model_selection, upscaler_selection, model_selection_xl } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const fetch = require('node-fetch');
 const { loadImage } = require('../utils/load_discord_img');
@@ -108,7 +108,7 @@ module.exports = {
         .addStringOption(option => 
             option.setName('checkpoint')
                 .setDescription('Force a cached checkpoint to be used (not all option is cached)')
-                .addChoices(...model_selection))
+                .addChoices(...model_selection, ...model_selection_xl))
         .addStringOption(option =>
             option.setName('profile')
                 .setDescription('Specify the profile to use (default is No Profile)'))
