@@ -1243,6 +1243,8 @@ const model_name_hash_mapping = new Map([
     ['c53dabc181', "NekorayXL v0.6"],
     ['f301898175', "X2AnimeXL v2"],
     ['51a0c178b7', "KohakuXL v0.7b"],
+    ['1449e5b0b9', "AnimagineXL v3"],
+    ['d48c2391e0', "AAMXL v1"],
 ])
 
 // limit at 25 (probably less due to character limitation)
@@ -1270,8 +1272,9 @@ const model_selection_xl = [
     { name: 'Azure Blue v1.2', value: 'azureblue_v12.safetensors [52cb3c2e67]' },
     { name: 'X2AnimeXL v2', value: 'x2animexl.safetensors [f301898175]' },
     { name: 'NekorayXL v0.6', value: 'nekorayxl.safetensors [c53dabc181]' },
-    { name: 'AnimagineXL v1', value: 'animaginexl_v1.safetensors [6f4f816f9d]' },
-    { name: 'KohakuXL v0.7b', value: 'kohakuxl.safetensors [51a0c178b7]'}
+    { name: 'AnimagineXL v3', value: 'animaginexl_v3.safetensors [1449e5b0b9]' },
+    { name: 'KohakuXL v0.7b', value: 'kohakuxl.safetensors [51a0c178b7]'},
+    { name: "AAMXL v1", value: 'aamxl_v1.safetensors [d48c2391e0]'}
 ]
 
 const controlnet_preprocessor_selection = [
