@@ -70,11 +70,12 @@ module.exports = {
                 .addChoices(
 					{ name: 'Euler a', value: 'Euler a' },
                     { name: 'Euler', value: 'Euler' },
-                    { name: 'Heun', value: 'Heun' },
                     { name: 'LMS', value: 'LMS' },
                     { name: 'DPM++ 2S a', value: 'DPM++ 2S a' },
-                    { name: 'DPM2', value: 'DPM2' },
+                    { name: 'DPM2 a Karras', value: 'DPM2 a Karras' },
                     { name: 'DPM++ 2M Karras', value: 'DPM++ 2M Karras' },
+                    { name: 'DPM++ 3M SDE', value: 'DPM++ 3M SDE' },
+                    { name: 'LCM', value: 'LCM' },
 				))
         .addNumberOption(option => 
             option.setName('cfg_scale')

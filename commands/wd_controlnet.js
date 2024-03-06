@@ -1,5 +1,6 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { controlnet_model_selection, controlnet_preprocessor_selection } = require('../utils/ai_server_config');
+const { controlnet_model_selection, controlnet_preprocessor_selection, model_selection_xl } = require('../utils/ai_server_config');
+const { cached_model } = require('../utils/model_change');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -66,15 +67,15 @@ module.exports = {
     ,
 
 	async execute(interaction, client) {
-        const controlnet_model = interaction.options.getString('controlnet_model') || "t2iadapter_openpose_sd14v1 [7e267e5e]";
+        let controlnet_model = interaction.options.getString('controlnet_model') || "t2iadapter_openpose_sd14v1 [7e267e5e]";
         const controlnet_preprocessor = interaction.options.getString('controlnet_preprocessor') || "openpose"; 
         const controlnet_weight = interaction.options.getNumber('controlnet_weight') || 1;
         const controlnet_mode = interaction.options.getString('controlnet_mode') || "Balanced";
-        const controlnet_model_2 = interaction.options.getString('controlnet_model_2') || "None";
+        let controlnet_model_2 = interaction.options.getString('controlnet_model_2') || "None";
         const controlnet_preprocessor_2 = interaction.options.getString('controlnet_preprocessor_2') || "none";
         const controlnet_weight_2 = interaction.options.getNumber('controlnet_weight_2') || 1;
         const controlnet_mode_2 = interaction.options.getString('controlnet_mode_2') || "Balanced";
-        const controlnet_model_3 = interaction.options.getString('controlnet_model_3') || "None";
+        let controlnet_model_3 = interaction.options.getString('controlnet_model_3') || "None";
         const controlnet_preprocessor_3 = interaction.options.getString('controlnet_preprocessor_3') || "none";
         const controlnet_weight_3 = interaction.options.getNumber('controlnet_weight_3') || 1;
         const controlnet_mode_3 = interaction.options.getString('controlnet_mode_3') || "Balanced";

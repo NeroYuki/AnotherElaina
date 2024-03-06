@@ -87,13 +87,14 @@ module.exports = {
         const WORKER_ENDPOINT = server_pool[server_index].url
     
         const upscale_data = [
-            null,
+            `task(${session_hash})`,
+            0,
             attachment,
             null,
             "",
             "",
             true,
-            null,
+            0,
             upscale_multiplier,
             512,
             512,
@@ -101,9 +102,34 @@ module.exports = {
             upscaler,
             upscaler_2,
             upscaler_2_visibility,
+            gfpgan_visibility > 0 ? true : false,
             gfpgan_visibility,
+            codeformer_visibility > 0 ? true : false,
             codeformer_visibility,
             codeformer_weight,
+            false, // enable image split
+            0.5,
+            0.2,
+            false, // enable auto focal point crop
+            0.9,
+            0.15,
+            0.5,
+            false, // enable auto sized crop
+            false,
+            384,
+            768,
+            4096,
+            409600,
+            "Maximize area",
+            0.1,
+            false, // enable flipped copies
+            [
+                "Horizontal"
+            ],
+            false, // enable captioning
+            [
+                "Deepbooru"
+            ],
             color_enhance_weight
         ]
 

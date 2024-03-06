@@ -2,9 +2,10 @@
 // const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 // const { byPassUser } = require('../config.json');
 // const crypt = require('crypto');
-const { server_pool, get_data_controlnet, get_data_controlnet_annotation } = require('../utils/ai_server_config.js');
+const { server_pool, get_data_controlnet, get_data_controlnet_annotation, model_selection_xl } = require('../utils/ai_server_config.js');
 // const { default: axios } = require('axios');
 const fetch = require('node-fetch');
+const { cached_model } = require('./model_change.js');
 // const { loadImage } = require('../utils/load_discord_img');
 // const sharp = require('sharp');
 
@@ -24,17 +25,48 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
         }
 
         const controlnet_preprocessor = controlnet_config_obj.control_net[0].preprocessor
-        const controlnet_model = controlnet_config_obj.control_net[0].model
+        let controlnet_model = controlnet_config_obj.control_net[0].model
         const controlnet_weight = controlnet_config_obj.control_net[0].weight
         const controlnet_mode = controlnet_config_obj.control_net[0].mode
         const controlnet_preprocessor_2 = controlnet_config_obj.control_net[1].preprocessor
         const controlnet_weight_2 = controlnet_config_obj.control_net[1].weight
         const controlnet_mode_2 = controlnet_config_obj.control_net[1].mode
-        const controlnet_model_2 = controlnet_config_obj.control_net[1].model
+        let controlnet_model_2 = controlnet_config_obj.control_net[1].model
         const controlnet_preprocessor_3 = controlnet_config_obj.control_net[2].preprocessor
-        const controlnet_model_3 = controlnet_config_obj.control_net[2].model
+        let controlnet_model_3 = controlnet_config_obj.control_net[2].model
         const controlnet_weight_3 = controlnet_config_obj.control_net[2].weight
         const controlnet_mode_3 = controlnet_config_obj.control_net[2].mode
+
+        if (model_selection_xl.find(x => x.value === cached_model[0]) != null) {
+            // translate control net to xl version if available
+            // t2iadapter_openpose_sd14v1 [7e267e5e] => kohya_controllllite_xl_openpose_anime_v2 [b0fa10bb]
+            // t2iadapter_depth_sd14v1 [fa476002] => kohya_controllllite_xl_depth [9f425a8d]
+            // t2iadapter_canny_sd14v1 [80bfd79b] => kohya_controllllite_xl_canny [2ed264be]
+            // control_v11p_sd15_openpose [cab727d4] => t2i-adapter_xl_openpose [18cb12c1]
+            // control_v11p_sd15_softedge [a8575a2a] => sargezt_xl_softedge [b6f7415b]
+            // control_v11p_sd15s2_lineart_anime [3825e83e] => t2i-adapter_diffusers_xl_lineart [bae0efef]
+
+            interaction.channel.send("Using XL model, translating controlnet to XL version")
+
+            controlnet_model = controlnet_model.replace("t2iadapter_openpose_sd14v1 [7e267e5e]", "kohya_controllllite_xl_openpose_anime_v2 [b0fa10bb]");
+            controlnet_model = controlnet_model.replace("t2iadapter_depth_sd14v1 [fa476002]", "kohya_controllllite_xl_depth [9f425a8d]");
+            controlnet_model = controlnet_model.replace("t2iadapter_canny_sd14v1 [80bfd79b]", "kohya_controllllite_xl_canny [2ed264be]");
+            controlnet_model = controlnet_model.replace("control_v11p_sd15_openpose [cab727d4]", "t2i-adapter_xl_openpose [18cb12c1]");
+            controlnet_model = controlnet_model.replace("control_v11p_sd15_softedge [a8575a2a]", "sargezt_xl_softedge [b6f7415e]");
+            controlnet_model = controlnet_model.replace("control_v11p_sd15s2_lineart_anime [3825e83e]", "t2i-adapter_diffusers_xl_lineart [bae0efef]");
+            controlnet_model_2 = controlnet_model_2.replace("t2iadapter_openpose_sd14v1 [7e267e5e]", "kohya_controllllite_xl_openpose_anime_v2 [b0fa10bb]");
+            controlnet_model_2 = controlnet_model_2.replace("t2iadapter_depth_sd14v1 [fa476002]", "kohya_controllllite_xl_depth [9f425a8d]");
+            controlnet_model_2 = controlnet_model_2.replace("t2iadapter_canny_sd14v1 [80bfd79b]", "kohya_controllllite_xl_canny [2ed264be]");
+            controlnet_model_2 = controlnet_model_2.replace("control_v11p_sd15_openpose [cab727d4]", "t2i-adapter_xl_openpose [18cb12c1]");
+            controlnet_model_2 = controlnet_model_2.replace("control_v11p_sd15_softedge [a8575a2a]", "sargezt_xl_softedge [b6f7415e]");
+            controlnet_model_2 = controlnet_model_2.replace("control_v11p_sd15s2_lineart_anime [3825e83e]", "t2i-adapter_diffusers_xl_lineart [bae0efef]");
+            controlnet_model_3 = controlnet_model_3.replace("t2iadapter_openpose_sd14v1 [7e267e5e]", "kohya_controllllite_xl_openpose_anime_v2 [b0fa10bb]");
+            controlnet_model_3 = controlnet_model_3.replace("t2iadapter_depth_sd14v1 [fa476002]", "kohya_controllllite_xl_depth [9f425a8d]");
+            controlnet_model_3 = controlnet_model_3.replace("t2iadapter_canny_sd14v1 [80bfd79b]", "kohya_controllllite_xl_canny [2ed264be]");
+            controlnet_model_3 = controlnet_model_3.replace("control_v11p_sd15_openpose [cab727d4]", "t2i-adapter_xl_openpose [18cb12c1]");
+            controlnet_model_3 = controlnet_model_3.replace("control_v11p_sd15_softedge [a8575a2a]", "sargezt_xl_softedge [b6f7415e]");
+            controlnet_model_3 = controlnet_model_3.replace("control_v11p_sd15s2_lineart_anime [3825e83e]", "t2i-adapter_diffusers_xl_lineart [bae0efef]");
+        }
 
         const do_preview_annotation = controlnet_config_obj.do_preview_annotation
 
