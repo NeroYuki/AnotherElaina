@@ -82,7 +82,7 @@ module.exports = {
         const upscaler = interaction.options.getString('upscaler') || 'Lanczos';
         const upscale_denoise_strength = interaction.options.getNumber('upscale_denoise_strength') || 0.7;
         const upscale_step = interaction.options.getInteger('upscale_step') || 20;
-        const clip_skip = interaction.getInteger('clip_skip') || 1
+        const clip_skip = interaction.options.getInteger('clip_skip') || 1
 
 		await interaction.deferReply();
 
