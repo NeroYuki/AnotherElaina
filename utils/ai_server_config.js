@@ -1291,7 +1291,7 @@ const word_to_sdxl_lora_model = [
         "remove_trigger": true
     },
     {
-        "keyword": ["anime++"],
+        "keyword": ["more anime"],
         "lora": "<lora:aesthetic_anime_v1s:1>",
         "remove_trigger": true
     },
