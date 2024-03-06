@@ -1273,6 +1273,7 @@ const word_to_sdxl_lora_model = [
         "lora": "<lora:sdxl_lineart:1>",
     },
     {
+        // recommended keyword: night, starry sky, night sky, ladyshadow
         "keyword": ["ladyshadow"],
         "lora": "<lora:shadow-XL:1.1>",
     },
@@ -1288,7 +1289,16 @@ const word_to_sdxl_lora_model = [
         "keyword": ["simple positive"],
         "lora": "<lora:sdxl_simple_positive:1>",
         "remove_trigger": true
-    }
+    },
+    {
+        "keyword": ["anime++"],
+        "lora": "<lora:aesthetic_anime_v1s:1>",
+        "remove_trigger": true
+    },
+    {
+        "keyword": ["inkpunk"],
+        "lora": "<lora:IPXL_v8:1>"
+    },
 ]
 
 const model_name_hash_mapping = new Map([

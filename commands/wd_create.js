@@ -37,7 +37,7 @@ module.exports = {
                 .setDescription('The sampling method for the AI to generate art from (default is "Euler a")')
                 .addChoices(
 					{ name: 'Euler a', value: 'Euler a' },
-                    { name: 'Euler', value: 'Euler' },
+                    { name: 'DPM++ SDE Karras', value: 'DPM++ SDE Karras' },
                     { name: 'LMS', value: 'LMS' },
                     { name: 'DPM++ 2S a', value: 'DPM++ 2S a' },
                     { name: 'DPM2 a Karras', value: 'DPM2 a Karras' },
