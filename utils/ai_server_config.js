@@ -1331,6 +1331,8 @@ const model_name_hash_mapping = new Map([
     ['1449e5b0b9', "AnimagineXL v3"],
     ['d48c2391e0', "AAMXL v1"],
     ['8238e80fdd', "AAMXL Turbo"],
+    ['c9e3e68f89', "Juggernaut XL"],
+    ['4496b36d48', "Dreamshaper XL Turbo"],
 ])
 // limit at 25 (probably less due to character limitation)
 const model_selection = [
@@ -1359,7 +1361,9 @@ const model_selection_xl = [
     { name: 'AnimagineXL v3', value: 'animaginexl_v3.safetensors [1449e5b0b9]' },
     { name: 'KohakuXL v0.7b', value: 'kohakuxl.safetensors [51a0c178b7]'},
     { name: "AAMXL v1", value: 'aamxl_v1.safetensors [d48c2391e0]'},
-    { name: 'AAMXL Turbo', value: 'aamxl_turbo.safetensors [8238e80fdd]'}
+    { name: 'AAMXL Turbo', value: 'aamxl_turbo.safetensors [8238e80fdd]'},
+    { name: 'Juggernaut XL', value: 'juggernautxl_turbo.safetensors [c9e3e68f89]'},
+    { name: 'Dreamshaper XL Turbo', value: 'dreamshaperxl_turbo.safetensors [4496b36d48]'},
 ]
 
 const controlnet_preprocessor_selection = [
@@ -1400,6 +1404,7 @@ const upscaler_selection = [
     { name: 'SwinIR 4x', value: 'SwinIR_4x' },
     { name: 'AnimeSharp 4x', value: '4x_AnimeSharp' },
     { name: 'UltraSharp 4x', value: '4x_UltraSharp' },
+    { name: 'NMKD-Siax 4x', value: '4x_NMKD-Siax_200k' },
 ]
 
 const check_model_filename = (model_filename) => {
