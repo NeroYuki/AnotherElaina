@@ -4,7 +4,7 @@ const { byPassUser } = require('../config.json');
 const crypt = require('crypto');
 const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, load_lora_from_prompt, model_name_hash_mapping, upscaler_selection } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
-const fetch = require('node-fetch');
+const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const { loadImage } = require('../utils/load_discord_img');
 
 function clamp(num, min, max) {

@@ -4,7 +4,7 @@
 // const crypt = require('crypto');
 const { server_pool, get_data_controlnet, get_data_controlnet_annotation, model_selection_xl } = require('../utils/ai_server_config.js');
 // const { default: axios } = require('axios');
-const fetch = require('node-fetch');
+const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const { cached_model } = require('./model_change.js');
 // const { loadImage } = require('../utils/load_discord_img');
 // const sharp = require('sharp');

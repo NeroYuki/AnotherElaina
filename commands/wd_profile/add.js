@@ -26,13 +26,14 @@ module.exports = {
             option.setName('sampler')
                 .setDescription('The sampling method for the AI to generate art from (default is "Euler a")')
                 .addChoices(
-                    { name: 'Euler a', value: 'Euler a' },
-                    { name: 'Euler', value: 'Euler' },
-                    { name: 'Heun', value: 'Heun' },
+					{ name: 'Euler a', value: 'Euler a' },
+                    { name: 'DPM++ SDE Karras', value: 'DPM++ SDE Karras' },
                     { name: 'LMS', value: 'LMS' },
                     { name: 'DPM++ 2S a', value: 'DPM++ 2S a' },
-                    { name: 'DPM2', value: 'DPM2' },
+                    { name: 'DPM2 a Karras', value: 'DPM2 a Karras' },
                     { name: 'DPM++ 2M Karras', value: 'DPM++ 2M Karras' },
+                    { name: 'DPM++ 3M SDE', value: 'DPM++ 3M SDE' },
+                    { name: 'LCM', value: 'LCM' },
                 ))
         .addNumberOption(option => 
             option.setName('cfg_scale')
