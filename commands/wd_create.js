@@ -8,6 +8,7 @@ const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch
 const { loadImage } = require('../utils/load_discord_img');
 const sharp = require('sharp');
 const { load_controlnet } = require('../utils/controlnet_execute');
+const { load_adetailer } = require('../utils/adetailer_execute');
 const { model_change, cached_model, clip_skip_change } = require('../utils/model_change');
 const { catboxUpload } = require('../utils/catbox_upload');
 const { queryRecordLimit } = require('../database/database_interaction');
@@ -54,12 +55,15 @@ module.exports = {
         .addStringOption(option => 
             option.setName('seed')
                 .setDescription('Random seed for AI generate art from (default is "-1 - Random")'))
-        .addBooleanOption(option =>
-            option.setName('override_neg_prompt')
-                .setDescription('Override the default negative prompt (default is "false")'))
-        .addBooleanOption(option => 
-            option.setName('remove_nsfw_restriction')
-                .setDescription('Force the removal of nsfw negative prompt (default is "false")'))
+        .addStringOption(option =>
+            option.setName('default_neg_prompt')
+                .setDescription('Define the default negative prompt for the user (default is "Quality - No NSFW")')
+                .addChoices(
+                    { name: 'Quality - SFW', value: 'q_sfw' },
+                    { name: 'Quality - NSFW', value: 'q_nsfw' },
+                    { name: 'None - SFW', value: 'n_sfw' },
+                    { name: 'No Default', value: 'n_nsfw' },
+                ))
         .addBooleanOption(option => 
             option.setName('no_dynamic_lora_load')
                 .setDescription('Do not use the bot\'s dynamic LoRA loading (default is "false")'))
@@ -116,6 +120,9 @@ module.exports = {
         .addBooleanOption(option =>
             option.setName('do_adetailer')
                 .setDescription('[Experimental] Attempt to fix hands and face details (default is "false")'))
+        .addStringOption(option =>
+            option.setName('adetailer_config')
+                .setDescription('Config string for the adetailer (use wd_adetailer to generate)'))
 
     ,
 
@@ -161,8 +168,7 @@ module.exports = {
         const sampler = interaction.options.getString('sampler') || profile?.sampler || 'Euler a'
         const cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || profile?.cfg_scale || 7, 0, 30)
         const sampling_step = clamp(interaction.options.getInteger('sampling_step') || profile?.sampling_step || 20, 1, 100)
-        const override_neg_prompt = interaction.options.getBoolean('override_neg_prompt') || false
-        const remove_nsfw_restriction = interaction.options.getBoolean('remove_nsfw_restriction') || false
+        const default_neg_prompt = interaction.options.getString('default_neg_prompt') || 'q_sfw'
         const no_dynamic_lora_load = interaction.options.getBoolean('no_dynamic_lora_load') || false
         const default_lora_strength = clamp(interaction.options.getNumber('default_lora_strength') || 0.85, 0, 3)
         const upscale_multiplier = clamp(interaction.options.getNumber('upscale_multiplier') || profile?.upscale_multiplier || 1, 1, 4)
@@ -178,6 +184,7 @@ module.exports = {
         const keep_metadata = interaction.options.getBoolean('keep_metadata') || false
         const clip_skip = clamp(interaction.options.getInteger('clip_skip') || profile?.clip_skip || 1, 1, 12)
         const do_adetailer = interaction.options.getBoolean('do_adetailer') || false
+        const adetailer_config = interaction.options.getString('adetailer_config') || client.adetailer_config.has(interaction.user.id) ? client.adetailer_config.get(interaction.user.id) : null
 
         let seed = -1
         try {
@@ -268,6 +275,14 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                 });
         }
 
+        if (do_adetailer && adetailer_config) {
+            await load_adetailer(session_hash, server_index, adetailer_config, interaction)
+                .catch(err => {
+                    console.log(err)
+                    interaction.editReply({ content: "Failed to load adetailer:" + err });
+                });
+        }
+
         const WORKER_ENDPOINT = server_pool[server_index].url
 
         const row = new MessageActionRow()
@@ -308,6 +323,10 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         });
 
         // TODO: remove button after collector period has ended
+
+        const default_neg_prompt_comp = default_neg_prompt.split('_')
+        const override_neg_prompt = default_neg_prompt_comp[0] === 'n'
+        const remove_nsfw_restriction = default_neg_prompt_comp[1] === 'nsfw'
 
         neg_prompt = get_negative_prompt(neg_prompt, override_neg_prompt, remove_nsfw_restriction)
 
