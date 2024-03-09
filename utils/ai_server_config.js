@@ -1414,7 +1414,7 @@ const controlnet_model_selection_xl = [
     { name: 'T2I-Adapter - Depth', value: 'kohya_controllllite_xl_depth [9f425a8d]' },
     { name: 'T2I-Adapter - OpenPose', value: 't2i-adapter_xl_openpose [18cb12c1]' },
     // { name: 'T2I-Adapter - Seg', value: 't2iadapter_seg_sd14v1 [6387afb5]' },
-    // { name: 'T2I-Adapter - Sketch', value: 't2iadapter_sketch_sd14v1 [e5d4b846]' },
+    { name: 'T2I-Adapter - Sketch', value: 't2i-adapter_diffusers_xl_sketch [72b96ab1]' },
     // { name: 'T2I-Adapter - Style', value: 't2iadapter_style_sd14v1 [202e85cc]' },
     { name: 'ControlNet - OpenPose', value: 'kohya_controllllite_xl_openpose_anime_v2 [b0fa10bb]'},
     { name: 'ControlNet - SoftEdge', value: 'bdsqlsz_controlllite_xl_softedge [c28ff1c4]'},
