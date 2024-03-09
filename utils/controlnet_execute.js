@@ -27,14 +27,17 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
         const controlnet_preprocessor = controlnet_config_obj.control_net[0].preprocessor
         let controlnet_model = controlnet_config_obj.control_net[0].model
         const controlnet_weight = controlnet_config_obj.control_net[0].weight
+        const controlnet_resolution = controlnet_config_obj.control_net[0].resolution
         const controlnet_mode = controlnet_config_obj.control_net[0].mode
         const controlnet_preprocessor_2 = controlnet_config_obj.control_net[1].preprocessor
         const controlnet_weight_2 = controlnet_config_obj.control_net[1].weight
+        const controlnet_resolution_2 = controlnet_config_obj.control_net[1].resolution
         const controlnet_mode_2 = controlnet_config_obj.control_net[1].mode
         let controlnet_model_2 = controlnet_config_obj.control_net[1].model
         const controlnet_preprocessor_3 = controlnet_config_obj.control_net[2].preprocessor
         let controlnet_model_3 = controlnet_config_obj.control_net[2].model
         const controlnet_weight_3 = controlnet_config_obj.control_net[2].weight
+        const controlnet_resolution_3 = controlnet_config_obj.control_net[2].resolution
         const controlnet_mode_3 = controlnet_config_obj.control_net[2].mode
 
         if (model_selection_xl.find(x => x.value === cached_model[0]) != null) {
@@ -54,9 +57,9 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
         const do_preview_annotation = controlnet_config_obj.do_preview_annotation
 
         // get controlnet request body
-        const controlnet_data = get_data_controlnet(controlnet_preprocessor, controlnet_model, controlnet_input, controlnet_weight || controlnet_model?.includes("sketch") ? 0.8 : 1, controlnet_mode)
-        const controlnet_data_2 = get_data_controlnet(controlnet_preprocessor_2, controlnet_model_2, controlnet_input_2, controlnet_weight_2 || controlnet_model_2?.includes("sketch") ? 0.8 : 1, controlnet_mode_2)
-        const controlnet_data_3 = get_data_controlnet(controlnet_preprocessor_3, controlnet_model_3, controlnet_input_3, controlnet_weight_3 ||  controlnet_model_3?.includes("sketch") ? 0.8 : 1, controlnet_mode_3)
+        const controlnet_data = get_data_controlnet(controlnet_preprocessor, controlnet_model, controlnet_input, controlnet_weight || controlnet_model?.includes("sketch") ? 0.8 : 1, controlnet_mode, controlnet_resolution)
+        const controlnet_data_2 = get_data_controlnet(controlnet_preprocessor_2, controlnet_model_2, controlnet_input_2, controlnet_weight_2 || controlnet_model_2?.includes("sketch") ? 0.8 : 1, controlnet_mode_2, controlnet_resolution_2)
+        const controlnet_data_3 = get_data_controlnet(controlnet_preprocessor_3, controlnet_model_3, controlnet_input_3, controlnet_weight_3 ||  controlnet_model_3?.includes("sketch") ? 0.8 : 1, controlnet_mode_3, controlnet_resolution_3)
 
         const option_controlnet = {
             method: 'POST',
