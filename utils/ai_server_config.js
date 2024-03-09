@@ -1407,6 +1407,20 @@ const controlnet_model_selection = [
     { name: 'ControlNet - Lineart Anime', value: 'control_v11p_sd15s2_lineart_anime [3825e83e]'},
 ]
 
+const controlnet_model_selection_xl = [
+    { name: 'None', value: 'None' },
+    { name: 'T2I-Adapter - Canny', value: 'kohya_controllllite_xl_canny [2ed264be]' },
+    { name: 'T2I-Adapter - Color', value: 'bdsqlsz_controlllite_xl_t2i-adapter_color_shuffle [8ff329d6]' },
+    { name: 'T2I-Adapter - Depth', value: 'kohya_controllllite_xl_depth [9f425a8d]' },
+    { name: 'T2I-Adapter - OpenPose', value: 't2i-adapter_xl_openpose [18cb12c1]' },
+    // { name: 'T2I-Adapter - Seg', value: 't2iadapter_seg_sd14v1 [6387afb5]' },
+    // { name: 'T2I-Adapter - Sketch', value: 't2iadapter_sketch_sd14v1 [e5d4b846]' },
+    // { name: 'T2I-Adapter - Style', value: 't2iadapter_style_sd14v1 [202e85cc]' },
+    { name: 'ControlNet - OpenPose', value: 'kohya_controllllite_xl_openpose_anime_v2 [b0fa10bb]'},
+    { name: 'ControlNet - SoftEdge', value: 'bdsqlsz_controlllite_xl_softedge [c28ff1c4]'},
+    { name: 'ControlNet - Lineart Anime', value: 't2i-adapter_diffusers_xl_lineart [bae0efef]'},
+]
+
 const upscaler_selection = [
     { name: 'Lanczos - Fast', value: 'Lanczos' },
     { name: 'ESRGAN_4x', value: 'ESRGAN_4x' },
@@ -1573,5 +1587,6 @@ module.exports = {
     model_selection_xl,
     controlnet_preprocessor_selection,
     controlnet_model_selection,
-    upscaler_selection
+    upscaler_selection,
+    controlnet_model_selection_xl
 }

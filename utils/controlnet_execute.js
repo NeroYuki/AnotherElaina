@@ -2,7 +2,7 @@
 // const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 // const { byPassUser } = require('../config.json');
 // const crypt = require('crypto');
-const { server_pool, get_data_controlnet, get_data_controlnet_annotation, model_selection_xl } = require('../utils/ai_server_config.js');
+const { server_pool, get_data_controlnet, get_data_controlnet_annotation, model_selection_xl, controlnet_model_selection, controlnet_model_selection_xl } = require('../utils/ai_server_config.js');
 // const { default: axios } = require('axios');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const { cached_model } = require('./model_change.js');
@@ -38,34 +38,17 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
         const controlnet_mode_3 = controlnet_config_obj.control_net[2].mode
 
         if (model_selection_xl.find(x => x.value === cached_model[0]) != null) {
-            // translate control net to xl version if available
-            // t2iadapter_openpose_sd14v1 [7e267e5e] => kohya_controllllite_xl_openpose_anime_v2 [b0fa10bb]
-            // t2iadapter_depth_sd14v1 [fa476002] => kohya_controllllite_xl_depth [9f425a8d]
-            // t2iadapter_canny_sd14v1 [80bfd79b] => kohya_controllllite_xl_canny [2ed264be]
-            // control_v11p_sd15_openpose [cab727d4] => t2i-adapter_xl_openpose [18cb12c1]
-            // control_v11p_sd15_softedge [a8575a2a] => sargezt_xl_softedge [b6f7415b]
-            // control_v11p_sd15s2_lineart_anime [3825e83e] => t2i-adapter_diffusers_xl_lineart [bae0efef]
+            interaction.channel.send("Detected active XL model, translating controlnet model to XL version")
+            // search for the model name in the controlnet_model_selection
+            // get the value with the same name from the controlnet_model_selection_xl
+            const controlnet_name = controlnet_model_selection.find(x => x.value === controlnet_model).name
+            controlnet_model = controlnet_model_selection_xl.find(x => x.name === controlnet_name)?.value || controlnet_model
 
-            interaction.channel.send("Using XL model, translating controlnet to XL version")
+            const controlnet_name_2 = controlnet_model_selection.find(x => x.value === controlnet_model_2).name
+            controlnet_model_2 = controlnet_model_selection_xl.find(x => x.name === controlnet_name_2)?.value || controlnet_model_2
 
-            controlnet_model = controlnet_model.replace("t2iadapter_openpose_sd14v1 [7e267e5e]", "kohya_controllllite_xl_openpose_anime_v2 [b0fa10bb]");
-            controlnet_model = controlnet_model.replace("t2iadapter_depth_sd14v1 [fa476002]", "kohya_controllllite_xl_depth [9f425a8d]");
-            controlnet_model = controlnet_model.replace("t2iadapter_canny_sd14v1 [80bfd79b]", "kohya_controllllite_xl_canny [2ed264be]");
-            controlnet_model = controlnet_model.replace("control_v11p_sd15_openpose [cab727d4]", "t2i-adapter_xl_openpose [18cb12c1]");
-            controlnet_model = controlnet_model.replace("control_v11p_sd15_softedge [a8575a2a]", "sargezt_xl_softedge [b6f7415e]");
-            controlnet_model = controlnet_model.replace("control_v11p_sd15s2_lineart_anime [3825e83e]", "t2i-adapter_diffusers_xl_lineart [bae0efef]");
-            controlnet_model_2 = controlnet_model_2.replace("t2iadapter_openpose_sd14v1 [7e267e5e]", "kohya_controllllite_xl_openpose_anime_v2 [b0fa10bb]");
-            controlnet_model_2 = controlnet_model_2.replace("t2iadapter_depth_sd14v1 [fa476002]", "kohya_controllllite_xl_depth [9f425a8d]");
-            controlnet_model_2 = controlnet_model_2.replace("t2iadapter_canny_sd14v1 [80bfd79b]", "kohya_controllllite_xl_canny [2ed264be]");
-            controlnet_model_2 = controlnet_model_2.replace("control_v11p_sd15_openpose [cab727d4]", "t2i-adapter_xl_openpose [18cb12c1]");
-            controlnet_model_2 = controlnet_model_2.replace("control_v11p_sd15_softedge [a8575a2a]", "sargezt_xl_softedge [b6f7415e]");
-            controlnet_model_2 = controlnet_model_2.replace("control_v11p_sd15s2_lineart_anime [3825e83e]", "t2i-adapter_diffusers_xl_lineart [bae0efef]");
-            controlnet_model_3 = controlnet_model_3.replace("t2iadapter_openpose_sd14v1 [7e267e5e]", "kohya_controllllite_xl_openpose_anime_v2 [b0fa10bb]");
-            controlnet_model_3 = controlnet_model_3.replace("t2iadapter_depth_sd14v1 [fa476002]", "kohya_controllllite_xl_depth [9f425a8d]");
-            controlnet_model_3 = controlnet_model_3.replace("t2iadapter_canny_sd14v1 [80bfd79b]", "kohya_controllllite_xl_canny [2ed264be]");
-            controlnet_model_3 = controlnet_model_3.replace("control_v11p_sd15_openpose [cab727d4]", "t2i-adapter_xl_openpose [18cb12c1]");
-            controlnet_model_3 = controlnet_model_3.replace("control_v11p_sd15_softedge [a8575a2a]", "sargezt_xl_softedge [b6f7415e]");
-            controlnet_model_3 = controlnet_model_3.replace("control_v11p_sd15s2_lineart_anime [3825e83e]", "t2i-adapter_diffusers_xl_lineart [bae0efef]");
+            const controlnet_name_3 = controlnet_model_selection.find(x => x.value === controlnet_model_3).name
+            controlnet_model_3 = controlnet_model_selection_xl.find(x => x.name === controlnet_name_3)?.value || controlnet_model_3
         }
 
         const do_preview_annotation = controlnet_config_obj.do_preview_annotation
