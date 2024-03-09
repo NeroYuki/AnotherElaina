@@ -20,6 +20,7 @@ const commandFiles = listAllFiles(commandsPath).filter(file => file.endsWith('.j
 console.log(commandFiles)
 client.cooldowns = new Collection();
 client.controlnet_config = new Map();
+client.adetailer_config = new Map();
 client.COOLDOWN_SECONDS = 30; // replace with desired cooldown time in seconds
 
 for (const file of commandFiles) {
@@ -86,7 +87,7 @@ client.on('interactionCreate', async interaction => {
 	// }
 
 	try {
-		if (['wd_create', 'wd_img2img', 'wd_inpaint', 'wd_interrogate', 'wd_upscale', 'wd_controlnet'].includes(interaction.commandName)) {
+		if (['wd_create', 'wd_img2img', 'wd_inpaint', 'wd_interrogate', 'wd_upscale', 'wd_controlnet', 'wd_adetailer'].includes(interaction.commandName)) {
 			await command.execute(interaction, client)
 		}
 		else {

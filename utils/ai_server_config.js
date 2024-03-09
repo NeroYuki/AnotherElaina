@@ -19,6 +19,10 @@ const server_pool = [
         fn_index_upscale: 1368,
         fn_index_change_model: 1467,
         fn_index_change_clip_skip: 1468,
+        fn_index_change_adetailer_model1: [90, 694],
+        fn_index_change_adetailer_prompt1: [92, 696],
+        fn_index_change_adetailer_model2: [139, 743],
+        fn_index_change_adetailer_prompt2: [141, 745],
         is_online: true,
     },
     {
