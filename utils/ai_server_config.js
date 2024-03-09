@@ -55,7 +55,6 @@ const get_data_controlnet = (preprocessor = "none", controlnet = "None", input, 
         } : null,
         "Crop and Resize",
         false,
-        -1,
         512,        // annotator resolution
         0,         // threshold a (some preprocessor do not use this)
         0,         // threshold b (some preprocessor do not use this)
