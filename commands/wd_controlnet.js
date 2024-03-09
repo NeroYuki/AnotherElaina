@@ -17,6 +17,9 @@ module.exports = {
         .addNumberOption(option =>
             option.setName('controlnet_weight')
                 .setDescription('The weight of the controlnet (default is 1)'))
+        .addNumberOption(option =>
+            option.setName('controlnet_resolution')
+                .setDescription('The resolution preprocessor to use for the controlnet (default is 512)'))
         .addStringOption(option =>
             option.setName('controlnet_mode')
                 .setDescription('The mode of the controlnet (default is "Balanced")')
@@ -36,6 +39,9 @@ module.exports = {
         .addNumberOption(option =>
             option.setName('controlnet_weight_2')
                 .setDescription('The weight of the controlnet (default is 1)'))
+        .addNumberOption(option =>
+            option.setName('controlnet_resolution_2')
+                .setDescription('The resolution preprocessor to use for the controlnet (default is 512)'))
         .addStringOption(option =>
             option.setName('controlnet_mode_2')
                 .setDescription('The mode of the controlnet (default is "Balanced")')
@@ -57,6 +63,9 @@ module.exports = {
         .addNumberOption(option =>
             option.setName('controlnet_weight_3')
                 .setDescription('The weight of the controlnet (default is 1)'))
+        .addNumberOption(option =>
+            option.setName('controlnet_resolution_3')
+                .setDescription('The resolution preprocessor to use for the controlnet (default is 512)'))
         .addStringOption(option =>
             option.setName('controlnet_mode_3')
                 .setDescription('The mode of the controlnet (default is "Balanced")')
@@ -70,14 +79,17 @@ module.exports = {
         let controlnet_model = interaction.options.getString('controlnet_model') || "t2iadapter_openpose_sd14v1 [7e267e5e]";
         const controlnet_preprocessor = interaction.options.getString('controlnet_preprocessor') || "openpose"; 
         const controlnet_weight = interaction.options.getNumber('controlnet_weight') || 1;
+        const controlnet_resolution = interaction.options.getNumber('controlnet_resolution') || 512;
         const controlnet_mode = interaction.options.getString('controlnet_mode') || "Balanced";
         let controlnet_model_2 = interaction.options.getString('controlnet_model_2') || "None";
         const controlnet_preprocessor_2 = interaction.options.getString('controlnet_preprocessor_2') || "none";
         const controlnet_weight_2 = interaction.options.getNumber('controlnet_weight_2') || 1;
+        const controlnet_resolution_2 = interaction.options.getNumber('controlnet_resolution_2') || 512;
         const controlnet_mode_2 = interaction.options.getString('controlnet_mode_2') || "Balanced";
         let controlnet_model_3 = interaction.options.getString('controlnet_model_3') || "None";
         const controlnet_preprocessor_3 = interaction.options.getString('controlnet_preprocessor_3') || "none";
         const controlnet_weight_3 = interaction.options.getNumber('controlnet_weight_3') || 1;
+        const controlnet_resolution_3 = interaction.options.getNumber('controlnet_resolution_3') || 512;
         const controlnet_mode_3 = interaction.options.getString('controlnet_mode_3') || "Balanced";
         const do_preview_annotation = interaction.options.getBoolean('do_preview_annotation') || false;
 
@@ -88,18 +100,21 @@ module.exports = {
                     preprocessor: controlnet_preprocessor,
                     weight: controlnet_weight,
                     mode: controlnet_mode,
+                    resolution: controlnet_resolution,
                 },
                 {
                     model: controlnet_model_2,
                     preprocessor: controlnet_preprocessor_2,
                     weight: controlnet_weight_2,
                     mode: controlnet_mode_2,
+                    resolution: controlnet_resolution_2,
                 },
                 {
                     model: controlnet_model_3,
                     preprocessor: controlnet_preprocessor_3,
                     weight: controlnet_weight_3,
                     mode: controlnet_mode_3,
+                    resolution: controlnet_resolution_3,
                 },
             ],
             do_preview_annotation,

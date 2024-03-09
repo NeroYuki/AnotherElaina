@@ -35,7 +35,7 @@ const server_pool = [
     }
 ]
 
-const get_data_controlnet = (preprocessor = "none", controlnet = "None", input, weight = 1, mode = "Balanced", guide_start = 0, guide_end = 1) => {
+const get_data_controlnet = (preprocessor = "none", controlnet = "None", input, weight = 1, mode = "Balanced", resolution = 512, guide_start = 0, guide_end = 1) => {
     return [
         null,
         null,
@@ -55,7 +55,7 @@ const get_data_controlnet = (preprocessor = "none", controlnet = "None", input, 
         } : null,
         "Crop and Resize",
         false,
-        512,        // annotator resolution
+        resolution,        // annotator resolution
         0,         // threshold a (some preprocessor do not use this)
         0,         // threshold b (some preprocessor do not use this)
         guide_start,
