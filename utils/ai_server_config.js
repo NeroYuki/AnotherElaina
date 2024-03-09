@@ -6,19 +6,19 @@ const server_pool = [
     {
         index: 0,
         url: 'http://192.168.196.142:7860',
-        fn_index_create: 467,
+        fn_index_create: 567,
         fn_index_abort: 55,
-        fn_index_img2img: 1090,
-        fn_index_controlnet: [192, 694],        //[txt2img, img2img]
-        fn_index_controlnet_annotation: [943, 964],
-        fn_index_controlnet_2: [274, 779], 
-        fn_index_controlnet_annotation_2: [950, 983],
-        fn_index_controlnet_3: [356, 864],
-        fn_index_controlnet_annotation_3: [957, 1002],
-        fn_index_interrogate: 1263,
-        fn_index_upscale: 1164,
-        fn_index_change_model: 1263,
-        fn_index_change_clip_skip: 1264,
+        fn_index_img2img: 1292,
+        fn_index_controlnet: [290, 894],        //[txt2img, img2img]
+        fn_index_controlnet_annotation: [1143, 1164],
+        fn_index_controlnet_2: [372, 979], 
+        fn_index_controlnet_annotation_2: [1150, 1183],
+        fn_index_controlnet_3: [454, 1064],
+        fn_index_controlnet_annotation_3: [1157, 1202],
+        fn_index_interrogate: 1269,
+        fn_index_upscale: 1368,
+        fn_index_change_model: 1467,
+        fn_index_change_clip_skip: 1468,
         is_online: true,
     },
     {
@@ -82,7 +82,7 @@ const get_data_controlnet_annotation = (preprocessor = "openpose", input) => {
 }
 
 const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed, sampler, session_hash,
-    height, width, attachment, attachment2, denoising_strength, mode = 0, mask_blur = 4, mask_content = "original", upscaler = "None") => {
+    height, width, attachment, attachment2, denoising_strength, mode = 0, mask_blur = 4, mask_content = "original", upscaler = "None", is_using_adetailer = false) => {
     // default mode 0 is img2img, 4 is inpainting
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 3000000 && upscaler == "None") ? true : false
@@ -142,6 +142,10 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
         0,
         0,
         0,
+        is_using_adetailer,
+        false,
+        null,
+        null,
         false,
         "MultiDiffusion",
         false,
@@ -425,7 +429,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
 }
 
 const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed, sampler, session_hash,
-    height, width, upscale_multiplier, upscaler, upscale_denoise_strength, upscale_step, face_restore = false) => {
+    height, width, upscale_multiplier, upscaler, upscale_denoise_strength, upscale_step, face_restore = false, is_using_adetailer = false) => {
 
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 1600000) ? true : false
@@ -464,6 +468,10 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
         0,
         0,
         0,
+        is_using_adetailer,
+        false,
+        null,
+        null,
         false,
         "MultiDiffusion",
         false,

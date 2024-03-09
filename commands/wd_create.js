@@ -113,6 +113,9 @@ module.exports = {
         .addStringOption(option =>
             option.setName('profile')
                 .setDescription('Specify the profile to use (default is No Profile)'))
+        .addBooleanOption(option =>
+            option.setName('do_adetailer')
+                .setDescription('[Experimental] Attempt to fix hands and face details (default is "false")'))
 
     ,
 
@@ -174,6 +177,7 @@ module.exports = {
         const checkpoint = interaction.options.getString('checkpoint') || null
         const keep_metadata = interaction.options.getBoolean('keep_metadata') || false
         const clip_skip = clamp(interaction.options.getInteger('clip_skip') || profile?.clip_skip || 1, 1, 12)
+        const do_adetailer = interaction.options.getBoolean('do_adetailer') || false
 
         let seed = -1
         try {
@@ -315,7 +319,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
     
         const create_data = get_data_body(server_index, prompt, neg_prompt, sampling_step, cfg_scale, 
             seed, sampler, session_hash, height, width, upscale_multiplier, upscaler, 
-            upscale_denoise_strength, upscale_step)
+            upscale_denoise_strength, upscale_step, false, do_adetailer)
 
         // make option_init but for axios
         const option_init_axios = {
