@@ -1,11 +1,11 @@
 {
     "data": [
-        "task(mon23u7pes1n3ar)",
-        "cute girl, full body shot",
-        "",
+        "task(jb22wx4m9tq58en)",
+        "1girl, masterpiece, a mature lady, (hms belfast weaponry), [small light cruiser rigging], ginger-red short hair, green eyes, 6-inch tripple gun turret, 4-inch twin gun turret, tripple torpedo tubes, white background, character design",
+        "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name",
         [],
-        31,
-        "DPM++ 2S a Karras",
+        30,
+        "DPM++ 2S a",
         1,
         1,
         7,
@@ -257,18 +257,23 @@
         50,
         [
             {
-                "name": "D:\\AIstuff\\stable-diffusion-webui\\outputs\\txt2img-images\\11195-1362632863-cute girl.png?1709982398.3189719",
-                "data": "http://127.0.0.1:7860/file=D:\\AIstuff\\stable-diffusion-webui\\outputs\\txt2img-images\\11195-1362632863-cute girl.png?1709982398.3189719",
+                "name": "D:\\AIstuff\\stable-diffusion-webui\\outputs\\txt2img-images\\11232-3968484328-1girl, masterpiece, a mature lady, (hms belfast weaponry), [small light cruiser rigging], ginger-red short hair, green eyes, 6-i.png?1710000699.0975213",
+                "data": "http://127.0.0.1:7860/file=D:\\AIstuff\\stable-diffusion-webui\\outputs\\txt2img-images\\11232-3968484328-1girl, masterpiece, a mature lady, (hms belfast weaponry), [small light cruiser rigging], ginger-red short hair, green eyes, 6-i.png?1710000699.0975213",
+                "is_file": true
+            },
+            {
+                "name": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpea24wmqf.png",
+                "data": "http://127.0.0.1:7860/file=C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpea24wmqf.png",
                 "is_file": true
             }
         ],
-        "{\"prompt\": \"cute girl\", \"all_prompts\": [\"cute girl\"], \"negative_prompt\": \"\", \"all_negative_prompts\": [\"\"], \"seed\": 1362632863, \"all_seeds\": [1362632863], \"subseed\": 3572615785, \"all_subseeds\": [3572615785], \"subseed_strength\": 0, \"width\": 1024, \"height\": 1024, \"sampler_name\": \"DPM++ 2S a Karras\", \"cfg_scale\": 7, \"steps\": 31, \"batch_size\": 1, \"restore_faces\": false, \"face_restoration_model\": null, \"sd_model_name\": \"nekorayxl\", \"sd_model_hash\": \"c53dabc181\", \"sd_vae_name\": \"nekorayxl.vae.safetensors\", \"sd_vae_hash\": \"235745af8d\", \"seed_resize_from_w\": -1, \"seed_resize_from_h\": -1, \"denoising_strength\": 0.7, \"extra_generation_params\": {}, \"index_of_first_image\": 0, \"infotexts\": [\"cute girl\\nSteps: 31, Sampler: DPM++ 2S a Karras, CFG scale: 7, Seed: 1362632863, Size: 1024x1024, Model hash: c53dabc181, VAE hash: 235745af8d, VAE: nekorayxl.vae.safetensors, Version: v1.8.0\"], \"styles\": [], \"job_timestamp\": \"20240309180522\", \"clip_skip\": 1, \"is_using_inpainting_conditioning\": false, \"version\": \"v1.8.0\"}",
-        "<p>cute girl<br>\nSteps: 31, Sampler: DPM++ 2S a Karras, CFG scale: 7, Seed: 1362632863, Size: 1024x1024, Model hash: c53dabc181, VAE hash: 235745af8d, VAE: nekorayxl.vae.safetensors, Version: v1.8.0</p>",
-        "<p class='comments'></p><div class='performance'><p class='time'>Time taken: <wbr><span class='measurement'>1 min. 16.3 sec.</span></p></div>"
+        "{\"prompt\": \"1girl, masterpiece, a mature lady, (hms belfast weaponry), [small light cruiser rigging], ginger-red short hair, green eyes, 6-inch tripple gun turret, 4-inch twin gun turret, tripple torpedo tubes, white background, character design\", \"all_prompts\": [\"1girl, masterpiece, a mature lady, (hms belfast weaponry), [small light cruiser rigging], ginger-red short hair, green eyes, 6-inch tripple gun turret, 4-inch twin gun turret, tripple torpedo tubes, white background, character design\"], \"negative_prompt\": \"lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name\", \"all_negative_prompts\": [\"lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name\"], \"seed\": 3968484328, \"all_seeds\": [3968484328], \"subseed\": 3281631939, \"all_subseeds\": [3281631939], \"subseed_strength\": 0, \"width\": 1024, \"height\": 1024, \"sampler_name\": \"DPM++ 2S a\", \"cfg_scale\": 7, \"steps\": 30, \"batch_size\": 1, \"restore_faces\": false, \"face_restoration_model\": null, \"sd_model_name\": \"animaginexl_v3\", \"sd_model_hash\": \"1449e5b0b9\", \"sd_vae_name\": \"animaginexl_v3.vae.safetensors\", \"sd_vae_hash\": \"235745af8d\", \"seed_resize_from_w\": -1, \"seed_resize_from_h\": -1, \"denoising_strength\": 0.7, \"extra_generation_params\": {\"ADetailer model\": \"face_yolov8n.pt\", \"ADetailer confidence\": 0.3, \"ADetailer dilate erode\": 4, \"ADetailer mask blur\": 4, \"ADetailer denoising strength\": 0.4, \"ADetailer inpaint only masked\": true, \"ADetailer inpaint padding\": 32, \"ADetailer model 2nd\": \"hand_yolov8n.pt\", \"ADetailer prompt 2nd\": \"hand, <lora_detailed_hands:1>\", \"ADetailer confidence 2nd\": 0.3, \"ADetailer dilate erode 2nd\": 4, \"ADetailer mask blur 2nd\": 4, \"ADetailer denoising strength 2nd\": 0.4, \"ADetailer inpaint only masked 2nd\": true, \"ADetailer inpaint padding 2nd\": 32, \"ADetailer version\": \"24.3.0\", \"ControlNet 0\": \"Module: depth_midas, Model: kohya_controllllite_xl_depth [9f425a8d], Weight: 1, Resize Mode: Crop and Resize, Low Vram: False, Processor Res: 512, Guidance Start: 0, Guidance End: 1, Pixel Perfect: False, Control Mode: Balanced, Hr Option: Both, Save Detected Map: True\", \"Denoising strength\": 0.4, \"Mask blur\": 4, \"Inpaint area\": \"Only masked\", \"Masked area padding\": 32}, \"index_of_first_image\": 0, \"infotexts\": [\"1girl, masterpiece, a mature lady, (hms belfast weaponry), [small light cruiser rigging], ginger-red short hair, green eyes, 6-inch tripple gun turret, 4-inch twin gun turret, tripple torpedo tubes, white background, character design\\nNegative prompt: lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name\\nSteps: 30, Sampler: DPM++ 2S a, CFG scale: 7, Seed: 3968484328, Size: 1024x1024, Model hash: 1449e5b0b9, VAE hash: 235745af8d, VAE: animaginexl_v3.vae.safetensors, Denoising strength: 0.4, ADetailer model: face_yolov8n.pt, ADetailer confidence: 0.3, ADetailer dilate erode: 4, ADetailer mask blur: 4, ADetailer denoising strength: 0.4, ADetailer inpaint only masked: True, ADetailer inpaint padding: 32, ADetailer model 2nd: hand_yolov8n.pt, ADetailer prompt 2nd: \\\"hand, <lora_detailed_hands:1>\\\", ADetailer confidence 2nd: 0.3, ADetailer dilate erode 2nd: 4, ADetailer mask blur 2nd: 4, ADetailer denoising strength 2nd: 0.4, ADetailer inpaint only masked 2nd: True, ADetailer inpaint padding 2nd: 32, ADetailer version: 24.3.0, ControlNet 0: \\\"Module: depth_midas, Model: kohya_controllllite_xl_depth [9f425a8d], Weight: 1, Resize Mode: Crop and Resize, Low Vram: False, Processor Res: 512, Guidance Start: 0, Guidance End: 1, Pixel Perfect: False, Control Mode: Balanced, Hr Option: Both, Save Detected Map: True\\\", Mask blur: 4, Inpaint area: Only masked, Masked area padding: 32, Version: v1.8.0\"], \"styles\": [], \"job_timestamp\": \"20240309230859\", \"clip_skip\": 1, \"is_using_inpainting_conditioning\": false, \"version\": \"v1.8.0\"}",
+        "<p>1girl, masterpiece, a mature lady, (hms belfast weaponry), [small light cruiser rigging], ginger-red short hair, green eyes, 6-inch tripple gun turret, 4-inch twin gun turret, tripple torpedo tubes, white background, character design<br>\nNegative prompt: lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name<br>\nSteps: 30, Sampler: DPM++ 2S a, CFG scale: 7, Seed: 3968484328, Size: 1024x1024, Model hash: 1449e5b0b9, VAE hash: 235745af8d, VAE: animaginexl_v3.vae.safetensors, Denoising strength: 0.4, ADetailer model: face_yolov8n.pt, ADetailer confidence: 0.3, ADetailer dilate erode: 4, ADetailer mask blur: 4, ADetailer denoising strength: 0.4, ADetailer inpaint only masked: True, ADetailer inpaint padding: 32, ADetailer model 2nd: hand_yolov8n.pt, ADetailer prompt 2nd: &quot;hand, &lt;lora_detailed_hands:1&gt;&quot;, ADetailer confidence 2nd: 0.3, ADetailer dilate erode 2nd: 4, ADetailer mask blur 2nd: 4, ADetailer denoising strength 2nd: 0.4, ADetailer inpaint only masked 2nd: True, ADetailer inpaint padding 2nd: 32, ADetailer version: 24.3.0, ControlNet 0: &quot;Module: depth_midas, Model: kohya_controllllite_xl_depth [9f425a8d], Weight: 1, Resize Mode: Crop and Resize, Low Vram: False, Processor Res: 512, Guidance Start: 0, Guidance End: 1, Pixel Perfect: False, Control Mode: Balanced, Hr Option: Both, Save Detected Map: True&quot;, Mask blur: 4, Inpaint area: Only masked, Masked area padding: 32, Version: v1.8.0</p>",
+        "<p class='comments'></p><div class='performance'><p class='time'>Time taken: <wbr><span class='measurement'>2 min. 39.6 sec.</span></p></div>"
     ],
     "event_data": null,
     "fn_index": 567,
-    "session_hash": "xj7z6dlqv2"
+    "session_hash": "545inazhbfi"
 }
 
 {
@@ -624,31 +629,25 @@
         false,
         [],
         false,
-        null,
-        null,
-        true,
-        "none",
-        "None",
-        1,
         {
-            "image": "data:image/png;",
-            "mask": "data:image/png;"
+            "data": "image/png;base64,",
+            "mask": "data:image/png;base64"
         },
         "Crop and Resize",
         false,
+        512,
         -1,
-        64,
-        64,
+        -1,
         0,
         1,
         false,
-        "Balanced",
+        "My prompt is more important",
         false,
         "Both"
     ],
     "event_data": null,
-    "fn_index": 192,
-    "session_hash": "99v7vtk0r8b"
+    "fn_index": 290,
+    "session_hash": "545inazhbfi"
 }
 
 [
