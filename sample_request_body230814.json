@@ -1,16 +1,16 @@
 {
     "data": [
-        "task(7v4zlwra15anpt1)",
-        "cute girl",
+        "task(mon23u7pes1n3ar)",
+        "cute girl, full body shot",
         "",
         [],
-        20,
-        "Euler a",
+        31,
+        "DPM++ 2S a Karras",
         1,
         1,
         7,
-        512,
-        512,
+        1024,
+        1024,
         false,
         0.7,
         2,
@@ -33,6 +33,10 @@
         0,
         0,
         0,
+        true,
+        false,
+        null,
+        null,
         false,
         "MultiDiffusion",
         false,
@@ -253,28 +257,28 @@
         50,
         [
             {
-                "name": "D:\\AIstuff\\stable-diffusion-webui\\outputs\\txt2img-images\\10991-2695114765-cute girl.png?1709732990.0379057",
-                "data": "http://127.0.0.1:7860/file=D:\\AIstuff\\stable-diffusion-webui\\outputs\\txt2img-images\\10991-2695114765-cute girl.png?1709732990.0379057",
+                "name": "D:\\AIstuff\\stable-diffusion-webui\\outputs\\txt2img-images\\11195-1362632863-cute girl.png?1709982398.3189719",
+                "data": "http://127.0.0.1:7860/file=D:\\AIstuff\\stable-diffusion-webui\\outputs\\txt2img-images\\11195-1362632863-cute girl.png?1709982398.3189719",
                 "is_file": true
             }
         ],
-        "{\"prompt\": \"cute girl\", \"all_prompts\": [\"cute girl\"], \"negative_prompt\": \"\", \"all_negative_prompts\": [\"\"], \"seed\": 2695114765, \"all_seeds\": [2695114765], \"subseed\": 1360667311, \"all_subseeds\": [1360667311], \"subseed_strength\": 0, \"width\": 512, \"height\": 512, \"sampler_name\": \"Euler a\", \"cfg_scale\": 7, \"steps\": 20, \"batch_size\": 1, \"restore_faces\": false, \"face_restoration_model\": null, \"sd_model_name\": \"nekorayxl\", \"sd_model_hash\": \"c53dabc181\", \"sd_vae_name\": \"nekorayxl.vae.safetensors\", \"sd_vae_hash\": \"235745af8d\", \"seed_resize_from_w\": -1, \"seed_resize_from_h\": -1, \"denoising_strength\": 0.7, \"extra_generation_params\": {}, \"index_of_first_image\": 0, \"infotexts\": [\"cute girl\\nSteps: 20, Sampler: Euler a, CFG scale: 7, Seed: 2695114765, Size: 512x512, Model hash: c53dabc181, VAE hash: 235745af8d, VAE: nekorayxl.vae.safetensors, Clip skip: 2, Version: v1.8.0\"], \"styles\": [], \"job_timestamp\": \"20240306204939\", \"clip_skip\": 2, \"is_using_inpainting_conditioning\": false, \"version\": \"v1.8.0\"}",
-        "<p>cute girl<br>\nSteps: 20, Sampler: Euler a, CFG scale: 7, Seed: 2695114765, Size: 512x512, Model hash: c53dabc181, VAE hash: 235745af8d, VAE: nekorayxl.vae.safetensors, Clip skip: 2, Version: v1.8.0</p>",
-        "<p class='comments'></p><div class='performance'><p class='time'>Time taken: <wbr><span class='measurement'>10.3 sec.</span></p></div>"
+        "{\"prompt\": \"cute girl\", \"all_prompts\": [\"cute girl\"], \"negative_prompt\": \"\", \"all_negative_prompts\": [\"\"], \"seed\": 1362632863, \"all_seeds\": [1362632863], \"subseed\": 3572615785, \"all_subseeds\": [3572615785], \"subseed_strength\": 0, \"width\": 1024, \"height\": 1024, \"sampler_name\": \"DPM++ 2S a Karras\", \"cfg_scale\": 7, \"steps\": 31, \"batch_size\": 1, \"restore_faces\": false, \"face_restoration_model\": null, \"sd_model_name\": \"nekorayxl\", \"sd_model_hash\": \"c53dabc181\", \"sd_vae_name\": \"nekorayxl.vae.safetensors\", \"sd_vae_hash\": \"235745af8d\", \"seed_resize_from_w\": -1, \"seed_resize_from_h\": -1, \"denoising_strength\": 0.7, \"extra_generation_params\": {}, \"index_of_first_image\": 0, \"infotexts\": [\"cute girl\\nSteps: 31, Sampler: DPM++ 2S a Karras, CFG scale: 7, Seed: 1362632863, Size: 1024x1024, Model hash: c53dabc181, VAE hash: 235745af8d, VAE: nekorayxl.vae.safetensors, Version: v1.8.0\"], \"styles\": [], \"job_timestamp\": \"20240309180522\", \"clip_skip\": 1, \"is_using_inpainting_conditioning\": false, \"version\": \"v1.8.0\"}",
+        "<p>cute girl<br>\nSteps: 31, Sampler: DPM++ 2S a Karras, CFG scale: 7, Seed: 1362632863, Size: 1024x1024, Model hash: c53dabc181, VAE hash: 235745af8d, VAE: nekorayxl.vae.safetensors, Version: v1.8.0</p>",
+        "<p class='comments'></p><div class='performance'><p class='time'>Time taken: <wbr><span class='measurement'>1 min. 16.3 sec.</span></p></div>"
     ],
     "event_data": null,
-    "fn_index": 467,
-    "session_hash": "99v7vtk0r8b"
+    "fn_index": 567,
+    "session_hash": "xj7z6dlqv2"
 }
 
 {
     "data": [
-        "task(5pw28xhh2sefr9s)",
+        "task(8c9wl7wg47ktzy4)",
         0,
-        "cute girl",
+        "a woman in a red dress standing in a city street with buildings in the background and a bird flying overhead, Ayako Rokkaku, official art, a detailed painting, gothic art",
         "",
         [],
-        "data:image/png",
+        "data:image/png;base64",
         null,
         null,
         null,
@@ -323,6 +327,10 @@
         0,
         0,
         0,
+        true,
+        false,
+        null,
+        null,
         false,
         "MultiDiffusion",
         false,
@@ -604,8 +612,8 @@
         ""
     ],
     "event_data": null,
-    "fn_index": 1090,
-    "session_hash": "99v7vtk0r8b"
+    "fn_index": 1292,
+    "session_hash": "xj7z6dlqv2"
 }
 
 {
