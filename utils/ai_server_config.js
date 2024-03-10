@@ -1423,6 +1423,8 @@ const controlnet_model_selection = [
     { name: 'ControlNet - OpenPose', value: 'control_v11p_sd15_openpose [cab727d4]'},
     { name: 'ControlNet - SoftEdge', value: 'control_v11p_sd15_softedge [a8575a2a]'},
     { name: 'ControlNet - Lineart Anime', value: 'control_v11p_sd15s2_lineart_anime [3825e83e]'},
+    { name: 'InstantID - Keypoint', value: 'control_instant_id_sdxl [c5c25a50]'},
+    { name: 'InstantID - IPAdapter', value: 'ip-adapter_instant_id_sdxl [eb2d3ec0]'}
 ]
 
 const controlnet_model_selection_xl = [
@@ -1437,6 +1439,8 @@ const controlnet_model_selection_xl = [
     { name: 'ControlNet - OpenPose', value: 'kohya_controllllite_xl_openpose_anime_v2 [b0fa10bb]'},
     { name: 'ControlNet - SoftEdge', value: 'bdsqlsz_controlllite_xl_softedge [c28ff1c4]'},
     { name: 'ControlNet - Lineart Anime', value: 't2i-adapter_diffusers_xl_lineart [bae0efef]'},
+    { name: 'InstantID - Keypoint', value: 'control_instant_id_sdxl [c5c25a50]'},
+    { name: 'InstantID - IPAdapter', value: 'ip-adapter_instant_id_sdxl [eb2d3ec0]'}
 ]
 
 const upscaler_selection = [

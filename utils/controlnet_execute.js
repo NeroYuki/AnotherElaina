@@ -9,6 +9,14 @@ const { cached_model } = require('./model_change.js');
 // const { loadImage } = require('../utils/load_discord_img');
 // const sharp = require('sharp');
 
+function pick_instantid_preprocessor(model, preprocessor) {
+    if (model === "control_instant_id_sdxl [c5c25a50]")
+        return "instant_id_face_keypoints"
+    if (model === "ip-adapter_instant_id_sdxl [eb2d3ec0]")
+        return "instant_id_face_embedding"
+    return preprocessor
+}
+
 // mode: 0 = txt2img, 1 = img2img
 function load_controlnet(session_hash, server_index, controlnet_input, controlnet_input_2, controlnet_input_3, controlnet_config, interaction, mode = 0) {
     return new Promise(async (resolve, reject) => {
@@ -24,17 +32,17 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
             return 
         }
 
-        const controlnet_preprocessor = controlnet_config_obj.control_net[0].preprocessor
+        let controlnet_preprocessor = controlnet_config_obj.control_net[0].preprocessor
         let controlnet_model = controlnet_config_obj.control_net[0].model
         const controlnet_weight = controlnet_config_obj.control_net[0].weight
         const controlnet_resolution = controlnet_config_obj.control_net[0].resolution
         const controlnet_mode = controlnet_config_obj.control_net[0].mode
-        const controlnet_preprocessor_2 = controlnet_config_obj.control_net[1].preprocessor
+        let controlnet_preprocessor_2 = controlnet_config_obj.control_net[1].preprocessor
+        let controlnet_model_2 = controlnet_config_obj.control_net[1].model
         const controlnet_weight_2 = controlnet_config_obj.control_net[1].weight
         const controlnet_resolution_2 = controlnet_config_obj.control_net[1].resolution
         const controlnet_mode_2 = controlnet_config_obj.control_net[1].mode
-        let controlnet_model_2 = controlnet_config_obj.control_net[1].model
-        const controlnet_preprocessor_3 = controlnet_config_obj.control_net[2].preprocessor
+        let controlnet_preprocessor_3 = controlnet_config_obj.control_net[2].preprocessor
         let controlnet_model_3 = controlnet_config_obj.control_net[2].model
         const controlnet_weight_3 = controlnet_config_obj.control_net[2].weight
         const controlnet_resolution_3 = controlnet_config_obj.control_net[2].resolution
@@ -55,6 +63,10 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
         }
 
         const do_preview_annotation = controlnet_config_obj.do_preview_annotation
+
+        controlnet_preprocessor = pick_instantid_preprocessor(controlnet_model, controlnet_preprocessor)
+        controlnet_preprocessor_2 = pick_instantid_preprocessor(controlnet_model_2, controlnet_preprocessor_2)
+        controlnet_preprocessor_3 = pick_instantid_preprocessor(controlnet_model_3, controlnet_preprocessor_3)
 
         // get controlnet request body
         const controlnet_data = get_data_controlnet(controlnet_preprocessor, controlnet_model, controlnet_input, controlnet_weight || controlnet_model?.includes("sketch") ? 0.8 : 1, controlnet_mode, controlnet_resolution)
