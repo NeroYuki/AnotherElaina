@@ -1280,35 +1280,53 @@ const word_to_lora_model = [
 const word_to_sdxl_lora_model = [
     {
         "keyword": ["lineart"],
-        "lora": "<lora:sdxl_lineart:1>",
+        "lora": "<lora:sdxl_lineart:1.00>",
     },
     {
         // recommended keyword: night, starry sky, night sky, ladyshadow
         "keyword": ["ladyshadow"],
-        "lora": "<lora:shadow-XL:1.1>",
+        "lora": "<lora:shadow-XL:1.00>",
     },
     {
         "keyword": ["watercolor (medium)"],
-        "lora": "<lora:shuicai:1>",
+        "lora": "<lora:shuicai:1.00>",
     },
     {
         "keyword": ["pixel art"],
-        "lora": " <lora:sdxl_pixel:1>",
+        "lora": " <lora:sdxl_pixel:1.00>",
     },
     {
         "keyword": ["simple positive"],
-        "lora": "<lora:sdxl_simple_positive:1>",
+        "lora": "<lora:sdxl_simple_positive:1.00>",
         "remove_trigger": true
     },
     {
         "keyword": ["more anime"],
-        "lora": "<lora:aesthetic_anime_v1s:1>",
+        "lora": "<lora:aesthetic_anime_v1s:1.00>",
         "remove_trigger": true
     },
     {
         "keyword": ["inkpunk"],
-        "lora": "<lora:IPXL_v8:1>"
+        "lora": "<lora:IPXL_v8:1.00>"
     },
+    {
+        "keyword": ["honkai starrail"],
+        "lora": "<lora:sdxl_starrail:1.00>"
+    },
+    {
+        "keyword": ["nekopara"],
+        "lora": "<lora:sdxl_nekopara:1.00>"
+    },
+    {
+        "keyword": ["ogipote"],
+        "lora": "<lora:ogipoteXL:1.00>",
+        "remove_trigger": true
+    },
+    {
+        "keyword": ["shiratama"],
+        "lora": "<lora:shiratamaXL:1.00>",
+        "remove_trigger": true
+    }
 ]
 
 const model_name_hash_mapping = new Map([
@@ -1458,7 +1476,9 @@ function load_lora_from_prompt(prompt, lora_default_strength = null) {
     // attempt to search for keyword in normalized temp_prompt (include word boundery)
     const lora_to_load = []
     const { cached_model } = require('./model_change');
-    if (model_selection_xl.find(m => m.value === cached_model[0]) != null) {
+    const is_sdxl = model_selection_xl.find(m => m.value === cached_model[0]) != null
+
+    if (is_sdxl) {
         for (let i = 0; i < word_to_sdxl_lora_model.length; i++) {
             const word = word_to_sdxl_lora_model[i]
             const keyword = word.keyword
@@ -1503,7 +1523,12 @@ function load_lora_from_prompt(prompt, lora_default_strength = null) {
     if (lora_default_strength !== null) {
         for (let i = 0; i < lora_to_load.length; i++) {
             const lora = lora_to_load[i]
-            lora_to_load[i] = lora.replace(/0\.85/g, lora_default_strength.toFixed(2))
+            if (is_sdxl) {
+                lora_to_load[i] = lora.replace(/1\.00/g, lora_default_strength.toFixed(2))
+            }
+            else {
+                lora_to_load[i] = lora.replace(/0\.85/g, lora_default_strength.toFixed(2))
+            }
         }
     }
     
