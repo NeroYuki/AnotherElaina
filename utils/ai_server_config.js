@@ -21,8 +21,10 @@ const server_pool = [
         fn_index_change_clip_skip: 1280,
         fn_index_change_adetailer_model1: [97, 624],
         fn_index_change_adetailer_prompt1: [99, 626],
+        fn_index_change_adetailer_neg_prompt1: [100, 627],
         fn_index_change_adetailer_model2: [146, 673],
         fn_index_change_adetailer_prompt2: [148, 675],
+        fn_index_change_adetailer_neg_prompt2: [149, 676],
         is_online: true,
     },
     {
@@ -1164,7 +1166,7 @@ const word_to_sdxl_lora_model = [
         "lora": "<lora:IPXL_v8:1.00>"
     },
     {
-        "keyword": ["honkai starrail"],
+        "keyword": ["honkai\: starrail"],
         "lora": "<lora:sdxl_starrail:1.00>"
     },
     {
@@ -1180,6 +1182,27 @@ const word_to_sdxl_lora_model = [
         "keyword": ["shiratama"],
         "lora": "<lora:shiratamaXL:1.00>",
         "remove_trigger": true
+    },
+    {
+        "keyword": ["add outline"],
+        "lora": "<lora:sdxl_outline:1.00>",
+        "remove_trigger": true
+    },
+    {
+        "keyword": ["artist: narae"],
+        "lora": "<lora:sdxl_narae:1.00>",
+    },
+    {
+        "keyword": ["artist: parsley"],
+        "lora": "<lora:sdxl_parsley:1.00>",
+    },
+    {
+        "keyword": ["artist: miyasemahiro"],
+        "lora": "<lora:sdxl_miyasemahiro:1.00>",
+    },
+    {
+        "keyword": ["sparkle \(honkai starrail\)"],
+        "lora": "<lora:sdxl_sparkle_honkaistarrail:1.00>",
     }
 ]
 
