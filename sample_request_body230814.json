@@ -629,13 +629,18 @@
         false,
         [],
         false,
+        null,
+        null,
+        true,
+        "softedge_hed",
+        "bdsqlsz_controlllite_xl_softedge [c28ff1c4]",
+        1,
         {
-            "data": "image/png;base64,",
-            "mask": "data:image/png;base64"
+            "image": "data:image/jpeg;base64"
         },
         "Crop and Resize",
         false,
-        512,
+        1024,
         -1,
         -1,
         0,
@@ -646,7 +651,7 @@
         "Both"
     ],
     "event_data": null,
-    "fn_index": 290,
+    "fn_index": 298,
     "session_hash": "545inazhbfi"
 }
 
