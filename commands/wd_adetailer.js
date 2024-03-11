@@ -10,13 +10,20 @@ module.exports = {
             option.setName('adetailer_model')
                 .setDescription('The model to use for the adetailer (default is "face_yolov8s.pt")')
                 .addChoices(
+                    { name: 'None', value: 'None'},
                     { name: 'face_yolov8s.pt', value: 'face_yolov8s.pt' },
                     { name: 'hand_yolov8n.pt', value: 'hand_yolov8n.pt' },
+                    { name: 'person_yolov8s.pt', value: 'person_yolov8s.pt'},
+                    { name: 'yolov8x_world.pt', value: 'yolov8x_world.pt'}
                 )
                 .setRequired(false))
         .addStringOption(option =>
             option.setName('adetailer_prompt')
                 .setDescription('The prompt to use for the adetailer (default is "" - Same as the original prompt)')
+                .setRequired(false))
+        .addStringOption(option =>
+            option.setName('adetailer_neg_prompt')
+                .setDescription('The negative prompt to use for the adetailer (default is "" - Same as the original prompt)')
                 .setRequired(false))
         .addStringOption(option =>
             option.setName('adetailer_model_2')
@@ -25,11 +32,17 @@ module.exports = {
                     { name: 'None', value: 'None'},
                     { name: 'face_yolov8s.pt', value: 'face_yolov8s.pt' },
                     { name: 'hand_yolov8n.pt', value: 'hand_yolov8n.pt' },
+                    { name: 'person_yolov8s.pt', value: 'person_yolov8s.pt'},
+                    { name: 'yolov8x_world.pt', value: 'yolov8x_world.pt'}
                 )
                 .setRequired(false))
         .addStringOption(option =>
             option.setName('adetailer_prompt_2')
                 .setDescription('The 2nd prompt to use for the adetailer (default is "" - Same as the original prompt)')
+                .setRequired(false))
+        .addStringOption(option =>
+            option.setName('adetailer_neg_prompt_2')
+                .setDescription('The 2nd negative prompt to use for the adetailer (default is "" - Same as the original prompt)')
                 .setRequired(false))
     ,
 
@@ -37,17 +50,21 @@ module.exports = {
         //parse the options
         const adetailer_model = interaction.options.getString('adetailer_model') || 'face_yolov8s.pt'
         const adetailer_prompt = interaction.options.getString('adetailer_prompt') || ''
+        const adetailer_neg_prompt = interaction.options.getString('adetailer_neg_prompt') || ''
         const adetailer_model_2 = interaction.options.getString('adetailer_model_2') || 'None'
         const adetailer_prompt_2 = interaction.options.getString('adetailer_prompt_2') || ''
+        const adetailer_neg_prompt_2 = interaction.options.getString('adetailer_neg_prompt_2') || ''
 
         const config = [
             {
                 "model": adetailer_model,
-                "prompt": adetailer_prompt
+                "prompt": adetailer_prompt,
+                "neg_prompt": adetailer_neg_prompt
             },
             {
                 "model": adetailer_model_2,
-                "prompt": adetailer_prompt_2
+                "prompt": adetailer_prompt_2,
+                "neg_prompt": adetailer_neg_prompt_2
             }
         ]
 
