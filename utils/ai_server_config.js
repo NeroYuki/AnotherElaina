@@ -1166,7 +1166,7 @@ const word_to_sdxl_lora_model = [
         "lora": "<lora:IPXL_v8:1.00>"
     },
     {
-        "keyword": ["honkai\: starrail"],
+        "keyword": ["honkai: starrail"],
         "lora": "<lora:sdxl_starrail:1.00>"
     },
     {
@@ -1201,7 +1201,7 @@ const word_to_sdxl_lora_model = [
         "lora": "<lora:sdxl_miyasemahiro:1.00>",
     },
     {
-        "keyword": ["sparkle \(honkai starrail\)"],
+        "keyword": ["sparkle (honkai starrail)"],
         "lora": "<lora:sdxl_sparkle_honkaistarrail:1.00>",
     }
 ]
@@ -1339,6 +1339,10 @@ const check_model_filename = (model_filename) => {
     return model_filename
 }
 
+function escape_for_regex(s) {
+    return s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')
+}
+
 
 // attempt to find trigger word and add the respective lora model
 function load_lora_from_prompt(prompt, lora_default_strength = null) {
@@ -1366,7 +1370,7 @@ function load_lora_from_prompt(prompt, lora_default_strength = null) {
             const lora = word.lora
             for (let j = 0; j < keyword.length; j++) {
                 const k = keyword[j]
-                const regex = new RegExp(`\\b${k}\\b`, 'gi')
+                const regex = new RegExp(`\\b${escape_for_regex(k)}\\b`, 'gi')
                 if (temp_prompt.search(regex) !== -1) {
                     lora_to_load.push(lora)
                     if (word.remove_trigger) {
