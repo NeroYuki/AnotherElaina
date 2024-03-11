@@ -1,4 +1,5 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
+const { do_heartbeat } = require('../utils/ai_server_config');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -6,6 +7,7 @@ module.exports = {
 		.setDescription('Replies with Pong!'),
 
 	async execute(interaction) {
-		await interaction.reply('Pong!');
+		do_heartbeat();
+		await interaction.reply('Pong! Attempting to do connect to the AI server...');
 	},
 };

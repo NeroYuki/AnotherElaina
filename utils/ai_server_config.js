@@ -1388,7 +1388,7 @@ function load_lora_from_prompt(prompt, lora_default_strength = null) {
             const lora = word.lora
             for (let j = 0; j < keyword.length; j++) {
                 const k = keyword[j]
-                const regex = new RegExp(`\\b${k}\\b`, 'gi')
+                const regex = new RegExp(`\\b${escape_for_regex(k)}\\b`, 'gi')
                 if (temp_prompt.search(regex) !== -1) {
                     lora_to_load.push(lora)
                     if (word.remove_trigger) {
@@ -1461,22 +1461,26 @@ function get_worker_server(force_server_selection) {
     return server_index
 }
 
+async function do_heartbeat() {
+    for (let i = 0; i < server_pool.length; i++) {
+        // ping the server
+        const res = await fetch(`${server_pool[i].url}/`, { method: 'HEAD' }).catch(() => {})
+        
+        if (res && res.status === 200) {
+            // server is alive
+            server_pool[i].is_online = true
+        }
+        else {
+            // server is dead
+            console.log(`Server ${server_pool[i].url} is dead`)
+            server_pool[i].is_online = false
+        }
+    }
+}
+
 function initiate_server_heartbeat() {
     setInterval(async () => {
-        for (let i = 0; i < server_pool.length; i++) {
-            // ping the server
-            const res = await fetch(`${server_pool[i].url}/`, { method: 'HEAD' }).catch(() => {})
-            
-            if (res && res.status === 200) {
-                // server is alive
-                server_pool[i].is_online = true
-            }
-            else {
-                // server is dead
-                console.log(`Server ${server_pool[i].url} is dead`)
-                server_pool[i].is_online = false
-            }
-        }
+        do_heartbeat()
     }, 600000)
 }
 
@@ -1492,6 +1496,7 @@ module.exports = {
     load_lora_from_prompt,
     get_data_body_img2img,
     check_model_filename,
+    do_heartbeat,
     model_name_hash_mapping,
     model_selection,
     model_selection_xl,
