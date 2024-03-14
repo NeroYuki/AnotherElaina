@@ -1166,7 +1166,9 @@ const word_to_sdxl_lora_model = [
         "lora": "<lora:IPXL_v8:1.00>"
     },
     {
-        "keyword": ["honkai: starrail"],
+        // actual keyword: <character>_(honkai:_star_rail)
+        "keyword": ["honkai star rail"],
+        "ignore_keyword": ["sparkle honkai star rail"],
         "lora": "<lora:sdxl_starrail:1.00>"
     },
     {
@@ -1189,20 +1191,25 @@ const word_to_sdxl_lora_model = [
         "remove_trigger": true
     },
     {
-        "keyword": ["artist: narae"],
+        "keyword": ["artist narae"],
         "lora": "<lora:sdxl_narae:1.00>",
     },
     {
-        "keyword": ["artist: parsley"],
+        "keyword": ["artist parsley"],
         "lora": "<lora:sdxl_parsley:1.00>",
     },
     {
-        "keyword": ["artist: miyasemahiro"],
+        "keyword": ["artist miyasemahiro"],
         "lora": "<lora:sdxl_miyasemahiro:1.00>",
     },
     {
-        "keyword": ["sparkle (honkai starrail)"],
+        // actual keyword: sparkle (honkai: star rail)
+        "keyword": ["sparkle honkai star rail"],
         "lora": "<lora:sdxl_sparkle_honkaistarrail:1.00>",
+    },
+    {
+        "keyword": ["touhou"],
+        "lora": "<lora:sdxl_touhou:1.00>",
     }
 ]
 
@@ -1363,6 +1370,7 @@ function load_lora_from_prompt(prompt, lora_default_strength = null) {
     const { cached_model } = require('./model_change');
     const is_sdxl = model_selection_xl.find(m => m.value === cached_model[0]) != null
 
+    console.log(temp_prompt)
     if (is_sdxl) {
         for (let i = 0; i < word_to_sdxl_lora_model.length; i++) {
             const word = word_to_sdxl_lora_model[i]
@@ -1373,6 +1381,18 @@ function load_lora_from_prompt(prompt, lora_default_strength = null) {
                 const regex = new RegExp(`\\b${escape_for_regex(k)}\\b`, 'gi')
                 if (temp_prompt.search(regex) !== -1) {
                     lora_to_load.push(lora)
+                    // check if ignore keyword is present
+                    if (word.ignore_keyword) {
+                        const ignore_keyword = word.ignore_keyword
+                        for (let l = 0; l < ignore_keyword.length; l++) {
+                            const ignore_k = ignore_keyword[l]
+                            const ignore_regex = new RegExp(`\\b${escape_for_regex(ignore_k)}\\b`, 'gi')
+                            if (temp_prompt.search(ignore_regex) !== -1) {
+                                lora_to_load.pop()
+                                break
+                            }
+                        }
+                    }
                     if (word.remove_trigger) {
                         prompt = prompt.replace(regex, '')
                     }
@@ -1391,6 +1411,17 @@ function load_lora_from_prompt(prompt, lora_default_strength = null) {
                 const regex = new RegExp(`\\b${escape_for_regex(k)}\\b`, 'gi')
                 if (temp_prompt.search(regex) !== -1) {
                     lora_to_load.push(lora)
+                    if (word.ignore_keyword) {
+                        const ignore_keyword = word.ignore_keyword
+                        for (let l = 0; l < ignore_keyword.length; l++) {
+                            const ignore_k = ignore_keyword[l]
+                            const ignore_regex = new RegExp(`\\b${escape_for_regex(ignore_k)}\\b`, 'gi')
+                            if (temp_prompt.search(ignore_regex) !== -1) {
+                                lora_to_load.pop()
+                                break
+                            }
+                        }
+                    }
                     if (word.remove_trigger) {
                         prompt = prompt.replace(regex, '')
                     }
