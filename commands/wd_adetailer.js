@@ -11,10 +11,10 @@ module.exports = {
                 .setDescription('The model to use for the adetailer (default is "face_yolov8s.pt")')
                 .addChoices(
                     { name: 'None', value: 'None'},
-                    { name: 'face_yolov8s.pt', value: 'face_yolov8s.pt' },
-                    { name: 'hand_yolov8n.pt', value: 'hand_yolov8n.pt' },
-                    { name: 'person_yolov8s.pt', value: 'person_yolov8s.pt'},
-                    { name: 'yolov8x_world.pt', value: 'yolov8x_world.pt'}
+                    { name: 'YOLO Face v8s', value: 'face_yolov8s.pt' },
+                    { name: 'YOLO Hand v8n', value: 'hand_yolov8n.pt' },
+                    { name: 'YOLO Person v8s (Segment)', value: 'person_yolov8s-seg.pt'},
+                    { name: 'YOLO World v8x', value: 'yolov8x_world.pt'}
                 )
                 .setRequired(false))
         .addStringOption(option =>
@@ -30,10 +30,10 @@ module.exports = {
                 .setDescription('The 2nd model to use for the adetailer (default is "None")')
                 .addChoices(
                     { name: 'None', value: 'None'},
-                    { name: 'face_yolov8s.pt', value: 'face_yolov8s.pt' },
-                    { name: 'hand_yolov8n.pt', value: 'hand_yolov8n.pt' },
-                    { name: 'person_yolov8s.pt', value: 'person_yolov8s.pt'},
-                    { name: 'yolov8x_world.pt', value: 'yolov8x_world.pt'}
+                    { name: 'YOLO Face v8s', value: 'face_yolov8s.pt' },
+                    { name: 'YOLO Hand v8n', value: 'hand_yolov8n.pt' },
+                    { name: 'YOLO Person v8s (Segment)', value: 'person_yolov8s-seg.pt'},
+                    { name: 'YOLO World v8x', value: 'yolov8x_world.pt'}
                 )
                 .setRequired(false))
         .addStringOption(option =>
