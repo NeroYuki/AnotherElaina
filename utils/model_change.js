@@ -8,9 +8,9 @@ const { server_pool } = require('./ai_server_config');
 // const sharp = require('sharp');
 
 const cached_model = [
+    "nekorayxl.safetensors [c53dabc181]",
+    "animaginexl_v3.safetensors [1449e5b0b9]",
     "anythingv5.safetensors [7f96a1a9ca]",
-    "meinapastel.safetensors [6292dd40d6]",
-    "cuteyukimix.safetensors [6ee4f31532]",
 ]
 
 function model_change(modelname, forced = false) {
