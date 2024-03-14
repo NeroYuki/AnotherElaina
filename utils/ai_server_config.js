@@ -1144,7 +1144,7 @@ const word_to_sdxl_lora_model = [
         "lora": "<lora:shadow-XL:1.00>",
     },
     {
-        "keyword": ["watercolor (medium)"],
+        "keyword": ["watercolor medium"],
         "lora": "<lora:shuicai:1.00>",
     },
     {
