@@ -163,8 +163,8 @@ module.exports = {
 
 		let prompt = (interaction.options.getString('prompt') || '') + (profile?.prompt || '')
 		let neg_prompt = (interaction.options.getString('neg_prompt') || '') + (profile?.neg_prompt || '')
-        let width = clamp(interaction.options.getInteger('width') || profile?.width || 512, 64, 2048)
-        let height = clamp(interaction.options.getInteger('height') || profile?.height || 512, 64, 2048)
+        let width = clamp(interaction.options.getInteger('width') || profile?.width || 512, 64, 4096) // this can only end well :)
+        let height = clamp(interaction.options.getInteger('height') || profile?.height || 512, 64, 4096)
         const sampler = interaction.options.getString('sampler') || profile?.sampler || 'Euler a'
         const cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || profile?.cfg_scale || 7, 0, 30)
         const sampling_step = clamp(interaction.options.getInteger('sampling_step') || profile?.sampling_step || 20, 1, 100)
