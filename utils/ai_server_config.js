@@ -37,7 +37,7 @@ const server_pool = [
     }
 ]
 
-const get_data_controlnet = (preprocessor = "none", controlnet = "None", input, weight = 1, mode = "Balanced", resolution = 512, guide_start = 0, guide_end = 1) => {
+const get_data_controlnet = (preprocessor = "None", controlnet = "None", input, weight = 1, mode = "Balanced", resolution = 512, guide_start = 0, guide_end = 1) => {
     return [
         null,
         false,
@@ -67,7 +67,7 @@ const get_data_controlnet = (preprocessor = "none", controlnet = "None", input, 
     ]
 }
 
-const get_data_controlnet_annotation = (preprocessor = "openpose", input) => {
+const get_data_controlnet_annotation = (preprocessor = "None", input) => {
     return [
         input ? {
             "image": input,
@@ -1279,7 +1279,7 @@ const model_selection_xl = [
 ]
 
 const controlnet_preprocessor_selection = [
-    { name: 'None', value: 'none' },
+    { name: 'None', value: 'None' },
     { name: 'Canny', value: 'canny' },
     { name: 'Depth', value: 'depth_midas' },
     { name: 'Depth (LERes)', value: 'depth_leres++' },
@@ -1290,6 +1290,8 @@ const controlnet_preprocessor_selection = [
     { name: 'OpenPose (Hand)', value: 'openpose_hand' },
     { name: 'OpenPose (Full)', value: 'openpose_full' },
     { name: 'Segmentation', value: 'seg_ufade20k' },
+    { name: 'Tile Resample', value: 'tile_resample' },
+    { name: 'IPAdapter', value: 'CLIP-ViT-bigG (IPAdapter)' },
     { name: 'CLIP Vision', value: 't2ia_style_clipvision' },
     { name: 'Color', value: 't2ia_color_grid' },
     { name: 'Sketch', value: 't2ia_sketch_pidi' },
@@ -1307,6 +1309,8 @@ const controlnet_model_selection = [
     { name: 'ControlNet - OpenPose', value: 'control_v11p_sd15_openpose [cab727d4]'},
     { name: 'ControlNet - SoftEdge', value: 'control_v11p_sd15_softedge [a8575a2a]'},
     { name: 'ControlNet - Lineart Anime', value: 'control_v11p_sd15s2_lineart_anime [3825e83e]'},
+    { name: 'ControlNet - Tile', value: 'control_v11f1e_sd15_tile [04595688]'},
+    { name: 'IPAdapter', value: 'ip-adapter_sd15_plus [32cd8f7f]'},
     { name: 'InstantID - Keypoint', value: 'control_instant_id_sdxl [c5c25a50]'},
     { name: 'InstantID - IPAdapter', value: 'ip-adapter_instant_id_sdxl [eb2d3ec0]'}
 ]
@@ -1323,6 +1327,8 @@ const controlnet_model_selection_xl = [
     { name: 'ControlNet - OpenPose', value: 'kohya_controllllite_xl_openpose_anime_v2 [b0fa10bb]'},
     { name: 'ControlNet - SoftEdge', value: 'bdsqlsz_controlllite_xl_softedge [c28ff1c4]'},
     { name: 'ControlNet - Lineart Anime', value: 't2i-adapter_diffusers_xl_lineart [bae0efef]'},
+    // { name: 'ControlNet - Tile', value: 'control_v11f1e_sd15_tile [04595688]'}
+    // { name: 'IPAdapter', value: 'ip-adapter_sd15_plus [32cd8f7f]'},
     { name: 'InstantID - Keypoint', value: 'control_instant_id_sdxl [c5c25a50]'},
     { name: 'InstantID - IPAdapter', value: 'ip-adapter_instant_id_sdxl [eb2d3ec0]'}
 ]
