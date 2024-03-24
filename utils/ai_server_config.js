@@ -1245,13 +1245,16 @@ const model_name_hash_mapping = new Map([
     ['8238e80fdd', "AAMXL Turbo"],
     ['c9e3e68f89', "Juggernaut XL"],
     ['4496b36d48', "Dreamshaper XL Turbo"],
+    ['54ef3e3610', "MeinaMix v11"],
+    ['322526e7d1', "HimawariMixXL v6"],
+    ['e3c47aedb0', "AnimagineXL v3.1"],
+    ['8421598e93', "Anything XL v1"],
 ])
 // limit at 25 (probably less due to character limitation)
 const model_selection = [
-    { name: 'Anything v4.5', value: 'anything.ckpt [fbcf965a62]' },
     { name: 'Pastel Mix v2.1', value: 'pastelmix.safetensors [d01a68ae76]' },
     { name: 'Counterfeit v2.5', value: 'counterfeit.safetensors [a074b8864e]' },
-    { name: 'MeinaMix v7', value: 'meinamix.safetensors [e03274b1e7]' },
+    { name: 'MeinaMix v11', value: 'meinamix_v11.safetensors [54ef3e3610]' },
     { name: 'RefSlave v2', value: 'refslave.safetensors [362dae27f8]' },
     { name: 'Anything v5', value: 'anythingv5.safetensors [7f96a1a9ca]' },
     { name: 'Yozora v1', value: 'yozora.safetensors [4b118b2d1b]' },
@@ -1267,10 +1270,11 @@ const model_selection = [
 ]
 
 const model_selection_xl = [
-    { name: 'Azure Blue v1.2', value: 'azureblue_v12.safetensors [52cb3c2e67]' },
-    { name: 'X2AnimeXL v2', value: 'x2animexl.safetensors [f301898175]' },
+    { name: 'Anything XL v1', value: 'anything_xl.safetensors [8421598e93]'},
+    { name: 'HimawariMixXL v6', value: 'himawarimixxl_v6.safetensors [322526e7d1]' },
     { name: 'NekorayXL v0.6', value: 'nekorayxl.safetensors [c53dabc181]' },
     { name: 'AnimagineXL v3', value: 'animaginexl_v3.safetensors [1449e5b0b9]' },
+    { name: 'AnimagineXL v3.1', value: 'animaginexl_v31.safetensors [e3c47aedb0]'},
     { name: 'KohakuXL v0.7b', value: 'kohakuxl.safetensors [51a0c178b7]'},
     { name: "AAMXL v1", value: 'aamxl_v1.safetensors [d48c2391e0]'},
     { name: 'AAMXL Turbo', value: 'aamxl_turbo.safetensors [8238e80fdd]'},
