@@ -1249,6 +1249,7 @@ const model_name_hash_mapping = new Map([
     ['322526e7d1', "HimawariMixXL v6"],
     ['e3c47aedb0', "AnimagineXL v3.1"],
     ['8421598e93', "Anything XL v1"],
+    ['67ab2fd8ec', "PonyDiffusionXL v6"],
 ])
 // limit at 25 (probably less due to character limitation)
 const model_selection = [
@@ -1270,7 +1271,7 @@ const model_selection = [
 ]
 
 const model_selection_xl = [
-    { name: 'Anything XL v1', value: 'anything_xl.safetensors [8421598e93]'},
+    { name: 'PonyDiffusionXL v6', value: 'ponydiffusionxl_v6.safetensors [67ab2fd8ec]'},
     { name: 'HimawariMixXL v6', value: 'himawarimixxl_v6.safetensors [322526e7d1]' },
     { name: 'NekorayXL v0.6', value: 'nekorayxl.safetensors [c53dabc181]' },
     { name: 'AnimagineXL v3', value: 'animaginexl_v3.safetensors [1449e5b0b9]' },
