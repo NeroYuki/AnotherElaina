@@ -35,11 +35,11 @@ module.exports = {
         
         let reply = `Profile ${name}:\n`;
 
-        if (data.prompt != '') {
-            reply += `Prompt: ${data.prompt}\n`;
+        if (data.prompt != '' || data.prompt_pre != '') {
+            reply += `Prompt: ${data.prompt_pre || ''} ... ${data.prompt || ''}\n`;
         }
-        if (data.neg_prompt != '') {
-            reply += `Negative Prompt: ${data.neg_prompt}\n`;
+        if (data.neg_prompt != '' || data.neg_prompt_pre != '') {
+            reply += `Negative Prompt: ${data.neg_prompt_pre || ''} ... ${data.neg_prompt || ''}\n`;
         }
         if (data.seed != '-1') {
             reply += `Seed: ${data.seed}\n`;

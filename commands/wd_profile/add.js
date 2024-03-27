@@ -14,8 +14,14 @@ module.exports = {
             option.setName('prompt')
                 .setDescription('The prompt to use for the profile'))
         .addStringOption(option =>
+            option.setName('prompt_pre')
+                .setDescription('The beginning prompt to use for the profile'))
+        .addStringOption(option =>
             option.setName('neg_prompt')
                 .setDescription('The negative prompt to use for the profile'))
+        .addStringOption(option =>
+            option.setName('neg_prompt_pre')
+                .setDescription('The beginning negative prompt to use for the profile'))
         .addIntegerOption(option => 
             option.setName('width')
                 .setDescription('The width of the generated image (default is 512, recommended max is 768)'))
@@ -72,7 +78,9 @@ module.exports = {
         // parse the options
         const name = interaction.options.getString('name');
         const prompt = interaction.options.getString('prompt') || '';
+        const prompt_pre = interaction.options.getString('prompt_pre') || '';
         const neg_prompt = interaction.options.getString('neg_prompt') || '';
+        const neg_prompt_pre = interaction.options.getString('neg_prompt_pre') || '';
         const width = interaction.options.getInteger('width') || 512;
         const height = interaction.options.getInteger('height') || 512;
         const sampler = interaction.options.getString('sampler') || 'Euler a';
@@ -104,7 +112,9 @@ module.exports = {
         const action = {
             $set: {
                 prompt: prompt,
+                prompt_pre: prompt_pre,
                 neg_prompt: neg_prompt,
+                neg_prompt_pre: neg_prompt_pre,
                 width: width,
                 height: height,
                 sampler: sampler,

@@ -145,8 +145,8 @@ module.exports = {
         }
 
 		// load the option with default value
-        let prompt = (interaction.options.getString('prompt') || '') + (profile?.prompt || '')
-		let neg_prompt = (interaction.options.getString('neg_prompt') || '') + (profile?.neg_prompt || '')
+		let prompt = (profile?.prompt_pre || '') + (interaction.options.getString('prompt') || '') + (profile?.prompt || '')
+		let neg_prompt = (profile?.neg_prompt_pre || '') + (interaction.options.getString('neg_prompt') || '') + (profile?.neg_prompt || '')
         const width = clamp(interaction.options.getInteger('width') || profile?.width || 512, 64, 4096)
         const height = clamp(interaction.options.getInteger('height') || profile?.height || 512, 64, 4096)
         const denoising_strength = clamp(interaction.options.getNumber('denoising_strength') || 0.7, 0, 1)
