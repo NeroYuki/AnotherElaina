@@ -1,16 +1,16 @@
 {
     "data": [
-        "task(ojwjt596umgj2wm)",
-        "cute girl ",
-        "",
+        "task(uducp6abpyb34az)",
+        "2girls, artist: eufoniuz, __kw/lighting*__, (masterpiece:1.2), best quality\n2girls, august von parseval \\(azur lane\\), azur lane, artist: eufoniuz, serious face\n2girls, ceres fauna, hololive, artist: eufoniuz,  happy face",
+        "lowres, [low quality, worst quality], jpeg",
         [],
-        20,
+        30,
         "Euler a",
         1,
         1,
         7,
         1024,
-        1024,
+        1536,
         false,
         0.7,
         2,
@@ -55,6 +55,10 @@
         0,
         "Gustavosta/MagicPrompt-Stable-Diffusion",
         "",
+        true,
+        "Horizontal",
+        "First Line",
+        "",
         false,
         false,
         "LoRA",
@@ -79,17 +83,20 @@
         1,
         null,
         "Refresh models",
+        true,
+        "XL",
+        0.6,
+        true,
+        0.01,
+        0.5,
+        -0.13,
+        0,
+        0,
+        0,
+        0,
         false,
         "None",
         20,
-        0.9,
-        5,
-        "0.0001",
-        false,
-        "None",
-        "",
-        0.1,
-        false,
         null,
         null,
         null,
@@ -185,26 +192,26 @@
         false,
         [
             {
-                "name": "D:\\AIstuff\\stable-diffusion-webui\\outputs\\txt2img-images\\11329-740276317-cute girl.png?1710133972.4429972",
-                "data": "http://127.0.0.1:7860/file=D:\\AIstuff\\stable-diffusion-webui\\outputs\\txt2img-images\\11329-740276317-cute girl.png?1710133972.4429972",
+                "name": "D:\\AIstuff\\stable-diffusion-webui\\outputs\\txt2img-images\\13099-3650204566-2girls, artist_ eufoniuz, Cool Light, (masterpiece_1.2), best quality_2girls, august von parseval _(azur lane_), azur lane, arti.png?1711694760.9242058",
+                "data": "http://127.0.0.1:7860/file=D:\\AIstuff\\stable-diffusion-webui\\outputs\\txt2img-images\\13099-3650204566-2girls, artist_ eufoniuz, Cool Light, (masterpiece_1.2), best quality_2girls, august von parseval _(azur lane_), azur lane, arti.png?1711694760.9242058",
                 "is_file": true
             }
         ],
-        "{\"prompt\": \"cute girl \", \"all_prompts\": [\"cute girl \"], \"negative_prompt\": \"\", \"all_negative_prompts\": [\"\"], \"seed\": 740276317, \"all_seeds\": [740276317], \"subseed\": 2950442852, \"all_subseeds\": [2950442852], \"subseed_strength\": 0, \"width\": 1024, \"height\": 1024, \"sampler_name\": \"Euler a\", \"cfg_scale\": 7, \"steps\": 20, \"batch_size\": 1, \"restore_faces\": false, \"face_restoration_model\": null, \"sd_model_name\": \"nekorayxl\", \"sd_model_hash\": \"c53dabc181\", \"sd_vae_name\": \"nekorayxl.vae.safetensors\", \"sd_vae_hash\": \"235745af8d\", \"seed_resize_from_w\": -1, \"seed_resize_from_h\": -1, \"denoising_strength\": 0.7, \"extra_generation_params\": {}, \"index_of_first_image\": 0, \"infotexts\": [\"cute girl \\nSteps: 20, Sampler: Euler a, CFG scale: 7, Seed: 740276317, Size: 1024x1024, Model hash: c53dabc181, VAE hash: 235745af8d, VAE: nekorayxl.vae.safetensors, Version: f0.0.17v1.8.0rc-latest-306-gf15d1139\"], \"styles\": [], \"job_timestamp\": \"20240311121231\", \"clip_skip\": 1, \"is_using_inpainting_conditioning\": false, \"version\": \"f0.0.17v1.8.0rc-latest-306-gf15d1139\"}",
-        "<p>cute girl <br>\nSteps: 20, Sampler: Euler a, CFG scale: 7, Seed: 740276317, Size: 1024x1024, Model hash: c53dabc181, VAE hash: 235745af8d, VAE: nekorayxl.vae.safetensors, Version: f0.0.17v1.8.0rc-latest-306-gf15d1139</p>",
-        "<p class='comments'></p><div class='performance'><p class='time'>Time taken: <wbr><span class='measurement'>21.1 sec.</span></p></div>"
+        "{\"prompt\": \"2girls, artist: eufoniuz, Cool Light, (masterpiece:1.2), best quality\\n2girls, august von parseval \\\\(azur lane\\\\), azur lane, artist: eufoniuz, serious face\\n2girls, ceres fauna, hololive, artist: eufoniuz,  happy face\", \"all_prompts\": [\"2girls, artist: eufoniuz, Cool Light, (masterpiece:1.2), best quality\\n2girls, august von parseval \\\\(azur lane\\\\), azur lane, artist: eufoniuz, serious face\\n2girls, ceres fauna, hololive, artist: eufoniuz,  happy face\"], \"negative_prompt\": \"lowres, [low quality, worst quality], jpeg\", \"all_negative_prompts\": [\"lowres, [low quality, worst quality], jpeg\"], \"seed\": 3650204566, \"all_seeds\": [3650204566], \"subseed\": 315918948, \"all_subseeds\": [315918948], \"subseed_strength\": 0, \"width\": 1536, \"height\": 1024, \"sampler_name\": \"Euler a\", \"cfg_scale\": 7, \"steps\": 30, \"batch_size\": 1, \"restore_faces\": false, \"face_restoration_model\": null, \"sd_model_name\": \"animaginexl_v31\", \"sd_model_hash\": \"e3c47aedb0\", \"sd_vae_name\": \"animaginexl_v31.vae.safetensors\", \"sd_vae_hash\": \"235745af8d\", \"seed_resize_from_w\": -1, \"seed_resize_from_h\": -1, \"denoising_strength\": 0.7, \"extra_generation_params\": {\"ReCenter Str\": 0.6, \"Normalization\": true, \"SD_ver\": \"XL\", \"forge_couple\": true, \"forge_couple_direction\": \"Horizontal\", \"forge_couple_background\": \"First Line\", \"forge_couple_separator\": \"\"}, \"index_of_first_image\": 0, \"infotexts\": [\"2girls, artist: eufoniuz, Cool Light, (masterpiece:1.2), best quality\\n2girls, august von parseval \\\\(azur lane\\\\), azur lane, artist: eufoniuz, serious face\\n2girls, ceres fauna, hololive, artist: eufoniuz,  happy face\\nNegative prompt: lowres, [low quality, worst quality], jpeg\\nSteps: 30, Sampler: Euler a, CFG scale: 7, Seed: 3650204566, Size: 1536x1024, Model hash: e3c47aedb0, VAE hash: 235745af8d, VAE: animaginexl_v31.vae.safetensors, ReCenter Str: 0.6, Normalization: True, SD_ver: XL, forge_couple: True, forge_couple_direction: Horizontal, forge_couple_background: First Line, forge_couple_separator: , Version: f0.0.17v1.8.0rc-latest-306-gf15d1139\"], \"styles\": [], \"job_timestamp\": \"20240329134510\", \"clip_skip\": 1, \"is_using_inpainting_conditioning\": false, \"version\": \"f0.0.17v1.8.0rc-latest-306-gf15d1139\"}",
+        "<p>2girls, artist: eufoniuz, Cool Light, (masterpiece:1.2), best quality<br>\n2girls, august von parseval \\(azur lane\\), azur lane, artist: eufoniuz, serious face<br>\n2girls, ceres fauna, hololive, artist: eufoniuz,  happy face<br>\nNegative prompt: lowres, [low quality, worst quality], jpeg<br>\nSteps: 30, Sampler: Euler a, CFG scale: 7, Seed: 3650204566, Size: 1536x1024, Model hash: e3c47aedb0, VAE hash: 235745af8d, VAE: animaginexl_v31.vae.safetensors, ReCenter Str: 0.6, Normalization: True, SD_ver: XL, forge_couple: True, forge_couple_direction: Horizontal, forge_couple_background: First Line, forge_couple_separator: , Version: f0.0.17v1.8.0rc-latest-306-gf15d1139</p>",
+        "<p class='comments'></p><div class='performance'><p class='time'>Time taken: <wbr><span class='measurement'>50.6 sec.</span></p></div>"
     ],
     "event_data": null,
     "fn_index": 497,
-    "session_hash": "opmnyevljhd"
+    "session_hash": "9hhc5gbusr"
 }
 
 {
     "data": [
-        "task(mi905mteug11per)",
+        "task(5q1w1j6svq372f8)",
         0,
-        "cute girl",
-        "",
+        "1girl, cute girl, masterpiece",
+        "low quality",
         [],
         "data:image/png;base64",
         null,
@@ -213,7 +220,7 @@
         null,
         null,
         null,
-        25,
+        27,
         "Euler a",
         4,
         0,
@@ -222,7 +229,7 @@
         1,
         7,
         1.5,
-        0.75,
+        0.69,
         0,
         1024,
         1024,
@@ -278,6 +285,10 @@
         "Gustavosta/MagicPrompt-Stable-Diffusion",
         "",
         false,
+        "Horizontal",
+        "None",
+        "",
+        false,
         false,
         "LoRA",
         "None",
@@ -302,16 +313,19 @@
         null,
         "Refresh models",
         false,
+        "1.5",
+        0,
+        false,
+        0.01,
+        0.5,
+        -0.13,
+        0,
+        0,
+        0,
+        0,
+        false,
         "None",
         20,
-        0.9,
-        5,
-        "0.0001",
-        false,
-        "None",
-        "",
-        0.1,
-        false,
         null,
         null,
         null,
@@ -469,7 +483,7 @@
     ],
     "event_data": null,
     "fn_index": 1094,
-    "session_hash": "opmnyevljhd"
+    "session_hash": "9hhc5gbusr"
 }
 
 [
@@ -598,4 +612,13 @@
     "event_data": null,
     "fn_index": 1164,
     "session_hash": "8dy19o86ezd"
+}
+
+{
+    "data": [
+        "data:image/jpeg;base64"
+    ],
+    "event_data": null,
+    "fn_index": 1172,
+    "session_hash": "r5ay2ckh1q"
 }

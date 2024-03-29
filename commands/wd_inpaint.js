@@ -350,17 +350,27 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
 
         // return 
 
+        let coupler_config = null
+        let color_grading_config = null
 
         neg_prompt = get_negative_prompt(neg_prompt, override_neg_prompt, remove_nsfw_restriction)
 
         prompt = get_prompt(prompt, remove_nsfw_restriction)
+
+        const coupler_config_res = get_coupler_config_from_prompt(prompt)
+        prompt = coupler_config_res.prompt
+        coupler_config = coupler_config_res.coupler_config
+
+        const color_grading_config_res = get_color_grading_config_from_prompt(prompt, model_selection_xl.find(x => x.value === cached_model[0]) != null)
+        prompt = color_grading_config_res.prompt
+        color_grading_config = color_grading_config_res.color_grading_config
         
         if (!no_dynamic_lora_load) {
             prompt = load_lora_from_prompt(prompt, default_lora_strength)
         }
     
         const create_data = get_data_body_img2img(server_index, prompt, neg_prompt, sampling_step, cfg_scale,
-            seed, sampler, session_hash, height, width, attachment, sharp_mask_data_uri, denoising_strength, 4, mask_blur, mask_content)
+            seed, sampler, session_hash, height, width, attachment, sharp_mask_data_uri, denoising_strength, 4, mask_blur, mask_content, "None", false, coupler_config, color_grading_config)
 
         // make option_init but for axios
         const option_init_axios = {

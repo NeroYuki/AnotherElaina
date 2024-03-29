@@ -45,7 +45,7 @@ function change_option_adetailer(value, fn_index, session_hash, server_url) {
     })
 }
 
-function load_adetailer(session_hash, server_index, adetailer_config, interaction, mode = 0) {
+function load_adetailer(session_hash, server_index, adetailer_config, interaction, coupler_config, prompt, mode = 0) {
     return new Promise(async (resolve, reject) => {
         // parse config string here
         const WORKER_ENDPOINT = server_pool[server_index].url
@@ -60,13 +60,23 @@ function load_adetailer(session_hash, server_index, adetailer_config, interactio
         }
 
         const adetailer_model = adetailer_config_obj[0].model
-        const adetailer_prompt = adetailer_config_obj[0].prompt
+        let adetailer_prompt = adetailer_config_obj[0].prompt
         const adetailer_neg_prompt = adetailer_config_obj[0].neg_prompt
         const adetailer_model_2 = adetailer_config_obj[1].model
-        const adetailer_prompt_2 = adetailer_config_obj[1].prompt
+        let adetailer_prompt_2 = adetailer_config_obj[1].prompt
         const adetailer_neg_prompt_2 = adetailer_config_obj[1].neg_prompt
 
-
+        if (coupler_config) {
+            const comp = prompt.split("\n")
+            if (coupler_config.global === "First Line") {
+                adetailer_prompt = adetailer_prompt === "" ? comp[0] : adetailer_prompt
+                adetailer_prompt_2 = adetailer_prompt_2 === "" ? comp[0] : adetailer_prompt_2
+            }
+            else if (coupler_config.global === "Last Line") {
+                adetailer_prompt = adetailer_prompt === "" ? comp[comp.length - 1] : adetailer_prompt
+                adetailer_prompt_2 = adetailer_prompt_2 === "" ? comp[comp.length - 1] : adetailer_prompt_2
+            }
+        }
         console.log(adetailer_model, adetailer_prompt, adetailer_model_2, adetailer_prompt_2)
 
         Promise.all(

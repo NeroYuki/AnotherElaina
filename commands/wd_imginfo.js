@@ -46,14 +46,16 @@ module.exports = {
 
         if (raw_params) {
             const params = raw_params.split("\n")
+
+            const neg_prompt_index = params.findIndex((x) => x.toLowerCase().includes("negative prompt: "))
             // 0 is prompt
             // 1 is negative prompt
             // 2 is list of extra parameters, splited by comma with <key>:<value>
 
             response_params = `
-**Prompt**: ${params[0]}
-**Negative Prompt**: ${params[1]?.replace(/negative prompt\: /i, "") ?? "Unknown"}
-**Extra Parameters**: ${params[2] ? "\n" + params[2].split(", ").map((x) => [...x.split(": ")]).filter((x) => allowed_extra_params.includes(x[0].toLowerCase())).map((x) => x.join(": ")).join("\n") : "None"}`    
+**Prompt**: ${params.slice(0, neg_prompt_index).join("\n")}
+**Negative Prompt**: ${params[neg_prompt_index]?.replace(/negative prompt\: /i, "") ?? "Unknown"}
+**Extra Parameters**: ${params[neg_prompt_index + 1] ? "\n" + params[neg_prompt_index + 1].split(", ").map((x) => [...x.split(": ")]).filter((x) => allowed_extra_params.includes(x[0].toLowerCase())).map((x) => x.join(": ")).join("\n") : "None"}`    
         }
 
         // console.log(tags)

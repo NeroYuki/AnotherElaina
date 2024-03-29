@@ -17,8 +17,8 @@ const server_pool = [
         fn_index_controlnet_annotation_3: [1012, 1036],
         fn_index_interrogate: 1098,
         fn_index_upscale: 1170,
-        fn_index_change_model: 1273,
-        fn_index_change_clip_skip: 1280,
+        fn_index_change_model: 1272,
+        fn_index_change_clip_skip: 1279,
         fn_index_change_adetailer_model1: [97, 624],
         fn_index_change_adetailer_prompt1: [99, 626],
         fn_index_change_adetailer_neg_prompt1: [100, 627],
@@ -85,7 +85,7 @@ const get_data_controlnet_annotation = (preprocessor = "None", input) => {
 }
 
 const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed, sampler, session_hash,
-    height, width, attachment, attachment2, denoising_strength, mode = 0, mask_blur = 4, mask_content = "original", upscaler = "None", is_using_adetailer = false) => {
+    height, width, attachment, attachment2, denoising_strength, mode = 0, mask_blur = 4, mask_content = "original", upscaler = "None", is_using_adetailer = false, coupler_config = null, color_grading_config = null) => {
     // default mode 0 is img2img, 4 is inpainting
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 3000000 && upscaler == "None") ? true : false
@@ -167,6 +167,10 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
         0,
         "Gustavosta/MagicPrompt-Stable-Diffusion",
         "",
+        coupler_config || false,               // enable latent coupler
+        coupler_config?.direction || "Horizontal",       // direction (Horizontal or Vertical)
+        coupler_config?.global || "First Line",       // use which line for global effect (First Line or Last Line or None)
+        "",                 // seperator
         false,
         false,
         "LoRA",
@@ -191,17 +195,20 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
         1,
         null,
         "Refresh models",
+        color_grading_config || false,               // use color grading
+        color_grading_config?.method || "XL",               // change method (XL or 1.5)
+        color_grading_config?.weight || 0,                // change recenter weighting
+        color_grading_config?.normalize || false,               // use normalizer
+        0.01,
+        0.5,
+        -0.13,
+        0,
+        0,
+        0,
+        0,
         false,              // use refiner?
         "None",             // select refiner model
         20,                 // percentage of step the refiner will take over
-        0.9,
-        5,
-        "0.0001",
-        false,
-        "None",
-        "",
-        0.1,
-        false,
         null,
         null,
         null,
@@ -360,7 +367,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
 }
 
 const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed, sampler, session_hash,
-    height, width, upscale_multiplier, upscaler, upscale_denoise_strength, upscale_step, face_restore = false, is_using_adetailer = false) => {
+    height, width, upscale_multiplier, upscaler, upscale_denoise_strength, upscale_step, face_restore = false, is_using_adetailer = false, coupler_config = null, color_grading_config = null) => {
 
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 1600000) ? true : false
@@ -421,6 +428,10 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
         0,
         "Gustavosta/MagicPrompt-Stable-Diffusion",
         "",
+        coupler_config || false,               // enable latent coupler
+        coupler_config?.direction || "Horizontal",       // direction (Horizontal or Vertical)
+        coupler_config?.global || "First Line",       // use which line for global effect (First Line or Last Line or None)
+        "",                 // seperator
         false,
         false,
         "LoRA",
@@ -445,17 +456,20 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
         1,
         null,
         "Refresh models",
+        color_grading_config || false,               // use color grading
+        color_grading_config?.method || "XL",               // change method (XL or 1.5)
+        color_grading_config?.weight || 0,                // change recenter weighting
+        color_grading_config?.normalize || false,               // use normalizer
+        0.01,
+        0.5,
+        -0.13,
+        0,
+        0,
+        0,
+        0,
         false,              // use refiner?
         "None",             // select refiner model
         20,                 // percentage of step the refiner will take over
-        0.9,
-        5,
-        "0.0001",
-        false,
-        "None",
-        "",
-        0.1,
-        false,
         null,
         null,
         null,
@@ -1463,7 +1477,7 @@ function load_lora_from_prompt(prompt, lora_default_strength = null) {
     return res
 }
 
-function get_prompt(prompt, remove_nsfw_restriction) {
+function get_prompt(prompt, remove_nsfw_restriction, is_xl = true) {
     let res = prompt
 
     // add nsfw as neg prompt by default
