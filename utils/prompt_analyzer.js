@@ -1,6 +1,6 @@
 function get_coupler_config_from_prompt(prompt) {
     // check if if prompt contain <=> or ||
-    // if found, return the value {direction: <Horizontal if <=>, Vertical if ||>, global: <"First Line" if prompt start with [GLOBAL], "Last Line" if prompt end with [GLOBAL], "None" otherwise>}
+    // if found, return the value {direction: <Horizontal if <=>, Vertical if ||>, global: <"First Line" if first subject start with [GLOBAL], "Last Line" if last subject start with [GLOBAL], "None" otherwise>}
 
     const coupler_pattern = /(\|{2}|<=>)/gi
 
@@ -8,9 +8,16 @@ function get_coupler_config_from_prompt(prompt) {
 
     if (coupler_match && coupler_match[0]) {
 
-        const global_config = prompt.startsWith('[GLOBAL]') ? "First Line"
-            : prompt.endsWith('[GLOBAL]') ? "Last Line"
-            : "None"
+        const comp = prompt.replace(coupler_pattern, '\n').split("\n")
+        let global_config = 'None'
+
+        if (comp[0].includes('[GLOBAL]')) {
+            global_config = 'First Line'
+        }
+
+        if (comp[comp.length - 1].includes('[GLOBAL]')) {
+            global_config = 'Last Line'
+        }
 
         return {
             prompt: prompt.replace(coupler_pattern, '\n').replace('[GLOBAL]', '').trim(),
