@@ -329,7 +329,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         prompt = color_grading_config_res.prompt
         color_grading_config = color_grading_config_res.color_grading_config
 
-        const is_censor = (interaction.guildId && censorGuildIds.includes(interaction.guildId)) ? true : false
+        const is_censor = ((interaction.guildId && censorGuildIds.includes(interaction.guildId)) || (interaction.channel && !interaction.channel.nsfw)) ? true : false
 
         if (do_adetailer && adetailer_config) {
             await load_adetailer(session_hash, server_index, adetailer_config, interaction, coupler_config, prompt)
