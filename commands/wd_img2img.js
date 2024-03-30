@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { byPassUser, censorGuildIds } = require('../config.json');
 const crypt = require('crypto');
-const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, load_lora_from_prompt, model_name_hash_mapping, check_model_filename, model_selection, model_selection_xl, upscaler_selection } = require('../utils/ai_server_config.js');
+const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, load_lora_from_prompt, model_name_hash_mapping, check_model_filename, model_selection, model_selection_xl, upscaler_selection, model_selection_curated } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const { loadImage } = require('../utils/load_discord_img.js');
@@ -43,7 +43,7 @@ module.exports = {
                 .setDescription('Random seed for AI generate art from (default is "-1 - Random")'))
         .addStringOption(option =>
             option.setName('default_neg_prompt')
-                .setDescription('Define the default negative prompt for the user (default is "None - No NSFW")')
+                .setDescription('Define the default negative prompt for the user (default is "Quality - No NSFW")')
                 .addChoices(
                     { name: 'Quality - SFW', value: 'q_sfw' },
                     { name: 'Quality - NSFW', value: 'q_nsfw' },
@@ -56,15 +56,7 @@ module.exports = {
         .addStringOption(option => 
             option.setName('checkpoint')
                 .setDescription('Force a cached checkpoint to be used (not all option is cached)')
-                .addChoices(
-                    { name: 'Anything v5', value: 'anythingv5.safetensors [7f96a1a9ca]' },
-                    { name: 'MeinaPastel v6', value: 'meinapastel.safetensors [6292dd40d6]' },
-                    { name: 'NekorayXL v0.6', value: 'nekorayxl.safetensors [c53dabc181]' },
-                    { name: 'AnimagineXL v3.1', value: 'animaginexl_v31.safetensors [e3c47aedb0]'},
-                    { name: 'AAMXL Turbo', value: 'aamxl_turbo.safetensors [8238e80fdd]'},
-                    { name: 'Juggernaut XL', value: 'juggernautxl_turbo.safetensors [c9e3e68f89]'},
-                    { name: 'Dreamshaper XL Turbo', value: 'dreamshaperxl_turbo.safetensors [4496b36d48]'},
-                ))
+                .addChoices(...model_selection_curated))
         .addStringOption(option =>
             option.setName('upscaler')
                 .setDescription('The upscaler to use (default is "None")')
@@ -115,7 +107,7 @@ module.exports = {
         let cfg_scale = clamp(profile?.cfg_scale || 7, 0, 30)
         let sampling_step = clamp(profile?.sampling_step || 25, 1, 100)
 
-        const default_neg_prompt = interaction.options.getString('default_neg_prompt') || 'n_sfw'
+        const default_neg_prompt = interaction.options.getString('default_neg_prompt') || 'q_sfw'
         const no_dynamic_lora_load = interaction.options.getBoolean('no_dynamic_lora_load') || false
         let default_lora_strength = 0.85
 

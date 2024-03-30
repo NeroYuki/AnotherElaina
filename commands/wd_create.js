@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { byPassUser, censorGuildIds } = require('../config.json');
 const crypt = require('crypto');
-const { server_pool, get_data_body, get_negative_prompt, initiate_server_heartbeat, get_worker_server, get_prompt, load_lora_from_prompt, model_name_hash_mapping, check_model_filename, model_selection, upscaler_selection, model_selection_xl } = require('../utils/ai_server_config.js');
+const { server_pool, get_data_body, get_negative_prompt, initiate_server_heartbeat, get_worker_server, get_prompt, load_lora_from_prompt, model_name_hash_mapping, check_model_filename, model_selection, upscaler_selection, model_selection_xl, model_selection_curated } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const { model_change, cached_model } = require('../utils/model_change.js');
@@ -58,15 +58,7 @@ module.exports = {
         .addStringOption(option => 
             option.setName('checkpoint')
                 .setDescription('Force a cached checkpoint to be used (not all option is cached)')
-                .addChoices(
-                    { name: 'Anything v5', value: 'anythingv5.safetensors [7f96a1a9ca]' },
-                    { name: 'MeinaPastel v6', value: 'meinapastel.safetensors [6292dd40d6]' },
-                    { name: 'NekorayXL v0.6', value: 'nekorayxl.safetensors [c53dabc181]' },
-                    { name: 'AnimagineXL v3.1', value: 'animaginexl_v31.safetensors [e3c47aedb0]'},
-                    { name: 'AAMXL Turbo', value: 'aamxl_turbo.safetensors [8238e80fdd]'},
-                    { name: 'Juggernaut XL', value: 'juggernautxl_turbo.safetensors [c9e3e68f89]'},
-                    { name: 'Dreamshaper XL Turbo', value: 'dreamshaperxl_turbo.safetensors [4496b36d48]'},
-                ))
+                .addChoices(...model_selection_curated))
         .addStringOption(option =>
             option.setName('profile')
                 .setDescription('Specify the profile to use (default is No Profile)'))

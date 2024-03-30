@@ -1289,6 +1289,16 @@ const model_selection_xl = [
     { name: 'Dreamshaper XL Turbo', value: 'dreamshaperxl_turbo.safetensors [4496b36d48]'},
 ]
 
+const model_selection_curated = [
+    { name: 'Anything v5', value: 'anythingv5.safetensors [7f96a1a9ca]' },
+    { name: 'MeinaPastel v6', value: 'meinapastel.safetensors [6292dd40d6]' },
+    { name: 'NekorayXL v0.6', value: 'nekorayxl.safetensors [c53dabc181]' },
+    { name: 'AnimagineXL v3.1', value: 'animaginexl_v31.safetensors [e3c47aedb0]'},
+    { name: 'AAMXL Turbo', value: 'aamxl_turbo.safetensors [8238e80fdd]'},
+    { name: 'Juggernaut XL', value: 'juggernautxl_turbo.safetensors [c9e3e68f89]'},
+    { name: 'Dreamshaper XL Turbo', value: 'dreamshaperxl_turbo.safetensors [4496b36d48]'},
+]
+
 const controlnet_preprocessor_selection = [
     { name: 'None', value: 'None' },
     { name: 'Canny', value: 'canny' },
@@ -1578,6 +1588,7 @@ module.exports = {
     model_name_hash_mapping,
     model_selection,
     model_selection_xl,
+    model_selection_curated,
     controlnet_preprocessor_selection,
     controlnet_model_selection,
     upscaler_selection,
