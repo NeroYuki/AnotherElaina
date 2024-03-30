@@ -17,8 +17,9 @@ const server_pool = [
         fn_index_controlnet_annotation_3: [1012, 1036],
         fn_index_interrogate: 1098,
         fn_index_upscale: 1170,
-        fn_index_change_model: 1272,
-        fn_index_change_clip_skip: 1279,
+        fn_index_change_model: 1279,
+        fn_index_change_clip_skip: 1286,
+        fn_index_toggle_censor: 1300,
         fn_index_change_adetailer_model1: [97, 624],
         fn_index_change_adetailer_prompt1: [99, 626],
         fn_index_change_adetailer_neg_prompt1: [100, 627],
@@ -85,7 +86,8 @@ const get_data_controlnet_annotation = (preprocessor = "None", input) => {
 }
 
 const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed, sampler, session_hash,
-    height, width, attachment, attachment2, denoising_strength, mode = 0, mask_blur = 4, mask_content = "original", upscaler = "None", is_using_adetailer = false, coupler_config = null, color_grading_config = null) => {
+    height, width, attachment, attachment2, denoising_strength, mode = 0, mask_blur = 4, mask_content = "original", upscaler = "None", 
+    is_using_adetailer = false, coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false) => {
     // default mode 0 is img2img, 4 is inpainting
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 3000000 && upscaler == "None") ? true : false
@@ -359,6 +361,8 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
         2048,
         2048,
         2,
+        enable_censor,
+        clip_skip,
         [],
         "",
         "",
@@ -367,7 +371,8 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
 }
 
 const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed, sampler, session_hash,
-    height, width, upscale_multiplier, upscaler, upscale_denoise_strength, upscale_step, face_restore = false, is_using_adetailer = false, coupler_config = null, color_grading_config = null) => {
+    height, width, upscale_multiplier, upscaler, upscale_denoise_strength, upscale_step, face_restore = false, is_using_adetailer = false, 
+    coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false) => {
 
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 1600000) ? true : false
@@ -562,7 +567,9 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
         false,
         false,
         0,
-        false
+        false,
+        enable_censor,
+        clip_skip,
     ]
     else return [
         `task(${session_hash})`,
@@ -636,21 +643,6 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
         false,
         0,
     ]
-}
-
-function get_negative_prompt(neg_prompt, override_neg_prompt, remove_nsfw_restriction) {
-    let res = neg_prompt
-    // add default neg prompt
-    const default_neg_prompt = '(worst quality, low quality:1.4), '
-    if (!override_neg_prompt) {
-        res = default_neg_prompt + res
-    }
-
-    // add nsfw as neg prompt by default
-    if (!remove_nsfw_restriction) {
-        res = '((nsfw)), ' + res
-    }
-    return res
 }
 
 // all use standard weight of 0.85
@@ -1477,12 +1469,42 @@ function load_lora_from_prompt(prompt, lora_default_strength = null) {
     return res
 }
 
-function get_prompt(prompt, remove_nsfw_restriction, is_xl = true) {
+
+function get_negative_prompt(neg_prompt, override_neg_prompt, remove_nsfw_restriction, model) {
+    let res = neg_prompt
+    // add default neg prompt
+    const default_neg_prompt = '(worst quality, low quality:1.4), '
+    if (!override_neg_prompt) {
+        if (model) {
+            if (model_selection.find(x => x.value === model) != null) {
+                res = default_neg_prompt + res
+            }
+            else if (model === 'animaginexl_v3.safetensors [1449e5b0b9]' || model === 'animaginexl_v31.safetensors [e3c47aedb0]') {
+                res = 'lowres, (bad), text, error, fewer, extra, missing, worst quality, jpeg artifacts, low quality, watermark, unfinished, displeasing, oldest, early, chromatic aberration, signature, extra digits, artistic error, username, scan, [abstract], ' + res
+            }
+        }
+        else {
+            res = default_neg_prompt + res
+        }
+    }
+
+    // add nsfw as neg prompt by default
+    if (!remove_nsfw_restriction) {
+        res = '((nsfw)), ' + res
+    }
+
+    return res
+}
+
+function get_prompt(prompt, remove_nsfw_restriction, model = null) {
     let res = prompt
 
     // add nsfw as neg prompt by default
     if (!remove_nsfw_restriction) {
         res = res.replace(/nsfw/g, '')
+    }
+
+    if (model) {
     }
 
     return res

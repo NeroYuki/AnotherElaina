@@ -87,7 +87,7 @@ client.on('interactionCreate', async interaction => {
 	// }
 
 	try {
-		if (['wd_create', 'wd_img2img', 'wd_inpaint', 'wd_interrogate', 'wd_upscale', 'wd_controlnet', 'wd_adetailer'].includes(interaction.commandName)) {
+		if (['wd_create', 'wd_img2img', 'wd_inpaint', 'wd_interrogate', 'wd_upscale', 'wd_controlnet', 'wd_adetailer', 'wd_create_adv', 'wd_img2img_adv'].includes(interaction.commandName)) {
 			await command.execute(interaction, client)
 		}
 		else {

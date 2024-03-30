@@ -2,13 +2,15 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { byPassUser, censorGuildIds } = require('../config.json');
 const crypt = require('crypto');
-const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, load_lora_from_prompt, model_name_hash_mapping, check_model_filename, model_selection } = require('../utils/ai_server_config.js');
+const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, load_lora_from_prompt, model_name_hash_mapping, check_model_filename, model_selection, model_selection_xl, upscaler_selection } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
-const sharp = require('sharp');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
-const { loadImage } = require('../utils/load_discord_img');
-const { load_controlnet } = require('../utils/controlnet_execute');
-const { cached_model, model_change } = require('../utils/model_change');
+const { loadImage } = require('../utils/load_discord_img.js');
+const { load_controlnet } = require('../utils/controlnet_execute.js');
+const { cached_model, model_change } = require('../utils/model_change.js');
+const { queryRecordLimit } = require('../database/database_interaction.js');
+const { load_adetailer } = require('../utils/adetailer_execute.js');
+const { get_coupler_config_from_prompt, get_color_grading_config_from_prompt } = require('../utils/prompt_analyzer.js');
 
 function clamp(num, min, max) {
     return num <= min ? min : num >= max ? max : num;
@@ -16,16 +18,12 @@ function clamp(num, min, max) {
 
 module.exports = {
 	data: new SlashCommandBuilder()
-		.setName('wd_inpaint')
-		.setDescription('(Attempt) to regenerate the image with an inpaint mask')
+		.setName('wd_img2img_adv')
+		.setDescription('Request my Diffusion instance to generate art from an image')
 		.addAttachmentOption(option =>
 			option.setName('image')
 				.setDescription('The image to be regenerate')
 				.setRequired(true))
-        .addAttachmentOption(option =>
-            option.setName('mask')
-                .setDescription('The mask marking where the image should be regenerated')
-                .setRequired(true))
 		.addStringOption(option =>
             option.setName('prompt')
                 .setDescription('The prompt for the AI to generate art from')
@@ -36,28 +34,6 @@ module.exports = {
         .addNumberOption(option => 
             option.setName('denoising_strength')
                 .setDescription('How much the image is noised before regen, closer to 0 = closer to original (0 - 1, default 0.7)'))
-        .addIntegerOption(option =>
-            option.setName('mask_blur')
-                .setDescription('How much pixel is the mask being blurred, closer to 0 = closer to original (0 - 64, default 4)'))
-        .addStringOption(option => 
-            option.setName('mask_content')
-                .setDescription('The content that should fill the mask (default is "original")')
-                .addChoices(
-                    { name: 'Fill', value: 'fill' },
-                    { name: 'Original', value: 'original' },
-                    { name: 'Latent Noise', value: 'latent noise' },
-                    { name: 'Latent Nothing', value: 'latent nothing' },
-                ))
-        .addStringOption(option => 
-            option.setName('mask_color')
-                .setDescription('Which color are you picking for the mask (default is "black")')
-                .addChoices(
-                    { name: 'White (#FFFFFF)', value: 'white' },
-                    { name: 'Black (#000000)', value: 'black' },
-                    { name: 'Pure Red (#FF0000)', value: 'red' },
-                    { name: 'Pure Green (#00FF00)', value: 'green' },
-                    { name: 'Pure Blue (#0000FF)', value: 'blue' },
-                ))
         .addIntegerOption(option => 
             option.setName('width')
                 .setDescription('The width of the generated image (default is 512, recommended max is 768)'))
@@ -86,18 +62,27 @@ module.exports = {
         .addStringOption(option => 
             option.setName('seed')
                 .setDescription('Random seed for AI generate art from (default is "-1 - Random")'))
-        .addBooleanOption(option =>
-            option.setName('override_neg_prompt')
-                .setDescription('Override the default negative prompt (default is "false")'))
-        .addBooleanOption(option => 
-            option.setName('remove_nsfw_restriction')
-                .setDescription('Force the removal of nsfw negative prompt (default is "false")'))
+        .addStringOption(option =>
+            option.setName('default_neg_prompt')
+                .setDescription('Define the default negative prompt for the user (default is "None - No NSFW")')
+                .addChoices(
+                    { name: 'Quality - SFW', value: 'q_sfw' },
+                    { name: 'Quality - NSFW', value: 'q_nsfw' },
+                    { name: 'None - SFW', value: 'n_sfw' },
+                    { name: 'No Default', value: 'n_nsfw' },
+                ))
         .addBooleanOption(option => 
             option.setName('no_dynamic_lora_load')
                 .setDescription('Do not use the bot\'s dynamic LoRA loading (default is "false")'))
         .addNumberOption(option =>
             option.setName('default_lora_strength')
                 .setDescription('The strength of lora if loaded dynamically (default is "0.85")'))
+        // .addIntegerOption(option =>
+        //     option.setName('force_server_selection')
+        //         .setDescription('Force the server to use (default is "-1 - Random")'))
+        .addIntegerOption(option =>
+            option.setName('clip_skip')
+                .setDescription('Early stopping parameter for CLIP model (default is 1, recommend 1 and 2)'))
         .addAttachmentOption(option =>
             option.setName('controlnet_input')
                 .setDescription('The input image of the controlnet'))
@@ -110,13 +95,24 @@ module.exports = {
         .addStringOption(option =>
             option.setName('controlnet_config')
                 .setDescription('Config string for the controlnet (use wd_controlnet to generate)'))
-        .addIntegerOption(option =>
-            option.setName('force_server_selection')
-                .setDescription('Force the server to use (default is "-1 - Random")'))
         .addStringOption(option => 
             option.setName('checkpoint')
                 .setDescription('Force a cached checkpoint to be used (not all option is cached)')
-                .addChoices(...model_selection))
+                .addChoices(...model_selection, ...model_selection_xl))
+        .addStringOption(option =>
+            option.setName('upscaler')
+                .setDescription('The upscaler to use (default is "None")')
+                .addChoices(...upscaler_selection))
+        .addStringOption(option =>
+            option.setName('profile')
+                .setDescription('Specify the profile to use (default is No Profile)'))
+        .addBooleanOption(option =>
+            option.setName('do_adetailer')
+                .setDescription('[Experimental] Attempt to fix hands and face details (default is "false")'))
+        .addStringOption(option =>
+            option.setName('adetailer_config')
+                .setDescription('Config string for the adetailer (use wd_adetailer to generate)'))
+                
     ,
 
 	async execute(interaction, client) {
@@ -126,20 +122,39 @@ module.exports = {
             return 
         }
 
+        //make a temporary reply to not get timeout'd
+		await interaction.deferReply();
+
+        const profile_option = interaction.options.getString('profile') || null
+        let profile = null
+        if (profile_option != null) {
+            let profile_data = null
+            // attempt to query the profile name on the database
+            profile_data = await queryRecordLimit('wd_profile', { name: profile_option, user_id: interaction.user.id }, 1)
+            if (profile_data.length == 0) {
+                // attempt to query global profile
+                profile_data = await queryRecordLimit('wd_profile', { name: profile_option }, 1)
+                if (profile_data.length == 0) {
+                    // no profile found
+                    interaction.channel.send({ content: `Profile ${profile_option} not found, fallback to default setting` });
+                }
+            }
+
+            if (profile_data.length != 0) {
+                profile = profile_data[0]
+            }
+        }
+
 		// load the option with default value
-        let prompt = interaction.options.getString('prompt')
-		let neg_prompt = interaction.options.getString('neg_prompt') || '' 
-        const width = clamp(interaction.options.getInteger('width') || 512, 64, 1920)
-        const height = clamp(interaction.options.getInteger('height') || 512, 64, 1080)
+		let prompt = (profile?.prompt_pre || '') + (interaction.options.getString('prompt') || '') + (profile?.prompt || '')
+		let neg_prompt = (profile?.neg_prompt_pre || '') + (interaction.options.getString('neg_prompt') || '') + (profile?.neg_prompt || '')
+        const width = clamp(interaction.options.getInteger('width') || profile?.width || 512, 64, 4096)
+        const height = clamp(interaction.options.getInteger('height') || profile?.height || 512, 64, 4096)
         const denoising_strength = clamp(interaction.options.getNumber('denoising_strength') || 0.7, 0, 1)
-        const mask_blur = clamp(interaction.options.getInteger('mask_blur') || 4, 0, 64)
-        const mask_content = interaction.options.getString('mask_content') || 'original'
-        const mask_color = interaction.options.getString('mask_color') || 'black'
-        const sampler = interaction.options.getString('sampler') || 'Euler a'
-        const cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || 7, 0, 30)
-        const sampling_step = clamp(interaction.options.getInteger('sampling_step') || 20, 1, 100)
-        const override_neg_prompt = interaction.options.getBoolean('override_neg_prompt') || false
-        const remove_nsfw_restriction = interaction.options.getBoolean('remove_nsfw_restriction') || false
+        const sampler = interaction.options.getString('sampler') || profile?.sampler || 'Euler a'
+        const cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || profile?.cfg_scale || 7, 0, 30)
+        const sampling_step = clamp(interaction.options.getInteger('sampling_step') || profile?.sampling_step || 20, 1, 100)
+        const default_neg_prompt = interaction.options.getString('default_neg_prompt') || 'n_sfw'
         const no_dynamic_lora_load = interaction.options.getBoolean('no_dynamic_lora_load') || false
         const default_lora_strength = clamp(interaction.options.getNumber('default_lora_strength') || 0.85, 0, 3)
         const force_server_selection = clamp(interaction.options.getInteger('force_server_selection') !== null ? interaction.options.getInteger('force_server_selection') : -1 , -1, 1)
@@ -148,6 +163,10 @@ module.exports = {
         const controlnet_input_option_3 = interaction.options.getAttachment('controlnet_input_3') || null
         const controlnet_config = interaction.options.getString('controlnet_config') || client.controlnet_config.has(interaction.user.id) ? client.controlnet_config.get(interaction.user.id) : null
         const checkpoint = interaction.options.getString('checkpoint') || null
+        const upscaler = interaction.options.getString('upscaler') || 'None'
+        const clip_skip = clamp(interaction.options.getInteger('clip_skip') || profile?.clip_skip || 1, 1, 12)
+        const do_adetailer = interaction.options.getBoolean('do_adetailer') || false
+        const adetailer_config = interaction.options.getString('adetailer_config') || client.adetailer_config.has(interaction.user.id) ? client.adetailer_config.get(interaction.user.id) : null
 
         let seed = -1
         try {
@@ -156,11 +175,8 @@ module.exports = {
         catch {
             seed = parseInt('-1')
         }
-        let attachment_option = interaction.options.getAttachment('image')
-        let attachment_mask_option = interaction.options.getAttachment('mask')
 
-        //make a temporary reply to not get timeout'd
-		await interaction.deferReply();
+        let attachment_option = interaction.options.getAttachment('image')
 
         //download the image from attachment.proxyURL
         let attachment = await loadImage(attachment_option.proxyURL).catch((err) => {
@@ -169,91 +185,20 @@ module.exports = {
             return
         })
 
-        let attachment_mask = await loadImage(attachment_mask_option.proxyURL, true).catch((err) => {
-            console.log(err)
-            interaction.editReply({ content: "Failed to retrieve mask image", ephemeral: true });
-            return
-        })
-
         let controlnet_input = controlnet_input_option ? await loadImage(controlnet_input_option.proxyURL).catch((err) => {
             console.log(err)
-            interaction.reply({ content: "Failed to retrieve control net image", ephemeral: true });
+            interaction.editReply({ content: "Failed to retrieve control net image", ephemeral: true });
         }) : null
 
         let controlnet_input_2 = controlnet_input_option_2 ? await loadImage(controlnet_input_option_2.proxyURL).catch((err) => {
             console.log(err)
-            interaction.reply({ content: "Failed to retrieve control net image 2", ephemeral: true });
+            interaction.editReply({ content: "Failed to retrieve control net image 2", ephemeral: true });
         }) : null
 
         let controlnet_input_3 = controlnet_input_option_3 ? await loadImage(controlnet_input_option_3.proxyURL).catch((err) => {
             console.log(err)
-            interaction.reply({ content: "Failed to retrieve control net image 3", ephemeral: true });
+            interaction.editReply({ content: "Failed to retrieve control net image 3", ephemeral: true });
         }) : null
-
-        let sharp_mask_data_uri = ""
-        if (mask_color === 'black') {
-            // load attachment_mask to sharp, negate, blur (guassian 4 pixels radius), and turn all non-white pixel to black and ((export to png data URI)) (use pipline to avoid memory leak)
-            await sharp(attachment_mask)
-                .negate({alpha: false})
-                .blur(3)
-                .threshold(255)
-                .toFormat('png')
-                .toBuffer()
-                .then(data => {
-                    sharp_mask_data_uri = "data:image/png;base64," + data.toString('base64')
-                })
-                .catch(err => {
-                    console.log(err)
-                    interaction.editReply({ content: "Failed to process mask image", ephemeral: true });
-                    return
-                })
-        }
-        else if (mask_color === 'red' || mask_color === 'green' || mask_color === 'blue') {
-            // load attachment_mask to sharp, only take the pure red/green/blue channel respective to the mask_color, 
-            //blur (guassian 4 pixels radius), and turn all non-white pixel to black and ((export to png data URI)) (use pipline to avoid memory leak)
-            let mono_img = null
-            await sharp(attachment_mask)
-                .toColourspace('b-w')
-                .toBuffer()
-                .then(data => {
-                    mono_img = data
-                })
-                .catch(err => {
-                    console.log(err)
-                    interaction.editReply({ content: "Failed to process mask image", ephemeral: true });
-                    return
-                })
-
-            await sharp(mono_img)
-                .blur(3)
-                .threshold(255)
-                .toFormat('png')
-                .toBuffer()
-                .then(data => {
-                    sharp_mask_data_uri = "data:image/png;base64," + data.toString('base64')
-                })
-                .catch(err => {
-                    console.log('error in mask conversion:', err)
-                    interaction.editReply({ content: "Failed to process mask image", ephemeral: true });
-                    return
-                })
-        }
-        else {
-            // load attachment_mask to sharp, blur (guassian 4 pixels radius), turn all non-white pixel to black and ((export to png data URI)) (use pipline to avoid memory leak)
-            await sharp(attachment_mask)
-                .blur(3)
-                .threshold(255)
-                .toFormat('png')
-                .toBuffer()
-                .then(data => {
-                    sharp_mask_data_uri = "data:image/png;base64," + data.toString('base64')
-                })
-                .catch(err => {
-                    console.log(err)
-                    interaction.editReply({ content: "Failed to process mask image", ephemeral: true });
-                    return
-                })
-        }
 
         if (checkpoint) {
             const change_result = await model_change(checkpoint, false).catch(err => {
@@ -277,6 +222,8 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             return
         }
 
+        const cooldown = (width * height * sampling_step + (checkpoint ? 2000000 : 0)) / 1000000
+
         // TODO: add progress ping
         let current_preview_id = 0
         const session_hash = crypt.randomBytes(16).toString('base64');
@@ -292,7 +239,6 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                 });
         }
 
-
         const WORKER_ENDPOINT = server_pool[server_index].url
 
         const row = new MessageActionRow()
@@ -305,7 +251,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
 
         const filter = i => i.customId === 'cancel_img2img' && i.user.id === interaction.user.id;
 
-        const collector = interaction.channel.createMessageComponentCollector({ filter, time: 300000 });
+        const collector = interaction.channel.createMessageComponentCollector({ filter, time: 800000 });
 
         collector.on('collect', async i => {
             isCancelled = true
@@ -333,23 +279,9 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         });
 
         // TODO: remove button after collector period has ended
-
-        // DEBUG: convert mask_uri to png and spit it out
-
-        // const mask_uri = sharp_mask_data_uri
-        // await sharp(Buffer.from(mask_uri.replace(/^data:image\/\w+;base64,/, ""), 'base64'))
-        //     .toFormat('png')
-        //     .toBuffer()
-        //     .then(data => {
-        //         interaction.editReply({ content: "Debug mask conversion", files: [{attachment: data, name: "debug_mask.png"}] })
-        //     })
-        //     .catch(err => {
-        //         console.log(err)
-        //         return ""
-        //     })
-
-        // return 
-
+        const default_neg_prompt_comp = default_neg_prompt.split('_')
+        const override_neg_prompt = default_neg_prompt_comp[0] === 'n'
+        const remove_nsfw_restriction = default_neg_prompt_comp[1] === 'nsfw'
         let coupler_config = null
         let color_grading_config = null
 
@@ -366,14 +298,22 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         color_grading_config = color_grading_config_res.color_grading_config
 
         const is_censor = (interaction.guildId && censorGuildIds.includes(interaction.guildId)) ? true : false
+
+        if (do_adetailer && adetailer_config) {
+            await load_adetailer(session_hash, server_index, adetailer_config, interaction, coupler_config, prompt, 1)
+                .catch(err => {
+                    console.log(err)
+                    interaction.editReply({ content: "Failed to load adetailer:" + err });
+                });
+        }
         
         if (!no_dynamic_lora_load) {
             prompt = load_lora_from_prompt(prompt, default_lora_strength)
         }
     
         const create_data = get_data_body_img2img(server_index, prompt, neg_prompt, sampling_step, cfg_scale,
-            seed, sampler, session_hash, height, width, attachment, sharp_mask_data_uri, denoising_strength, 4, mask_blur, mask_content, "None", false, 
-            coupler_config, color_grading_config, 2, is_censor)
+            seed, sampler, session_hash, height, width, attachment, null, denoising_strength, /*img2img mode*/ 0, 4, "original", upscaler, 
+            do_adetailer, coupler_config, color_grading_config, clip_skip, is_censor)
 
         // make option_init but for axios
         const option_init_axios = {
@@ -552,7 +492,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                 .catch(err => {
                     isCancelled = true
                     throw err
-                });
+                })
         }
         catch (err) {
             console.log(err)
@@ -568,6 +508,6 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
 
         setTimeout(() => {
             client.cooldowns.delete(interaction.user.id);
-        }, client.COOLDOWN_SECONDS * 1000);
+        }, cooldown);
 	},
 };

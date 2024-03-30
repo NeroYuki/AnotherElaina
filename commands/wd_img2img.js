@@ -1,15 +1,13 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
-const { byPassUser } = require('../config.json');
+const { byPassUser, censorGuildIds } = require('../config.json');
 const crypt = require('crypto');
 const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, load_lora_from_prompt, model_name_hash_mapping, check_model_filename, model_selection, model_selection_xl, upscaler_selection } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
-const { loadImage } = require('../utils/load_discord_img');
-const { load_controlnet } = require('../utils/controlnet_execute');
-const { cached_model, model_change, clip_skip_change } = require('../utils/model_change');
-const { queryRecordLimit } = require('../database/database_interaction');
-const { load_adetailer } = require('../utils/adetailer_execute.js');
+const { loadImage } = require('../utils/load_discord_img.js');
+const { cached_model, model_change } = require('../utils/model_change.js');
+const { queryRecordLimit } = require('../database/database_interaction.js');
 const { get_coupler_config_from_prompt, get_color_grading_config_from_prompt } = require('../utils/prompt_analyzer.js');
 
 function clamp(num, min, max) {
@@ -36,21 +34,16 @@ module.exports = {
                 .setDescription('How much the image is noised before regen, closer to 0 = closer to original (0 - 1, default 0.7)'))
         .addIntegerOption(option => 
             option.setName('width')
-                .setDescription('The width of the generated image (default is 512, recommended max is 768)'))
+                .setDescription('The width of the generated image (default is 512, 1024 if XL model is used)'))
         .addIntegerOption(option =>
             option.setName('height')
-                .setDescription('The height of the generated image (default is 512, recommended max is 768)'))
+                .setDescription('The height of the generated image (default is 512, 1024 if XL model is used)'))
         .addStringOption(option => 
             option.setName('sampler')
                 .setDescription('The sampling method for the AI to generate art from (default is "Euler a")')
                 .addChoices(
 					{ name: 'Euler a', value: 'Euler a' },
-                    { name: 'Euler', value: 'Euler' },
-                    { name: 'LMS', value: 'LMS' },
-                    { name: 'DPM++ 2S a', value: 'DPM++ 2S a' },
                     { name: 'DPM2 a Karras', value: 'DPM2 a Karras' },
-                    { name: 'DPM++ 2M Karras', value: 'DPM++ 2M Karras' },
-                    { name: 'DPM++ 3M SDE', value: 'DPM++ 3M SDE' },
                     { name: 'LCM', value: 'LCM' },
 				))
         .addNumberOption(option => 
@@ -64,7 +57,7 @@ module.exports = {
                 .setDescription('Random seed for AI generate art from (default is "-1 - Random")'))
         .addStringOption(option =>
             option.setName('default_neg_prompt')
-                .setDescription('Define the default negative prompt for the user (default is "Quality - No NSFW")')
+                .setDescription('Define the default negative prompt for the user (default is "None - No NSFW")')
                 .addChoices(
                     { name: 'Quality - SFW', value: 'q_sfw' },
                     { name: 'Quality - NSFW', value: 'q_nsfw' },
@@ -74,31 +67,18 @@ module.exports = {
         .addBooleanOption(option => 
             option.setName('no_dynamic_lora_load')
                 .setDescription('Do not use the bot\'s dynamic LoRA loading (default is "false")'))
-        .addNumberOption(option =>
-            option.setName('default_lora_strength')
-                .setDescription('The strength of lora if loaded dynamically (default is "0.85")'))
-        // .addIntegerOption(option =>
-        //     option.setName('force_server_selection')
-        //         .setDescription('Force the server to use (default is "-1 - Random")'))
-        .addIntegerOption(option =>
-            option.setName('clip_skip')
-                .setDescription('Early stopping parameter for CLIP model (default is 1, recommend 1 and 2)'))
-        .addAttachmentOption(option =>
-            option.setName('controlnet_input')
-                .setDescription('The input image of the controlnet'))
-        .addAttachmentOption(option =>
-            option.setName('controlnet_input_2')
-                .setDescription('The input image of the controlnet'))
-        .addAttachmentOption(option =>
-            option.setName('controlnet_input_3')
-                .setDescription('The input image of the controlnet'))
-        .addStringOption(option =>
-            option.setName('controlnet_config')
-                .setDescription('Config string for the controlnet (use wd_controlnet to generate)'))
         .addStringOption(option => 
             option.setName('checkpoint')
                 .setDescription('Force a cached checkpoint to be used (not all option is cached)')
-                .addChoices(...model_selection, ...model_selection_xl))
+                .addChoices(
+                    { name: 'Anything v5', value: 'anythingv5.safetensors [7f96a1a9ca]' },
+                    { name: 'MeinaPastel v6', value: 'meinapastel.safetensors [6292dd40d6]' },
+                    { name: 'NekorayXL v0.6', value: 'nekorayxl.safetensors [c53dabc181]' },
+                    { name: 'AnimagineXL v3.1', value: 'animaginexl_v31.safetensors [e3c47aedb0]'},
+                    { name: 'AAMXL Turbo', value: 'aamxl_turbo.safetensors [8238e80fdd]'},
+                    { name: 'Juggernaut XL', value: 'juggernautxl_turbo.safetensors [c9e3e68f89]'},
+                    { name: 'Dreamshaper XL Turbo', value: 'dreamshaperxl_turbo.safetensors [4496b36d48]'},
+                ))
         .addStringOption(option =>
             option.setName('upscaler')
                 .setDescription('The upscaler to use (default is "None")')
@@ -106,12 +86,6 @@ module.exports = {
         .addStringOption(option =>
             option.setName('profile')
                 .setDescription('Specify the profile to use (default is No Profile)'))
-        .addBooleanOption(option =>
-            option.setName('do_adetailer')
-                .setDescription('[Experimental] Attempt to fix hands and face details (default is "false")'))
-        .addStringOption(option =>
-            option.setName('adetailer_config')
-                .setDescription('Config string for the adetailer (use wd_adetailer to generate)'))
                 
     ,
 
@@ -148,25 +122,22 @@ module.exports = {
 		// load the option with default value
 		let prompt = (profile?.prompt_pre || '') + (interaction.options.getString('prompt') || '') + (profile?.prompt || '')
 		let neg_prompt = (profile?.neg_prompt_pre || '') + (interaction.options.getString('neg_prompt') || '') + (profile?.neg_prompt || '')
-        const width = clamp(interaction.options.getInteger('width') || profile?.width || 512, 64, 4096)
-        const height = clamp(interaction.options.getInteger('height') || profile?.height || 512, 64, 4096)
-        const denoising_strength = clamp(interaction.options.getNumber('denoising_strength') || 0.7, 0, 1)
-        const sampler = interaction.options.getString('sampler') || profile?.sampler || 'Euler a'
-        const cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || profile?.cfg_scale || 7, 0, 30)
-        const sampling_step = clamp(interaction.options.getInteger('sampling_step') || profile?.sampling_step || 20, 1, 100)
-        const default_neg_prompt = interaction.options.getString('default_neg_prompt') || 'q_sfw'
+        let width = clamp(interaction.options.getInteger('width') || profile?.width || 512, 512, 2048) // this can only end well :)
+        let height = clamp(interaction.options.getInteger('height') || profile?.height || 512, 512, 2048)
+
+        let sampler = interaction.options.getString('sampler') || profile?.sampler || 'Euler a'
+        let cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || profile?.cfg_scale || 7, 0, 30)
+        let sampling_step = clamp(interaction.options.getInteger('sampling_step') || profile?.sampling_step || 20, 1, 100)
+
+        const default_neg_prompt = interaction.options.getString('default_neg_prompt') || 'n_sfw'
         const no_dynamic_lora_load = interaction.options.getBoolean('no_dynamic_lora_load') || false
-        const default_lora_strength = clamp(interaction.options.getNumber('default_lora_strength') || 0.85, 0, 3)
-        const force_server_selection = clamp(interaction.options.getInteger('force_server_selection') !== null ? interaction.options.getInteger('force_server_selection') : -1 , -1, 1)
-        const controlnet_input_option = interaction.options.getAttachment('controlnet_input') || null
-        const controlnet_input_option_2 = interaction.options.getAttachment('controlnet_input_2') || null
-        const controlnet_input_option_3 = interaction.options.getAttachment('controlnet_input_3') || null
-        const controlnet_config = interaction.options.getString('controlnet_config') || client.controlnet_config.has(interaction.user.id) ? client.controlnet_config.get(interaction.user.id) : null
+        let default_lora_strength = 0.85
+
+        const denoising_strength = clamp(interaction.options.getNumber('denoising_strength') || 0.7, 0, 1)
+        const force_server_selection = -1
         const checkpoint = interaction.options.getString('checkpoint') || null
         const upscaler = interaction.options.getString('upscaler') || 'None'
-        const clip_skip = clamp(interaction.options.getInteger('clip_skip') || profile?.clip_skip || 1, 1, 12)
-        const do_adetailer = interaction.options.getBoolean('do_adetailer') || false
-        const adetailer_config = interaction.options.getString('adetailer_config') || client.adetailer_config.has(interaction.user.id) ? client.adetailer_config.get(interaction.user.id) : null
+        let clip_skip = clamp(profile?.clip_skip || 1, 1, 12)
 
         let seed = -1
         try {
@@ -185,27 +156,6 @@ module.exports = {
             return
         })
 
-        let controlnet_input = controlnet_input_option ? await loadImage(controlnet_input_option.proxyURL).catch((err) => {
-            console.log(err)
-            interaction.editReply({ content: "Failed to retrieve control net image", ephemeral: true });
-        }) : null
-
-        let controlnet_input_2 = controlnet_input_option_2 ? await loadImage(controlnet_input_option_2.proxyURL).catch((err) => {
-            console.log(err)
-            interaction.editReply({ content: "Failed to retrieve control net image 2", ephemeral: true });
-        }) : null
-
-        let controlnet_input_3 = controlnet_input_option_3 ? await loadImage(controlnet_input_option_3.proxyURL).catch((err) => {
-            console.log(err)
-            interaction.editReply({ content: "Failed to retrieve control net image 3", ephemeral: true });
-        }) : null
-
-        if (clip_skip != 1) {
-            await clip_skip_change(clip_skip).catch(err => {
-                console.log(err)
-            })
-        }
-        
         if (checkpoint) {
             const change_result = await model_change(checkpoint, false).catch(err => {
                 console.log(err)
@@ -221,6 +171,34 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             }
         }
 
+        //TODO: refactor all forced config
+
+        if (model_selection_xl.find(x => x.value === cached_model[0])) {
+            if (width === 512 && height === 512) {
+                width = 1024
+                height = 1024
+            }
+
+            default_lora_strength = 1
+        }
+
+        if (cached_model[0] === 'aamxl_turbo.safetensors [8238e80fdd]') {
+            cfg_scale = 3.5
+            sampling_step = 8
+        }
+        else if (cached_model[0] === 'dreamshaperxl_turbo.safetensors [4496b36d48]') {
+            sampler = 'DPM++ SDE Karras'
+            cfg_scale = 2
+            sampling_step = 8
+        }
+        else if (cached_model[0] === 'juggernautxl_turbo.safetensors [c9e3e68f89]') {
+            sampler = 'DPM++ 2M Karras'
+            cfg_scale = 5
+            sampling_step = 30
+        }
+
+        // end forced config
+
         let server_index = get_worker_server(force_server_selection)
 
 		if (server_index === -1) {
@@ -228,20 +206,14 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             return
         }
 
+        const cooldown = (width * height * sampling_step + (checkpoint ? 2000000 : 0)) / 1000000
+
         // TODO: add progress ping
         let current_preview_id = 0
         const session_hash = crypt.randomBytes(16).toString('base64');
         let isDone = false
         let isCancelled = false
         let progress_ping_delay = 2000
-
-        if (controlnet_input && controlnet_config) {
-            await load_controlnet(session_hash, server_index, controlnet_input, controlnet_input_2, controlnet_input_3, controlnet_config, interaction, 1)
-                .catch(err => {
-                    console.log(err)
-                    interaction.editReply({ content: "Failed to load control net:" + err });
-                });
-        }
 
         const WORKER_ENDPOINT = server_pool[server_index].url
 
@@ -289,9 +261,9 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         let coupler_config = null
         let color_grading_config = null
 
-        neg_prompt = get_negative_prompt(neg_prompt, override_neg_prompt, remove_nsfw_restriction)
+        neg_prompt = get_negative_prompt(neg_prompt, override_neg_prompt, remove_nsfw_restriction, cached_model[0])
 
-        prompt = get_prompt(prompt, remove_nsfw_restriction)
+        prompt = get_prompt(prompt, remove_nsfw_restriction, cached_model[0])
 
         const coupler_config_res = get_coupler_config_from_prompt(prompt)
         prompt = coupler_config_res.prompt
@@ -301,20 +273,15 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         prompt = color_grading_config_res.prompt
         color_grading_config = color_grading_config_res.color_grading_config
 
-        if (do_adetailer && adetailer_config) {
-            await load_adetailer(session_hash, server_index, adetailer_config, interaction, coupler_config, prompt, 1)
-                .catch(err => {
-                    console.log(err)
-                    interaction.editReply({ content: "Failed to load adetailer:" + err });
-                });
-        }
+        const is_censor = (interaction.guildId && censorGuildIds.includes(interaction.guildId)) ? true : false
         
         if (!no_dynamic_lora_load) {
             prompt = load_lora_from_prompt(prompt, default_lora_strength)
         }
     
         const create_data = get_data_body_img2img(server_index, prompt, neg_prompt, sampling_step, cfg_scale,
-            seed, sampler, session_hash, height, width, attachment, null, denoising_strength, /*img2img mode*/ 0, 4, "original", upscaler, do_adetailer, coupler_config, color_grading_config)
+            seed, sampler, session_hash, height, width, attachment, null, denoising_strength, /*img2img mode*/ 0, 4, "original", upscaler, 
+            false, coupler_config, color_grading_config, clip_skip, is_censor)
 
         // make option_init but for axios
         const option_init_axios = {
@@ -494,14 +461,6 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                     isCancelled = true
                     throw err
                 })
-                .finally(async () => {
-                    if (clip_skip != 1) {
-                        // switch clip skip back to 1 after image gen is completed (or fail)
-                        await clip_skip_change(1).catch(err => {
-                            console.log(err)
-                        })
-                    }
-                });;
         }
         catch (err) {
             console.log(err)
@@ -517,6 +476,6 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
 
         setTimeout(() => {
             client.cooldowns.delete(interaction.user.id);
-        }, client.COOLDOWN_SECONDS * 1000);
+        }, cooldown);
 	},
 };

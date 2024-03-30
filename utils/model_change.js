@@ -67,40 +67,7 @@ function model_change(modelname, forced = false) {
     })
 }
 
-function clip_skip_change(clip_skip) {
-    return new Promise(async (resolve, reject) => {
-        // change clip skip then send the notification to discord channel where the action is executed
-        const session_hash = crypt.randomBytes(16).toString('base64');
-        const option_init_axios = {
-            data: {
-                fn_index: server_pool[0].fn_index_change_clip_skip,
-                session_hash: session_hash,
-                data: [
-                    clip_skip
-                ]
-            },
-            config: {
-                timeout: 900000
-            }
-        }  
-
-        await axios.post(`http://192.168.196.142:7860/run/predict/`, option_init_axios.data, option_init_axios.config)
-            .then(async (res) => {
-                if(res.data) {
-                    resolve(true)
-                } else {
-                    reject("CLIP skip change failed")
-                }
-            })
-            .catch(async (err) => {
-                console.log(err)
-                reject('CLIP skip change failed: ' + err)
-            })
-    })
-}
-
 module.exports = {
     model_change,
-    clip_skip_change,
     cached_model
 }
