@@ -266,7 +266,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         prompt = color_grading_config_res.prompt
         color_grading_config = color_grading_config_res.color_grading_config
 
-        const is_censor = (interaction.guildId && censorGuildIds.includes(interaction.guildId)) ? true : false
+        const is_censor = ((interaction.guildId && censorGuildIds.includes(interaction.guildId)) || (interaction.channel && !interaction.channel.nsfw)) ? true : false
 
         if (!no_dynamic_lora_load) {
             prompt = load_lora_from_prompt(prompt, default_lora_strength)
