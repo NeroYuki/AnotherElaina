@@ -30,34 +30,17 @@ module.exports = {
             option.setName('height')
                 .setDescription('The height of the generated image (default is 512, 1024 if XL model is used)'))
         .addStringOption(option => 
-            option.setName('sampler')
-                .setDescription('The sampling method for the AI to generate art from (default is "Euler a")')
-                .addChoices(
-					{ name: 'Euler a', value: 'Euler a' },
-                    { name: 'DPM2 a Karras', value: 'DPM2 a Karras' },
-                    { name: 'LCM', value: 'LCM' },
-				))
-        .addNumberOption(option => 
-            option.setName('cfg_scale')
-                .setDescription('Lower value = more creative freedom (default is 7, recommended max is 10)'))
-        .addIntegerOption(option =>
-            option.setName('sampling_step')
-                .setDescription('More sampling step = longer generation (default is 20, recommended max is 40)'))
-        .addStringOption(option => 
             option.setName('seed')
                 .setDescription('Random seed for AI generate art from (default is "-1 - Random")'))
         .addStringOption(option =>
             option.setName('default_neg_prompt')
-                .setDescription('Define the default negative prompt for the user (default is "None - No NSFW")')
+                .setDescription('Define the default negative prompt for the user (default is "Quality - No NSFW")')
                 .addChoices(
                     { name: 'Quality - SFW', value: 'q_sfw' },
                     { name: 'Quality - NSFW', value: 'q_nsfw' },
                     { name: 'None - SFW', value: 'n_sfw' },
                     { name: 'No Default', value: 'n_nsfw' },
                 ))
-        .addBooleanOption(option => 
-            option.setName('no_dynamic_lora_load')
-                .setDescription('Do not use the bot\'s dynamic LoRA loading (default is "false")'))
         .addNumberOption(option =>
             option.setName('upscale_multiplier')
                 .setDescription('The rate to upscale the generated image (default is 1)'))
@@ -131,17 +114,18 @@ module.exports = {
         let width = clamp(interaction.options.getInteger('width') || profile?.width || 512, 512, 2048) // this can only end well :)
         let height = clamp(interaction.options.getInteger('height') || profile?.height || 512, 512, 2048)
 
-        let sampler = interaction.options.getString('sampler') || profile?.sampler || 'Euler a'
-        let cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || profile?.cfg_scale || 7, 0, 30)
-        let sampling_step = clamp(interaction.options.getInteger('sampling_step') || profile?.sampling_step || 20, 1, 100)
+        let sampler =  profile?.sampler || 'Euler a'
+        let cfg_scale = clamp(profile?.cfg_scale || 7, 0, 30)
+        let sampling_step = clamp(profile?.sampling_step || 25, 1, 100)
 
-        const default_neg_prompt = interaction.options.getString('default_neg_prompt') || 'n_sfw'
+        const default_neg_prompt = interaction.options.getString('default_neg_prompt') || 'q_sfw'
         const no_dynamic_lora_load = interaction.options.getBoolean('no_dynamic_lora_load') || false
         let default_lora_strength = 0.85
 
         const force_server_selection = -1
 
-        const upscaler_mode = interaction.options.getString('upscaler') || 'ERSGAN'
+        const upscaler_mode = interaction.options.getString('upscaler') || 'Lanczos'
+
         const upscale_step = upscaler_mode === 'Latent' ? 25 : 15
         const upscale_multiplier = clamp(interaction.options.getNumber('upscale_multiplier') || 1, 1, 4)
         const upscaler = upscaler_mode === 'Latent' ? 'Latent' : upscaler_mode === 'Lanczos' ? 'Lanczos' : '4x_UltraSharp' 
@@ -182,6 +166,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
 
         if (model_selection_xl.find(x => x.value === cached_model[0])) {
             if (width === 512 && height === 512) {
+                interaction.channel.send('default resolution detected while XL model is selected, changing resolution to 1024x1024')
                 width = 1024
                 height = 1024
             }
@@ -190,6 +175,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         }
 
         if (cached_model[0] === 'aamxl_turbo.safetensors [8238e80fdd]') {
+            sampler = 'Euler a'
             cfg_scale = 3.5
             sampling_step = 8
         }
@@ -201,6 +187,11 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         else if (cached_model[0] === 'juggernautxl_turbo.safetensors [c9e3e68f89]') {
             sampler = 'DPM++ 2M Karras'
             cfg_scale = 5
+            sampling_step = 30
+        }
+        else if (model_selection.find(x => x.value === cached_model[0])) {
+            sampler = 'DPM++ 2M Karras'
+            cfg_scale = 7
             sampling_step = 30
         }
 
