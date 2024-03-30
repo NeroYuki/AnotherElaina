@@ -116,12 +116,12 @@ module.exports = {
 
         const force_server_selection = -1
 
-        const upscaler_mode = interaction.options.getString('upscaler') || 'Lanczos'
+        const upscaler_mode = interaction.options.getString('upscaler_mode') || 'Lanczos'
 
-        const upscale_step = upscaler_mode === 'Latent' ? 25 : 15
+        const upscale_step = (upscaler_mode === 'Latent' ? 25 : 15)
         const upscale_multiplier = clamp(interaction.options.getNumber('upscale_multiplier') || 1, 1, 4)
         const upscaler = upscaler_mode === 'Latent' ? 'Latent' : upscaler_mode === 'Lanczos' ? 'Lanczos' : '4x_UltraSharp' 
-        const upscale_denoise_strength = upscaler_mode === 'Latent' ? 0.65 : 0.25
+        const upscale_denoise_strength = (upscaler_mode === 'Latent' ? 0.65 : 0.25)
 
         const checkpoint = interaction.options.getString('checkpoint') || null
         let clip_skip = clamp(profile?.clip_skip || 1, 1, 12)
