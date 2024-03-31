@@ -244,7 +244,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         const row = new MessageActionRow()
 			.addComponents(
 				new MessageButton()
-					.setCustomId('cancel')
+					.setCustomId('cancel_img2img')
 					.setLabel('Cancel')
 					.setStyle('DANGER'),
 			);
