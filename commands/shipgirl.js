@@ -10,7 +10,7 @@ let base_sum = 0
 
 function get_random_selection(category = null, require_base = false) {
 	let fr_name = ""
-	let ship = {}
+	let ship = null
 
 	let selector = 0
 	if (!category) {
@@ -114,7 +114,7 @@ module.exports = {
 
 		//console.log(fr_name, ship)
 
-		if (fr_name === "" || ship === {}) {
+		if (fr_name === "" || ship === null) {
 			await interaction.editReply({content: 'Sorry, i can\'t get a new quiz for you :('})
 			return
 		}

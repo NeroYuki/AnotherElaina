@@ -19,7 +19,7 @@ function clamp(num, min, max) {
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('wd_img2img_adv')
-		.setDescription('Request my Diffusion instance to generate art from an image')
+		.setDescription('Request my Diffusion instance to generate art from an image - Advanced Mode')
 		.addAttachmentOption(option =>
 			option.setName('image')
 				.setDescription('The image to be regenerate')

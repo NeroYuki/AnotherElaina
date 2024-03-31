@@ -21,7 +21,7 @@ function clamp(num, min, max) {
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('wd_create_adv')
-		.setDescription('Create an AI art via my own Stable Diffusion Web UI instance')
+		.setDescription('Create an AI art via my own Stable Diffusion Web UI instance - Advanced Mode')
         .addStringOption(option =>
             option.setName('prompt')
                 .setDescription('The prompt for the AI to generate art from'))

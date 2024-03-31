@@ -41,7 +41,7 @@ module.exports = {
                 .setDescription('The visibility of the Codeformer model (default is "0, no effect)'))
         .addNumberOption(option =>
             option.setName('codeformer_weight')
-                .setDescription('The weight of the Codeformer model (default is "0, maximum effect)'))       
+                .setDescription('The weight of the Codeformer model (default is "0, no effect)'))       
         .addNumberOption(option =>
             option.setName('color_enhance_weight')
                 .setDescription('The weight of the color enhancement script (default is "0, no enhancement")'))

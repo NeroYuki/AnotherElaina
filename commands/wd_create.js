@@ -43,7 +43,7 @@ module.exports = {
                 ))
         .addNumberOption(option =>
             option.setName('upscale_multiplier')
-                .setDescription('The rate to upscale the generated image (default is 1)'))
+                .setDescription('The rate to upscale the generated image (default is 1) - EXTREMELY SLOW. Use wd_upscale instead'))
         .addStringOption(option =>
             option.setName('upscaler_mode')
                 .setDescription('Specify the upscaler to use (default is "Lanczos")')
