@@ -212,12 +212,12 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         const row = new MessageActionRow()
     			.addComponents(
     				new MessageButton()
-    					.setCustomId('cancel_simple')
+    					.setCustomId('cancel_simple_' + interaction.id)
     					.setLabel('Cancel')
     					.setStyle('DANGER'),
     			);
 
-        const filter = i => i.customId === 'cancel_simple' && i.user.id === interaction.user.id;
+        const filter = i => i.customId === 'cancel_simple_' + interaction.id && i.user.id === interaction.user.id;
 
         const collector = interaction.channel.createMessageComponentCollector({ filter, time: 800000 });
 

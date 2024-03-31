@@ -242,14 +242,14 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         const WORKER_ENDPOINT = server_pool[server_index].url
 
         const row = new MessageActionRow()
-			.addComponents(
-				new MessageButton()
-					.setCustomId('cancel_img2img')
-					.setLabel('Cancel')
-					.setStyle('DANGER'),
-			);
+    			.addComponents(
+    				new MessageButton()
+    					.setCustomId('cancel_img2img_' + interaction.id)
+    					.setLabel('Cancel')
+    					.setStyle('DANGER'),
+    			);
 
-        const filter = i => i.customId === 'cancel_img2img' && i.user.id === interaction.user.id;
+        const filter = i => i.customId === 'cancel_img2img_' + interaction.id && i.user.id === interaction.user.id;
 
         const collector = interaction.channel.createMessageComponentCollector({ filter, time: 800000 });
 
