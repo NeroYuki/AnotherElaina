@@ -210,23 +210,12 @@ module.exports = {
             interaction.reply({ content: "Failed to retrieve control net image 3", ephemeral: true });
         }) : null
         
-        // if width or height of the controlnet_input image is not divisible by 8, then it will be resized to the nearest divisible by 8, using sharp
-        // if (controlnet_input_option.width % 8 !== 0 || controlnet_input_option.height % 8 !== 0) {
-        //     controlnet_input = await sharp(controlnet_input.split(',')[1])
-        //         .resize(Math.ceil(controlnet_input_option.width / 8) * 8, Math.ceil(controlnet_input_option.height / 8) * 8)
-        //         .png()
-        //         .toBuffer()
-        //         .then((data) => {
-        //             return `data:image/png;base64,${data.toString('base64')}`
-        //         })
-        //         .catch((err) => {
-        //             console.log(err)
-        //             interaction.reply({ content: "Failed to resize controlnet image", ephemeral: true });
-        //         })
-        // }
+
         if (height % 8 !== 0 || width % 8 !== 0) {
             height = Math.ceil(height / 8) * 8
+            if (height > 1600) height = Math.ceil(height / 64) * 64
             width = Math.ceil(width / 8) * 8
+            if (width > 1600) width = Math.ceil(width / 64) * 64
         }
 
         if (checkpoint) {

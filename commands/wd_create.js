@@ -136,7 +136,9 @@ module.exports = {
         
         if (height % 8 !== 0 || width % 8 !== 0) {
             height = Math.ceil(height / 8) * 8
+            if (height > 1600) height = Math.ceil(height / 64) * 64
             width = Math.ceil(width / 8) * 8
+            if (width > 1600) width = Math.ceil(width / 64) * 64
         }
 
         if (checkpoint) {
