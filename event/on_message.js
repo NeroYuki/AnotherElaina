@@ -6,6 +6,7 @@ const { default: axios } = require('axios');
 
 async function responseToMessage(client, message, content) {
     let prompt = content
+    return
     if (is_generating) {
         return
     }
