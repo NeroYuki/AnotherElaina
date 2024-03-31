@@ -1175,10 +1175,12 @@ const word_to_sdxl_lora_model = [
         // actual keyword: <character>_(honkai:_star_rail)
         "keyword": ["honkai star rail"],
         "ignore_keyword": ["sparkle honkai star rail"],
+        "ignore_checkpoint": ["animaginexl_v31.safetensors [e3c47aedb0]"],
         "lora": "<lora:sdxl_starrail:1.00>"
     },
     {
         "keyword": ["nekopara"],
+        "ignore_checkpoint": ["animaginexl_v31.safetensors [e3c47aedb0]"],
         "lora": "<lora:sdxl_nekopara:1.00>"
     },
     {
@@ -1198,14 +1200,17 @@ const word_to_sdxl_lora_model = [
     },
     {
         "keyword": ["artist narae"],
+        "ignore_checkpoint": ["animaginexl_v31.safetensors [e3c47aedb0]"],
         "lora": "<lora:sdxl_narae:1.00>",
     },
     {
         "keyword": ["artist parsley"],
+        "ignore_checkpoint": ["animaginexl_v31.safetensors [e3c47aedb0]"],
         "lora": "<lora:sdxl_parsley:1.00>",
     },
     {
         "keyword": ["artist miyasemahiro"],
+        "ignore_checkpoint": ["animaginexl_v31.safetensors [e3c47aedb0]"],
         "lora": "<lora:sdxl_miyasemahiro:1.00>",
     },
     {
@@ -1215,6 +1220,7 @@ const word_to_sdxl_lora_model = [
     },
     {
         "keyword": ["touhou"],
+        "ignore_checkpoint": ["animaginexl_v31.safetensors [e3c47aedb0]"],
         "lora": "<lora:sdxl_touhou:1.00>",
     }
 ]
@@ -1414,7 +1420,8 @@ function load_lora_from_prompt(prompt, lora_default_strength = null) {
                         for (let l = 0; l < ignore_keyword.length; l++) {
                             const ignore_k = ignore_keyword[l]
                             const ignore_regex = new RegExp(`\\b${escape_for_regex(ignore_k)}\\b`, 'gi')
-                            if (temp_prompt.search(ignore_regex) !== -1) {
+                            const is_checkpoint_ignored = word.ignore_checkpoint && word.ignore_checkpoint.includes(cached_model[0])
+                            if (temp_prompt.search(ignore_regex) !== -1 || is_checkpoint_ignored) {
                                 lora_to_load.pop()
                                 break
                             }
@@ -1443,7 +1450,8 @@ function load_lora_from_prompt(prompt, lora_default_strength = null) {
                         for (let l = 0; l < ignore_keyword.length; l++) {
                             const ignore_k = ignore_keyword[l]
                             const ignore_regex = new RegExp(`\\b${escape_for_regex(ignore_k)}\\b`, 'gi')
-                            if (temp_prompt.search(ignore_regex) !== -1) {
+                            const is_checkpoint_ignored = word.ignore_checkpoint && word.ignore_checkpoint.includes(cached_model[0])
+                            if (temp_prompt.search(ignore_regex) !== -1 || is_checkpoint_ignored) {
                                 lora_to_load.pop()
                                 break
                             }
