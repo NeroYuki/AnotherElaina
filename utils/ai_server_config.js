@@ -1262,6 +1262,8 @@ const model_name_hash_mapping = new Map([
     ['e3c47aedb0', "AnimagineXL v3.1"],
     ['8421598e93', "Anything XL v1"],
     ['67ab2fd8ec', "PonyDiffusionXL v6"],
+    ['c8df560d29', "Juggernaut Lightning"],
+    ['fdbe56354b', "Dreamshaper XL Lightning"],
 ])
 // limit at 25 (probably less due to character limitation)
 const model_selection = [
@@ -1289,10 +1291,11 @@ const model_selection_xl = [
     { name: 'AnimagineXL v3', value: 'animaginexl_v3.safetensors [1449e5b0b9]' },
     { name: 'AnimagineXL v3.1', value: 'animaginexl_v31.safetensors [e3c47aedb0]'},
     { name: 'KohakuXL v0.7b', value: 'kohakuxl.safetensors [51a0c178b7]'},
-    { name: "AAMXL v1", value: 'aamxl_v1.safetensors [d48c2391e0]'},
     { name: 'AAMXL Turbo', value: 'aamxl_turbo.safetensors [8238e80fdd]'},
     { name: 'Juggernaut XL', value: 'juggernautxl_turbo.safetensors [c9e3e68f89]'},
-    { name: 'Dreamshaper XL Turbo', value: 'dreamshaperxl_turbo.safetensors [4496b36d48]'},
+    // { name: 'Dreamshaper XL Turbo', value: 'dreamshaperxl_turbo.safetensors [4496b36d48]'},
+    { name: 'Juggernaut Lightning', value: 'juggernautxl_lightning.safetensors [c8df560d29]'},
+    { name: 'Dreamshaper XL Lightning', value: 'dreamshaperxl_lightning.safetensors [fdbe56354b]'},
 ]
 
 const model_selection_curated = [
@@ -1301,8 +1304,8 @@ const model_selection_curated = [
     { name: 'NekorayXL v0.6', value: 'nekorayxl.safetensors [c53dabc181]' },
     { name: 'AnimagineXL v3.1', value: 'animaginexl_v31.safetensors [e3c47aedb0]'},
     { name: 'AAMXL Turbo', value: 'aamxl_turbo.safetensors [8238e80fdd]'},
-    { name: 'Juggernaut XL', value: 'juggernautxl_turbo.safetensors [c9e3e68f89]'},
-    { name: 'Dreamshaper XL Turbo', value: 'dreamshaperxl_turbo.safetensors [4496b36d48]'},
+    { name: 'Juggernaut Lightning', value: 'juggernautxl_lightning.safetensors [c8df560d29]'},
+    { name: 'Dreamshaper XL Lightning', value: 'dreamshaperxl_lightning.safetensors [fdbe56354b]'},
 ]
 
 const controlnet_preprocessor_selection = [
@@ -1403,7 +1406,6 @@ function load_lora_from_prompt(prompt, lora_default_strength = null) {
     const { cached_model } = require('./model_change');
     const is_sdxl = model_selection_xl.find(m => m.value === cached_model[0]) != null
 
-    console.log(temp_prompt)
     if (is_sdxl) {
         for (let i = 0; i < word_to_sdxl_lora_model.length; i++) {
             const word = word_to_sdxl_lora_model[i]

@@ -176,6 +176,16 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             cfg_scale = 5
             sampling_step = 30
         }
+        else if (cached_model[0] === 'juggernautxl_lightning.safetensors [c8df560d29]') {
+            sampler = 'DPM++ SDE'
+            cfg_scale = 2
+            sampling_step = 4
+        }
+        else if (cached_model[0] === 'dreamshaperxl_lightning.safetensors [fdbe56354b]') {
+            sampler = 'DPM++ SDE Karras'
+            cfg_scale = 2
+            sampling_step = 4
+        }
         else if (model_selection.find(x => x.value === cached_model[0])) {
             sampler = 'DPM++ 2M Karras'
             cfg_scale = 7
