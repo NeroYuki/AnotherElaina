@@ -132,6 +132,23 @@ module.exports = {
             ],
             color_enhance_weight,
             false, // censor nsfw
+            true,
+            false,
+            false,
+            "Variable blur",
+            10,
+            5,
+            "#000000",
+            "Ellipse",
+            3,
+            0,
+            10,
+            0.5,
+            1,
+            null,
+            [
+                "Draw mask"
+            ],
         ]
 
         // make option_init but for axios
