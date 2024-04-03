@@ -16,7 +16,7 @@ const server_pool = [
         fn_index_controlnet_3: [392, 923],
         fn_index_controlnet_annotation_3: [1012, 1036],
         fn_index_interrogate: 1098,
-        fn_index_upscale: 1170,
+        fn_index_upscale: 1177,
         fn_index_change_model: 1279,
         fn_index_change_clip_skip: 1286,
         fn_index_toggle_censor: 1300,

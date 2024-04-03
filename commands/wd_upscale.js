@@ -130,7 +130,8 @@ module.exports = {
             [
                 "Deepbooru"
             ],
-            color_enhance_weight
+            color_enhance_weight,
+            false, // censor nsfw
         ]
 
         // make option_init but for axios
