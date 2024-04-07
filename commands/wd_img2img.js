@@ -161,6 +161,11 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             default_lora_strength = 1
         }
 
+        if (height % 8 !== 0 || width % 8 !== 0) {
+            height = Math.ceil(height / 8) * 8
+            width = Math.ceil(width / 8) * 8
+        }
+
         if (cached_model[0] === 'aamxl_turbo.safetensors [8238e80fdd]') {
             sampler = 'Euler a'
             cfg_scale = 3.5
@@ -267,6 +272,12 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         const color_grading_config_res = get_color_grading_config_from_prompt(prompt, model_selection_xl.find(x => x.value === cached_model[0]) != null)
         prompt = color_grading_config_res.prompt
         color_grading_config = color_grading_config_res.color_grading_config
+
+        if (coupler_config && (height % 64 !== 0 || width % 64 !== 0)) {
+            interaction.channel.send('Coupler detected, changing resolution to multiple of 64')
+            height = Math.ceil(height / 64) * 64
+            width = Math.ceil(width / 64) * 64
+        }
 
         const is_censor = ((interaction.guildId && censorGuildIds.includes(interaction.guildId)) || (interaction.channel && !interaction.channel.nsfw)) ? true : false
         
