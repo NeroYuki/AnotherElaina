@@ -270,7 +270,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         extra_config = full_prompt_analyze(prompt, model_selection_xl.find(x => x.value === cached_model[0]) != null)
         prompt = extra_config.prompt
 
-        if (coupler_config && (height % 64 !== 0 || width % 64 !== 0)) {
+        if (extra_config.coupler_config && (height % 64 !== 0 || width % 64 !== 0)) {
             interaction.channel.send('Coupler detected, changing resolution to multiple of 64')
             height = Math.ceil(height / 64) * 64
             width = Math.ceil(width / 64) * 64
