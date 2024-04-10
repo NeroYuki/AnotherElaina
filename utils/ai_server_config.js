@@ -87,7 +87,7 @@ const get_data_controlnet_annotation = (preprocessor = "None", input) => {
 
 const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed, sampler, session_hash,
     height, width, attachment, attachment2, denoising_strength, mode = 0, mask_blur = 4, mask_content = "original", upscaler = "None", 
-    is_using_adetailer = false, coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false) => {
+    is_using_adetailer = false, coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, freeu_config = null, dynamic_threshold_config = null) => {
     // default mode 0 is img2img, 4 is inpainting
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 3000000 && upscaler == "None") ? true : false
@@ -214,9 +214,9 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
         null,
         null,
         null,
-        false,
-        7,
-        1,
+        dynamic_threshold_config || false,              // enable dynamic threshold
+        dynamic_threshold_config?.mimic_scale || 7,                  // mimic scale
+        dynamic_threshold_config?.mimic_percentile || 0.95,                  // mimic percentile
         "Constant",
         0,
         "Constant",
@@ -226,11 +226,11 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
         "MEAN",
         "AD",
         1,
-        false,
-        1.01,
-        1.02,
-        0.99,
-        0.95,
+        freeu_config || false,              // enable freeU
+        freeu_config?.values[0] || 1.01,               // freeU B1 (flat -> depth)
+        freeu_config?.values[1] || 1.02,               // freeU B2 (clean -> detail)
+        freeu_config?.values[2] || 0.99,               // freeU S1 (dark -> light)
+        freeu_config?.values[3] || 0.95,               // freeU S2
         false,
         0.5,
         2,
@@ -372,7 +372,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
 
 const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed, sampler, session_hash,
     height, width, upscale_multiplier, upscaler, upscale_denoise_strength, upscale_step, face_restore = false, is_using_adetailer = false, 
-    coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false) => {
+    coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, freeu_config = null, dynamic_threshold_config = null) => {
 
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 1600000) ? true : false
@@ -478,9 +478,9 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
         null,
         null,
         null,
-        false,
-        7,
-        1,
+        dynamic_threshold_config || false,              // enable dynamic threshold
+        dynamic_threshold_config?.mimic_scale || 7,                  // mimic scale
+        dynamic_threshold_config?.mimic_percentile || 0.95,                  // mimic percentile
         "Constant",
         0,
         "Constant",
@@ -490,11 +490,11 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
         "MEAN",
         "AD",
         1,
-        false,
-        1.01,
-        1.02,
-        0.99,
-        0.95,
+        freeu_config || false,              // enable freeU
+        freeu_config?.values[0] || 1.01,               // freeU B1 (flat -> depth)
+        freeu_config?.values[1] || 1.02,               // freeU B2 (clean -> detail)
+        freeu_config?.values[2] || 0.99,               // freeU S1 (dark -> light)
+        freeu_config?.values[3] || 0.95,               // freeU S2
         false,
         0.5,
         2,

@@ -8,7 +8,7 @@ const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch
 const { loadImage } = require('../utils/load_discord_img.js');
 const { cached_model, model_change } = require('../utils/model_change.js');
 const { queryRecordLimit } = require('../database/database_interaction.js');
-const { get_coupler_config_from_prompt, get_color_grading_config_from_prompt } = require('../utils/prompt_analyzer.js');
+const { full_prompt_analyze } = require('../utils/prompt_analyzer.js');
 
 function clamp(num, min, max) {
     return num <= min ? min : num >= max ? max : num;
@@ -258,20 +258,14 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         const default_neg_prompt_comp = default_neg_prompt.split('_')
         const override_neg_prompt = default_neg_prompt_comp[0] === 'n'
         const remove_nsfw_restriction = default_neg_prompt_comp[1] === 'nsfw'
-        let coupler_config = null
-        let color_grading_config = null
+        let extra_config = null
 
         neg_prompt = get_negative_prompt(neg_prompt, override_neg_prompt, remove_nsfw_restriction, cached_model[0])
 
         prompt = get_prompt(prompt, remove_nsfw_restriction, cached_model[0])
 
-        const coupler_config_res = get_coupler_config_from_prompt(prompt)
-        prompt = coupler_config_res.prompt
-        coupler_config = coupler_config_res.coupler_config
-
-        const color_grading_config_res = get_color_grading_config_from_prompt(prompt, model_selection_xl.find(x => x.value === cached_model[0]) != null)
-        prompt = color_grading_config_res.prompt
-        color_grading_config = color_grading_config_res.color_grading_config
+        extra_config = full_prompt_analyze(prompt, model_selection_xl.find(x => x.value === cached_model[0]) != null)
+        prompt = extra_config.prompt
 
         if (coupler_config && (height % 64 !== 0 || width % 64 !== 0)) {
             interaction.channel.send('Coupler detected, changing resolution to multiple of 64')
@@ -287,7 +281,8 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
     
         const create_data = get_data_body_img2img(server_index, prompt, neg_prompt, sampling_step, cfg_scale,
             seed, sampler, session_hash, height, width, attachment, null, denoising_strength, /*img2img mode*/ 0, 4, "original", upscaler, 
-            false, coupler_config, color_grading_config, clip_skip, is_censor)
+            false, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
+            extra_config.freeu_config, extra_config.dynamic_threshold_config)
 
         // make option_init but for axios
         const option_init_axios = {
