@@ -94,8 +94,8 @@ function get_coupler_config_from_prompt(prompt) {
 
 }
 
-async function preview_coupler_setting(interaction, width, height, extra_config, index_preview_coupler, session_hash) {
-            // ask for preview image
+async function preview_coupler_setting(interaction, width, height, extra_config, index_preview_coupler, session_hash, WORKER_ENDPOINT = 'http://192.168.196.142:7860') {
+    // ask for preview image
     const coupler_preview_data = [width, height, { "data": extra_config.coupler_config.adv_regions, "headers": ["x", "y", "weight"] }]
     const option_coupler_preview = {
         method: 'POST',
