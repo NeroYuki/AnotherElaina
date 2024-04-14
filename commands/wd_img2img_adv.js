@@ -10,7 +10,7 @@ const { load_controlnet } = require('../utils/controlnet_execute.js');
 const { cached_model, model_change } = require('../utils/model_change.js');
 const { queryRecordLimit } = require('../database/database_interaction.js');
 const { load_adetailer } = require('../utils/adetailer_execute.js');
-const { get_coupler_config_from_prompt, get_color_grading_config_from_prompt, full_prompt_analyze } = require('../utils/prompt_analyzer.js');
+const { full_prompt_analyze, preview_coupler_setting } = require('../utils/prompt_analyzer.js');
 
 function clamp(num, min, max) {
     return num <= min ? min : num >= max ? max : num;
@@ -300,6 +300,10 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             interaction.channel.send('Coupler detected, changing resolution to multiple of 64')
             height = Math.ceil(height / 64) * 64
             width = Math.ceil(width / 64) * 64
+        }
+
+        if (extra_config.coupler_config && extra_config.coupler_config.mode === 'Advanced') {
+            preview_coupler_setting(interaction, width, height, extra_config, server_pool[server_index].fn_index_preview_coupler, session_hash)
         }
 
         const is_censor = ((interaction.guildId && censorGuildIds.includes(interaction.guildId)) || (interaction.channel && !interaction.channel.nsfw)) ? true : false

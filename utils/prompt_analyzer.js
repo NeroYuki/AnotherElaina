@@ -1,3 +1,5 @@
+const { server_pool } = require("./ai_server_config")
+
 function get_coupler_config_from_prompt(prompt) {
     // check if if prompt contain <=> or ||
     // if found, return the value {direction: <Horizontal if <=>, Vertical if ||>, global: <"First Line" if first subject start with [GLOBAL], "Last Line" if last subject start with [GLOBAL], "None" otherwise>}
@@ -10,20 +12,77 @@ function get_coupler_config_from_prompt(prompt) {
 
         const comp = prompt.replace(coupler_pattern, '\n').split("\n")
         let global_config = 'None'
+        let global_weight = 0
 
-        if (comp[0].includes('[GLOBAL]')) {
+        // match for [GLOBAL] and [GLOBAL:<value>]
+        const global_pattern_replace = /\[GLOBAL(:[0-9.]+)?\]/gi
+        const global_pattern = /\[GLOBAL(:[0-9.]+)?\]/i
+
+        if (comp[0].match(global_pattern)) {
             global_config = 'First Line'
+
+            // if [GLOBAL:<value>] is found, parse the value
+            const global_match = comp[0].match(global_pattern)
+            if (global_match[1]) {
+                global_weight = parseFloat(global_match[1].slice(1))
+            }
+        }
+        else if (comp[comp.length - 1].match(global_pattern)) {
+            global_config = 'Last Line'
+
+            // if [GLOBAL:<value>] is found, parse the value
+            const global_match = comp[comp.length - 1].match(global_pattern)
+            if (global_match[1]) {
+                global_weight = parseFloat(global_match[1].slice(1))
+            }
         }
 
-        if (comp[comp.length - 1].includes('[GLOBAL]')) {
-            global_config = 'Last Line'
+        adv_regions = []
+        
+        const adv_pattern_replace = /\|([0-9.]+):([0-9.]+),([0-9.]+):([0-9.]+),([0-9.]+)\|/gi
+        // iterate through comp (except the global line) to check if it use advance region
+        for (let i = 0; i < comp.length; i++) {
+            // advance region syntax is |<x_start_fraction>:<x_end_fraction>,<y_start_fraction>:<y:end_fraction>,<w>|, all >=0 and <=1 and start < end
+            // if found, push ["x_start:x_end", "y_start:y_end", "w"] to adv_region
+
+            const adv_pattern = /\|([0-9.]+):([0-9.]+),([0-9.]+):([0-9.]+),([0-9.]+)\|/i
+            const adv_match = comp[i].match(adv_pattern)
+
+            if (adv_match) {
+                console.log(adv_match)
+                // value check
+                const start_x = parseFloat(adv_match[1])
+                const end_x = parseFloat(adv_match[2])
+                const start_y = parseFloat(adv_match[3])
+                const end_y = parseFloat(adv_match[4])
+                const w = parseFloat(adv_match[5])
+
+                if (start_x < 0 || start_x > 1 || end_x < 0 || end_x > 1 || start_x >= end_x) {
+                    console.log(`Invalid x value in advance region: ${comp[i]}`)
+                    continue
+                }
+
+                if (start_y < 0 || start_y > 1 || end_y < 0 || end_y > 1 || start_y >= end_y) {
+                    console.log(`Invalid y value in advance region: ${comp[i]}`)
+                    continue
+                }
+
+                if (w < 0) {
+                    console.log(`Invalid w value in advance region: ${comp[i]}`)
+                    continue
+                }
+                adv_regions.push([`${adv_match[1]}:${adv_match[2]}`, `${adv_match[3]}:${adv_match[4]}`, adv_match[5]])
+            }
         }
 
         return {
-            prompt: prompt.replace(coupler_pattern, '\n').replace('[GLOBAL]', '').trim(),
+            prompt: prompt.replace(coupler_pattern, '\n').replace(global_pattern_replace, '').replace(adv_pattern_replace, '').trim(),
             coupler_config: {
                 direction: coupler_match[0] === '<=>' ? 'Horizontal' : 'Vertical',
-                global: global_config
+                mode: adv_regions.length > 0 ? 'Advanced' : 'Basic',
+                global: global_config,
+                global_weight: global_weight || 0.5,
+                adv_regions: adv_regions
             }
         }
     }
@@ -33,6 +92,45 @@ function get_coupler_config_from_prompt(prompt) {
         coupler_config: null
     }
 
+}
+
+async function preview_coupler_setting(interaction, width, height, extra_config, index_preview_coupler, session_hash) {
+            // ask for preview image
+    const coupler_preview_data = [width, height, { "data": extra_config.coupler_config.adv_regions, "headers": ["x", "y", "weight"] }]
+    const option_coupler_preview = {
+        method: 'POST',
+        body: JSON.stringify({
+            fn_index: index_preview_coupler,
+            session_hash: session_hash,
+            data: coupler_preview_data
+        }),
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    }
+
+    try {
+        await fetch(`${WORKER_ENDPOINT}/run/predict/`, option_coupler_preview)
+            .then(res => {
+                if (res.status !== 200) {
+                    throw 'Failed to setup coupler'
+                }
+                return res.json()
+            })
+            .then(async (res) => {
+                // upload an image to the same channel as the interaction
+                const img_dataURI = res.data[0]
+                const img = Buffer.from(img_dataURI.split(",")[1], 'base64')
+                if (extra_config.coupler_config && extra_config.coupler_config.mode === 'Advanced') {
+                    const img_name = `preview_annotation.png`
+                    await interaction.channel.send({files: [{attachment: img, name: img_name}]})
+                }
+                // dead code
+            })
+    }
+    catch (err) {
+        console.log(err)
+    }
 }
 
 function get_color_grading_config_from_prompt(prompt, is_xl) {
@@ -146,5 +244,6 @@ module.exports = {
     get_color_grading_config_from_prompt,
     get_freeu_config_from_prompt,
     get_dynamic_threshold_config_from_prompt,
-    full_prompt_analyze
+    full_prompt_analyze,
+    preview_coupler_setting
 }

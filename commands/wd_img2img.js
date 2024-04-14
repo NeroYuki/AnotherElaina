@@ -8,7 +8,7 @@ const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch
 const { loadImage } = require('../utils/load_discord_img.js');
 const { cached_model, model_change } = require('../utils/model_change.js');
 const { queryRecordLimit } = require('../database/database_interaction.js');
-const { full_prompt_analyze } = require('../utils/prompt_analyzer.js');
+const { full_prompt_analyze, preview_coupler_setting } = require('../utils/prompt_analyzer.js');
 
 function clamp(num, min, max) {
     return num <= min ? min : num >= max ? max : num;
@@ -274,6 +274,10 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         }
 
         const is_censor = ((interaction.guildId && censorGuildIds.includes(interaction.guildId)) || (interaction.channel && !interaction.channel.nsfw)) ? true : false
+
+        if (extra_config.coupler_config && extra_config.coupler_config.mode === 'Advanced') {
+            preview_coupler_setting(interaction, width, height, extra_config, server_pool[server_index].fn_index_preview_coupler, session_hash)
+        }
         
         if (!no_dynamic_lora_load) {
             prompt = load_lora_from_prompt(prompt, default_lora_strength)

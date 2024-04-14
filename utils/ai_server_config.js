@@ -6,26 +6,25 @@ const server_pool = [
     {
         index: 0,
         url: 'http://192.168.196.142:7860',
-        fn_index_create: 497,
-        fn_index_abort: 55,
-        fn_index_img2img: 1094,
-        fn_index_controlnet: [229, 756],        //[txt2img, img2img]
-        fn_index_controlnet_annotation: [996, 1020],
-        fn_index_controlnet_2: [311, 840], 
-        fn_index_controlnet_annotation_2: [1004, 1028],
-        fn_index_controlnet_3: [392, 923],
-        fn_index_controlnet_annotation_3: [1012, 1036],
-        fn_index_interrogate: 1098,
-        fn_index_upscale: 1177,
-        fn_index_change_model: 1279,
-        fn_index_change_clip_skip: 1286,
-        fn_index_toggle_censor: 1300,
-        fn_index_change_adetailer_model1: [97, 624],
-        fn_index_change_adetailer_prompt1: [99, 626],
-        fn_index_change_adetailer_neg_prompt1: [100, 627],
-        fn_index_change_adetailer_model2: [146, 673],
-        fn_index_change_adetailer_prompt2: [148, 675],
-        fn_index_change_adetailer_neg_prompt2: [149, 676],
+        fn_index_create: 514,
+        fn_index_abort: 62,
+        fn_index_img2img: 1128,
+        fn_index_controlnet: [246, 790],        //[txt2img, img2img]
+        fn_index_controlnet_annotation: [1030, 1054],
+        fn_index_controlnet_2: [327, 874], 
+        fn_index_controlnet_annotation_2: [1038, 1062],
+        fn_index_controlnet_3: [412, 957],
+        fn_index_controlnet_annotation_3: [1046, 1070],
+        fn_index_interrogate: 1132,
+        fn_index_upscale: 1211,
+        fn_index_change_model: 1313,
+        fn_index_coupler_region_preview: 187,
+        fn_index_change_adetailer_model1: [97, 641],
+        fn_index_change_adetailer_prompt1: [99, 643],
+        fn_index_change_adetailer_neg_prompt1: [100, 644],
+        fn_index_change_adetailer_model2: [146, 690],
+        fn_index_change_adetailer_prompt2: [148, 692],
+        fn_index_change_adetailer_neg_prompt2: [149, 693],
         is_online: true,
     },
     {
@@ -436,7 +435,28 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
         coupler_config || false,               // enable latent coupler
         coupler_config?.direction || "Horizontal",       // direction (Horizontal or Vertical)
         coupler_config?.global || "First Line",       // use which line for global effect (First Line or Last Line or None)
-        "",                 // seperator
+        "",                                         // seperator
+        coupler_config?.mode || "Basic",          // region definition mode (Basic or Advanced)
+        {
+            "data": coupler_config?.adv_regions || [
+                [
+                    "0.0:0.5",
+                    "0.0:1.0",
+                    "1.0"
+                ],
+                [
+                    "0.5:1.0",
+                    "0.0:1.0",
+                    "1.0"
+                ]
+            ],
+            "headers": [
+                "x",
+                "y",
+                "weight"
+            ]
+        },
+        coupler_config?.global_weight || 0.5,                // global weight
         false,
         false,
         "LoRA",
