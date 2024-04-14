@@ -94,7 +94,7 @@ function get_coupler_config_from_prompt(prompt) {
 
 }
 
-async function preview_coupler_setting(interaction, width, height, extra_config, index_preview_coupler, session_hash, WORKER_ENDPOINT = 'http://192.168.196.142:7860') {
+async function preview_coupler_setting(interaction, width, height, extra_config, index_preview_coupler, session_hash, endpoint = 'http://192.168.196.142:7860') {
     // ask for preview image
     const coupler_preview_data = [width, height, { "data": extra_config.coupler_config.adv_regions, "headers": ["x", "y", "weight"] }]
     const option_coupler_preview = {
@@ -109,8 +109,10 @@ async function preview_coupler_setting(interaction, width, height, extra_config,
         }
     }
 
+    console.log(option_coupler_preview.body)
+
     try {
-        await fetch(`${WORKER_ENDPOINT}/run/predict/`, option_coupler_preview)
+        await fetch(`${endpoint}/run/predict/`, option_coupler_preview)
             .then(res => {
                 if (res.status !== 200) {
                     throw 'Failed to setup coupler'
