@@ -1,5 +1,6 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { queryRecordLimit } = require('../../database/database_interaction');
+const { MessageEmbed } = require('discord.js');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -32,50 +33,53 @@ module.exports = {
 
         // compose the reply (only display non-default values)
         const data = result[0];
-        
-        let reply = `Profile ${name}:\n`;
-
-        if (data.prompt != '' || data.prompt_pre != '') {
-            reply += `Prompt: ${data.prompt_pre || ''} ... ${data.prompt || ''}\n`;
-        }
-        if (data.neg_prompt != '' || data.neg_prompt_pre != '') {
-            reply += `Negative Prompt: ${data.neg_prompt_pre || ''} ... ${data.neg_prompt || ''}\n`;
-        }
-        if (data.seed != '-1') {
-            reply += `Seed: ${data.seed}\n`;
-        }
-        if (data.width != 512) {
-            reply += `Width: ${data.width}\n`;
-        }
-        if (data.height != 512) {
-            reply += `Height: ${data.height}\n`;
-        }
-        if (data.sampler != 'Euler a') {
-            reply += `Sampler: ${data.sampler}\n`;
-        }
-        if (data.cfg_scale != 7) {
-            reply += `CFG Scale: ${data.cfg_scale}\n`;
-        }
-        if (data.sampling_step != 20) {
-            reply += `Sampling Step: ${data.sampling_step}\n`;
-        }
-        if (data.upscale_multiplier != 1) {
-            reply += `Upscale Multiplier: ${data.upscale_multiplier}\n`;
-        }
-        if (data.upscaler != 'Lanczos') {
-            reply += `Upscaler: ${data.upscaler}\n`;
-        }
-        if (data.upscale_denoise_strength != 0.7) {
-            reply += `Upscale Denoise Strength: ${data.upscale_denoise_strength}\n`;
-        }
-        if (data.upscale_step != 20) {
-            reply += `Upscale Step: ${data.upscale_step}\n`;
-        }
-        if (data.clip_skip && data.clip_skip != 1) {
-            reply += `CLIP skip: ${data.clip_skip}\n`;
-        }
 
         // send the reply
-        await interaction.editReply(reply);
+        embeded = new MessageEmbed()
+            .setColor('#8888ff')
+            .setTitle('Profile Info')
+            .setFooter({text: "Profile Owner: " + user.username, iconURL: user.avatarURL({dynamic: true}) || "https://cdn.discordapp.com/embed/avatars/0.png"});
+
+        if (data.prompt != '' || data.prompt_pre != '') {
+            embeded.setDescription(`Prompt: ${data.prompt_pre || ''} ... ${data.prompt || ''}\n`);
+        }
+        if (data.neg_prompt != '' || data.neg_prompt_pre != '') {
+            embeded.addFields({ name: 'Negative Prompt', value: `${data.neg_prompt_pre || ''} ... ${data.neg_prompt || ''}` })
+        }
+        if (data.seed != '-1') {
+            embeded.addFields({ name: 'Seed', value: data.seed });
+        }
+        if (data.width != 512) {
+            embeded.addFields({ name: 'Width', value: data.width });
+        }
+        if (data.height != 512) {
+            embeded.addFields({ name: 'Height', value: data.height });
+        }
+        if (data.sampler != 'Euler a') {
+            embeded.addFields({ name: 'Sampler', value: data.sampler });
+        }
+        if (data.cfg_scale != 7) {
+            embeded.addFields({ name: 'CFG Scale', value: data.cfg_scale });
+        }
+        if (data.sampling_step != 20) {
+            embeded.addFields({ name: 'Sampling Step', value: data.sampling_step });
+        }
+        if (data.upscale_multiplier != 1) {
+            embeded.addFields({ name: 'Upscale Multiplier', value: data.upscale_multiplier });
+        }
+        if (data.upscaler != 'Lanczos') {
+            embeded.addFields({ name: 'Upscaler', value: data.upscaler });
+        }
+        if (data.upscale_denoise_strength != 0.7) {
+            embeded.addFields({ name: 'Upscale Denoise Strength', value: data.upscale_denoise_strength });
+        }
+        if (data.upscale_step != 20) {
+            embeded.addFields({ name: 'Upscale Step', value: data.upscale_step });
+        }
+        if (data.clip_skip && data.clip_skip != 1) {
+            embeded.addFields({ name: 'CLIP skip', value: data.clip_skip });
+        }
+
+        await interaction.editReply({ embeds: [embeded] });
 	},
 };
