@@ -324,7 +324,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         const is_censor = ((interaction.guildId && censorGuildIds.includes(interaction.guildId)) || (interaction.channel && !interaction.channel.nsfw)) ? true : false
 
         if (do_adetailer && adetailer_config) {
-            await load_adetailer(session_hash, server_index, adetailer_config, interaction, coupler_config, prompt)
+            await load_adetailer(session_hash, server_index, adetailer_config, interaction, extra_config.coupler_config, prompt)
                 .catch(err => {
                     console.log(err)
                     interaction.editReply({ content: "Failed to load adetailer:" + err });
