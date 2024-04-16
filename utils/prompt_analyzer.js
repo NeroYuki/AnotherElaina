@@ -102,6 +102,11 @@ async function fetch_user_defined_wildcard(prompt, user_id) {
 
         const wildcard_match = prompt.match(wildcard_pattern)
 
+        if (!wildcard_match) {
+            resolve(prompt)
+            return
+        }
+
         for (let i = 0; i < wildcard_match.length; i++) {
             wildcard_match[i] = wildcard_match[i].slice(2, -2)
 
