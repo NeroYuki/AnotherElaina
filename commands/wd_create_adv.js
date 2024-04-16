@@ -12,7 +12,7 @@ const { load_adetailer } = require('../utils/adetailer_execute.js');
 const { model_change, cached_model } = require('../utils/model_change.js');
 const { catboxUpload } = require('../utils/catbox_upload.js');
 const { queryRecordLimit } = require('../database/database_interaction.js');
-const { full_prompt_analyze, preview_coupler_setting } = require('../utils/prompt_analyzer.js');
+const { full_prompt_analyze, preview_coupler_setting, fetch_user_defined_wildcard } = require('../utils/prompt_analyzer.js');
 
 function clamp(num, min, max) {
     return num <= min ? min : num >= max ? max : num;
@@ -307,8 +307,9 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
 
         prompt = get_prompt(prompt, remove_nsfw_restriction)
 
-        extra_config = full_prompt_analyze(prompt, model_selection_xl.find(x => x.value === cached_model[0]) != null, interaction.user.id)
+        extra_config = full_prompt_analyze(prompt, model_selection_xl.find(x => x.value === cached_model[0]) != null)
         prompt = extra_config.prompt
+        prompt = await fetch_user_defined_wildcard(prompt, interaction.user.id)
 
         if (extra_config.coupler_config && (height % 64 !== 0 || width % 64 !== 0)) {
             interaction.channel.send('Coupler detected, changing resolution to multiple of 64')

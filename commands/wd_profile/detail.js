@@ -52,7 +52,7 @@ module.exports = {
         if (data.width && data.width != 512) {
             embeded.addFields({ name: 'Width', value: data.width.toString() });
         }
-        if (data.heigh && data.height != 512) {
+        if (data.height && data.height != 512) {
             embeded.addFields({ name: 'Height', value: data.height.toString() });
         }
         if (data.sampler && data.sampler != 'Euler a') {
