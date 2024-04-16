@@ -41,7 +41,7 @@ module.exports = {
             .setFooter({text: "Profile Owner: " + user.username, iconURL: user.avatarURL({dynamic: true}) || "https://cdn.discordapp.com/embed/avatars/0.png"});
 
         if (data.prompt != '' || data.prompt_pre != '') {
-            embeded.setDescription(`Prompt: ${data.prompt_pre || ''} ... ${data.prompt || ''}\n`);
+            embeded.setDescription(`**Prompt:** ${data.prompt_pre || ''} ... ${data.prompt || ''}\n`);
         }
         if (data.neg_prompt != '' || data.neg_prompt_pre != '') {
             embeded.addFields({ name: 'Negative Prompt', value: `${data.neg_prompt_pre || ''} ... ${data.neg_prompt || ''}` })
