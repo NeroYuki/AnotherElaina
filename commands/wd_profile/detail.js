@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { queryRecordLimit } = require('../../database/database_interaction');
-const { MessageEmbed } = require('discord.js');
+const { MessageEmbed, MessageAttachment } = require('discord.js');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -34,15 +34,25 @@ module.exports = {
         // compose the reply (only display non-default values)
         const data = result[0];
 
+        let attachment = null;
+        // if data.prompt is longer than 4000 characters, make it into an attachment .txt file and send it\
+        if (data.prompt != '' || data.prompt_pre != '') {
+            const prompt = `${data.prompt_pre || ''} ... ${data.prompt || ''}`
+            const is_too_big = prompt.length > 4000
+            if (is_too_big) {
+                attachment = new MessageAttachment(Buffer.from(prompt, 'utf-8'), 'prompt.txt');
+            }
+
+            embeded.setDescription(`**Prompt:** ${is_too_big ? '<Too long to display, see attachment>' : prompt}`);
+        }
+
         // send the reply
         embeded = new MessageEmbed()
             .setColor('#8888ff')
             .setTitle('Profile Info')
             .setFooter({text: "Profile Owner: " + user.username, iconURL: user.avatarURL({dynamic: true}) || "https://cdn.discordapp.com/embed/avatars/0.png"});
 
-        if (data.prompt != '' || data.prompt_pre != '') {
-            embeded.setDescription(`**Prompt:** ${data.prompt_pre || ''} ... ${data.prompt || ''}\n`);
-        }
+
         if (data.neg_prompt != '' || data.neg_prompt_pre != '') {
             embeded.addFields({ name: 'Negative Prompt', value: `${data.neg_prompt_pre || ''} ... ${data.neg_prompt || ''}` })
         }
@@ -83,6 +93,10 @@ module.exports = {
             embeded.addFields({ name: 'Checkpoint', value: data.checkpoint });
         }
 
-        await interaction.editReply({ embeds: [embeded] });
+        const reply_content = { embeds: [embeded] };
+        if (attachment) {
+            reply_content.files = [attachment];
+        }
+        await interaction.editReply(reply_content);
 	},
 };
