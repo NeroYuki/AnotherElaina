@@ -18,7 +18,7 @@ module.exports = {
 	async execute(interaction) {
 		// parse the option
         const name = interaction.options.getString('name');
-        const user = interaction.options.getUser('user') || interaction.user;
+        let user = interaction.options.getUser('user') || interaction.user;
 
         await interaction.deferReply();
 
@@ -41,11 +41,19 @@ module.exports = {
 
         let attachment = null;
 
+        if (user.id != result[0].user_id) {
+            // fetch user info
+            user = await interaction.client.users.fetch(result[0].user_id).catch(() => null);
+        }
+
         // send the reply
         embeded = new MessageEmbed()
             .setColor('#8888ff')
             .setTitle('Profile Info')
-            .setFooter({text: "Profile Owner: " + user.username, iconURL: user.avatarURL({dynamic: true}) || "https://cdn.discordapp.com/embed/avatars/0.png"});
+
+        if (user) {
+            embeded.setFooter({text: "Profile Owner: " + user.username, iconURL: user.avatarURL({dynamic: true}) || "https://cdn.discordapp.com/embed/avatars/0.png"});
+        }
 
         // if data.prompt is longer than 4000 characters, make it into an attachment .txt file and send it\
         if (data.prompt != '' || data.prompt_pre != '') {
