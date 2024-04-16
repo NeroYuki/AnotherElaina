@@ -50,34 +50,34 @@ module.exports = {
             embeded.addFields({ name: 'Seed', value: data.seed });
         }
         if (data.width && data.width != 512) {
-            embeded.addFields({ name: 'Width', value: data.width });
+            embeded.addFields({ name: 'Width', value: data.width.toString() });
         }
         if (data.heigh && data.height != 512) {
-            embeded.addFields({ name: 'Height', value: data.height });
+            embeded.addFields({ name: 'Height', value: data.height.toString() });
         }
         if (data.sampler && data.sampler != 'Euler a') {
             embeded.addFields({ name: 'Sampler', value: data.sampler });
         }
         if (data.cfg_scale && data.cfg_scale != 7) {
-            embeded.addFields({ name: 'CFG Scale', value: data.cfg_scale });
+            embeded.addFields({ name: 'CFG Scale', value: data.cfg_scale.toString() });
         }
         if (data.sampling_step && data.sampling_step != 20) {
-            embeded.addFields({ name: 'Sampling Step', value: data.sampling_step });
+            embeded.addFields({ name: 'Sampling Step', value: data.sampling_step.toString() });
         }
         if (data.upscale_multiplier && data.upscale_multiplier != 1) {
-            embeded.addFields({ name: 'Upscale Multiplier', value: data.upscale_multiplier });
+            embeded.addFields({ name: 'Upscale Multiplier', value: data.upscale_multiplier.toString() });
         }
         if (data.upscaler && data.upscaler != 'Lanczos') {
             embeded.addFields({ name: 'Upscaler', value: data.upscaler });
         }
         if (data.upscale_denoise_strength && data.upscale_denoise_strength != 0.7) {
-            embeded.addFields({ name: 'Upscale Denoise Strength', value: data.upscale_denoise_strength });
+            embeded.addFields({ name: 'Upscale Denoise Strength', value: data.upscale_denoise_strength.toString() });
         }
         if (data.upscale_step && data.upscale_step != 20) {
-            embeded.addFields({ name: 'Upscale Step', value: data.upscale_step });
+            embeded.addFields({ name: 'Upscale Step', value: data.upscale_step.toString() });
         }
         if (data.clip_skip && data.clip_skip != 1) {
-            embeded.addFields({ name: 'CLIP skip', value: data.clip_skip });
+            embeded.addFields({ name: 'CLIP skip', value: data.clip_skip.toString() });
         }
         if (data.checkpoint) {
             embeded.addFields({ name: 'Checkpoint', value: data.checkpoint });
