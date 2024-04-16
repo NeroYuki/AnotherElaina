@@ -1284,6 +1284,7 @@ const model_name_hash_mapping = new Map([
     ['67ab2fd8ec', "PonyDiffusionXL v6"],
     ['c8df560d29', "Juggernaut Lightning"],
     ['fdbe56354b', "Dreamshaper XL Lightning"],
+    ['516047db97', "KohakuXL Epsilon"],
 ])
 // limit at 25 (probably less due to character limitation)
 const model_selection = [
@@ -1310,7 +1311,7 @@ const model_selection_xl = [
     { name: 'NekorayXL v0.6', value: 'nekorayxl.safetensors [c53dabc181]' },
     { name: 'AnimagineXL v3', value: 'animaginexl_v3.safetensors [1449e5b0b9]' },
     { name: 'AnimagineXL v3.1', value: 'animaginexl_v31.safetensors [e3c47aedb0]'},
-    { name: 'KohakuXL v0.7b', value: 'kohakuxl.safetensors [51a0c178b7]'},
+    { name: 'KohakuXL Epsilon', value: 'kohakuxl_epsilon.safetensors [516047db97]'},
     { name: 'AAMXL Turbo', value: 'aamxl_turbo.safetensors [8238e80fdd]'},
     { name: 'Juggernaut XL', value: 'juggernautxl_turbo.safetensors [c9e3e68f89]'},
     // { name: 'Dreamshaper XL Turbo', value: 'dreamshaperxl_turbo.safetensors [4496b36d48]'},
