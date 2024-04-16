@@ -35,6 +35,13 @@ module.exports = {
         const data = result[0];
 
         let attachment = null;
+
+        // send the reply
+        embeded = new MessageEmbed()
+            .setColor('#8888ff')
+            .setTitle('Profile Info')
+            .setFooter({text: "Profile Owner: " + user.username, iconURL: user.avatarURL({dynamic: true}) || "https://cdn.discordapp.com/embed/avatars/0.png"});
+
         // if data.prompt is longer than 4000 characters, make it into an attachment .txt file and send it\
         if (data.prompt != '' || data.prompt_pre != '') {
             const prompt = `${data.prompt_pre || ''} ... ${data.prompt || ''}`
@@ -45,13 +52,6 @@ module.exports = {
 
             embeded.setDescription(`**Prompt:** ${is_too_big ? '<Too long to display, see attachment>' : prompt}`);
         }
-
-        // send the reply
-        embeded = new MessageEmbed()
-            .setColor('#8888ff')
-            .setTitle('Profile Info')
-            .setFooter({text: "Profile Owner: " + user.username, iconURL: user.avatarURL({dynamic: true}) || "https://cdn.discordapp.com/embed/avatars/0.png"});
-
 
         if (data.neg_prompt != '' || data.neg_prompt_pre != '') {
             embeded.addFields({ name: 'Negative Prompt', value: `${data.neg_prompt_pre || ''} ... ${data.neg_prompt || ''}` })
@@ -97,6 +97,7 @@ module.exports = {
         if (attachment) {
             reply_content.files = [attachment];
         }
+        
         await interaction.editReply(reply_content);
 	},
 };
