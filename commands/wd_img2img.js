@@ -113,7 +113,7 @@ module.exports = {
 
         const denoising_strength = clamp(interaction.options.getNumber('denoising_strength') || 0.7, 0, 1)
         const force_server_selection = -1
-        const checkpoint = interaction.options.getString('checkpoint') || null
+        const checkpoint = interaction.options.getString('checkpoint')|| profile?.checkpoint || null
         const upscaler = interaction.options.getString('upscaler') || 'None'
         let clip_skip = clamp(profile?.clip_skip || 1, 1, 12)
 

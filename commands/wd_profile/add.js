@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { upscaler_selection } = require('../../utils/ai_server_config');
+const { upscaler_selection, model_selection, model_selection_xl } = require('../../utils/ai_server_config');
 const { addRecord, queryRecord, queryRecordLimit, editRecords } = require('../../database/database_interaction');
 
 module.exports = {
@@ -72,6 +72,10 @@ module.exports = {
         .addIntegerOption(option =>
             option.setName('clip_skip')
                 .setDescription('Early stopping parameter for CLIP model (default is 1, recommend 1 and 2)'))
+        .addStringOption(option =>
+            option.setName('checkpoint')
+                .setDescription('The checkpoint to use for the profile'))
+                .addChoices(...model_selection, ...model_selection_xl)
     ,
 
 	async execute(interaction) {
@@ -92,6 +96,7 @@ module.exports = {
         const upscale_denoise_strength = interaction.options.getNumber('upscale_denoise_strength') || 0.7;
         const upscale_step = interaction.options.getInteger('upscale_step') || 20;
         const clip_skip = interaction.options.getInteger('clip_skip') || 1
+        const checkpoint = interaction.options.getString('checkpoint') || null
 
 		await interaction.deferReply();
 
@@ -126,6 +131,7 @@ module.exports = {
                 upscale_denoise_strength: upscale_denoise_strength,
                 upscale_step: upscale_step,
                 clip_skip: clip_skip,
+                checkpoint: checkpoint,
             }
         };
 

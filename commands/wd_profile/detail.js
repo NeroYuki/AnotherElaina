@@ -46,38 +46,41 @@ module.exports = {
         if (data.neg_prompt != '' || data.neg_prompt_pre != '') {
             embeded.addFields({ name: 'Negative Prompt', value: `${data.neg_prompt_pre || ''} ... ${data.neg_prompt || ''}` })
         }
-        if (data.seed != '-1') {
+        if (data.seed && data.seed != '-1') {
             embeded.addFields({ name: 'Seed', value: data.seed });
         }
-        if (data.width != 512) {
+        if (data.width && data.width != 512) {
             embeded.addFields({ name: 'Width', value: data.width });
         }
-        if (data.height != 512) {
+        if (data.heigh && data.height != 512) {
             embeded.addFields({ name: 'Height', value: data.height });
         }
-        if (data.sampler != 'Euler a') {
+        if (data.sampler && data.sampler != 'Euler a') {
             embeded.addFields({ name: 'Sampler', value: data.sampler });
         }
-        if (data.cfg_scale != 7) {
+        if (data.cfg_scale && data.cfg_scale != 7) {
             embeded.addFields({ name: 'CFG Scale', value: data.cfg_scale });
         }
-        if (data.sampling_step != 20) {
+        if (data.sampling_step && data.sampling_step != 20) {
             embeded.addFields({ name: 'Sampling Step', value: data.sampling_step });
         }
-        if (data.upscale_multiplier != 1) {
+        if (data.upscale_multiplier && data.upscale_multiplier != 1) {
             embeded.addFields({ name: 'Upscale Multiplier', value: data.upscale_multiplier });
         }
-        if (data.upscaler != 'Lanczos') {
+        if (data.upscaler && data.upscaler != 'Lanczos') {
             embeded.addFields({ name: 'Upscaler', value: data.upscaler });
         }
-        if (data.upscale_denoise_strength != 0.7) {
+        if (data.upscale_denoise_strength && data.upscale_denoise_strength != 0.7) {
             embeded.addFields({ name: 'Upscale Denoise Strength', value: data.upscale_denoise_strength });
         }
-        if (data.upscale_step != 20) {
+        if (data.upscale_step && data.upscale_step != 20) {
             embeded.addFields({ name: 'Upscale Step', value: data.upscale_step });
         }
         if (data.clip_skip && data.clip_skip != 1) {
             embeded.addFields({ name: 'CLIP skip', value: data.clip_skip });
+        }
+        if (data.checkpoint) {
+            embeded.addFields({ name: 'Checkpoint', value: data.checkpoint });
         }
 
         await interaction.editReply({ embeds: [embeded] });

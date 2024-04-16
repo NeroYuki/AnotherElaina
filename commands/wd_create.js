@@ -123,7 +123,7 @@ module.exports = {
         const upscaler = upscaler_mode === 'Latent' ? 'Latent' : upscaler_mode === 'Lanczos' ? 'Lanczos' : '4x_UltraSharp' 
         const upscale_denoise_strength = (upscaler_mode === 'Latent' ? 0.65 : 0.25)
 
-        const checkpoint = interaction.options.getString('checkpoint') || null
+        const checkpoint = interaction.options.getString('checkpoint') || profile?.checkpoint  ||  null
         let clip_skip = clamp(profile?.clip_skip || 1, 1, 12)
 
         let seed = -1
