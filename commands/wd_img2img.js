@@ -264,7 +264,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
 
         prompt = get_prompt(prompt, remove_nsfw_restriction, cached_model[0])
 
-        extra_config = full_prompt_analyze(prompt, model_selection_xl.find(x => x.value === cached_model[0]) != null)
+        extra_config = full_prompt_analyze(prompt, model_selection_xl.find(x => x.value === cached_model[0]) != null, interaction.user.id)
         prompt = extra_config.prompt
 
         if (extra_config.coupler_config && (height % 64 !== 0 || width % 64 !== 0)) {

@@ -1,3 +1,4 @@
+const { queryRecordLimit } = require("../database/database_interaction")
 const { server_pool } = require("./ai_server_config")
 
 function get_coupler_config_from_prompt(prompt) {
@@ -92,6 +93,34 @@ function get_coupler_config_from_prompt(prompt) {
         coupler_config: null
     }
 
+}
+
+async function fetch_user_defined_wildcard(prompt, user_id) {
+    // check for following pattern in prompt %%<profile_name>%% and extract it into a list of profile_name
+
+    const wildcard_pattern = /%%([a-zA-Z0-9_]+)%%/gi
+
+    const wildcard_match = prompt.match(wildcard_pattern)
+
+    for (let i = 0; i < wildcard_match.length; i++) {
+        wildcard_match[i] = wildcard_match[i].slice(2, -2)
+
+        let profile_data = []
+            // attempt to query the profile name on the database
+            if (user_id != null) {
+                profile_data = await queryRecordLimit('wd_profile', { name: wildcard_match[i], user_id: user_id }, 1)
+            }
+            if (profile_data.length == 0) {
+                // attempt to query global profile
+                profile_data = await queryRecordLimit('wd_profile', { name: wildcard_match[i] }, 1)
+            }
+            if (profile_data.length != 0) {
+                // replace the wildcard with the prompt
+                prompt = prompt.replace(`%%${wildcard_match[i]}%%`, profile_data[0].prompt)
+            }
+    }
+
+    return prompt
 }
 
 async function preview_coupler_setting(interaction, width, height, extra_config, index_preview_coupler, session_hash, endpoint = 'http://192.168.196.142:7860') {
@@ -226,7 +255,8 @@ function get_dynamic_threshold_config_from_prompt(prompt) {
     }
 }
 
-function full_prompt_analyze(prompt, is_xl) {
+function full_prompt_analyze(prompt, is_xl, user_id = null) {
+    prompt = fetch_user_defined_wildcard(prompt, user_id)
     let coupler_config = get_coupler_config_from_prompt(prompt)
     let color_grading_config = get_color_grading_config_from_prompt(coupler_config.prompt, is_xl)
     let freeu_config = get_freeu_config_from_prompt(color_grading_config.prompt)
