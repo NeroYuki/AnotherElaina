@@ -23,12 +23,17 @@ module.exports = {
         await interaction.deferReply();
 
         // query the database
-        const result = await queryRecordLimit('wd_profile', { name: name, user_id: user.id }, 1);
+        let result = await queryRecordLimit('wd_profile', { name: name, user_id: user.id }, 1);
 
         // check if the profile exists
         if (result.length == 0) {
-            await interaction.editReply(`Profile with name ${name} does not exist`);
-            return;
+            await interaction.editReply(`:warning: You don't have profile with name ${name}, searching from all users...`);
+            result = await queryRecordLimit('wd_profile', { name: name }, 1);
+
+            if (result.length == 0) {
+                await interaction.editReply(`:x: Profile with name ${name} does not exist`);
+                return;
+            }
         }
 
         // compose the reply (only display non-default values)
