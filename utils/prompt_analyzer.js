@@ -98,7 +98,7 @@ function get_coupler_config_from_prompt(prompt) {
 async function fetch_user_defined_wildcard(prompt, user_id) {
     // check for following pattern in prompt %%<profile_name>%% and extract it into a list of profile_name
     return new Promise(async (resolve, reject) => {
-        const wildcard_pattern = /%%([a-zA-Z0-9_]+)%%/gi
+        const wildcard_pattern = /%%([a-zA-Z0-9_\/]+)%%/gi
 
         const wildcard_match = prompt.match(wildcard_pattern)
 

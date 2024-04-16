@@ -8,7 +8,7 @@ module.exports = {
 		.setDescription('Add/Update an AI image creation profile')
         .addStringOption(option =>
             option.setName('name')
-                .setDescription('The name of the profile to add or update, only contain alphanumeric and underscore')
+                .setDescription('The name of the profile to add or update, only contain alphanumeric, slash and underscore')
                 .setRequired(true))
         .addStringOption(option =>
             option.setName('prompt')
@@ -100,9 +100,9 @@ module.exports = {
 
 		await interaction.deferReply();
 
-        // check if name is valid /([a-zA-Z0-9_]+)/
-        if (!/^[a-zA-Z0-9_]+$/.test(name)) {
-            await interaction.editReply("Invalid profile name, it must not include whitespace or special characters except underscore");
+        // check if name is valid /([a-zA-Z0-9_\/]+)/
+        if (!/^[a-zA-Z0-9_\/]+$/.test(name)) {
+            await interaction.editReply("Invalid profile name, it must not include whitespace or special characters other than underscore amd slash");
             return;
         }
 
