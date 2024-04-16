@@ -74,8 +74,8 @@ module.exports = {
                 .setDescription('Early stopping parameter for CLIP model (default is 1, recommend 1 and 2)'))
         .addStringOption(option =>
             option.setName('checkpoint')
-                .setDescription('The checkpoint to use for the profile'))
-                .addChoices(...model_selection, ...model_selection_xl)
+                .setDescription('The checkpoint to use for the profile')
+                .addChoices(...model_selection, ...model_selection_xl))
     ,
 
 	async execute(interaction) {
