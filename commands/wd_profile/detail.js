@@ -27,7 +27,7 @@ module.exports = {
 
         // check if the profile exists
         if (result.length == 0) {
-            await interaction.editReply(`:warning: You don't have profile with name ${name}, searching from all users...`);
+            await interaction.channel.send(`:warning: You don't have profile with name ${name}, searching from all users...`);
             result = await queryRecordLimit('wd_profile', { name: name }, 1);
 
             if (result.length == 0) {
