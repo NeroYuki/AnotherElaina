@@ -44,6 +44,8 @@ module.exports = {
             return;
         }
 
+        const isComfy = tags["Workflow"]?.description !== null 
+
         const raw_params = tags["parameters"]?.description
         let response_params = "Unknown"
 
@@ -71,15 +73,18 @@ module.exports = {
     })
     .map((x) => x.join(": "))
     .join("\n") : "None"}`    
+
         }
 
+        // check for "model hash" line, and match its value with hash table
+        // const model_hash = response_params.match(/model hash: ([a-f0-9]+)/i)
         // console.log(tags)
 
         embeded = new MessageEmbed()
             .setColor('#88ff88')
             .setTitle('Image Info')
             .setThumbnail(attachment_option.proxyURL)
-            .setDescription(`**Stable Diffusion Parameter**: ${response_params}`)
+            .setDescription(`**Stable Diffusion Parameter**: ${isComfy ? "[ComfyUI Workflow info is not available]": ""} ${response_params}`)
             .addFields(
                 { name: 'Image Size', value: `${tags["Image Width"]?.description ?? "Unknown"} x ${tags["Image Height"]?.description ?? "Unknown"}` },
                 { name: 'File Type', value: tags["FileType"] ? tags["FileType"].description : "Non-image" },
