@@ -3,6 +3,7 @@ const { loadImage } = require('../utils/load_discord_img');
 const ExifReader = require('exifreader');
 const { MessageEmbed } = require('discord.js');
 const { model_name_hash_mapping } = require('../utils/ai_server_config');
+const { parsePromptGraph } = require('../utils/comfy_parser');
 
 function clamp(num, min, max) {
     return num <= min ? min : num >= max ? max : num;
@@ -48,17 +49,37 @@ module.exports = {
         
         if (isComfy) {
             const prompt = tags["prompt"]?.description
+            let pos_prompt, neg_prompt, sampler, step, cfg_model, seed, model, vae = null
             if (prompt) {
                 const fields = parsePromptGraph(prompt)
-                // find by key name
-                const pos_prompt = fields.find((x) => x.key.includes("text/positive/samples"))
-                const neg_prompt = fields.find((x) => x.key.includes("text/negative/samples"))
-                const sampler = fields.find((x) => x.key.includes("sampler_name/samples"))
-                const step = fields.find((x) => x.key.includes("steps/samples"))
-                const cfg_model = fields.find((x) => x.key.includes("cfg/samples"))
-                const seed = fields.find((x) => x.key.includes("noise_seed/samples"))
-                const model = fields.find((x) => x.key.includes("ckpt_name/model/samples"))
-                const vae = fields.find((x) => x.key.includes("ckpt_name/vae/images"))
+
+                Object.entries(fields).forEach(([key, value]) => {
+
+                    if (key.includes("text/positive/samples") && !pos_prompt) {
+                        pos_prompt = {key: key, value: value}
+                    }
+                    if (key.includes("text/negative/samples") && !neg_prompt) {
+                        neg_prompt = {key: key, value: value}
+                    }
+                    if (key.includes("sampler_name/samples") && !sampler) {
+                        sampler = {key: key, value: value}
+                    }
+                    if (key.includes("steps/samples") && !step) {
+                        step = {key: key, value: value}
+                    }
+                    if (key.includes("cfg/samples") && !cfg_model) {
+                        cfg_model = {key: key, value: value}
+                    }
+                    if (key.includes("noise_seed/samples") && !seed) {
+                        seed = {key: key, value: value}
+                    }
+                    if (key.includes("ckpt_name/model/samples") && !model) {
+                        model = {key: key, value: value}
+                    }
+                    if (key.includes("ckpt_name/vae/images") && !vae) {
+                        vae = {key: key, value: value}
+                    }
+                })
 
                 // do not show extra parameters if they are not available
                 response_params = `
@@ -120,6 +141,6 @@ ${vae ? `VAE: ${vae.value}` : ""}
             .setFooter({text: "EXIF data may not be available for all images."});
 
         await interaction.editReply({ embeds: [embeded] });
-        
+
 	},
 };
