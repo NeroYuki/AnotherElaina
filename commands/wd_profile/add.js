@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { upscaler_selection, model_selection, model_selection_xl } = require('../../utils/ai_server_config');
+const { upscaler_selection, model_selection, model_selection_xl, sampler_selection } = require('../../utils/ai_server_config');
 const { addRecord, queryRecord, queryRecordLimit, editRecords } = require('../../database/database_interaction');
 
 module.exports = {
@@ -31,16 +31,7 @@ module.exports = {
         .addStringOption(option => 
             option.setName('sampler')
                 .setDescription('The sampling method for the AI to generate art from (default is "Euler a")')
-                .addChoices(
-					{ name: 'Euler a', value: 'Euler a' },
-                    { name: 'DPM++ SDE Karras', value: 'DPM++ SDE Karras' },
-                    { name: 'LMS', value: 'LMS' },
-                    { name: 'DPM++ 2S a', value: 'DPM++ 2S a' },
-                    { name: 'DPM2 a Karras', value: 'DPM2 a Karras' },
-                    { name: 'DPM++ 2M Karras', value: 'DPM++ 2M Karras' },
-                    { name: 'DPM++ 3M SDE', value: 'DPM++ 3M SDE' },
-                    { name: 'LCM', value: 'LCM' },
-                ))
+                .addChoices(...sampler_selection))
         .addNumberOption(option => 
             option.setName('cfg_scale')
                 .setDescription('Lower value = more creative freedom (default is 7, recommended max is 10)'))

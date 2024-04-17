@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { byPassUser, censorGuildIds } = require('../config.json');
 const crypt = require('crypto');
-const { server_pool, get_data_body, get_negative_prompt, initiate_server_heartbeat, get_worker_server, get_prompt, load_lora_from_prompt, model_name_hash_mapping, get_data_controlnet, get_data_controlnet_annotation, check_model_filename, model_selection, upscaler_selection, model_selection_xl } = require('../utils/ai_server_config.js');
+const { server_pool, get_data_body, get_negative_prompt, initiate_server_heartbeat, get_worker_server, get_prompt, load_lora_from_prompt, model_name_hash_mapping, get_data_controlnet, get_data_controlnet_annotation, check_model_filename, model_selection, upscaler_selection, model_selection_xl, sampler_selection } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const { loadImage } = require('../utils/load_discord_img.js');
@@ -37,16 +37,7 @@ module.exports = {
         .addStringOption(option => 
             option.setName('sampler')
                 .setDescription('The sampling method for the AI to generate art from (default is "Euler a")')
-                .addChoices(
-					{ name: 'Euler a', value: 'Euler a' },
-                    { name: 'DPM++ SDE Karras', value: 'DPM++ SDE Karras' },
-                    { name: 'LMS', value: 'LMS' },
-                    { name: 'DPM++ 2S a', value: 'DPM++ 2S a' },
-                    { name: 'DPM2 a Karras', value: 'DPM2 a Karras' },
-                    { name: 'DPM++ 2M Karras', value: 'DPM++ 2M Karras' },
-                    { name: 'DPM++ 3M SDE', value: 'DPM++ 3M SDE' },
-                    { name: 'LCM', value: 'LCM' },
-				))
+                .addChoices(...sampler_selection))
         .addNumberOption(option => 
             option.setName('cfg_scale')
                 .setDescription('Lower value = more creative freedom (default is 7, recommended max is 10)'))

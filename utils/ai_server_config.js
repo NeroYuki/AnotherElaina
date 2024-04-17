@@ -1394,6 +1394,22 @@ const upscaler_selection = [
     { name: 'NMKD-Siax 4x', value: '4x_NMKD-Siax_200k' },
 ]
 
+const sampler_selection = [
+    { name: 'Euler a', value: 'Euler a' },
+    { name: 'DPM++ SDE Karras', value: 'DPM++ SDE Karras' },
+    { name: 'LMS', value: 'LMS' },
+    { name: 'DPM++ 2S a', value: 'DPM++ 2S a' },
+    { name: 'DPM2 a Karras', value: 'DPM2 a Karras' },
+    { name: 'DPM++ 2M Karras', value: 'DPM++ 2M Karras' },
+    { name: 'DPM++ 3M SDE', value: 'DPM++ 3M SDE' },
+    { name: 'LCM', value: 'LCM' },
+    { name: 'UniPC', value: 'UniPC' },
+    { name: 'Restart', value: 'Restart' },
+    { name: 'DPM fast', value: 'DPM fast' },
+    { name: 'DPM++ 2M SDE SGMUniform', value: 'DPM++ 2M SDE SGMUniform' },
+    { name: 'DPM++ 2M SDE Heun Karras', value: 'DPM++ 2M SDE Heun Karras' },
+]
+
 const check_model_filename = (model_filename) => {
     for (let [key, value] of model_name_hash_mapping) {
         if (model_filename.includes(key)) {
@@ -1623,5 +1639,6 @@ module.exports = {
     controlnet_preprocessor_selection,
     controlnet_model_selection,
     upscaler_selection,
-    controlnet_model_selection_xl
+    controlnet_model_selection_xl,
+    sampler_selection
 }
