@@ -57,7 +57,19 @@ module.exports = {
             response_params = `
 **Prompt**: ${params.slice(0, neg_prompt_index).join("\n")}
 **Negative Prompt**: ${params[neg_prompt_index]?.replace(/negative prompt\: /i, "") ?? "Unknown"}
-**Extra Parameters**: ${params[neg_prompt_index + 1] ? "\n" + params[neg_prompt_index + 1].split(", ").map((x) => [...x.split(": ")]).filter((x) => allowed_extra_params.includes(x[0].toLowerCase())).map((x) => x.join(": ")).join("\n") : "None"}`    
+**Extra Parameters**: ${params[neg_prompt_index + 1] ? "\n" + params[neg_prompt_index + 1]
+    .split(", ")
+    .map((x) => [...x.split(": ")])
+    .filter((x) => allowed_extra_params.includes(x[0].toLowerCase()))
+    .map((x) => {
+        if (x[0].toLowerCase() === "model hash") {
+            x[0] = "Model"
+            x[1] = model_name_hash_mapping.get(x[1]) ?? x[1]
+        }
+        return x
+    })
+    .map((x) => x.join(": "))
+    .join("\n") : "None"}`    
         }
 
         // console.log(tags)

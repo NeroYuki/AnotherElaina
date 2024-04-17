@@ -2,6 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { loadImage } = require('../utils/load_discord_img');
 const ExifReader = require('exifreader');
 const { MessageEmbed } = require('discord.js');
+const { model_name_hash_mapping } = require('../utils/ai_server_config');
 
 function clamp(num, min, max) {
     return num <= min ? min : num >= max ? max : num;
@@ -55,9 +56,24 @@ module.exports = {
             response_params = `
 **Prompt**: ${params.slice(0, neg_prompt_index).join("\n")}
 **Negative Prompt**: ${params[neg_prompt_index]?.replace(/negative prompt\: /i, "") ?? "Unknown"}
-**Extra Parameters**: ${params[neg_prompt_index + 1] ? "\n" + params[neg_prompt_index + 1].split(", ").map((x) => [...x.split(": ")]).filter((x) => allowed_extra_params.includes(x[0].toLowerCase())).map((x) => x.join(": ")).join("\n") : "None"}`    
+**Extra Parameters**: ${params[neg_prompt_index + 1] ? "\n" + params[neg_prompt_index + 1]
+    .split(", ")
+    .map((x) => [...x.split(": ")])
+    .filter((x) => allowed_extra_params.includes(x[0].toLowerCase()))
+    .map((x) => {
+        if (x[0].toLowerCase() === "model hash") {
+            x[0] = "Model"
+            x[1] = model_name_hash_mapping.get(x[1]) ?? x[1]
+        }
+        return x
+    })
+    .map((x) => x.join(": "))
+    .join("\n") : "None"}`    
+
         }
 
+        // check for "model hash" line, and match its value with hash table
+        // const model_hash = response_params.match(/model hash: ([a-f0-9]+)/i)
         // console.log(tags)
 
         embeded = new MessageEmbed()
