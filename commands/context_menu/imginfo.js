@@ -44,7 +44,7 @@ module.exports = {
             return;
         }
 
-        const isComfy = tags["Workflow"]?.description != null 
+        const isComfy = tags["workflow"]?.description != null 
 
         const raw_params = tags["parameters"]?.description
         let response_params = "Unknown"
