@@ -75,7 +75,7 @@ client.on('messageCreate', async message => {
 
 
 client.on('interactionCreate', async interaction => {
-	if (!interaction.isCommand()) return;
+	if (!(interaction.isCommand() || interaction.isMessageContextMenu())) return;
 
 	const command = client.commands.get(interaction.commandName);
 
