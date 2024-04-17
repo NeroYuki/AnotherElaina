@@ -3,6 +3,7 @@ const { ApplicationCommandType } = require('discord-api-types/v9');
 const { loadImage } = require('../../utils/load_discord_img');
 const ExifReader = require('exifreader');
 const { MessageEmbed } = require('discord.js');
+const { model_name_hash_mapping } = require('../../utils/ai_server_config');
 
 function clamp(num, min, max) {
     return num <= min ? min : num >= max ? max : num;
