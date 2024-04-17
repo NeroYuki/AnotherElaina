@@ -44,7 +44,7 @@ module.exports = {
             return;
         }
 
-        const isComfy = tags["Workflow"]?.description !== null 
+        const isComfy = tags["Workflow"]?.description != null 
 
         const raw_params = tags["parameters"]?.description
         let response_params = "Unknown"
@@ -92,6 +92,6 @@ module.exports = {
             .setFooter({text: "EXIF data may not be available for all images."});
 
         await interaction.editReply({ embeds: [embeded] });
-        
+
 	},
 };
