@@ -4,6 +4,7 @@ const { loadImage } = require('../../utils/load_discord_img');
 const ExifReader = require('exifreader');
 const { MessageEmbed } = require('discord.js');
 const { model_name_hash_mapping } = require('../../utils/ai_server_config');
+const { parsePromptGraph } = require('../../utils/comfy_parser')
 
 function clamp(num, min, max) {
     return num <= min ? min : num >= max ? max : num;
@@ -44,10 +45,40 @@ module.exports = {
             return;
         }
 
+        let response_params = "Unknown"
+
         const isComfy = tags["workflow"]?.description != null 
+        
+        if (isComfy) {
+            const prompt = tags["prompt"]?.description
+            if (prompt) {
+                const fields = parsePromptGraph(prompt)
+                // find by key name
+                const pos_prompt = fields.find((x) => x.key.includes("text/positive/samples"))
+                const neg_prompt = fields.find((x) => x.key.includes("text/negative/samples"))
+                const sampler = fields.find((x) => x.key.includes("sampler_name/samples"))
+                const step = fields.find((x) => x.key.includes("steps/samples"))
+                const cfg_model = fields.find((x) => x.key.includes("cfg/samples"))
+                const seed = fields.find((x) => x.key.includes("noise_seed/samples"))
+                const model = fields.find((x) => x.key.includes("ckpt_name/model/samples"))
+                const vae = fields.find((x) => x.key.includes("ckpt_name/vae/images"))
+
+                // do not show extra parameters if they are not available
+                response_params = `
+**Prompt**: ${pos_prompt?.value ?? "Unknown"}
+**Negative Prompt**: ${neg_prompt?.value ?? "Unknown"}
+**Extra Parameters**:
+${sampler ? `Sampler: ${sampler.value}` : ""}
+${step ? `Steps: ${step.value}` : ""}
+${cfg_model ? `CFG Scale: ${cfg_model.value}` : ""}
+${seed ? `Seed: ${seed.value}` : ""}
+${model ? `Model: ${model.value}` : ""}
+${vae ? `VAE: ${vae.value}` : ""}
+`
+            }
+        }
 
         const raw_params = tags["parameters"]?.description
-        let response_params = "Unknown"
 
         if (raw_params) {
             const params = raw_params.split("\n")
@@ -84,7 +115,7 @@ module.exports = {
             .setColor('#88ff88')
             .setTitle('Image Info')
             .setThumbnail(attachment_option.proxyURL)
-            .setDescription(`**Stable Diffusion Parameter**: ${isComfy ? "[ComfyUI Workflow info is not available]": ""} ${response_params}`)
+            .setDescription(`**Stable Diffusion Parameter**: ${isComfy ? "[ComfyUI Workflow info is not complete]": ""} ${response_params}`)
             .addFields(
                 { name: 'Image Size', value: `${tags["Image Width"]?.description ?? "Unknown"} x ${tags["Image Height"]?.description ?? "Unknown"}` },
                 { name: 'File Type', value: tags["FileType"] ? tags["FileType"].description : "Non-image" },
