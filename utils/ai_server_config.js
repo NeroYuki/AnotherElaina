@@ -6,25 +6,25 @@ const server_pool = [
     {
         index: 0,
         url: 'http://192.168.196.142:7860',
-        fn_index_create: 514,
+        fn_index_create: 515,
         fn_index_abort: 62,
-        fn_index_img2img: 1128,
-        fn_index_controlnet: [246, 790],        //[txt2img, img2img]
-        fn_index_controlnet_annotation: [1030, 1054],
-        fn_index_controlnet_2: [327, 874], 
-        fn_index_controlnet_annotation_2: [1038, 1062],
-        fn_index_controlnet_3: [412, 957],
-        fn_index_controlnet_annotation_3: [1046, 1070],
-        fn_index_interrogate: 1132,
-        fn_index_upscale: 1211,
-        fn_index_change_model: 1313,
-        fn_index_coupler_region_preview: 187,
-        fn_index_change_adetailer_model1: [97, 641],
-        fn_index_change_adetailer_prompt1: [99, 643],
-        fn_index_change_adetailer_neg_prompt1: [100, 644],
-        fn_index_change_adetailer_model2: [146, 690],
-        fn_index_change_adetailer_prompt2: [148, 692],
-        fn_index_change_adetailer_neg_prompt2: [149, 693],
+        fn_index_img2img: 1130,
+        fn_index_controlnet: [247, 792],        //[txt2img, img2img]
+        fn_index_controlnet_annotation: [1032, 1056],
+        fn_index_controlnet_2: [328, 876], 
+        fn_index_controlnet_annotation_2: [1040, 1064],
+        fn_index_controlnet_3: [413, 959],
+        fn_index_controlnet_annotation_3: [1048, 1072],
+        fn_index_interrogate: 1134,
+        fn_index_upscale: 1213,
+        fn_index_change_model: 1315,
+        fn_index_coupler_region_preview: [187, 732],
+        fn_index_change_adetailer_model1: [97, 642],
+        fn_index_change_adetailer_prompt1: [99, 644],
+        fn_index_change_adetailer_neg_prompt1: [100, 645],
+        fn_index_change_adetailer_model2: [146, 691],
+        fn_index_change_adetailer_prompt2: [148, 693],
+        fn_index_change_adetailer_neg_prompt2: [149, 694],
         is_online: true,
     },
     {
@@ -86,7 +86,8 @@ const get_data_controlnet_annotation = (preprocessor = "None", input) => {
 
 const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed, sampler, session_hash,
     height, width, attachment, attachment2, denoising_strength, mode = 0, mask_blur = 4, mask_content = "original", upscaler = "None", 
-    is_using_adetailer = false, coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, freeu_config = null, dynamic_threshold_config = null) => {
+    is_using_adetailer = false, coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, 
+    freeu_config = null, dynamic_threshold_config = null, pag_config = null) => {
     // default mode 0 is img2img, 4 is inpainting
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 3000000 && upscaler == "None") ? true : false
@@ -171,7 +172,37 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
         coupler_config || false,               // enable latent coupler
         coupler_config?.direction || "Horizontal",       // direction (Horizontal or Vertical)
         coupler_config?.global || "First Line",       // use which line for global effect (First Line or Last Line or None)
-        "",                 // seperator
+        "",                                         // seperator
+        coupler_config?.mode || "Basic",          // region definition mode (Basic or Advanced)
+        {
+            "data": coupler_config?.adv_regions || [
+                [
+                    "0.0:0.5",
+                    "0.0:1.0",
+                    "1.0"
+                ],
+                [
+                    "0.5:1.0",
+                    "0.0:1.0",
+                    "1.0"
+                ]
+            ],
+            "headers": [
+                "x",
+                "y",
+                "weight"
+            ]
+        },
+        coupler_config?.global_weight || 0.5,                // global weight
+        pag_config || false,                      // toggle PAG
+        pag_config?.pag_scale || 3,                          // PAG scale
+        pag_config?.adaptive_scale || 0,                          // adaptive scale
+        "middle",                   // layer selection
+        0,                          // layer id
+        false,                      // toggle PAG for hires fix
+        7,                          // CFG scale
+        3,                          // PAG scale (hires fix)
+        0,                          // adaptive scale (hires fix)
         false,
         false,
         "LoRA",
@@ -371,7 +402,8 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
 
 const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed, sampler, session_hash,
     height, width, upscale_multiplier, upscaler, upscale_denoise_strength, upscale_step, face_restore = false, is_using_adetailer = false, 
-    coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, freeu_config = null, dynamic_threshold_config = null) => {
+    coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, 
+    freeu_config = null, dynamic_threshold_config = null, ) => {
 
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 1600000) ? true : false
@@ -414,23 +446,23 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
         false,
         null,
         null,
-        true,
+        true,       // dynamic prompt enabled
         false,
         1,
+        false,      // magic prompt
         false,
         false,
-        false,
-        1.1,
+        1.1,        
         1.5,
         100,
         0.7,
         false,
         false,
-        true,
+        true,    
         false,
         false,
         0,
-        "Gustavosta/MagicPrompt-Stable-Diffusion",
+        "Gustavosta/MagicPrompt-Stable-Diffusion",      // magic prompt model
         "",
         coupler_config || false,               // enable latent coupler
         coupler_config?.direction || "Horizontal",       // direction (Horizontal or Vertical)
@@ -457,6 +489,15 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             ]
         },
         coupler_config?.global_weight || 0.5,                // global weight
+        pag_config || false,                                // toggle PAG
+        pag_config?.pag_scale || 3,                          // PAG scale
+        pag_config?.adaptive_scale || 0,                    // adaptive scale
+        "middle",                   // layer selection
+        0,                          // layer id
+        false,                      // toggle PAG for hires fix
+        7,                          // CFG scale
+        3,                          // PAG scale (hires fix)
+        0,                          // adaptive scale (hires fix)
         false,
         false,
         "LoRA",

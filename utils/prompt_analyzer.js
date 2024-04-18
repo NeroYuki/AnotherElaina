@@ -261,18 +261,48 @@ function get_dynamic_threshold_config_from_prompt(prompt) {
     }
 }
 
+function get_pag_config_from_prompt(prompt) {
+    // check for following pattern in prompt |pag: <pag scale>,<adaptive scale>|
+    // if found, return the value {pag_scale: <value>, adaptive_scale: <value>}
+    // else return null
+
+    const pag_pattern = /\|pag: ([0-9.]+),([0-9.]+).*\|/i
+
+    const pag_match = prompt.match(pag_pattern)
+
+    if (pag_match && pag_match[0]) {
+        const values_pattern = /([0-9.]+)/gi
+        const values_match = pag_match[0].match(values_pattern)
+
+        return {
+            prompt: prompt.replace(pag_pattern, ''),
+            pag_config: {
+                pag_scale: parseFloat(values_match[0]) || 3,
+                adaptive_scale: parseFloat(values_match[1]) || 0
+            }
+        }
+    }
+
+    return {
+        prompt: prompt,
+        pag_config: null
+    }
+}
+
 function full_prompt_analyze(prompt, is_xl) {
     let coupler_config = get_coupler_config_from_prompt(prompt)
     let color_grading_config = get_color_grading_config_from_prompt(coupler_config.prompt, is_xl)
     let freeu_config = get_freeu_config_from_prompt(color_grading_config.prompt)
     let dynamic_threshold_config = get_dynamic_threshold_config_from_prompt(freeu_config.prompt)
+    let pag_config = get_pag_config_from_prompt(dynamic_threshold_config.prompt)
 
     return {
-        prompt: dynamic_threshold_config.prompt,
+        prompt: pag_config.prompt,
         coupler_config: coupler_config.coupler_config,
         color_grading_config: color_grading_config.color_grading_config,
         freeu_config: freeu_config.freeu_config,
-        dynamic_threshold_config: dynamic_threshold_config.dynamic_threshold_config
+        dynamic_threshold_config: dynamic_threshold_config.dynamic_threshold_config,
+        pag_config: pag_config.pag_config
     }
 }
 
@@ -281,6 +311,7 @@ module.exports = {
     get_color_grading_config_from_prompt,
     get_freeu_config_from_prompt,
     get_dynamic_threshold_config_from_prompt,
+    get_pag_config_from_prompt,
     full_prompt_analyze,
     preview_coupler_setting,
     fetch_user_defined_wildcard

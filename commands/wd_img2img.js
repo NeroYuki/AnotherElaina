@@ -278,7 +278,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         const is_censor = ((interaction.guildId && censorGuildIds.includes(interaction.guildId)) || (interaction.channel && !interaction.channel.nsfw)) ? true : false
 
         if (extra_config.coupler_config && extra_config.coupler_config.mode === 'Advanced') {
-            preview_coupler_setting(interaction, width, height, extra_config, server_pool[server_index].fn_index_coupler_region_preview, session_hash)
+            preview_coupler_setting(interaction, width, height, extra_config, server_pool[server_index].fn_index_coupler_region_preview[1], session_hash)
         }
         
         if (!no_dynamic_lora_load) {
@@ -288,7 +288,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         const create_data = get_data_body_img2img(server_index, prompt, neg_prompt, sampling_step, cfg_scale,
             seed, sampler, session_hash, height, width, attachment, null, denoising_strength, /*img2img mode*/ 0, 4, "original", upscaler, 
             false, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
-            extra_config.freeu_config, extra_config.dynamic_threshold_config)
+            extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config)
 
         // make option_init but for axios
         const option_init_axios = {
