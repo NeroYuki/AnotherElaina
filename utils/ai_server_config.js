@@ -403,7 +403,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
 const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed, sampler, session_hash,
     height, width, upscale_multiplier, upscaler, upscale_denoise_strength, upscale_step, face_restore = false, is_using_adetailer = false, 
     coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, 
-    freeu_config = null, dynamic_threshold_config = null, ) => {
+    freeu_config = null, dynamic_threshold_config = null, pag_config = null) => {
 
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 1600000) ? true : false
