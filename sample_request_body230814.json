@@ -1,8 +1,8 @@
 {
     "data": [
-        "task(uducp6abpyb34az)",
-        "2girls, artist: eufoniuz, __kw/lighting*__, (masterpiece:1.2), best quality\n2girls, august von parseval \\(azur lane\\), azur lane, artist: eufoniuz, serious face\n2girls, ceres fauna, hololive, artist: eufoniuz,  happy face",
-        "lowres, [low quality, worst quality], jpeg",
+        "task(vyst8jros6x6atu)",
+        "<lora:chowbie_v1_e20:1.0> <lora:animagine_fixhand_v1:1.0> 1girl, office lady, (masterpiece:1.2), best quality, artist: chowbie, breast, bra, panties, view from behind",
+        "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name",
         [],
         30,
         "Euler a",
@@ -10,9 +10,9 @@
         1,
         7,
         1024,
-        1536,
+        1024,
         false,
-        0.7,
+        0.4,
         2,
         "Latent",
         0,
@@ -55,38 +55,59 @@
         0,
         "Gustavosta/MagicPrompt-Stable-Diffusion",
         "",
-        true,
+        false,
         "Horizontal",
-        "First Line",
+        "None",
         "",
+        "Basic",
+        {
+            "data": [
+                [
+                    "0.0:0.5",
+                    "0.0:1.0",
+                    "1.0"
+                ],
+                [
+                    "0.5:1.0",
+                    "0.0:1.0",
+                    "1.0"
+                ]
+            ],
+            "headers": [
+                "x",
+                "y",
+                "weight"
+            ]
+        },
+        0.5,
         false,
         false,
         "LoRA",
         "None",
-        1,
-        1,
+        0,
+        0,
         "LoRA",
         "None",
-        1,
-        1,
+        0,
+        0,
         "LoRA",
         "None",
-        1,
-        1,
+        0,
+        0,
         "LoRA",
         "None",
-        1,
-        1,
+        0,
+        0,
         "LoRA",
         "None",
-        1,
-        1,
+        0,
+        0,
         null,
         "Refresh models",
-        true,
-        "XL",
-        0.6,
-        true,
+        false,
+        "1.5",
+        0,
+        false,
         0.01,
         0.5,
         -0.13,
@@ -190,22 +211,23 @@
         false,
         0,
         false,
+        false,
+        2,
         [
             {
-                "name": "D:\\AIstuff\\stable-diffusion-webui\\outputs\\txt2img-images\\13099-3650204566-2girls, artist_ eufoniuz, Cool Light, (masterpiece_1.2), best quality_2girls, august von parseval _(azur lane_), azur lane, arti.png?1711694760.9242058",
-                "data": "http://127.0.0.1:7860/file=D:\\AIstuff\\stable-diffusion-webui\\outputs\\txt2img-images\\13099-3650204566-2girls, artist_ eufoniuz, Cool Light, (masterpiece_1.2), best quality_2girls, august von parseval _(azur lane_), azur lane, arti.png?1711694760.9242058",
+                "name": "D:\\AIstuff\\stable-diffusion-webui\\outputs\\txt2img-images\\14468-1180428544-_lora_chowbie_v1_e20_1.0_ _lora_animagine_fixhand_v1_1.0_ 1girl, office lady, (masterpiece_1.2), best quality, artist_ chowbie,.png?1713082501.840538",
+                "data": "http://127.0.0.1:7860/file=D:\\AIstuff\\stable-diffusion-webui\\outputs\\txt2img-images\\14468-1180428544-_lora_chowbie_v1_e20_1.0_ _lora_animagine_fixhand_v1_1.0_ 1girl, office lady, (masterpiece_1.2), best quality, artist_ chowbie,.png?1713082501.840538",
                 "is_file": true
             }
         ],
-        "{\"prompt\": \"2girls, artist: eufoniuz, Cool Light, (masterpiece:1.2), best quality\\n2girls, august von parseval \\\\(azur lane\\\\), azur lane, artist: eufoniuz, serious face\\n2girls, ceres fauna, hololive, artist: eufoniuz,  happy face\", \"all_prompts\": [\"2girls, artist: eufoniuz, Cool Light, (masterpiece:1.2), best quality\\n2girls, august von parseval \\\\(azur lane\\\\), azur lane, artist: eufoniuz, serious face\\n2girls, ceres fauna, hololive, artist: eufoniuz,  happy face\"], \"negative_prompt\": \"lowres, [low quality, worst quality], jpeg\", \"all_negative_prompts\": [\"lowres, [low quality, worst quality], jpeg\"], \"seed\": 3650204566, \"all_seeds\": [3650204566], \"subseed\": 315918948, \"all_subseeds\": [315918948], \"subseed_strength\": 0, \"width\": 1536, \"height\": 1024, \"sampler_name\": \"Euler a\", \"cfg_scale\": 7, \"steps\": 30, \"batch_size\": 1, \"restore_faces\": false, \"face_restoration_model\": null, \"sd_model_name\": \"animaginexl_v31\", \"sd_model_hash\": \"e3c47aedb0\", \"sd_vae_name\": \"animaginexl_v31.vae.safetensors\", \"sd_vae_hash\": \"235745af8d\", \"seed_resize_from_w\": -1, \"seed_resize_from_h\": -1, \"denoising_strength\": 0.7, \"extra_generation_params\": {\"ReCenter Str\": 0.6, \"Normalization\": true, \"SD_ver\": \"XL\", \"forge_couple\": true, \"forge_couple_direction\": \"Horizontal\", \"forge_couple_background\": \"First Line\", \"forge_couple_separator\": \"\"}, \"index_of_first_image\": 0, \"infotexts\": [\"2girls, artist: eufoniuz, Cool Light, (masterpiece:1.2), best quality\\n2girls, august von parseval \\\\(azur lane\\\\), azur lane, artist: eufoniuz, serious face\\n2girls, ceres fauna, hololive, artist: eufoniuz,  happy face\\nNegative prompt: lowres, [low quality, worst quality], jpeg\\nSteps: 30, Sampler: Euler a, CFG scale: 7, Seed: 3650204566, Size: 1536x1024, Model hash: e3c47aedb0, VAE hash: 235745af8d, VAE: animaginexl_v31.vae.safetensors, ReCenter Str: 0.6, Normalization: True, SD_ver: XL, forge_couple: True, forge_couple_direction: Horizontal, forge_couple_background: First Line, forge_couple_separator: , Version: f0.0.17v1.8.0rc-latest-306-gf15d1139\"], \"styles\": [], \"job_timestamp\": \"20240329134510\", \"clip_skip\": 1, \"is_using_inpainting_conditioning\": false, \"version\": \"f0.0.17v1.8.0rc-latest-306-gf15d1139\"}",
-        "<p>2girls, artist: eufoniuz, Cool Light, (masterpiece:1.2), best quality<br>\n2girls, august von parseval \\(azur lane\\), azur lane, artist: eufoniuz, serious face<br>\n2girls, ceres fauna, hololive, artist: eufoniuz,  happy face<br>\nNegative prompt: lowres, [low quality, worst quality], jpeg<br>\nSteps: 30, Sampler: Euler a, CFG scale: 7, Seed: 3650204566, Size: 1536x1024, Model hash: e3c47aedb0, VAE hash: 235745af8d, VAE: animaginexl_v31.vae.safetensors, ReCenter Str: 0.6, Normalization: True, SD_ver: XL, forge_couple: True, forge_couple_direction: Horizontal, forge_couple_background: First Line, forge_couple_separator: , Version: f0.0.17v1.8.0rc-latest-306-gf15d1139</p>",
-        "<p class='comments'></p><div class='performance'><p class='time'>Time taken: <wbr><span class='measurement'>50.6 sec.</span></p></div>"
+        "{\"prompt\": \"<lora:chowbie_v1_e20:1.0> <lora:animagine_fixhand_v1:1.0> 1girl, office lady, (masterpiece:1.2), best quality, artist: chowbie, breast, bra, panties, view from behind\", \"all_prompts\": [\"<lora:chowbie_v1_e20:1.0> <lora:animagine_fixhand_v1:1.0> 1girl, office lady, (masterpiece:1.2), best quality, artist: chowbie, breast, bra, panties, view from behind\"], \"negative_prompt\": \"lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name\", \"all_negative_prompts\": [\"lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name\"], \"seed\": 1180428544, \"all_seeds\": [1180428544], \"subseed\": 3031990194, \"all_subseeds\": [3031990194], \"subseed_strength\": 0, \"width\": 1024, \"height\": 1440, \"sampler_name\": \"Euler a\", \"cfg_scale\": 7, \"steps\": 30, \"batch_size\": 1, \"restore_faces\": false, \"face_restoration_model\": null, \"sd_model_name\": \"animaginexl_v31\", \"sd_model_hash\": \"e3c47aedb0\", \"sd_vae_name\": \"animaginexl_v31.vae.safetensors\", \"sd_vae_hash\": \"235745af8d\", \"seed_resize_from_w\": -1, \"seed_resize_from_h\": -1, \"denoising_strength\": 0.4, \"extra_generation_params\": {\"Lora hashes\": \"chowbie_v1_e20: ae16d3cb854f, animagine_fixhand_v1: 33f8485ec891\", \"Emphasis\": \"No norm\"}, \"index_of_first_image\": 0, \"infotexts\": [\"<lora:chowbie_v1_e20:1.0> <lora:animagine_fixhand_v1:1.0> 1girl, office lady, (masterpiece:1.2), best quality, artist: chowbie, breast, bra, panties, view from behind\\nNegative prompt: lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name\\nSteps: 30, Sampler: Euler a, CFG scale: 7, Seed: 1180428544, Size: 1024x1440, Model hash: e3c47aedb0, VAE hash: 235745af8d, VAE: animaginexl_v31.vae.safetensors, Clip skip: 2, Lora hashes: \\\"chowbie_v1_e20: ae16d3cb854f, animagine_fixhand_v1: 33f8485ec891\\\", Emphasis: No norm, Version: f0.0.17v1.8.0rc-latest-306-gf15d1139\"], \"styles\": [], \"job_timestamp\": \"20240414151416\", \"clip_skip\": 2, \"is_using_inpainting_conditioning\": false, \"version\": \"f0.0.17v1.8.0rc-latest-306-gf15d1139\"}",
+        "<p>&lt;lora:chowbie_v1_e20:1.0&gt; &lt;lora:animagine_fixhand_v1:1.0&gt; 1girl, office lady, (masterpiece:1.2), best quality, artist: chowbie, breast, bra, panties, view from behind<br>\nNegative prompt: lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name<br>\nSteps: 30, Sampler: Euler a, CFG scale: 7, Seed: 1180428544, Size: 1024x1440, Model hash: e3c47aedb0, VAE hash: 235745af8d, VAE: animaginexl_v31.vae.safetensors, Clip skip: 2, Lora hashes: &quot;chowbie_v1_e20: ae16d3cb854f, animagine_fixhand_v1: 33f8485ec891&quot;, Emphasis: No norm, Version: f0.0.17v1.8.0rc-latest-306-gf15d1139</p>",
+        "<p class='comments'></p><div class='performance'><p class='time'>Time taken: <wbr><span class='measurement'>45.1 sec.</span></p></div>"
     ],
     "event_data": null,
-    "fn_index": 497,
-    "session_hash": "9hhc5gbusr"
+    "fn_index": 514,
+    "session_hash": "mxbbzvxqvm9"
 }
-
 {
     "data": [
         "task(5q1w1j6svq372f8)",
@@ -486,26 +508,6 @@
     "session_hash": "9hhc5gbusr"
 }
 
-[
-    null,
-    "",
-    null,
-    "",
-    "",
-    true,
-    null,
-    2,
-    512,
-    512,
-    true,
-    "4x_AnimeSharp",
-    "None",
-    0,
-    0,
-    0,
-    0,
-    0.7
-]
 
 {
     "data": [
@@ -561,9 +563,9 @@
 
 {
     "data": [
-        "task(a2dnmbmxwwnet4r)",
+        "task(wng9t1dfzpz80rk)",
         0,
-        "",
+        "data:image/jpeg;",
         null,
         "",
         "",
@@ -605,13 +607,31 @@
             "Deepbooru"
         ],
         0,
+        false,
+        true,
+        false,
+        false,
+        "Variable blur",
+        10,
+        5,
+        "#000000",
+        "Ellipse",
+        3,
+        0,
+        10,
+        0.5,
+        1,
         null,
-        "",
-        ""
+        [
+            "Draw mask"
+        ],
+        null,
+        "<p>Postprocess upscale by: 2, Postprocess upscaler: 4x_AnimeSharp</p>",
+        "<div class='performance'><p class='time'>Time taken: <wbr><span class='measurement'>18.4 sec.</span></p></div>"
     ],
     "event_data": null,
-    "fn_index": 1164,
-    "session_hash": "8dy19o86ezd"
+    "fn_index": 1177,
+    "session_hash": "4pslb5mj956"
 }
 
 {
