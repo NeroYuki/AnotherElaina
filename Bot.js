@@ -57,6 +57,9 @@ client.on('messageCreate', async message => {
 	// if message doesnt mention the bot, return
 	if (!message.mentions.has(client.user)) return;
 
+	// ignore if it is in direct message
+	if (!message.guild) return;
+
 	// ignore if that mention is from a reply
 	if (message.reference) return;
 
