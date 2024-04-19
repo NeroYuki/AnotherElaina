@@ -19,10 +19,10 @@ async function responseToMessage(client, message, content) {
     }
 
     // if the total length of content in the context is more than 8000 characters, remove the oldest content
-    let total_length = content.reduce((acc, val) => acc + val.content.length, 0)
+    let total_length = context.reduce((acc, val) => acc + val.content.length, 0)
     while (total_length > 8000) {
         context.shift()
-        total_length = content.reduce((acc, val) => acc + val.content.length, 0)
+        total_length = context.reduce((acc, val) => acc + val.content.length, 0)
     }
 
     const row = new MessageActionRow()
