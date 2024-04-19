@@ -39,6 +39,7 @@ async function responseToMessage(client, message, content) {
 
     collector.on('collect', async i => {
         if (i.customId === 'deleteContext_' + message.id) {
+            i.deferUpdate();
             collector.stop()
             context_storage.delete(message.author.id)
             message.channel.send(`<@${message.author.id}> Let's start over shall we?`)
