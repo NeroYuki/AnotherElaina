@@ -64,7 +64,7 @@ async function responseToMessage(client, message, content) {
         const res = await fetch(endpoint, {
             method: 'POST',
             body: JSON.stringify({
-                model: operating_mode == "6bit" ? "test" : "test4b",
+                model: "test4b",
                 stream: false,
                 messages: context
             }),
