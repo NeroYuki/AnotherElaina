@@ -1652,6 +1652,11 @@ async function do_heartbeat() {
             server_pool[i].is_online = false
         }
     }
+
+    // check if all server is dead
+    if (server_pool.every(server => !server.is_online)) {
+        globalThis.sd_available = false
+    }
 }
 
 function initiate_server_heartbeat() {

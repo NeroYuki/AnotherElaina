@@ -5,12 +5,12 @@ const { byPassUser} = require('./config.json');
 const { responseToMessage } = require('./event/on_message');
 const databaseConnection = require('./database/database_connection');
 const { listAllFiles } = require('./utils/common_helper');
-const { server_pool } = require('./utils/ai_server_config');
-const { operating_mode } = require('./utils/text_gen_store');
 
 require('dotenv').config()
 
 const token = process.env.DISCORD_BOT_TOKEN
+globalThis.operating_mode = "6bit" // disabled, 4bit or 6bit
+globalThis.sd_available = true
 
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES] });
 
@@ -48,16 +48,14 @@ for (const file of commandFiles) {
 client.once('ready', () => {
 	console.log('I\'m here');
 	setInterval(() => {
-		const is_art_available = server_pool[0].is_online
-		const is_chat_available = operating_mode
-
 		client.user.setPresence({
 			activities: [{
-				name: `Drawing: ${is_art_available ? '✔' : '✖'} | Chat: ${is_chat_available === '6bit' ? '✔' : is_chat_available === '4bit' ? '△' : '✖'}`,
-				type: 'WATCHING'
+				name: `Drawing: ${sd_available ? '✔' : '✖'} | Chatting: ${operating_mode === '6bit' ? '✔' : operating_mode === '4bit' ? '△' : '✖'}`,
+				type: 'PLAYING'
 			}],
 		});
-	}, 1000 * 60 * 1);
+	}, 1000 * 60 * 5)
+
 });
 
 client.on('messageCreate', async message => {

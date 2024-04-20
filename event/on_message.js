@@ -1,14 +1,12 @@
 const { context_storage } = require('../utils/text_gen_store');
 var { is_generating } = require('../utils/text_gen_store');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
-const { default: axios } = require('axios');
+const { chat_completion } = require('../utils/ollama_request');
 
 async function responseToMessage(client, message, content) {
     let prompt = content
 
-    var { operating_mode } = require('../utils/text_gen_store')
-
-    if (operating_mode === "disabled") {
+    if (globalThis.operating_mode === "disabled") {
         message.channel.send("Elaina is sleeping right now. Please try again later.")
         return
     }
@@ -58,24 +56,11 @@ async function responseToMessage(client, message, content) {
         is_generating = true
         // measure speed
         const start = Date.now()
+        console.log(`Operating mode: ${globalThis.operating_mode}`)
         await message.channel.sendTyping();
-        const endpoint = 'http://192.168.196.142:11434/api/chat'
         
-        const res = await fetch(endpoint, {
-            method: 'POST',
-            body: JSON.stringify({
-                model: "test4b",
-                stream: false,
-                messages: context
-            }),
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        }).catch(err => {
-            throw err
-        })
-
-        const res_gen = await res.json()
+        const res_gen = await chat_completion(globalThis.operating_mode === "6bit" ? "test" : "test4b", context)
+        
         let res_gen_elaina = res_gen.message.content
 
         // sanitize the response

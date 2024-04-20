@@ -1,7 +1,7 @@
 var { operating_mode } = require('../../utils/text_gen_store');
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { queryRecord, queryRecordLimit } = require('../../database/database_interaction');
 const { byPassUser } = require('../../config.json');
+const { unload_model } = require('../../utils/ollama_request');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -30,7 +30,13 @@ module.exports = {
         }
 
         if (mode == "disabled" || mode == "4bit" || mode == "6bit") {
-            operating_mode = mode
+            globalThis.operating_mode = mode;
+            if (mode !== "4bit") {
+                unload_model("test4b");
+            }
+            if (mode !== "6bit") {
+                unload_model("test");
+            }
             await interaction.editReply(`Operation mode changed to ${mode}`);
         }
         else {

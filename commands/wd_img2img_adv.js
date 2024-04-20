@@ -11,6 +11,7 @@ const { cached_model, model_change } = require('../utils/model_change.js');
 const { queryRecordLimit } = require('../database/database_interaction.js');
 const { load_adetailer } = require('../utils/adetailer_execute.js');
 const { full_prompt_analyze, preview_coupler_setting, fetch_user_defined_wildcard } = require('../utils/prompt_analyzer.js');
+const { fallback_to_resource_saving } = require('../utils/ollama_request.js');
 
 function clamp(num, min, max) {
     return num <= min ? min : num >= max ? max : num;
@@ -341,6 +342,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         }
 
         console.log(`requesting: ${WORKER_ENDPOINT}/run/predict/`)
+        fallback_to_resource_saving()
 
         function updateInteractionReply(data, state = 'queued') {
             return new Promise(async (resolve, reject) => {
