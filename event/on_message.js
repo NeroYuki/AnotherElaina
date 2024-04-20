@@ -1,4 +1,4 @@
-const { context_storage, operating_mode } = require('../utils/text_gen_store');
+const { context_storage } = require('../utils/text_gen_store');
 var { is_generating } = require('../utils/text_gen_store');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { default: axios } = require('axios');
@@ -6,7 +6,9 @@ const { default: axios } = require('axios');
 async function responseToMessage(client, message, content) {
     let prompt = content
 
-    if (operating_mode == "disabled") {
+    var { operating_mode } = require('../utils/text_gen_store')
+
+    if (operating_mode === "disabled") {
         message.channel.send("Elaina is sleeping right now. Please try again later.")
         return
     }
