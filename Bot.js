@@ -5,6 +5,8 @@ const { byPassUser} = require('./config.json');
 const { responseToMessage } = require('./event/on_message');
 const databaseConnection = require('./database/database_connection');
 const { listAllFiles } = require('./utils/common_helper');
+const { server_pool } = require('./utils/ai_server_config');
+const { operating_mode } = require('./utils/text_gen_store');
 
 require('dotenv').config()
 
@@ -45,12 +47,17 @@ for (const file of commandFiles) {
 
 client.once('ready', () => {
 	console.log('I\'m here');
-	client.user.setPresence({
-		activities: [{
-			name: 'with AI Art',
-			type: 'PLAYING'
-		}],
-	})
+	setInterval(() => {
+		const is_art_available = server_pool[0].is_online
+		const is_chat_available = operating_mode
+
+		client.user.setPresence({
+			activities: [{
+				name: `Drawing: ${is_art_available ? '✔' : '✖'} | Chat: ${is_chat_available === '6bit' ? '✔' : is_chat_available === '4bit' ? '△' : '✖'}`,
+				type: 'WATCHING'
+			}],
+		});
+	}, 1000 * 60 * 1);
 });
 
 client.on('messageCreate', async message => {

@@ -1,10 +1,16 @@
-const { context_storage } = require('../utils/text_gen_store');
+const { context_storage, operating_mode } = require('../utils/text_gen_store');
 var { is_generating } = require('../utils/text_gen_store');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { default: axios } = require('axios');
 
 async function responseToMessage(client, message, content) {
     let prompt = content
+
+    if (operating_mode == "disabled") {
+        message.channel.send("Elaina is sleeping right now. Please try again later.")
+        return
+    }
+
     if (is_generating) {
         return
     }
@@ -56,7 +62,7 @@ async function responseToMessage(client, message, content) {
         const res = await fetch(endpoint, {
             method: 'POST',
             body: JSON.stringify({
-                model: "test",
+                model: operating_mode == "6bit" ? "test" : "test4b",
                 stream: false,
                 messages: context
             }),
