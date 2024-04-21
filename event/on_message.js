@@ -12,7 +12,7 @@ async function responseToMessage(client, message, content, is_continue = false, 
     }
 
     // ìf its running on gpu mode, just queue them till the end of time, otherwise if queue is more than 3 messages, just ignore it
-    if (globalThis.operating_mode !== "6bit" && is_generating.length > 3) {
+    if (globalThis.operating_mode === "4bit" && is_generating.length > 3) {
         return
     }
 
