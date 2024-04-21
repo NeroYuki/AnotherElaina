@@ -49,25 +49,26 @@ async function responseToMessage(client, message, content, is_continue = false, 
         .addComponents(
             new MessageButton()
                 .setCustomId('deleteContext_' + message.id)
-                .setLabel(':nuke: Forget Everything')
+                .setEmoji("<:nuke:338322910018142208>")
+                .setLabel('Forget Everything')
                 .setStyle('DANGER'),
         )
         .addComponents(
             new MessageButton()
                 .setCustomId('continueResponse_' + message.id)
-                .setLabel(':arrow_forward: Continue')
+                .setLabel('▶️ Continue')
                 .setStyle('PRIMARY'),
         )
         .addComponents(
             new MessageButton()
                 .setCustomId('regenerateResponse_' + message.id)
-                .setLabel(':repeat: Regenerate')
+                .setLabel('▶️ Regenerate')
                 .setStyle('SECONDARY'),
         )
         .addComponents(
             new MessageButton()
                 .setCustomId('debugResponse_' + message.id)
-                .setLabel(':mag: Debug')
+                .setLabel('🔎 Debug')
                 .setStyle('SECONDARY'),
         );
 
@@ -88,9 +89,10 @@ async function responseToMessage(client, message, content, is_continue = false, 
         let debug_info = res_gen
 
         // sanitize the response
-        // remove all marking token <|im_start|> and <|im_end|>
+        // remove all marking token <|im_start|> and <|im_end|> and <br>
         res_gen_elaina = res_gen_elaina.replace(/\|im_start\|/g, "")
         res_gen_elaina = res_gen_elaina.replace(/\|im_end\|/g, "")
+        res_gen_elaina = res_gen_elaina.replace(/<br>/g, "")
         // if res_gen_elaina end with "assistant", remove it
         if (res_gen_elaina.endsWith("assistant")) {
             res_gen_elaina = res_gen_elaina.slice(0, -9)
@@ -136,7 +138,7 @@ async function responseToMessage(client, message, content, is_continue = false, 
                     .setDescription('Debug information for the response')
                     .addFields(
                         { name: 'Operating mode', value: actual_operating_mode },
-                        { name: 'Duration', value: `${(debug_info.total_duration / 1_000_000_000).toFixed(4)}s (Load: ${(debug_info.load_duration / 1_000_000_000).toFixed(4)}s, Evalulate: ${(debug_info.prompt_eval_duration / 1_000_000_000).toFixed(4)}s), Generate: ${(debug_info.eval_duration / 1_000_000_000).toFixed(4)}s` },
+                        { name: 'Duration', value: `${(debug_info.total_duration / 1_000_000_000).toFixed(4)}s (Load: ${(debug_info.load_duration / 1_000_000_000).toFixed(4)}s, Evalulate: ${(debug_info.prompt_eval_duration / 1_000_000_000).toFixed(4)}s, Generate: ${(debug_info.eval_duration / 1_000_000_000).toFixed(4)}s)` },
                         { name: 'Context Length', value: `${debug_info.prompt_eval_count + debug_info.eval_count}/${context_limit} tokens (${((debug_info.prompt_eval_count + debug_info.eval_count)/context_limit*100).toFixed(2)}%, +${debug_info.eval_count} tokens)` },
                     )
 
