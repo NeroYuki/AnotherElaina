@@ -11,7 +11,8 @@ async function responseToMessage(client, message, content, is_continue = false, 
         return
     }
 
-    if (is_generating) {
+    // ìf its running on gpu mode, just queue them till the end of time, otherwise if queue is more than 3 messages, just ignore it
+    if (globalThis.operating_mode !== "6bit" && is_generating.length > 3) {
         return
     }
 
@@ -62,7 +63,7 @@ async function responseToMessage(client, message, content, is_continue = false, 
         .addComponents(
             new MessageButton()
                 .setCustomId('regenerateResponse_' + message.id)
-                .setLabel('▶️ Regenerate')
+                .setLabel('🔁 Regenerate')
                 .setStyle('SECONDARY'),
         )
         .addComponents(
@@ -77,7 +78,7 @@ async function responseToMessage(client, message, content, is_continue = false, 
     const collector = message.channel.createMessageComponentCollector({ filter, time: 180000 });
 
     try {
-        is_generating = true
+        is_generating.push(message.id)
         // measure speed
         const start = Date.now()
         console.log(`Operating mode: ${globalThis.operating_mode}`)
@@ -89,10 +90,12 @@ async function responseToMessage(client, message, content, is_continue = false, 
         let debug_info = res_gen
 
         // sanitize the response
-        // remove all marking token <|im_start|> and <|im_end|> and <br>
+        // remove all marking token <|im_start|> and <|im_end|> and <br> and <br/> and </br>
         res_gen_elaina = res_gen_elaina.replace(/\|im_start\|/g, "")
         res_gen_elaina = res_gen_elaina.replace(/\|im_end\|/g, "")
         res_gen_elaina = res_gen_elaina.replace(/<br>/g, "")
+        res_gen_elaina = res_gen_elaina.replace(/<br\/>/g, "")
+        res_gen_elaina = res_gen_elaina.replace(/<\/br>/g, "")
         // if res_gen_elaina end with "assistant", remove it
         if (res_gen_elaina.endsWith("assistant")) {
             res_gen_elaina = res_gen_elaina.slice(0, -9)
@@ -108,7 +111,7 @@ async function responseToMessage(client, message, content, is_continue = false, 
         }
         // store the context
         context_storage.set(message.author.id, context)
-        is_generating = false
+        is_generating.slice(is_generating.indexOf(message.id), 1)
 
         // append message author mention to the response
         res_gen_elaina = `<@${message.author.id}> ${res_gen_elaina}`
@@ -152,7 +155,7 @@ async function responseToMessage(client, message, content, is_continue = false, 
         });
         
     } catch (err) {
-        is_generating = false
+        is_generating.slice(is_generating.indexOf(message.id), 1)
         console.log(err)
         message.channel.send('SYSTEM: Something went wrong. Please try again later.')
         return
