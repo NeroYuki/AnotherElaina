@@ -24,9 +24,9 @@ async function responseToMessage(client, message, content) {
         context.push({ role: "user", content: prompt })
     }
 
-    // if the total length of content in the context is more than 40000 characters, remove the oldest content
+    // if the total length of content in the context is more than 80000 characters, remove the oldest content
     let total_length = context.reduce((acc, val) => acc + val.content.length, 0)
-    while (total_length > 40000) {
+    while (total_length > 80000) {
         context.shift()
         total_length = context.reduce((acc, val) => acc + val.content.length, 0)
     }
