@@ -59,7 +59,7 @@ async function responseToMessage(client, message, content) {
         console.log(`Operating mode: ${globalThis.operating_mode}`)
         await message.channel.sendTyping();
         
-        const res_gen = await chat_completion(globalThis.operating_mode === "6bit" ? "test" : "test4b", context)
+        const res_gen = await chat_completion(globalThis.operating_mode === "uncensored" ? "test_uncen" : globalThis.operating_mode === "6bit" ? "test" : "test4b", context)
         
         let res_gen_elaina = res_gen.message.content
 

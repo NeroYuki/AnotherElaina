@@ -14,7 +14,8 @@ module.exports = {
                 .addChoices(
                     { name: 'Disabled', value: 'disabled' },
                     { name: 'Saving', value: '4bit' },
-                    { name: 'Standard', value: '6bit' }
+                    { name: 'Standard', value: '6bit' },
+                    { name: 'Uncensored', value: 'uncensored'}
                 ))
     ,
 
@@ -29,13 +30,16 @@ module.exports = {
             return;
         }
 
-        if (mode == "disabled" || mode == "4bit" || mode == "6bit") {
+        if (mode == "disabled" || mode == "4bit" || mode == "6bit" || mode == "uncensored") {
             globalThis.operating_mode = mode;
             if (mode !== "4bit") {
                 unload_model("test4b");
             }
             if (mode !== "6bit") {
                 unload_model("test");
+            }
+            if (mode !== "uncensored") {
+                unload_model("test_uncen")
             }
             await interaction.editReply(`Operation mode changed to ${mode}`);
         }

@@ -50,7 +50,7 @@ client.once('ready', () => {
 	setInterval(() => {
 		client.user.setPresence({
 			activities: [{
-				name: `Drawing: ${sd_available ? '✔' : '✖'} | Chatting: ${operating_mode === '6bit' ? '✔' : operating_mode === '4bit' ? '△' : '✖'}`,
+				name: `Drawing: ${sd_available ? '✔' : '✖'} | Chatting: ${operating_mode === '6bit' ? '✔' : operating_mode !== 'disabled' ? '✖' : '△'}`,
 				type: 'PLAYING'
 			}],
 		});
