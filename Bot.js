@@ -9,7 +9,7 @@ const { listAllFiles } = require('./utils/common_helper');
 require('dotenv').config()
 
 const token = process.env.DISCORD_BOT_TOKEN
-globalThis.operating_mode = "6bit" // disabled, 4bit or 6bit
+globalThis.operating_mode = "6bit" // disabled, 4bit, vision, uncensored or 6bit
 globalThis.sd_available = true
 
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES] });

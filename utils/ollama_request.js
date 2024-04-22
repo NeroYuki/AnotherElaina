@@ -58,13 +58,23 @@ function fallback_to_resource_saving() {
         // unload the test model
         if (globalThis.operating_mode === "6bit") {
             await unload_model('test')
-            globalThis.operating_mode = "4bit"
         }
+
+        if (globalThis.operating_mode === "uncensored") {
+            await unload_model('test_uncen')
+        }
+
+        if (globalThis.operating_mode === "vision") {
+            await unload_model('test_vision')
+        }
+
+        let previous_mode = globalThis.operating_mode
+        globalThis.operating_mode = "4bit"
 
         // setup the timeout to load back the 6bit model
         setTimeout(async () => {
             await unload_model('test4b')
-            globalThis.operating_mode = "6bit"
+            globalThis.operating_mode = previous_mode
         }, 1000 * 60 * 10)
     })
 }

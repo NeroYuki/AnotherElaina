@@ -2,6 +2,7 @@ const { context_storage } = require('../utils/text_gen_store');
 var { is_generating } = require('../utils/text_gen_store');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { chat_completion } = require('../utils/ollama_request');
+const { loadImage } = require('../utils/load_discord_img');
 
 async function responseToMessage(client, message, content, is_continue = false, is_regen = false) {
     let prompt = content
@@ -16,14 +17,34 @@ async function responseToMessage(client, message, content, is_continue = false, 
         return
     }
 
+    let images = null
+    if (globalThis.operating_mode === "vision") {
+        images = []
+        // check if there is an image attachment, get proxyURL
+        if (message.attachments.size > 0) {
+            for (const attachment of message.attachments.values()) {
+                if (attachment.url.endsWith(".png") || attachment.url.endsWith(".jpg") || attachment.url.endsWith(".jpeg")) {
+                    let loaded_image = await loadImage(attachment.proxyURL, false, true).catch(err => {
+                        console.log(err)
+                        return
+                    })
+
+                    if (loaded_image) {
+                        images.push(loaded_image)
+                    }
+                }
+            }
+        }
+    }
+
     // get the context from the context storage
     let context = context_storage.get(message.author.id)
     if (content) {
         if (context === undefined) {
-            context = [{ role: "user", content: prompt }]
+            context = [{ role: "user", content: prompt, images: images}]
         }
         else {
-            context.push({ role: "user", content: prompt })
+            context.push({ role: "user", content: prompt, images: images})
         }
     }
     else {
@@ -84,7 +105,7 @@ async function responseToMessage(client, message, content, is_continue = false, 
         console.log(`Operating mode: ${globalThis.operating_mode}`)
         await message.channel.sendTyping();
         
-        const res_gen = await chat_completion(globalThis.operating_mode === "uncensored" ? "test_uncen" : globalThis.operating_mode === "6bit" ? "test" : "test4b", context)
+        const res_gen = await chat_completion(globalThis.operating_mode === "uncensored" ? "test_uncen" :  globalThis.operating_mode === "vision" ? "test_vision" : globalThis.operating_mode === "6bit" ? "test" : "test4b", context)
         
         let res_gen_elaina = res_gen.message.content
         let debug_info = res_gen
@@ -108,6 +129,16 @@ async function responseToMessage(client, message, content, is_continue = false, 
         }
         else {
             context.push({ role: "assistant", content: res_gen_elaina })
+        }
+        // only keep the most recent 5 images in the context
+        let image_count = 0
+        for (let i = context.length - 1; i >= 0; i--) {
+            if (context[i].images) {
+                image_count += context[i].images.length
+            }
+            if (image_count > 5) {
+                context[i].images = null
+            }
         }
         // store the context
         context_storage.set(message.author.id, context)
@@ -133,7 +164,7 @@ async function responseToMessage(client, message, content, is_continue = false, 
             }
             else if (i.customId === 'debugResponse_' + message.id) {
                 i.deferUpdate();
-                const actual_operating_mode = debug_info.model === "test" ? "6bit" : debug_info.model === "test4b" ? "4bit" : "uncensored"
+                const actual_operating_mode = debug_info.model === "test" ? "6bit" : debug_info.model === "test4b" ? "4bit" : debug_info.model === "test_vision" ? "vision" : "uncensored"
                 const context_limit = actual_operating_mode === "6bit" ? 16384 : 8192
                 const embed = new MessageEmbed()
                     .setColor('#8888ff')

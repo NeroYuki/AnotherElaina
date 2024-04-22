@@ -1,6 +1,6 @@
 const { default: axios } = require('axios');
 
-function loadImage(url, getBuffer = false) {
+function loadImage(url, getBuffer = false, noDataURIHeader = false) {
     // download image from the given url and convert them to base64 dataURI (with proper mime type) or buffer use axios
     // possible security issue with arbitrary file download, need to check for magic header that match the mime type
 
@@ -16,7 +16,12 @@ function loadImage(url, getBuffer = false) {
 
                 // TODO: check for magic header
 
-                resolve(`data:${mime};base64,${image}`);
+                if (noDataURIHeader) {
+                    resolve(image);
+                }
+                else {
+                    resolve(`data:${mime};base64,${image}`);
+                }
             })
             .catch((error) => {
                 console.log(error);
