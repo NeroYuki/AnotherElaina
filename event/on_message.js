@@ -142,7 +142,8 @@ async function responseToMessage(client, message, content, is_continue = false, 
         }
         // store the context
         context_storage.set(message.author.id, context)
-        is_generating.slice(is_generating.indexOf(message.id), 1)
+        if (is_generating.indexOf(message.id) === -1) 
+            is_generating.splice(is_generating.indexOf(message.id), 1)
 
         // append message author mention to the response
         res_gen_elaina = `<@${message.author.id}> ${res_gen_elaina}`
@@ -186,7 +187,8 @@ async function responseToMessage(client, message, content, is_continue = false, 
         });
         
     } catch (err) {
-        is_generating.slice(is_generating.indexOf(message.id), 1)
+        if (is_generating.indexOf(message.id) === -1) 
+            is_generating.splice(is_generating.indexOf(message.id), 1)
         console.log(err)
         message.channel.send('SYSTEM: Something went wrong. Please try again later.')
         return
