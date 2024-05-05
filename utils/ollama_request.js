@@ -113,7 +113,9 @@ function fallback_to_resource_saving() {
         //     await unload_model('test_vision')
         // }
 
-        await unload_model('test_poppy_gpu')
+        if (globalThis.operating_mode === "6bit") {
+            await unload_model('test_poppy_gpu')
+        }
 
         let previous_mode = globalThis.operating_mode
         globalThis.operating_mode = "4bit"
