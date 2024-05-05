@@ -34,10 +34,10 @@ module.exports = {
         if (mode == "disabled" || mode == "4bit" || mode == "6bit" || mode == "uncensored" || mode == "vision") {
 
             if (globalThis.operating_mode === "4bit") {
-                unload_model("test4b");
+                unload_model("test_poppy");
             }
             if (globalThis.operating_mode === "6bit") {
-                unload_model("test");
+                unload_model("test_poppy_gpu");
             }
             if (globalThis.operating_mode === "uncensored") {
                 unload_model("test_uncen")

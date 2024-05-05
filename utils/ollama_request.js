@@ -27,6 +27,51 @@ function chat_completion(model, context) {
     })
 }
 
+function text_completion_stream(model, prompt, options, system_prompt, callback) {
+    fetch(endpoint + '/api/generate', {
+        method: 'POST',
+        body: JSON.stringify({
+            model: model,
+            stream: true,
+            prompt: prompt,
+            options: options,
+            system: system_prompt
+        }),
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    }).then(async res => {
+        if (res.ok) {
+            const reader = res.body.getReader()
+            let decoder = new TextDecoder()
+            reader.read().then(function processText({ done, value }) {
+                let text = decoder.decode(value, { stream: true })
+                if (!text) {
+                    callback(null, true)
+                    return
+                }
+                //console.log(text)
+                let obj = JSON.parse(text)
+                if (done || obj.done) {
+                    callback(obj, true)
+                }
+                else {
+                    callback(obj, false)
+                    return reader.read().then(processText)
+                }
+            }).catch(err => {
+                console.log(err)
+            })
+        }
+        else {
+            let txt = await res.text()
+            console.log(txt)
+        }
+    }).catch(err => {
+        console.log(err)
+    })
+}
+
 function unload_model(model) {
     return new Promise((resolve, reject) => {
         fetch(endpoint + '/api/generate', {
@@ -56,24 +101,26 @@ function unload_model(model) {
 function fallback_to_resource_saving() {
     return new Promise(async (resolve, reject) => {
         // unload the test model
-        if (globalThis.operating_mode === "6bit") {
-            await unload_model('test')
-        }
+        // if (globalThis.operating_mode === "6bit") {
+        //     await unload_model('test')
+        // }
 
-        if (globalThis.operating_mode === "uncensored") {
-            await unload_model('test_uncen')
-        }
+        // if (globalThis.operating_mode === "uncensored") {
+        //     await unload_model('test_uncen')
+        // }
 
-        if (globalThis.operating_mode === "vision") {
-            await unload_model('test_vision')
-        }
+        // if (globalThis.operating_mode === "vision") {
+        //     await unload_model('test_vision')
+        // }
+
+        await unload_model('test_poppy_gpu')
 
         let previous_mode = globalThis.operating_mode
         globalThis.operating_mode = "4bit"
 
         // setup the timeout to load back the 6bit model
         setTimeout(async () => {
-            await unload_model('test4b')
+            await unload_model('test_poppy')
             globalThis.operating_mode = previous_mode
         }, 1000 * 60 * 10)
     })
@@ -82,5 +129,6 @@ function fallback_to_resource_saving() {
 module.exports = {
     chat_completion,
     unload_model,
-    fallback_to_resource_saving
+    fallback_to_resource_saving,
+    text_completion_stream
 }
