@@ -55,7 +55,7 @@ async function responseToMessage(client, message, content, is_continue = false, 
     let system_prompt = persona.system_prompt
 
     let options = persona.options
-    
+
     if (globalThis.operating_mode === "6bit") {
         options.num_ctx = 16_384
     }
@@ -132,7 +132,7 @@ async function responseToMessage(client, message, content, is_continue = false, 
         console.log(prompt)
     }
     else {
-        console.log(prompt)
+        //console.log(prompt)
     }
 
     try {
