@@ -204,7 +204,7 @@ Trivia:
             '<|start_header_id|>assistant(Elaina)<|end_header_id|>',
             '<|start_header_id|>user(System)<|end_header_id|>'
         ],
-        num_ctx: 32768,
+        num_ctx: 16384,
         mirostat: 0,
         mirostat_tau: 5,
         mirostat_eta: 0.1,
