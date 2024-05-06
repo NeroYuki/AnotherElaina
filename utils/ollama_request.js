@@ -44,7 +44,7 @@ function text_completion_stream(model, prompt, options, system_prompt, callback)
         if (res.ok) {
             const reader = res.body.getReader()
             let decoder = new TextDecoder()
-            let malform_json = ''
+            let try_json = ''
             reader.read().then(function processText({ done, value }) {
                 let text = decoder.decode(value, { stream: true })
                 if (!text) {
@@ -52,17 +52,26 @@ function text_completion_stream(model, prompt, options, system_prompt, callback)
                     return
                 }
                 //console.log(text)
-                malform_json = text
-                let obj = JSON.parse(text)
-                if (done || obj.done) {
-                    callback(obj, true)
+                // if text is not a valid json, append it to malform_json and read next
+                try_json += text
+                try {
+                    var obj = JSON.parse(malform_json)
+                    try_json = ''
+
+                    if (done || obj.done) {
+                        callback(obj, true)
+                    }
+                    else {
+                        callback(obj, false)
+                        return reader.read().then(processText)
+                    }
                 }
-                else {
-                    callback(obj, false)
+                catch (e) {
+                    console.log('malformed json, attempting to read more...')
                     return reader.read().then(processText)
                 }
             }).catch(err => {
-                console.log(malform_json)
+                console.log(try_json)
                 console.log(err)
             })
         }
