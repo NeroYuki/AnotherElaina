@@ -200,6 +200,7 @@ Trivia:
         stop: [
             '\nUser:',
             '<|eot_id|>',
+            '<|im_end|>',
             '<|im_ended|>',
             '<|im_start|>',
             '<|start_header_id|>user(User)<|end_header_id|>',
