@@ -55,7 +55,7 @@ function text_completion_stream(model, prompt, options, system_prompt, callback)
                 // if text is not a valid json, append it to malform_json and read next
                 try_json += text
                 try {
-                    var obj = JSON.parse(malform_json)
+                    var obj = JSON.parse(try_json)
                     try_json = ''
 
                     if (done || obj.done) {
