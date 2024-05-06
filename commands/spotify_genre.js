@@ -107,6 +107,12 @@ const down_organic_query = (data) => [
                         $lte: data.organic_index,
                     },
                 },
+                {
+                    atmospheric_index: {
+                        $gte: data.atmospheric_index - 0.02,
+                        $lte: data.atmospheric_index + 0.02,
+                    }
+                }
             ]
         }
     },
@@ -133,6 +139,12 @@ const left_atmospheric_query = (data) => [
                         $lte: data.atmospheric_index,
                     },
                 },
+                {
+                    organic_index: {
+                        $gte: data.organic_index - 0.02,
+                        $lte: data.organic_index + 0.02,
+                    }
+                }
             ]
         }
     },
@@ -159,6 +171,12 @@ const up_organic_query = (data) => [
                         $lte: data.organic_index + 0.1,
                     },
                 },
+                {
+                    atmospheric_index: {
+                        $gte: data.atmospheric_index - 0.02,
+                        $lte: data.atmospheric_index + 0.02,
+                    }
+                }
             ]
         }
     },
@@ -185,6 +203,12 @@ const right_atmospheric_query = (data) => [
                         $lte: data.atmospheric_index + 0.1,
                     },
                 },
+                {
+                    organic_index: {
+                        $gte: data.organic_index - 0.02,
+                        $lte: data.organic_index + 0.02,
+                    }
+                }
             ]
         }
     },
