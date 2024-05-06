@@ -269,7 +269,7 @@ async function compileResponse(data, message, user) {
     const embed = new MessageEmbed()
         .setColor(hsvToRgb(...data.color))
         .setTitle(data.genre)
-        .setDescription(data.desc)
+        .setDescription(data.desc || '-')
         // add fields for organic_index, atmospheric_index, popularity
         .addFields(
             { name: 'Organic Index', value: data.organic_index.toFixed(3), inline: true },
@@ -280,7 +280,7 @@ async function compileResponse(data, message, user) {
         .addFields(
             { name: 'Sample Track', value: data.sample_song || '-'},
             { name: 'Playlist', value: `[the sound of ${data.genre}](${data.spotify_playlist})`},
-            { name: 'Related Genres', value: data.related_genres.map(x => x.genre).join(', ')},
+            { name: 'Related Genres', value: data.related_genres.map(x => x.genre).join(', ') || '-'},
         )
 
     // attach a sample mp3 by url
