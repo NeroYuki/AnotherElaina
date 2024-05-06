@@ -132,7 +132,11 @@ async function responseToMessage(client, message, content, is_continue = false, 
         console.log(prompt)
     }
     else {
-        //console.log(prompt)
+        // console.log(prompt)
+        // if is_continue, strip the <|eot_id|> from the end of the prompt
+        if (is_continue) {
+            prompt = prompt.trimEnd().replace(/<\|eot_id\|>$/, "")
+        }
     }
 
     try {
