@@ -44,6 +44,7 @@ function text_completion_stream(model, prompt, options, system_prompt, callback)
         if (res.ok) {
             const reader = res.body.getReader()
             let decoder = new TextDecoder()
+            let malform_json = ''
             reader.read().then(function processText({ done, value }) {
                 let text = decoder.decode(value, { stream: true })
                 if (!text) {
@@ -51,6 +52,7 @@ function text_completion_stream(model, prompt, options, system_prompt, callback)
                     return
                 }
                 //console.log(text)
+                malform_json = text
                 let obj = JSON.parse(text)
                 if (done || obj.done) {
                     callback(obj, true)
@@ -60,6 +62,7 @@ function text_completion_stream(model, prompt, options, system_prompt, callback)
                     return reader.read().then(processText)
                 }
             }).catch(err => {
+                console.log(malform_json)
                 console.log(err)
             })
         }
