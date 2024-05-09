@@ -124,6 +124,9 @@ function fallback_to_resource_saving() {
         // if (globalThis.operating_mode === "vision") {
         //     await unload_model('test_vision')
         // }
+        if (globalThis.operating_mode === "disabled") {
+            return 
+        }
 
         if (globalThis.operating_mode === "6bit") {
             await unload_model('test_poppy_gpu')
