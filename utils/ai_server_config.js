@@ -1326,6 +1326,7 @@ const model_name_hash_mapping = new Map([
     ['c8df560d29', "Juggernaut Lightning"],
     ['fdbe56354b', "Dreamshaper XL Lightning"],
     ['516047db97', "KohakuXL Epsilon"],
+    ['73ed24bde3', "ArtiWaifu v1"],
 ])
 // limit at 25 (probably less due to character limitation)
 const model_selection = [
@@ -1348,7 +1349,7 @@ const model_selection = [
 
 const model_selection_xl = [
     { name: 'PonyDiffusionXL v6', value: 'ponydiffusionxl_v6.safetensors [67ab2fd8ec]'},
-    { name: 'HimawariMixXL v6', value: 'himawarimixxl_v6.safetensors [322526e7d1]' },
+    { name: 'ArtiWaifu v1', value: 'artiwaifu_v1.safetensors [73ed24bde3]' },
     { name: 'NekorayXL v0.6', value: 'nekorayxl.safetensors [c53dabc181]' },
     { name: 'AnimagineXL v3', value: 'animaginexl_v3.safetensors [1449e5b0b9]' },
     { name: 'AnimagineXL v3.1', value: 'animaginexl_v31.safetensors [e3c47aedb0]'},
