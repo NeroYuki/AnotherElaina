@@ -69,9 +69,9 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
         controlnet_preprocessor_3 = pick_instantid_preprocessor(controlnet_model_3, controlnet_preprocessor_3)
 
         // get controlnet request body
-        const controlnet_data = get_data_controlnet(controlnet_preprocessor, controlnet_model, controlnet_input, controlnet_weight || controlnet_model?.includes("sketch") ? 0.8 : 1, controlnet_mode, controlnet_resolution, 0, 1, mask)
-        const controlnet_data_2 = get_data_controlnet(controlnet_preprocessor_2, controlnet_model_2, controlnet_input_2, controlnet_weight_2 || controlnet_model_2?.includes("sketch") ? 0.8 : 1, controlnet_mode_2, controlnet_resolution_2)
-        const controlnet_data_3 = get_data_controlnet(controlnet_preprocessor_3, controlnet_model_3, controlnet_input_3, controlnet_weight_3 ||  controlnet_model_3?.includes("sketch") ? 0.8 : 1, controlnet_mode_3, controlnet_resolution_3)
+        const controlnet_data = get_data_controlnet(controlnet_preprocessor, controlnet_model, controlnet_input, controlnet_weight || 1, controlnet_mode, controlnet_resolution, 0, 1, mask)
+        const controlnet_data_2 = get_data_controlnet(controlnet_preprocessor_2, controlnet_model_2, controlnet_input_2, controlnet_weight_2 || 1, controlnet_mode_2, controlnet_resolution_2)
+        const controlnet_data_3 = get_data_controlnet(controlnet_preprocessor_3, controlnet_model_3, controlnet_input_3, controlnet_weight_3 || 1, controlnet_mode_3, controlnet_resolution_3)
 
         const option_controlnet = {
             method: 'POST',

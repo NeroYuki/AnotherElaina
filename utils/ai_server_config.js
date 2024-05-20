@@ -50,8 +50,8 @@ const get_data_controlnet = (preprocessor = "None", controlnet = "None", input, 
         [],
         [],
         null,
-        input ? {
-            "image": input,
+        mask ? {
+            "image": mask,
             "mask": BLANK_IMG
         } : null,
         "Both",
@@ -59,8 +59,8 @@ const get_data_controlnet = (preprocessor = "None", controlnet = "None", input, 
         preprocessor,
         controlnet,
         weight,
-        mask ? {
-            "image": mask,
+        input ? {
+            "image": input,
             "mask": BLANK_IMG
         } : null,
         "Crop and Resize",
@@ -78,7 +78,7 @@ const get_data_controlnet_annotation = (preprocessor = "None", input, mask = nul
     return [
         input ? {
             "image": input,
-            "mask": mask || BLANK_IMG
+            "mask": BLANK_IMG
         } : null,
         preprocessor,
         512,        // annotator resolution
@@ -214,24 +214,24 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
         false,
         "LoRA",
         "None",
-        1,
-        1,
+        0,
+        0,
         "LoRA",
         "None",
-        1,
-        1,
+        0,
+        0,
         "LoRA",
         "None",
-        1,
-        1,
+        0,
+        0,
         "LoRA",
         "None",
-        1,
-        1,
+        0,
+        0,
         "LoRA",
         "None",
-        1,
-        1,
+        0,
+        0,
         null,
         "Refresh models",
         color_grading_config || false,               // use color grading
@@ -424,6 +424,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
         2,
         enable_censor,
         clip_skip,
+        "No norm",
         [],
         "",
         "",

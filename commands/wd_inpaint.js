@@ -541,7 +541,7 @@ module.exports = {
         
             const create_data = get_data_body_img2img(server_index, prompt, neg_prompt, sampling_step, cfg_scale,
                 seed, sampler, session_hash, height, width, attachment, mask_data_uri, denoising_strength, 4, mask_blur, mask_content, "None", false, 
-                coupler_config, color_grading_config, 2, is_censor)
+                coupler_config, color_grading_config, 1, is_censor)
     
             // make option_init but for axios
             const option_init_axios = {
