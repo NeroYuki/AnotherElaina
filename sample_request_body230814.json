@@ -1,10 +1,10 @@
 {
     "data": [
-        "task(vyst8jros6x6atu)",
-        "<lora:chowbie_v1_e20:1.0> <lora:animagine_fixhand_v1:1.0> 1girl, office lady, (masterpiece:1.2), best quality, artist: chowbie, breast, bra, panties, view from behind",
-        "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name",
+        "task(fgy4ni66a7c30uq)",
+        "1girl, masterpiece",
+        "worst quality, low quality",
         [],
-        30,
+        26,
         "Euler a",
         1,
         1,
@@ -12,7 +12,7 @@
         1024,
         1024,
         false,
-        0.4,
+        0.7,
         2,
         "Latent",
         0,
@@ -81,27 +81,36 @@
         },
         0.5,
         false,
+        3,
+        0,
+        "middle",
+        0,
+        false,
+        7,
+        3,
+        0,
+        false,
         false,
         "LoRA",
         "None",
-        0,
-        0,
+        1,
+        1,
         "LoRA",
         "None",
-        0,
-        0,
+        1,
+        1,
         "LoRA",
         "None",
-        0,
-        0,
+        1,
+        1,
         "LoRA",
         "None",
-        0,
-        0,
+        1,
+        1,
         "LoRA",
         "None",
-        0,
-        0,
+        1,
+        1,
         null,
         "Refresh models",
         false,
@@ -211,22 +220,16 @@
         false,
         0,
         false,
-        false,
-        2,
-        [
-            {
-                "name": "D:\\AIstuff\\stable-diffusion-webui\\outputs\\txt2img-images\\14468-1180428544-_lora_chowbie_v1_e20_1.0_ _lora_animagine_fixhand_v1_1.0_ 1girl, office lady, (masterpiece_1.2), best quality, artist_ chowbie,.png?1713082501.840538",
-                "data": "http://127.0.0.1:7860/file=D:\\AIstuff\\stable-diffusion-webui\\outputs\\txt2img-images\\14468-1180428544-_lora_chowbie_v1_e20_1.0_ _lora_animagine_fixhand_v1_1.0_ 1girl, office lady, (masterpiece_1.2), best quality, artist_ chowbie,.png?1713082501.840538",
-                "is_file": true
-            }
-        ],
-        "{\"prompt\": \"<lora:chowbie_v1_e20:1.0> <lora:animagine_fixhand_v1:1.0> 1girl, office lady, (masterpiece:1.2), best quality, artist: chowbie, breast, bra, panties, view from behind\", \"all_prompts\": [\"<lora:chowbie_v1_e20:1.0> <lora:animagine_fixhand_v1:1.0> 1girl, office lady, (masterpiece:1.2), best quality, artist: chowbie, breast, bra, panties, view from behind\"], \"negative_prompt\": \"lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name\", \"all_negative_prompts\": [\"lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name\"], \"seed\": 1180428544, \"all_seeds\": [1180428544], \"subseed\": 3031990194, \"all_subseeds\": [3031990194], \"subseed_strength\": 0, \"width\": 1024, \"height\": 1440, \"sampler_name\": \"Euler a\", \"cfg_scale\": 7, \"steps\": 30, \"batch_size\": 1, \"restore_faces\": false, \"face_restoration_model\": null, \"sd_model_name\": \"animaginexl_v31\", \"sd_model_hash\": \"e3c47aedb0\", \"sd_vae_name\": \"animaginexl_v31.vae.safetensors\", \"sd_vae_hash\": \"235745af8d\", \"seed_resize_from_w\": -1, \"seed_resize_from_h\": -1, \"denoising_strength\": 0.4, \"extra_generation_params\": {\"Lora hashes\": \"chowbie_v1_e20: ae16d3cb854f, animagine_fixhand_v1: 33f8485ec891\", \"Emphasis\": \"No norm\"}, \"index_of_first_image\": 0, \"infotexts\": [\"<lora:chowbie_v1_e20:1.0> <lora:animagine_fixhand_v1:1.0> 1girl, office lady, (masterpiece:1.2), best quality, artist: chowbie, breast, bra, panties, view from behind\\nNegative prompt: lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name\\nSteps: 30, Sampler: Euler a, CFG scale: 7, Seed: 1180428544, Size: 1024x1440, Model hash: e3c47aedb0, VAE hash: 235745af8d, VAE: animaginexl_v31.vae.safetensors, Clip skip: 2, Lora hashes: \\\"chowbie_v1_e20: ae16d3cb854f, animagine_fixhand_v1: 33f8485ec891\\\", Emphasis: No norm, Version: f0.0.17v1.8.0rc-latest-306-gf15d1139\"], \"styles\": [], \"job_timestamp\": \"20240414151416\", \"clip_skip\": 2, \"is_using_inpainting_conditioning\": false, \"version\": \"f0.0.17v1.8.0rc-latest-306-gf15d1139\"}",
-        "<p>&lt;lora:chowbie_v1_e20:1.0&gt; &lt;lora:animagine_fixhand_v1:1.0&gt; 1girl, office lady, (masterpiece:1.2), best quality, artist: chowbie, breast, bra, panties, view from behind<br>\nNegative prompt: lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name<br>\nSteps: 30, Sampler: Euler a, CFG scale: 7, Seed: 1180428544, Size: 1024x1440, Model hash: e3c47aedb0, VAE hash: 235745af8d, VAE: animaginexl_v31.vae.safetensors, Clip skip: 2, Lora hashes: &quot;chowbie_v1_e20: ae16d3cb854f, animagine_fixhand_v1: 33f8485ec891&quot;, Emphasis: No norm, Version: f0.0.17v1.8.0rc-latest-306-gf15d1139</p>",
-        "<p class='comments'></p><div class='performance'><p class='time'>Time taken: <wbr><span class='measurement'>45.1 sec.</span></p></div>"
+        true,
+        1,
+        [],
+        "",
+        "",
+        ""
     ],
     "event_data": null,
-    "fn_index": 514,
-    "session_hash": "mxbbzvxqvm9"
+    "fn_index": 515,
+    "session_hash": "7g10tcn8ihh"
 }
 {
     "data": [
@@ -641,4 +644,285 @@
     "event_data": null,
     "fn_index": 1172,
     "session_hash": "r5ay2ckh1q"
+}
+
+// bounding box preview
+{
+    "data": [
+        "data:image/png;base64",
+        null,
+        null
+    ],
+    "event_data": null,
+    "fn_index": 810,
+    "session_hash": "444blb4pup1"
+}
+// response
+{
+    "msg": "process_completed",
+    "output": {
+        "data": [
+            "data:image/png;base64",
+            {
+                "choices": [
+                    [
+                        "0",
+                        "0"
+                    ],
+                    [
+                        "1",
+                        "1"
+                    ],
+                    [
+                        "2",
+                        "2"
+                    ]
+                ],
+                "value": [
+                    "0",
+                    "1",
+                    "2"
+                ],
+                "__type__": "update"
+            },
+            {
+                "visible": false,
+                "__type__": "update"
+            }
+        ],
+        "is_generating": false,
+        "duration": 3.402153491973877,
+        "average_duration": 2.3980573415756226
+    },
+    "success": true
+}
+
+{
+    "data": [
+        "sam_vit_h_4b8939.pth",
+        "data:image/png;base64,",
+        [], // segment marker
+        [],
+        true,   //enable grounding dino
+        "GroundingDINO_SwinT_OGC (694MB)", // dino model
+        "bunnygirl outfit, top clothes", // dino prompt
+        0.3, // threshold
+        true, // preview?
+        [
+            "1" // selected bounding box
+        ],
+        [
+            {
+                "name": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpa7jpmpjz.png",
+                "data": "http://127.0.0.1:7860/file=C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpa7jpmpjz.png",
+                "is_file": true
+            },
+            {
+                "name": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpdbvdfkmd.png",
+                "data": "http://127.0.0.1:7860/file=C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpdbvdfkmd.png",
+                "is_file": true
+            },
+            {
+                "name": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpt6te9q_s.png",
+                "data": "http://127.0.0.1:7860/file=C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpt6te9q_s.png",
+                "is_file": true
+            },
+            {
+                "name": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpr95ph7ed.png",
+                "data": "http://127.0.0.1:7860/file=C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpr95ph7ed.png",
+                "is_file": true
+            },
+            {
+                "name": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpacqg5u8k.png",
+                "data": "http://127.0.0.1:7860/file=C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpacqg5u8k.png",
+                "is_file": true
+            },
+            {
+                "name": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmp_3wis4m8.png",
+                "data": "http://127.0.0.1:7860/file=C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmp_3wis4m8.png",
+                "is_file": true
+            },
+            {
+                "name": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmph310w8iz.png",
+                "data": "http://127.0.0.1:7860/file=C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmph310w8iz.png",
+                "is_file": true
+            },
+            {
+                "name": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmp6vkukrdx.png",
+                "data": "http://127.0.0.1:7860/file=C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmp6vkukrdx.png",
+                "is_file": true
+            },
+            {
+                "name": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpsxtsh3mw.png",
+                "data": "http://127.0.0.1:7860/file=C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpsxtsh3mw.png",
+                "is_file": true
+            }
+        ],
+        null
+    ],
+    "event_data": null,
+    "fn_index": 813,
+    "session_hash": "444blb4pup1"
+}
+
+{
+    "data": [
+        "sam_vit_h_4b8939.pth",
+        "data:image/png;base64,",
+        [
+            [
+                688,
+                836.5333333333333
+            ],
+            [
+                549.3333333333333,
+                751.1999999999999
+            ],
+            [
+                245.33333333333331,
+                489.8666666666666
+            ],
+            [
+                709.3333333333333,
+                633.8666666666666
+            ],
+            [
+                912,
+                911.1999999999999
+            ],
+            [
+                405.3333333333333,
+                868.5333333333333
+            ],
+            [
+                293.3333333333333,
+                1028.5333333333333
+            ]
+        ],
+        [],
+        false,
+        "GroundingDINO_SwinT_OGC (694MB)",
+        "bunnygirl outfit, top clothes",
+        0.3,
+        true,
+        [
+            "2"
+        ],
+        [
+            {
+                "name": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpzeiao_re.png",
+                "data": "http://127.0.0.1:7860/file=C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpzeiao_re.png",
+                "is_file": true
+            },
+            {
+                "name": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpdevbwdax.png",
+                "data": "http://127.0.0.1:7860/file=C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpdevbwdax.png",
+                "is_file": true
+            },
+            {
+                "name": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpl0qla3nr.png",
+                "data": "http://127.0.0.1:7860/file=C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpl0qla3nr.png",
+                "is_file": true
+            },
+            {
+                "name": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmp8wdlntzj.png",
+                "data": "http://127.0.0.1:7860/file=C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmp8wdlntzj.png",
+                "is_file": true
+            },
+            {
+                "name": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpix7t8u8j.png",
+                "data": "http://127.0.0.1:7860/file=C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpix7t8u8j.png",
+                "is_file": true
+            },
+            {
+                "name": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpbhvgifun.png",
+                "data": "http://127.0.0.1:7860/file=C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpbhvgifun.png",
+                "is_file": true
+            },
+            {
+                "name": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmplfhonc85.png",
+                "data": "http://127.0.0.1:7860/file=C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmplfhonc85.png",
+                "is_file": true
+            },
+            {
+                "name": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpazribz48.png",
+                "data": "http://127.0.0.1:7860/file=C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpazribz48.png",
+                "is_file": true
+            },
+            {
+                "name": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpl_ox3eax.png",
+                "data": "http://127.0.0.1:7860/file=C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpl_ox3eax.png",
+                "is_file": true
+            }
+        ],
+        null
+    ],
+    "event_data": null,
+    "fn_index": 813,
+    "session_hash": "444blb4pup1"
+}
+
+{
+    "data": [
+        [
+            {
+                "name": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpxnzig7xk.png",
+                "data": "http://127.0.0.1:7860/file=C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpxnzig7xk.png",
+                "is_file": true
+            },
+            {
+                "name": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmp2xp2uwdz.png",
+                "data": "http://127.0.0.1:7860/file=C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmp2xp2uwdz.png",
+                "is_file": true
+            },
+            {
+                "name": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmptfit96l9.png",
+                "data": "http://127.0.0.1:7860/file=C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmptfit96l9.png",
+                "is_file": true
+            },
+            {
+                "name": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmp8g9pqc7z.png",
+                "data": "http://127.0.0.1:7860/file=C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmp8g9pqc7z.png",
+                "is_file": true
+            },
+            {
+                "name": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpl0cocrve.png",
+                "data": "http://127.0.0.1:7860/file=C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpl0cocrve.png",
+                "is_file": true
+            },
+            {
+                "name": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpy08oxh8z.png",
+                "data": "http://127.0.0.1:7860/file=C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpy08oxh8z.png",
+                "is_file": true
+            },
+            {
+                "name": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmph9vv7nqw.png",
+                "data": "http://127.0.0.1:7860/file=C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmph9vv7nqw.png",
+                "is_file": true
+            },
+            {
+                "name": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpyhz5i157.png",
+                "data": "http://127.0.0.1:7860/file=C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpyhz5i157.png",
+                "is_file": true
+            },
+            {
+                "name": "C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpoxx3pbf_.png",
+                "data": "http://127.0.0.1:7860/file=C:\\Users\\ADMIN\\AppData\\Local\\Temp\\gradio\\tmpoxx3pbf_.png",
+                "is_file": true
+            }
+        ],
+        "1",    //which mask
+        24,     //extend by how much
+        "data:image/png;base64,"    // final result
+    ],
+    "event_data": null,
+    "fn_index": 814,
+    "session_hash": "444blb4pup1"
+}
+
+{
+    "data": [],
+    "event_data": null,
+    "fn_index": 830,
+    "session_hash": "444blb4pup1"
 }
