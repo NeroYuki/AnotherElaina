@@ -6,25 +6,29 @@ const server_pool = [
     {
         index: 0,
         url: 'http://192.168.196.142:7860',
-        fn_index_create: 515,
+        fn_index_create: 540,
         fn_index_abort: 62,
-        fn_index_img2img: 1130,
-        fn_index_controlnet: [247, 792],        //[txt2img, img2img]
-        fn_index_controlnet_annotation: [1032, 1056],
-        fn_index_controlnet_2: [328, 876], 
-        fn_index_controlnet_annotation_2: [1040, 1064],
-        fn_index_controlnet_3: [413, 959],
-        fn_index_controlnet_annotation_3: [1048, 1072],
-        fn_index_interrogate: 1134,
-        fn_index_upscale: 1213,
-        fn_index_change_model: 1315,
-        fn_index_coupler_region_preview: [187, 732],
-        fn_index_change_adetailer_model1: [97, 642],
-        fn_index_change_adetailer_prompt1: [99, 644],
-        fn_index_change_adetailer_neg_prompt1: [100, 645],
-        fn_index_change_adetailer_model2: [146, 691],
-        fn_index_change_adetailer_prompt2: [148, 693],
-        fn_index_change_adetailer_neg_prompt2: [149, 694],
+        fn_index_img2img: 1180,
+        fn_index_controlnet: [272, 842],        //[txt2img, img2img, 792]
+        fn_index_controlnet_annotation: [1082, 1106],   // 1056
+        fn_index_controlnet_2: [353, 926], 
+        fn_index_controlnet_annotation_2: [1090, 1114],
+        fn_index_controlnet_3: [438, 1009],
+        fn_index_controlnet_annotation_3: [1098, 1112],
+        fn_index_interrogate: 1184,
+        fn_index_upscale: 1263,
+        fn_index_change_model: 1355,
+        fn_index_coupler_region_preview: [187, 757],
+        fn_index_change_adetailer_model1: [97, 667],
+        // fn_index_change_adetailer_prompt1: [99, 644],       //+2
+        // fn_index_change_adetailer_neg_prompt1: [100, 645],  //+3
+        // fn_index_change_adetailer_model2: [146, 691],       //+49
+        // fn_index_change_adetailer_prompt2: [148, 693],      //+51
+        // fn_index_change_adetailer_neg_prompt2: [149, 694],  //+52
+        fn_index_execute_segment_anything: 813,
+        fn_index_execute_grounding_dino_preview: 810,
+        fn_index_execute_expand_mask: 814,
+        fn_index_unload_segmentation_model: 830,
         is_online: true,
     },
     {
@@ -37,7 +41,7 @@ const server_pool = [
     }
 ]
 
-const get_data_controlnet = (preprocessor = "None", controlnet = "None", input, weight = 1, mode = "Balanced", resolution = 512, guide_start = 0, guide_end = 1) => {
+const get_data_controlnet = (preprocessor = "None", controlnet = "None", input, weight = 1, mode = "Balanced", resolution = 512, guide_start = 0, guide_end = 1, mask = null) => {
     return [
         null,
         false,
@@ -45,21 +49,24 @@ const get_data_controlnet = (preprocessor = "None", controlnet = "None", input, 
         "",
         [],
         [],
-        input,
         null,
+        input ? {
+            "image": input,
+            "mask": BLANK_IMG
+        } : null,
         "Both",
         input ? true : false,
         preprocessor,
         controlnet,
         weight,
-        input ? {
-            "image": input,
+        mask ? {
+            "image": mask,
             "mask": BLANK_IMG
         } : null,
         "Crop and Resize",
         resolution,        // annotator resolution
-        0,         // threshold a (some preprocessor do not use this)
-        0,         // threshold b (some preprocessor do not use this)
+        preprocessor === "canny" ? 100 : 0,         // threshold a (some preprocessor do not use this)
+        preprocessor === "canny" ? 200 : 0,         // threshold b (some preprocessor do not use this)
         guide_start,
         guide_end,
         false,
@@ -67,16 +74,16 @@ const get_data_controlnet = (preprocessor = "None", controlnet = "None", input, 
     ]
 }
 
-const get_data_controlnet_annotation = (preprocessor = "None", input) => {
+const get_data_controlnet_annotation = (preprocessor = "None", input, mask = null) => {
     return [
         input ? {
             "image": input,
-            "mask": BLANK_IMG
+            "mask": mask || BLANK_IMG
         } : null,
         preprocessor,
         512,        // annotator resolution
-        64,         // threshold a
-        64,         // threshold b
+        preprocessor === "canny" ? 100 : 0,         // threshold a (some preprocessor do not use this)
+        preprocessor === "canny" ? 200 : 0,         // threshold b (some preprocessor do not use this)
         512,
         512,
         false,
@@ -120,7 +127,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
         width,
         1,
         "Crop and resize",      // resize mode
-        "Only masked",        // inpaint area
+        "Whole picture",        // inpaint area
         32,                 // inpaint padding
         "Inpaint masked",
         "",
@@ -241,6 +248,30 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
         false,              // use refiner?
         "None",             // select refiner model
         20,                 // percentage of step the refiner will take over
+        false,  // use cpu for segment anything
+        false,  //
+        "0",    // select bounding box
+        null,    // source image
+        [],         // segment anything result
+        "0",    // select mask
+        false,  // expand mask?
+        [],     // mask result
+        [],     // ?
+        false,
+        "0",
+        "2",
+        false,
+        false,
+        "0",
+        null,
+        [],
+        -2,
+        false,
+        [],
+        false,
+        "0",
+        null,
+        null,
         null,
         null,
         null,

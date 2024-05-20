@@ -231,21 +231,22 @@
     "fn_index": 515,
     "session_hash": "7g10tcn8ihh"
 }
+
 {
     "data": [
-        "task(5q1w1j6svq372f8)",
-        0,
-        "1girl, cute girl, masterpiece",
-        "low quality",
+        "task(7l5jay23f7smdm9)",
+        4,
+        "",
+        "",
         [],
+        null,
+        null,
+        null,
+        null,
+        null,
         "data:image/png;base64",
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        27,
+        "data:image/png;base64,",
+        20,
         "Euler a",
         4,
         0,
@@ -254,10 +255,10 @@
         1,
         7,
         1.5,
-        0.69,
+        0.75,
         0,
-        1024,
-        1024,
+        512,
+        512,
         1,
         "Just resize",
         "Whole picture",
@@ -313,6 +314,36 @@
         "Horizontal",
         "None",
         "",
+        "Basic",
+        {
+            "data": [
+                [
+                    "0.0:0.5",
+                    "0.0:1.0",
+                    "1.0"
+                ],
+                [
+                    "0.5:1.0",
+                    "0.0:1.0",
+                    "1.0"
+                ]
+            ],
+            "headers": [
+                "x",
+                "y",
+                "weight"
+            ]
+        },
+        0.5,
+        false,
+        3,
+        0,
+        "middle",
+        0,
+        false,
+        7,
+        3,
+        0,
         false,
         false,
         "LoRA",
@@ -351,6 +382,30 @@
         false,
         "None",
         20,
+        false,  // use cpu for sam
+        false,  //
+        "0",    // select bounding box
+        "image",    // source image
+        [],         // segment anything result
+        "0",    // select mask
+        false,  // expand mask?
+        [],     // mask result
+        [],     // ?
+        false,
+        "0",
+        "2",
+        false,
+        false,
+        "0",
+        null,
+        [],
+        -2,
+        false,
+        [],
+        false,
+        "0",
+        null,
+        null,
         null,
         null,
         null,
@@ -501,14 +556,16 @@
         2048,
         2048,
         2,
+        false,
+        1,
         [],
         "",
         "",
         ""
     ],
     "event_data": null,
-    "fn_index": 1094,
-    "session_hash": "9hhc5gbusr"
+    "fn_index": 1180,
+    "session_hash": "8s7ycc2isud"
 }
 
 
@@ -539,29 +596,32 @@
         "",
         [],
         [],
-        "data:image/png;base64,",
         null,
+        {
+            "image": "data:image/png;base64,",
+            "mask": ""
+        },
         "Both",
         false,
-        "t2ia_sketch_pidi",
+        "None",
         "None",
         1,
         {
-            "image": "data:image/png;base64,",
-            "mask": "data:image/png;base64,"
+            "image": "",
+            "mask": ""
         },
         "Crop and Resize",
-        512,
-        0.5,
-        0.5,
+        -1,
+        64,
+        64,
         0,
         1,
         false,
         "Balanced"
     ],
     "event_data": null,
-    "fn_index": 229,
-    "session_hash": "opmnyevljhd"
+    "fn_index": 842,
+    "session_hash": "8s7ycc2isud"
 }
 
 {

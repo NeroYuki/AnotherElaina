@@ -1,13 +1,6 @@
-// const { SlashCommandBuilder } = require('@discordjs/builders');
-// const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
-// const { byPassUser } = require('../config.json');
-// const crypt = require('crypto');
 const { server_pool } = require('../utils/ai_server_config.js');
-// const { default: axios } = require('axios');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const { cached_model } = require('./model_change.js');
-// const { loadImage } = require('../utils/load_discord_img');
-// const sharp = require('sharp');
 
 function change_option_adetailer(value, fn_index, session_hash, server_url) {
     return new Promise(async (resolve, reject) => {
@@ -79,14 +72,16 @@ function load_adetailer(session_hash, server_index, adetailer_config, interactio
         }
         console.log(adetailer_model, adetailer_prompt, adetailer_model_2, adetailer_prompt_2)
 
+        const base_index = server_pool[server_index].fn_index_change_adetailer_model1[mode]
+
         Promise.all(
             [
-                change_option_adetailer(adetailer_model, server_pool[server_index].fn_index_change_adetailer_model1[mode], session_hash,  WORKER_ENDPOINT),
-                change_option_adetailer(adetailer_prompt, server_pool[server_index].fn_index_change_adetailer_prompt1[mode], session_hash, WORKER_ENDPOINT),
-                change_option_adetailer(adetailer_neg_prompt, server_pool[server_index].fn_index_change_adetailer_neg_prompt1[mode], session_hash, WORKER_ENDPOINT),
-                change_option_adetailer(adetailer_model_2, server_pool[server_index].fn_index_change_adetailer_model2[mode], session_hash, WORKER_ENDPOINT),
-                change_option_adetailer(adetailer_prompt_2, server_pool[server_index].fn_index_change_adetailer_prompt2[mode], session_hash, WORKER_ENDPOINT),
-                change_option_adetailer(adetailer_neg_prompt_2, server_pool[server_index].fn_index_change_adetailer_neg_prompt2[mode], session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_model, base_index, session_hash,  WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_prompt, base_index + 2, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_neg_prompt, base_index + 3, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_model_2, base_index + 49, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_prompt_2, base_index + 51, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_neg_prompt_2, base_index + 52, session_hash, WORKER_ENDPOINT),
             ]
         ).then(() => {
             interaction.channel.send("ADetailer config loaded")

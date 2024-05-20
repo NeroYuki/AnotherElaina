@@ -18,7 +18,7 @@ function pick_instantid_preprocessor(model, preprocessor) {
 }
 
 // mode: 0 = txt2img, 1 = img2img
-function load_controlnet(session_hash, server_index, controlnet_input, controlnet_input_2, controlnet_input_3, controlnet_config, interaction, mode = 0) {
+function load_controlnet(session_hash, server_index, controlnet_input, controlnet_input_2, controlnet_input_3, controlnet_config, interaction, mode = 0, mask = null) {
     return new Promise(async (resolve, reject) => {
         // parse config string here
         const WORKER_ENDPOINT = server_pool[server_index].url
@@ -52,13 +52,13 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
             interaction.channel.send("Detected active XL model, translating controlnet model to XL version")
             // search for the model name in the controlnet_model_selection
             // get the value with the same name from the controlnet_model_selection_xl
-            const controlnet_name = controlnet_model_selection.find(x => x.value === controlnet_model).name
+            const controlnet_name = controlnet_model_selection.find(x => x.value === controlnet_model)?.name || "Unknown"
             controlnet_model = controlnet_model_selection_xl.find(x => x.name === controlnet_name)?.value || controlnet_model
 
-            const controlnet_name_2 = controlnet_model_selection.find(x => x.value === controlnet_model_2).name
+            const controlnet_name_2 = controlnet_model_selection.find(x => x.value === controlnet_model_2)?.name || "Unknown"
             controlnet_model_2 = controlnet_model_selection_xl.find(x => x.name === controlnet_name_2)?.value || controlnet_model_2
 
-            const controlnet_name_3 = controlnet_model_selection.find(x => x.value === controlnet_model_3).name
+            const controlnet_name_3 = controlnet_model_selection.find(x => x.value === controlnet_model_3)?.name || "Unknown"
             controlnet_model_3 = controlnet_model_selection_xl.find(x => x.name === controlnet_name_3)?.value || controlnet_model_3
         }
 
@@ -69,7 +69,7 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
         controlnet_preprocessor_3 = pick_instantid_preprocessor(controlnet_model_3, controlnet_preprocessor_3)
 
         // get controlnet request body
-        const controlnet_data = get_data_controlnet(controlnet_preprocessor, controlnet_model, controlnet_input, controlnet_weight || controlnet_model?.includes("sketch") ? 0.8 : 1, controlnet_mode, controlnet_resolution)
+        const controlnet_data = get_data_controlnet(controlnet_preprocessor, controlnet_model, controlnet_input, controlnet_weight || controlnet_model?.includes("sketch") ? 0.8 : 1, controlnet_mode, controlnet_resolution, 0, 1, mask)
         const controlnet_data_2 = get_data_controlnet(controlnet_preprocessor_2, controlnet_model_2, controlnet_input_2, controlnet_weight_2 || controlnet_model_2?.includes("sketch") ? 0.8 : 1, controlnet_mode_2, controlnet_resolution_2)
         const controlnet_data_3 = get_data_controlnet(controlnet_preprocessor_3, controlnet_model_3, controlnet_input_3, controlnet_weight_3 ||  controlnet_model_3?.includes("sketch") ? 0.8 : 1, controlnet_mode_3, controlnet_resolution_3)
 
