@@ -59,6 +59,7 @@ module.exports = {
                     { name: 'Pure Red (#FF0000)', value: 'red' },
                     { name: 'Pure Green (#00FF00)', value: 'green' },
                     { name: 'Pure Blue (#0000FF)', value: 'blue' },
+                    { name: 'Raw - No detection', value: 'raw'}
                 ))
         .addIntegerOption(option => 
             option.setName('width')
@@ -346,6 +347,20 @@ module.exports = {
                         return
                     })
             }
+            else if (mask_color === 'raw') {
+                await sharp(attachment_mask)
+                    .toFormat('png')
+                    .toBuffer()
+                    .then(data => {
+                        mask_data_uri = "data:image/png;base64," + data.toString('base64')
+                    })
+                    .catch(err => {
+                        console.log(err)
+                        interaction.editReply({ content: "Failed to process mask image", ephemeral: true });
+                        return
+                    })
+            }
+
             else {
                 // load attachment_mask to sharp, blur (guassian 4 pixels radius), turn all non-white pixel to black and ((export to png data URI)) (use pipline to avoid memory leak)
                 await sharp(attachment_mask)
