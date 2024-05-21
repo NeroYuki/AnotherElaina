@@ -79,6 +79,9 @@ module.exports = {
             if (api_result.yandere_link) {
                 mirrorLink += "[Yandere](" + api_result.yandere_link + ")\n"
             }
+            if (api_result.konachan_link) {
+                mirrorLink += "[Konachan](" + api_result.konachan_link + ")\n"
+            }
 
             const embed = new MessageEmbed()
                 .setTitle(api_result.title)
