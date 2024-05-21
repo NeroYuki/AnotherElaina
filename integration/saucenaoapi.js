@@ -144,6 +144,7 @@ async function sauceNAOApiCall(param, index) {
 }
 
 module.exports.getsauce = (url) => {
+    const key_pool = [process.env.SAUCENAO_KEY, process.env.SAUCENAO_KEY_2, process.env.SAUCENAO_KEY_3]
     return new Promise(async (resolve, reject) => {
         let builder = new apiParamBuilder("search.php")
         builder.addParam("db", "999")
@@ -153,7 +154,7 @@ module.exports.getsauce = (url) => {
         builder.addParam("testmode", "1")
         builder.addParam("numres", 8)
         builder.addParam("hide", 1)
-        builder.addParam("api_key", (Date.now() % 2) ? process.env.SAUCENAO_KEY: process.env.SAUCENAO_KEY_2)
+        builder.addParam("api_key", key_pool[Math.floor(Math.random() * key_pool.length)])
         builder.addParam("url", url)
         let result = await sauceNAOApiCall(builder)
         resolve(result)
