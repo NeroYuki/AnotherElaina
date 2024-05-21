@@ -198,6 +198,28 @@ module.exports = {
             }
         }
 
+        // if the width and height is too big (exceed 2048) attempt to shrink width and height with the same ratio
+        if (width > 2048 || height > 2048) {
+            const ratio = width / height
+            if (width > height) {
+                width = 2048
+                height = Math.floor(2048 / ratio)
+            }
+            else {
+                height = 2048
+                width = Math.floor(2048 * ratio)
+            }
+            console.log('width and height exceed 2048, shrink to:', width, height)
+        }
+
+        // finally make sure the width and height is divisible by 8
+        if (height % 8 !== 0 || width % 8 !== 0) {
+            height = Math.ceil(height / 8) * 8
+            width = Math.ceil(width / 8) * 8
+            console.log('width and height not divisible by 8, round up to:', width, height)
+        }
+
+
         const session_hash = crypt.randomBytes(16).toString('base64');
         const WORKER_ENDPOINT = server_pool[0].url
         let mask_data_uri = ""
