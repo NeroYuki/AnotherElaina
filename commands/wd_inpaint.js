@@ -507,6 +507,13 @@ module.exports = {
             if (controlnet_config) {
                 try {
                     const controlnet_config_obj_import = JSON.parse(controlnet_config)
+                    
+                    if (controlnet_config_obj_import.control_net[0]) {
+                        controlnet_config_obj.control_net[0].preprocessor = controlnet_config_obj_import.control_net[0].preprocessor || controlnet_config_obj.control_net[0].preprocessor
+                        controlnet_config_obj.control_net[0].weight = controlnet_config_obj_import.control_net[0].weight || controlnet_config_obj.control_net[0].weight
+                        controlnet_config_obj.control_net[0].mode = controlnet_config_obj_import.control_net[0].mode || controlnet_config_obj.control_net[0].mode
+                        controlnet_config_obj.control_net[0].resolution = controlnet_config_obj_import.control_net[0].resolution || controlnet_config_obj.control_net[0].resolution
+                    }
                     controlnet_config_obj.control_net[1] = controlnet_config_obj_import.control_net[1] || controlnet_config_obj.control_net[1]
                     controlnet_config_obj.control_net[2] = controlnet_config_obj_import.control_net[2] || controlnet_config_obj.control_net[2]
                 }
