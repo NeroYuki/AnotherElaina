@@ -100,7 +100,8 @@ function saucenaoprocess(data) {
 
     // if source is i.pximg.net, only get the last part of the url (pixiv id) and append it to https://www.pixiv.net/en/artworks/
     if (result_obj.source && result_obj.source.includes("i.pximg.net")) {
-        result_obj.pixiv_link = "https://www.pixiv.net/en/artworks/" + result_obj.source.split("/").pop()
+        result_obj.source = "https://www.pixiv.net/en/artworks/" + result_obj.source.split("/").pop()
+        result_obj.pixiv_link = result_obj.source
     }
 
     if (!result_obj.thumbnail) {
