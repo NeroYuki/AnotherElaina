@@ -46,6 +46,8 @@ module.exports = {
         }
 
         let response_params = "Unknown"
+        let neg_prompt_param = "Unknown"
+        let extra_param = "None"
 
         const isComfy = tags["workflow"]?.description != null 
 
@@ -82,12 +84,10 @@ module.exports = {
                     }
                 })
 
-                // do not show extra parameters if they are not available
-                response_params = `
-**Prompt**: ${pos_prompt?.value ?? "Unknown"}
-**Negative Prompt**: ${neg_prompt?.value ?? "Unknown"}
-**Extra Parameters**:
-${sampler ? `Sampler: ${sampler.value}` : ""}
+        // do not show extra parameters if they are not available
+        response_params = `${pos_prompt?.value ?? "Unknown"}`
+        neg_prompt_param = `${neg_prompt?.value ?? "Unknown"}`
+        extra_param = `${sampler ? `Sampler: ${sampler.value}` : ""}
 ${step ? `Steps: ${step.value}` : ""}
 ${cfg_model ? `CFG Scale: ${cfg_model.value}` : ""}
 ${seed ? `Seed: ${seed.value}` : ""}
@@ -107,10 +107,9 @@ ${vae ? `VAE: ${vae.value}` : ""}
             // 1 is negative prompt
             // 2 is list of extra parameters, splited by comma with <key>:<value>
 
-            response_params = `
-**Prompt**: ${params.slice(0, neg_prompt_index).join("\n")}
-**Negative Prompt**: ${params[neg_prompt_index]?.replace(/negative prompt\: /i, "") ?? "Unknown"}
-**Extra Parameters**: ${params[neg_prompt_index + 1] ? "\n" + params[neg_prompt_index + 1]
+            response_params = `${params.slice(0, neg_prompt_index).join("\n")}`
+            neg_prompt_param =  `${params[neg_prompt_index]?.replace(/negative prompt\: /i, "") ?? "Unknown"}`
+            extra_param = `${params[neg_prompt_index + 1] ? "\n" + params[neg_prompt_index + 1]
     .split(", ")
     .map((x) => [...x.split(": ")])
     .filter((x) => allowed_extra_params.includes(x[0].toLowerCase()))
@@ -122,8 +121,7 @@ ${vae ? `VAE: ${vae.value}` : ""}
         return x
     })
     .map((x) => x.join(": "))
-    .join("\n") : "None"}`    
-
+    .join("\n") : "None"}`
         }
 
         // check for "model hash" line, and match its value with hash table
@@ -134,14 +132,16 @@ ${vae ? `VAE: ${vae.value}` : ""}
             .setColor('#88ff88')
             .setTitle('Image Info')
             .setThumbnail(attachment_option.proxyURL)
-            .setDescription(`**Stable Diffusion Parameter**: ${isComfy ? "[ComfyUI Workflow info is not complete]": ""} ${response_params}`)
+            .setDescription(`${response_params}`)
             .addFields(
+                { name: 'Negative Prompt', value: neg_prompt_param ?? "Unknown" },
+                { name: 'Extra Parameters', value: extra_param ?? "None" },
                 { name: 'Image Size', value: `${tags["Image Width"]?.description ?? "Unknown"} x ${tags["Image Height"]?.description ?? "Unknown"}` },
                 { name: 'File Type', value: tags["FileType"] ? tags["FileType"].description : "Non-image" },
             )
             .setFooter({text: "EXIF data may not be available for all images."});
 
-        await interaction.editReply({ embeds: [embeded] });
+        await interaction.editReply({ content: `**Stable Diffusion Parameter**: ${isComfy ? "[ComfyUI Workflow info is not complete]": ""}`, embeds: [embeded] });
 
 	},
 };
