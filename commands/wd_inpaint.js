@@ -12,6 +12,7 @@ const { cached_model, model_change } = require('../utils/model_change');
 const { fallback_to_resource_saving } = require('../utils/ollama_request.js');
 const { segmentAnything_execute, groundingDino_execute, expandMask, unloadAllModel } = require('../utils/segment_execute.js');
 const { get_coupler_config_from_prompt, get_color_grading_config_from_prompt } = require('../utils/prompt_analyzer.js');
+const { queryRecordLimit } = require('../database/database_interaction.js');
 
 function clamp(num, min, max) {
     return num <= min ? min : num >= max ? max : num;
@@ -111,6 +112,9 @@ module.exports = {
             option.setName('checkpoint')
                 .setDescription('Force a cached checkpoint to be used (not all option is cached)')
                 .addChoices(...model_selection))
+        .addStringOption(option =>
+            option.setName('profile')
+                .setDescription('Specify the profile to use (default is No Profile)'))
     ,
 
 	async execute(interaction, client) {
@@ -120,18 +124,41 @@ module.exports = {
             return 
         }
 
+        //make a temporary reply to not get timeout'd
+		await interaction.deferReply();
+
+        const profile_option = interaction.options.getString('profile') || null
+        let profile = null
+        if (profile_option != null) {
+            let profile_data = null
+            // attempt to query the profile name on the database
+            profile_data = await queryRecordLimit('wd_profile', { name: profile_option, user_id: interaction.user.id }, 1)
+            if (profile_data.length == 0) {
+                // attempt to query global profile
+                profile_data = await queryRecordLimit('wd_profile', { name: profile_option }, 1)
+                if (profile_data.length == 0) {
+                    // no profile found
+                    interaction.channel.send({ content: `Profile ${profile_option} not found, fallback to default setting` });
+                }
+            }
+
+            if (profile_data.length != 0) {
+                profile = profile_data[0]
+            }
+        }
+
 		// load the option with default value
-        let prompt = interaction.options.getString('prompt')
-		let neg_prompt = interaction.options.getString('neg_prompt') || '' 
-        let width = interaction.options.getInteger('width')
-        let height = interaction.options.getInteger('height')
+		let prompt = (profile?.prompt_pre || '') + (interaction.options.getString('prompt') || '') + (profile?.prompt || '')
+		let neg_prompt = (profile?.neg_prompt_pre || '') + (interaction.options.getString('neg_prompt') || '') + (profile?.neg_prompt || '')
+        let width = interaction.options.getInteger('width') || profile?.width 
+        let height = interaction.options.getInteger('height') || profile?.height
         const denoising_strength = clamp(interaction.options.getNumber('denoising_strength') || 0.7, 0, 1)
         const mask_blur = clamp(interaction.options.getInteger('mask_blur') || 4, 0, 64)
         const mask_content = interaction.options.getString('mask_content') || 'original'
         const mask_color = interaction.options.getString('mask_color') || 'black'
-        const sampler = interaction.options.getString('sampler') || 'Euler a'
-        const cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || 7, 0, 30)
-        const sampling_step = clamp(interaction.options.getInteger('sampling_step') || 20, 1, 100)
+        const sampler = interaction.options.getString('sampler') || profile?.sampler || 'Euler a'
+        const cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || profile?.cfg_scale || 7, 0, 30)
+        const sampling_step = clamp(interaction.options.getInteger('sampling_step') || profile?.sampling_step || 20, 1, 100)
         const override_neg_prompt = interaction.options.getBoolean('override_neg_prompt') || false
         const remove_nsfw_restriction = interaction.options.getBoolean('remove_nsfw_restriction') || false
         const no_dynamic_lora_load = interaction.options.getBoolean('no_dynamic_lora_load') || false
@@ -142,7 +169,7 @@ module.exports = {
         const controlnet_input_option_2 = interaction.options.getAttachment('controlnet_input_2') || null
         const controlnet_input_option_3 = interaction.options.getAttachment('controlnet_input_3') || null
         const controlnet_config = interaction.options.getString('controlnet_config') || client.controlnet_config.has(interaction.user.id) ? client.controlnet_config.get(interaction.user.id) : null
-        const checkpoint = interaction.options.getString('checkpoint') || null
+        const checkpoint = interaction.options.getString('checkpoint') || profile?.checkpoint || null
 
         let seed = -1
         try {
@@ -171,8 +198,6 @@ module.exports = {
             }
         }
 
-        //make a temporary reply to not get timeout'd
-		await interaction.deferReply();
         const session_hash = crypt.randomBytes(16).toString('base64');
         const WORKER_ENDPOINT = server_pool[0].url
         let mask_data_uri = ""
