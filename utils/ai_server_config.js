@@ -1383,6 +1383,7 @@ const model_name_hash_mapping = new Map([
     ['fdbe56354b', "Dreamshaper XL Lightning"],
     ['516047db97', "KohakuXL Epsilon"],
     ['73ed24bde3', "ArtiWaifu v1"],
+    ['b1689257e6', "Juggernaut XL Inpaint"]
 ])
 // limit at 25 (probably less due to character limitation)
 const model_selection = [
@@ -1391,9 +1392,6 @@ const model_selection = [
     { name: 'MeinaMix v11', value: 'meinamix_v11.safetensors [54ef3e3610]' },
     { name: 'RefSlave v2', value: 'refslave.safetensors [362dae27f8]' },
     { name: 'Anything v5', value: 'anythingv5.safetensors [7f96a1a9ca]' },
-    { name: 'Yozora v1', value: 'yozora.safetensors [4b118b2d1b]' },
-    { name: 'ChromaNeoFT v2', value: 'chromaneo_v2.safetensors [b8d6d19b35]' },
-    { name: 'DarkSushiMix', value: 'darksushi.safetensors [cca17b08da]' },
     { name: 'CetusMix (Coda v2)', value: 'cetusmix_coda2.safetensors [68c0a27380]' },
     { name: 'Momokos v1', value: 'momokos_v10.safetensors [d77922554c]' },
     { name: 'MeinaPastel v6', value: 'meinapastel.safetensors [6292dd40d6]' },
@@ -1412,7 +1410,7 @@ const model_selection_xl = [
     { name: 'KohakuXL Epsilon', value: 'kohakuxl_epsilon.safetensors [516047db97]'},
     { name: 'AAMXL Turbo', value: 'aamxl_turbo.safetensors [8238e80fdd]'},
     { name: 'Juggernaut XL', value: 'juggernautxl_turbo.safetensors [c9e3e68f89]'},
-    // { name: 'Dreamshaper XL Turbo', value: 'dreamshaperxl_turbo.safetensors [4496b36d48]'},
+    { name: 'Juggernaut XL Inpaint', value: 'juggernautxl_inpaint.safetensors [b1689257e6]'},
     { name: 'Juggernaut Lightning', value: 'juggernautxl_lightning.safetensors [c8df560d29]'},
     { name: 'Dreamshaper XL Lightning', value: 'dreamshaperxl_lightning.safetensors [fdbe56354b]'},
 ]
