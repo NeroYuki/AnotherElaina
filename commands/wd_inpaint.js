@@ -455,6 +455,19 @@ module.exports = {
                 ],
                 do_preview_annotation: false
             }
+
+            // try to parse controlnet_config and replace [1] and [2] with the parsed config if exists
+            if (controlnet_config) {
+                try {
+                    const controlnet_config_obj_import = JSON.parse(controlnet_config)
+                    controlnet_config_obj.control_net[1] = controlnet_config_obj_import.control_net[1] || controlnet_config_obj.control_net[1]
+                    controlnet_config_obj.control_net[2] = controlnet_config_obj_import.control_net[2] || controlnet_config_obj.control_net[2]
+                }
+                catch (err) {
+                    console.log(err)
+                    interaction.channel.send({ content: "Failed to parse controlnet config:" + err });
+                }
+            }
             
             await load_controlnet(session_hash, server_index, attachment, controlnet_input_2, controlnet_input_3, JSON.stringify(controlnet_config_obj), interaction, 1, mask_data_uri)
                 .catch(err => {
