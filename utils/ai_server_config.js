@@ -41,7 +41,7 @@ const server_pool = [
     }
 ]
 
-const get_data_controlnet = (preprocessor = "None", controlnet = "None", input, weight = 1, mode = "Balanced", resolution = 512, guide_start = 0, guide_end = 1, mask = null) => {
+const get_data_controlnet = (preprocessor = "None", controlnet = "None", input, weight = 1, mode = "Balanced", resolution = 512, guide_start = 0, guide_end = 1, mask = null, t_a = 100, t_b = 200) => {
     return [
         null,
         false,
@@ -65,8 +65,8 @@ const get_data_controlnet = (preprocessor = "None", controlnet = "None", input, 
         } : null,
         "Crop and Resize",
         resolution,        // annotator resolution
-        preprocessor === "canny" ? 100 : 0,         // threshold a (some preprocessor do not use this)
-        preprocessor === "canny" ? 200 : 0,         // threshold b (some preprocessor do not use this)
+        t_a,
+        t_b,
         guide_start,
         guide_end,
         false,
@@ -1442,6 +1442,9 @@ const controlnet_preprocessor_selection = [
     { name: 'CLIP Vision', value: 't2ia_style_clipvision' },
     { name: 'Color', value: 't2ia_color_grid' },
     { name: 'Sketch', value: 't2ia_sketch_pidi' },
+    { name: 'Threshold', value: 'threshold' },
+    { name: 'Shuffle', value: 'shuffle' },
+    { name: 'Blur (Gaussian)', value: 'blur_gaussian' },
 ]
 
 const controlnet_model_selection = [

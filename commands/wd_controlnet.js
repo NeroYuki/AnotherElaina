@@ -27,6 +27,12 @@ module.exports = {
                     { name: 'Balanced', value: 'Balanced' },
                     { name: 'Prompt', value: 'My prompt is more important' },
                     { name: 'ControlNet', value: 'ControlNet is more important' }))
+        .addNumberOption(option =>
+            option.setName('controlnet_threshold_a')
+                .setDescription('The threshold of the controlnet (default is 100)'))
+        .addNumberOption(option =>
+            option.setName('controlnet_threshold_b')
+                .setDescription('The threshold of the controlnet (default is 200)'))
         // clone the 3 options above for 2 other controlnet
         .addStringOption(option =>
             option.setName('controlnet_model_2')
@@ -49,6 +55,12 @@ module.exports = {
                     { name: 'Balanced', value: 'Balanced' },
                     { name: 'Prompt', value: 'My prompt is more important' },
                     { name: 'ControlNet', value: 'ControlNet is more important' }))
+        .addNumberOption(option =>
+            option.setName('controlnet_threshold_a_2')
+                .setDescription('The threshold of the controlnet (default is 100)'))
+        .addNumberOption(option =>
+            option.setName('controlnet_threshold_b_2')
+                .setDescription('The threshold of the controlnet (default is 200)'))
         .addStringOption(option =>
             option.setName('controlnet_model_3')
                 .setDescription('The model to use for the controlnet (default is "None")')
@@ -73,6 +85,12 @@ module.exports = {
                     { name: 'Balanced', value: 'Balanced' },
                     { name: 'Prompt', value: 'My prompt is more important' },
                     { name: 'ControlNet', value: 'ControlNet is more important' }))
+        .addNumberOption(option =>
+            option.setName('controlnet_threshold_a_3')
+                .setDescription('The threshold of the controlnet (default is 100)'))
+        .addNumberOption(option =>
+            option.setName('controlnet_threshold_b_3')
+                .setDescription('The threshold of the controlnet (default is 200)'))
     ,
 
 	async execute(interaction, client) {
@@ -81,16 +99,22 @@ module.exports = {
         const controlnet_weight = interaction.options.getNumber('controlnet_weight') || 1;
         const controlnet_resolution = interaction.options.getNumber('controlnet_resolution') || 512;
         const controlnet_mode = interaction.options.getString('controlnet_mode') || "Balanced";
+        const controlnet_threshold_a = interaction.options.getNumber('controlnet_threshold_a') || 100;
+        const controlnet_threshold_b = interaction.options.getNumber('controlnet_threshold_b') || 200;
         let controlnet_model_2 = interaction.options.getString('controlnet_model_2') || "None";
         const controlnet_preprocessor_2 = interaction.options.getString('controlnet_preprocessor_2') || "None";
         const controlnet_weight_2 = interaction.options.getNumber('controlnet_weight_2') || 1;
         const controlnet_resolution_2 = interaction.options.getNumber('controlnet_resolution_2') || 512;
         const controlnet_mode_2 = interaction.options.getString('controlnet_mode_2') || "Balanced";
+        const controlnet_threshold_a_2 = interaction.options.getNumber('controlnet_threshold_a_2') || 100;
+        const controlnet_threshold_b_2 = interaction.options.getNumber('controlnet_threshold_b_2') || 200;
         let controlnet_model_3 = interaction.options.getString('controlnet_model_3') || "None";
         const controlnet_preprocessor_3 = interaction.options.getString('controlnet_preprocessor_3') || "None";
         const controlnet_weight_3 = interaction.options.getNumber('controlnet_weight_3') || 1;
         const controlnet_resolution_3 = interaction.options.getNumber('controlnet_resolution_3') || 512;
         const controlnet_mode_3 = interaction.options.getString('controlnet_mode_3') || "Balanced";
+        const controlnet_threshold_a_3 = interaction.options.getNumber('controlnet_threshold_a_3') || 100;
+        const controlnet_threshold_b_3 = interaction.options.getNumber('controlnet_threshold_b_3') || 200;
         const do_preview_annotation = interaction.options.getBoolean('do_preview_annotation') || false;
 
         const config = {
@@ -101,6 +125,8 @@ module.exports = {
                     weight: controlnet_weight,
                     mode: controlnet_mode,
                     resolution: controlnet_resolution,
+                    t_a: controlnet_threshold_a,
+                    t_b: controlnet_threshold_b,
                 },
                 {
                     model: controlnet_model_2,
@@ -108,6 +134,8 @@ module.exports = {
                     weight: controlnet_weight_2,
                     mode: controlnet_mode_2,
                     resolution: controlnet_resolution_2,
+                    t_a: controlnet_threshold_a_2,
+                    t_b: controlnet_threshold_b_2,
                 },
                 {
                     model: controlnet_model_3,
@@ -115,6 +143,8 @@ module.exports = {
                     weight: controlnet_weight_3,
                     mode: controlnet_mode_3,
                     resolution: controlnet_resolution_3,
+                    t_a: controlnet_threshold_a_3,
+                    t_b: controlnet_threshold_b_3,
                 },
             ],
             do_preview_annotation,

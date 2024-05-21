@@ -37,16 +37,22 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
         const controlnet_weight = controlnet_config_obj.control_net[0].weight
         const controlnet_resolution = controlnet_config_obj.control_net[0].resolution
         const controlnet_mode = controlnet_config_obj.control_net[0].mode
+        const controlnet_threshold_a = controlnet_config_obj.control_net[0].t_a
+        const controlnet_threshold_b = controlnet_config_obj.control_net[0].t_b
         let controlnet_preprocessor_2 = controlnet_config_obj.control_net[1].preprocessor
         let controlnet_model_2 = controlnet_config_obj.control_net[1].model
         const controlnet_weight_2 = controlnet_config_obj.control_net[1].weight
         const controlnet_resolution_2 = controlnet_config_obj.control_net[1].resolution
         const controlnet_mode_2 = controlnet_config_obj.control_net[1].mode
+        const controlnet_threshold_a_2 = controlnet_config_obj.control_net[1].t_a
+        const controlnet_threshold_b_2 = controlnet_config_obj.control_net[1].t_b
         let controlnet_preprocessor_3 = controlnet_config_obj.control_net[2].preprocessor
         let controlnet_model_3 = controlnet_config_obj.control_net[2].model
         const controlnet_weight_3 = controlnet_config_obj.control_net[2].weight
         const controlnet_resolution_3 = controlnet_config_obj.control_net[2].resolution
         const controlnet_mode_3 = controlnet_config_obj.control_net[2].mode
+        const controlnet_threshold_a_3 = controlnet_config_obj.control_net[2].t_a
+        const controlnet_threshold_b_3 = controlnet_config_obj.control_net[2].t_b
 
         if (model_selection_xl.find(x => x.value === cached_model[0]) != null) {
             interaction.channel.send("Detected active XL model, translating controlnet model to XL version")
@@ -69,9 +75,9 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
         controlnet_preprocessor_3 = pick_instantid_preprocessor(controlnet_model_3, controlnet_preprocessor_3)
 
         // get controlnet request body
-        const controlnet_data = get_data_controlnet(controlnet_preprocessor, controlnet_model, controlnet_input, controlnet_weight || 1, controlnet_mode, controlnet_resolution, 0, 1, mask)
-        const controlnet_data_2 = get_data_controlnet(controlnet_preprocessor_2, controlnet_model_2, controlnet_input_2, controlnet_weight_2 || 1, controlnet_mode_2, controlnet_resolution_2)
-        const controlnet_data_3 = get_data_controlnet(controlnet_preprocessor_3, controlnet_model_3, controlnet_input_3, controlnet_weight_3 || 1, controlnet_mode_3, controlnet_resolution_3)
+        const controlnet_data = get_data_controlnet(controlnet_preprocessor, controlnet_model, controlnet_input, controlnet_weight || 1, controlnet_mode, controlnet_resolution, 0, 1, mask, controlnet_threshold_a, controlnet_threshold_b)
+        const controlnet_data_2 = get_data_controlnet(controlnet_preprocessor_2, controlnet_model_2, controlnet_input_2, controlnet_weight_2 || 1, controlnet_mode_2, controlnet_resolution_2, 0, 1, null, controlnet_threshold_a_2, controlnet_threshold_b_2)
+        const controlnet_data_3 = get_data_controlnet(controlnet_preprocessor_3, controlnet_model_3, controlnet_input_3, controlnet_weight_3 || 1, controlnet_mode_3, controlnet_resolution_3, 0, 1, null, controlnet_threshold_a_3, controlnet_threshold_b_3)
 
         const option_controlnet = {
             method: 'POST',

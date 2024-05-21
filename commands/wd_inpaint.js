@@ -483,21 +483,27 @@ module.exports = {
                         preprocessor: "canny",
                         weight: 1,
                         mode: "My prompt is more important",
-                        resolution: 512
+                        resolution: 512,
+                        t_a: 100,
+                        t_b: 200
                     },
                     {
                         model: "None",
                         preprocessor: "None",
                         weight: 1,
                         mode: "Balanced",
-                        resolution: 512
+                        resolution: 512,
+                        t_a: 100,
+                        t_b: 200
                     },
                     {
                         model: "None",
                         preprocessor: "None",
                         weight: 1,
                         mode: "Balanced",
-                        resolution: 512
+                        resolution: 512,
+                        t_a: 100,
+                        t_b: 200
                     }
                 ],
                 do_preview_annotation: false
@@ -507,12 +513,14 @@ module.exports = {
             if (controlnet_config) {
                 try {
                     const controlnet_config_obj_import = JSON.parse(controlnet_config)
-                    
+
                     if (controlnet_config_obj_import.control_net[0]) {
                         controlnet_config_obj.control_net[0].preprocessor = controlnet_config_obj_import.control_net[0].preprocessor || controlnet_config_obj.control_net[0].preprocessor
                         controlnet_config_obj.control_net[0].weight = controlnet_config_obj_import.control_net[0].weight || controlnet_config_obj.control_net[0].weight
                         controlnet_config_obj.control_net[0].mode = controlnet_config_obj_import.control_net[0].mode || controlnet_config_obj.control_net[0].mode
                         controlnet_config_obj.control_net[0].resolution = controlnet_config_obj_import.control_net[0].resolution || controlnet_config_obj.control_net[0].resolution
+                        controlnet_config_obj.control_net[0].t_a = controlnet_config_obj_import.control_net[0].t_a || controlnet_config_obj.control_net[0].t_a
+                        controlnet_config_obj.control_net[0].t_b = controlnet_config_obj_import.control_net[0].t_b || controlnet_config_obj.control_net[0].t_b
                     }
                     controlnet_config_obj.control_net[1] = controlnet_config_obj_import.control_net[1] || controlnet_config_obj.control_net[1]
                     controlnet_config_obj.control_net[2] = controlnet_config_obj_import.control_net[2] || controlnet_config_obj.control_net[2]
