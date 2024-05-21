@@ -66,10 +66,10 @@ module.exports = {
 
     ,
 
-    async init() {
-        // setup heartbeat routine to check which server is alive
-        initiate_server_heartbeat()
-    },
+    // async init() {
+    //     // setup heartbeat routine to check which server is alive
+    //     initiate_server_heartbeat()
+    // },
 
 	async execute(interaction, client) {
         if (client.cooldowns.has(interaction.user.id) && !byPassUser.includes(interaction.user.id)) {
