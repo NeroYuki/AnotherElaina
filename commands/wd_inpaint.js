@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { byPassUser, censorGuildIds } = require('../config.json');
 const crypt = require('crypto');
-const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, load_lora_from_prompt, model_name_hash_mapping, check_model_filename, model_selection, sampler_selection, model_selection_xl } = require('../utils/ai_server_config.js');
+const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, load_lora_from_prompt, model_name_hash_mapping, check_model_filename, model_selection, sampler_selection, model_selection_xl, model_selection_inpaint } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const sharp = require('sharp');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
@@ -38,18 +38,18 @@ module.exports = {
                 .setDescription('The negative prompt for the AI to avoid generate art from'))
         .addNumberOption(option => 
             option.setName('denoising_strength')
-                .setDescription('How much the image is noised before regen, closer to 0 = closer to original (0 - 1, default 0.7)'))
+                .setDescription('How much the image is noised before regen, closer to 0 = closer to original (0 - 1, default 1)'))
         .addIntegerOption(option =>
             option.setName('mask_blur')
                 .setDescription('How much pixel is the mask being blurred, closer to 0 = closer to original (0 - 64, default 4)'))
         .addStringOption(option => 
             option.setName('mask_content')
-                .setDescription('The content that should fill the mask (default is "original")')
+                .setDescription('The content that should fill the mask (default is "latent nothing")')
                 .addChoices(
-                    { name: 'Fill', value: 'fill' },
-                    { name: 'Original', value: 'original' },
-                    { name: 'Latent Noise', value: 'latent noise' },
-                    { name: 'Latent Nothing', value: 'latent nothing' },
+                    { name: 'Fill - Keep color', value: 'fill' },
+                    { name: 'Original - Keep both color and comp.', value: 'original' },
+                    { name: 'Latent Noise - Keep composition', value: 'latent noise' },
+                    { name: 'Latent Nothing - Keep nothing', value: 'latent nothing' },
                 ))
         .addStringOption(option => 
             option.setName('mask_color')
@@ -83,7 +83,7 @@ module.exports = {
                 .setDescription('Random seed for AI generate art from (default is "-1 - Random")'))
         .addStringOption(option =>
             option.setName('default_neg_prompt')
-                .setDescription('Define the default negative prompt for the user (default is "Quality - No NSFW")')
+                .setDescription('Define the default negative prompt for the user (default is "None - No NSFW")')
                 .addChoices(
                     { name: 'Quality - SFW', value: 'q_sfw' },
                     { name: 'Quality - NSFW', value: 'q_nsfw' },
@@ -99,7 +99,7 @@ module.exports = {
                 ))
         .addBooleanOption(option => 
             option.setName('no_dynamic_lora_load')
-                .setDescription('Do not use the bot\'s dynamic LoRA loading (default is "false")'))
+                .setDescription('Do not use the bot\'s dynamic LoRA loading (default is "true")'))
         .addNumberOption(option =>
             option.setName('default_lora_strength')
                 .setDescription('The strength of lora if loaded dynamically (default is "0.85")'))
@@ -162,7 +162,7 @@ module.exports = {
 		let neg_prompt = (profile?.neg_prompt_pre || '') + (interaction.options.getString('neg_prompt') || '') + (profile?.neg_prompt || '')
         let width = interaction.options.getInteger('width') || profile?.width 
         let height = interaction.options.getInteger('height') || profile?.height
-        const denoising_strength = clamp(interaction.options.getNumber('denoising_strength') || 0.7, 0, 1)
+        const denoising_strength = clamp(interaction.options.getNumber('denoising_strength') || 1, 0, 1)
         const mask_blur = clamp(interaction.options.getInteger('mask_blur') || 4, 0, 64)
         const mask_content = interaction.options.getString('mask_content') || 'original'
         const mask_color = interaction.options.getString('mask_color') || 'black'
@@ -171,7 +171,7 @@ module.exports = {
         const sampling_step = clamp(interaction.options.getInteger('sampling_step') || profile?.sampling_step || 20, 1, 100)
         const default_neg_prompt = interaction.options.getString('default_neg_prompt') || 'n_sfw'
         const inpaint_area = interaction.options.getString('inpaint_area') || 'Whole picture'
-        const no_dynamic_lora_load = interaction.options.getBoolean('no_dynamic_lora_load') || false
+        const no_dynamic_lora_load = interaction.options.getBoolean('no_dynamic_lora_load') || true
         const default_lora_strength = clamp(interaction.options.getNumber('default_lora_strength') || 0.85, 0, 3)
         const force_server_selection = 0
         const mask_increase_padding = clamp(interaction.options.getInteger('mask_increase_padding') || 24, 0, 64)
@@ -179,7 +179,7 @@ module.exports = {
         const controlnet_input_option_2 = interaction.options.getAttachment('controlnet_input_2') || null
         const controlnet_input_option_3 = interaction.options.getAttachment('controlnet_input_3') || null
         const controlnet_config = interaction.options.getString('controlnet_config') || client.controlnet_config.has(interaction.user.id) ? client.controlnet_config.get(interaction.user.id) : null
-        const checkpoint = interaction.options.getString('checkpoint') || profile?.checkpoint || null
+        let checkpoint = interaction.options.getString('checkpoint') || profile?.checkpoint || null
 
         let seed = -1
         try {
@@ -493,6 +493,15 @@ module.exports = {
     
     
             if (checkpoint) {
+                const inpaint_model = model_selection_inpaint.find(x => x.value === checkpoint)
+                if (!inpaint_model) {
+                    await interaction.channel.send('Inpaint model not found, keep using normal model')
+                }
+                else {
+                    await interaction.channel.send(`Try to switch to inpaint model: **${check_model_filename(inpaint_model.inpaint)}**`)
+                    checkpoint = inpaint_model.inpaint
+                }
+
                 const change_result = await model_change(checkpoint, false).catch(err => {
                     console.log(err)
                 })

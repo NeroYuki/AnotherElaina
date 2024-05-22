@@ -1383,7 +1383,8 @@ const model_name_hash_mapping = new Map([
     ['fdbe56354b', "Dreamshaper XL Lightning"],
     ['516047db97', "KohakuXL Epsilon"],
     ['73ed24bde3', "ArtiWaifu v1"],
-    ['b1689257e6', "Juggernaut XL Inpaint"]
+    ['b1689257e6', "Juggernaut XL Inpaint"],
+    ['ddb3b8b7d6', "AnimagineXL v3.1 Inpaint"],
 ])
 // limit at 25 (probably less due to character limitation)
 const model_selection = [
@@ -1410,9 +1411,13 @@ const model_selection_xl = [
     { name: 'KohakuXL Epsilon', value: 'kohakuxl_epsilon.safetensors [516047db97]'},
     { name: 'AAMXL Turbo', value: 'aamxl_turbo.safetensors [8238e80fdd]'},
     { name: 'Juggernaut XL', value: 'juggernautxl_turbo.safetensors [c9e3e68f89]'},
-    { name: 'Juggernaut XL Inpaint', value: 'juggernautxl_inpaint.safetensors [b1689257e6]'},
     { name: 'Juggernaut Lightning', value: 'juggernautxl_lightning.safetensors [c8df560d29]'},
     { name: 'Dreamshaper XL Lightning', value: 'dreamshaperxl_lightning.safetensors [fdbe56354b]'},
+]
+
+const model_selection_inpaint = [
+    { value: 'animaginexl_v31.safetensors [e3c47aedb0]', inpaint: 'animaginexl_v31_inpaint.safetensors [ddb3b8b7d6]'},
+    { value: 'juggernautxl_turbo.safetensors [c9e3e68f89]', inpaint: 'juggernautxl_inpaint.safetensors [b1689257e6]'},
 ]
 
 const model_selection_curated = [
@@ -1740,6 +1745,7 @@ module.exports = {
     model_selection,
     model_selection_xl,
     model_selection_curated,
+    model_selection_inpaint,
     controlnet_preprocessor_selection,
     controlnet_model_selection,
     upscaler_selection,

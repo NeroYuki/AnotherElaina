@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { model_change, cached_model } = require('../utils/model_change');
-const { check_model_filename, model_selection, model_selection_xl } = require('../utils/ai_server_config');
+const { check_model_filename, model_selection, model_selection_xl, model_selection_inpaint } = require('../utils/ai_server_config');
 
 
 // ["362dae27f8", "RefSlave v2"],
@@ -22,11 +22,17 @@ module.exports = {
                 .setDescription('The checkpoint to be used')
                 .addChoices(...model_selection, ...model_selection_xl)
                 .setRequired(true))
+        .addBooleanOption(option =>
+            option.setName('inpaint')
+                .setDescription('Use inpaint model instead of the main model')
+                .setRequired(false))
+
     ,
 
 	async execute(interaction) {
 
-        const checkpoint = interaction.options.getString('checkpoint')
+        let checkpoint = interaction.options.getString('checkpoint')
+        const inpaint = interaction.options.getBoolean('inpaint') || false
 
         if(!isReady) {
             await interaction.reply('There is a request not long ago, please let people use it first lol')
@@ -35,6 +41,17 @@ module.exports = {
 
         //make a temporary reply to not get timeout'd
         await interaction.deferReply();
+
+        if (inpaint) {
+            const inpaint_model = model_selection_inpaint.find(x => x.value === checkpoint)
+            if (!inpaint_model) {
+                await interaction.channel.send('Inpaint model not found, fallback to normal model')
+            }
+            else {
+                await interaction.channel.send(`Found inpaint model: **${check_model_filename(inpaint_model.inpaint)}**`)
+                checkpoint = inpaint_model.inpaint
+            }
+        }
 
         await interaction.editReply(`Force changing model to **${check_model_filename(checkpoint)}**... , please wait`)
 
