@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { byPassUser, censorGuildIds, optOutGuildIds } = require('../config.json');
 const crypt = require('crypto');
-const { server_pool, get_data_body, get_negative_prompt, initiate_server_heartbeat, get_worker_server, get_prompt, load_lora_from_prompt, model_name_hash_mapping, get_data_controlnet, get_data_controlnet_annotation, check_model_filename, model_selection, upscaler_selection, model_selection_xl, sampler_selection } = require('../utils/ai_server_config.js');
+const { server_pool, get_data_body, get_negative_prompt, initiate_server_heartbeat, get_worker_server, get_prompt, load_lora_from_prompt, model_name_hash_mapping, get_data_controlnet, get_data_controlnet_annotation, check_model_filename, model_selection, upscaler_selection, model_selection_xl, sampler_selection, model_selection_inpaint } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const { loadImage } = require('../utils/load_discord_img.js');
@@ -222,6 +222,25 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
 currently cached models: ${cached_model.map(x => check_model_filename(x)).join(', ')}`)
             }
         }
+
+        // if cached_model[0] is inpaint model, force change to the main model
+        if (cached_model[0].includes('_inpaint')) {
+            interaction.channel.send(`Active model is inpaint model, changing to main model`)
+            const main_model = model_selection_inpaint.find(x => x.inpaint === cached_model[0])?.value || cached_model[0]
+            const change_result = await model_change(main_model, true).catch(err => 
+                console.log(err)
+            )
+
+            if (!change_result) {
+                await interaction.channel.send(`Model is not cached or model change failed, fallback to to **${check_model_filename(cached_model[0])}**
+currently cached models: ${cached_model.map(x => check_model_filename(x)).join(', ')}`)
+            }
+            else {
+                await interaction.channel.send(`Active model changed to **${check_model_filename(main_model)}**
+currently cached models: ${cached_model.map(x => check_model_filename(x)).join(', ')}`)
+            }
+        }
+
 
         let server_index = get_worker_server(force_server_selection)
 

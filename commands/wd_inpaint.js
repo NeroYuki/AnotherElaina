@@ -657,7 +657,7 @@ module.exports = {
     
             prompt = get_prompt(prompt, remove_nsfw_restriction, cached_model[0])
     
-            extra_config = full_prompt_analyze(prompt, model_selection_xl.find(x => x.value === cached_model[0]) != null)
+            extra_config = full_prompt_analyze(prompt, model_selection_xl.find(x => x.value === cached_model[0]) != null || model_selection_inpaint.find(x => x.inpaint === cached_model[0]) != null)
             prompt = extra_config.prompt
             prompt = await fetch_user_defined_wildcard(prompt, interaction.user.id)
     

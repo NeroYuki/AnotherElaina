@@ -1546,7 +1546,7 @@ function load_lora_from_prompt(prompt, lora_default_strength = null) {
     // attempt to search for keyword in normalized temp_prompt (include word boundery)
     const lora_to_load = []
     const { cached_model } = require('./model_change');
-    const is_sdxl = model_selection_xl.find(m => m.value === cached_model[0]) != null
+    const is_sdxl = model_selection_xl.find(m => m.value === cached_model[0]) != null || model_selection_inpaint.find(m => m.inpaint === cached_model[0]) != null
 
     if (is_sdxl) {
         for (let i = 0; i < word_to_sdxl_lora_model.length; i++) {

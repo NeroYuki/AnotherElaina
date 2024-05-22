@@ -2,7 +2,7 @@
 // const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 // const { byPassUser } = require('../config.json');
 // const crypt = require('crypto');
-const { server_pool, get_data_controlnet, get_data_controlnet_annotation, model_selection_xl, controlnet_model_selection, controlnet_model_selection_xl } = require('../utils/ai_server_config.js');
+const { server_pool, get_data_controlnet, get_data_controlnet_annotation, model_selection_xl, controlnet_model_selection, controlnet_model_selection_xl, model_selection_inpaint } = require('../utils/ai_server_config.js');
 // const { default: axios } = require('axios');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const { cached_model } = require('./model_change.js');
@@ -54,7 +54,7 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
         const controlnet_threshold_a_3 = controlnet_config_obj.control_net[2].t_a
         const controlnet_threshold_b_3 = controlnet_config_obj.control_net[2].t_b
 
-        if (model_selection_xl.find(x => x.value === cached_model[0]) != null) {
+        if (model_selection_xl.find(x => x.value === cached_model[0]) != null || model_selection_inpaint.find(x => x.inpaint === cached_model[0]) != null) {
             interaction.channel.send("Detected active XL model, translating controlnet model to XL version")
             // search for the model name in the controlnet_model_selection
             // get the value with the same name from the controlnet_model_selection_xl
