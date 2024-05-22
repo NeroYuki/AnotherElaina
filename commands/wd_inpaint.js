@@ -11,7 +11,7 @@ const { load_controlnet } = require('../utils/controlnet_execute');
 const { cached_model, model_change } = require('../utils/model_change');
 const { fallback_to_resource_saving } = require('../utils/ollama_request.js');
 const { segmentAnything_execute, groundingDino_execute, expandMask, unloadAllModel } = require('../utils/segment_execute.js');
-const { get_coupler_config_from_prompt, get_color_grading_config_from_prompt } = require('../utils/prompt_analyzer.js');
+const { full_prompt_analyze, fetch_user_defined_wildcard, preview_coupler_setting } = require('../utils/prompt_analyzer.js');
 const { queryRecordLimit } = require('../database/database_interaction.js');
 
 function clamp(num, min, max) {
@@ -64,10 +64,10 @@ module.exports = {
                 ))
         .addIntegerOption(option => 
             option.setName('width')
-                .setDescription('The width of the generated image (default is 512, recommended max is 768)'))
+                .setDescription('The width of the generated image (default is image upload size, recommended max is 768)'))
         .addIntegerOption(option =>
             option.setName('height')
-                .setDescription('The height of the generated image (default is 512, recommended max is 768)'))
+                .setDescription('The height of the generated image (default is image upload size, recommended max is 768)'))
         .addStringOption(option => 
             option.setName('sampler')
                 .setDescription('The sampling method for the AI to generate art from (default is "Euler a")')
@@ -81,12 +81,22 @@ module.exports = {
         .addStringOption(option => 
             option.setName('seed')
                 .setDescription('Random seed for AI generate art from (default is "-1 - Random")'))
-        .addBooleanOption(option =>
-            option.setName('override_neg_prompt')
-                .setDescription('Override the default negative prompt (default is "false")'))
-        .addBooleanOption(option => 
-            option.setName('remove_nsfw_restriction')
-                .setDescription('Force the removal of nsfw negative prompt (default is "false")'))
+        .addStringOption(option =>
+            option.setName('default_neg_prompt')
+                .setDescription('Define the default negative prompt for the user (default is "Quality - No NSFW")')
+                .addChoices(
+                    { name: 'Quality - SFW', value: 'q_sfw' },
+                    { name: 'Quality - NSFW', value: 'q_nsfw' },
+                    { name: 'None - SFW', value: 'n_sfw' },
+                    { name: 'No Default', value: 'n_nsfw' },
+                ))
+        .addStringOption(option =>
+            option.setName('inpaint_area')
+                .setDescription('The area to inpaint (default is "Whole picture", only change if you know what you\'re doing)')
+                .addChoices(
+                    { name: 'Whole picture', value: 'Whole picture' },
+                    { name: 'Only masked', value: 'Only masked' },
+                ))
         .addBooleanOption(option => 
             option.setName('no_dynamic_lora_load')
                 .setDescription('Do not use the bot\'s dynamic LoRA loading (default is "false")'))
@@ -107,7 +117,7 @@ module.exports = {
                 .setDescription('Config string for the controlnet (use wd_controlnet to generate)'))
         .addIntegerOption(option =>
             option.setName('mask_increase_padding')
-                .setDescription('How much pixel is the mask being expanded, closer to 0 = closer to original (0 - 64, default 24)'))
+                .setDescription('How many px the mask will expand, 0 = no expand (0-64, default 24)"'))
         .addStringOption(option => 
             option.setName('checkpoint')
                 .setDescription('Force a cached checkpoint to be used (not all option is cached)')
@@ -159,8 +169,8 @@ module.exports = {
         const sampler = interaction.options.getString('sampler') || profile?.sampler || 'Euler a'
         const cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || profile?.cfg_scale || 7, 0, 30)
         const sampling_step = clamp(interaction.options.getInteger('sampling_step') || profile?.sampling_step || 20, 1, 100)
-        const override_neg_prompt = interaction.options.getBoolean('override_neg_prompt') || false
-        const remove_nsfw_restriction = interaction.options.getBoolean('remove_nsfw_restriction') || false
+        const default_neg_prompt = interaction.options.getString('default_neg_prompt') || 'n_sfw'
+        const inpaint_area = interaction.options.getString('inpaint_area') || 'Whole picture'
         const no_dynamic_lora_load = interaction.options.getBoolean('no_dynamic_lora_load') || false
         const default_lora_strength = clamp(interaction.options.getNumber('default_lora_strength') || 0.85, 0, 3)
         const force_server_selection = 0
@@ -629,30 +639,45 @@ module.exports = {
     
             // return 
     
-            let coupler_config = null
-            let color_grading_config = null
+            const default_neg_prompt_comp = default_neg_prompt.split('_')
+            const override_neg_prompt = default_neg_prompt_comp[0] === 'n'
+            const remove_nsfw_restriction = default_neg_prompt_comp[1] === 'nsfw'
+            let extra_config = null
     
-            neg_prompt = get_negative_prompt(neg_prompt, override_neg_prompt, remove_nsfw_restriction)
+            neg_prompt = get_negative_prompt(neg_prompt, override_neg_prompt, remove_nsfw_restriction, cached_model[0])
     
-            prompt = get_prompt(prompt, remove_nsfw_restriction)
+            prompt = get_prompt(prompt, remove_nsfw_restriction, cached_model[0])
     
-            const coupler_config_res = get_coupler_config_from_prompt(prompt)
-            prompt = coupler_config_res.prompt
-            coupler_config = coupler_config_res.coupler_config
+            extra_config = full_prompt_analyze(prompt, model_selection_xl.find(x => x.value === cached_model[0]) != null)
+            prompt = extra_config.prompt
+            prompt = await fetch_user_defined_wildcard(prompt, interaction.user.id)
     
-            const color_grading_config_res = get_color_grading_config_from_prompt(prompt, model_selection_xl.find(x => x.value === cached_model[0]) != null)
-            prompt = color_grading_config_res.prompt
-            color_grading_config = color_grading_config_res.color_grading_config
+            if (extra_config.coupler_config && (height % 64 !== 0 || width % 64 !== 0)) {
+                interaction.channel.send('Coupler detected, changing resolution to multiple of 64')
+                height = Math.ceil(height / 64) * 64
+                width = Math.ceil(width / 64) * 64
+            }
     
-            const is_censor = ((interaction.guildId && censorGuildIds.includes(interaction.guildId)) || (interaction.channel && !interaction.channel.nsfw)) ? true : false
+            if (extra_config.coupler_config && extra_config.coupler_config.mode === 'Advanced') {
+                preview_coupler_setting(interaction, width, height, extra_config, server_pool[server_index].fn_index_coupler_region_preview[1], session_hash)
+            }
+    
+            const is_censor = ((interaction.guildId && censorGuildIds.includes(interaction.guildId)) || (interaction.channel && !interaction.channel.nsfw && !optOutGuildIds.includes(interaction.guildId))) ? true : false
             
             if (!no_dynamic_lora_load) {
                 prompt = load_lora_from_prompt(prompt, default_lora_strength)
             }
+
+            let mask_padding = 32
+            if (mask_increase_padding && !segment_anything_prompt && inpaint_area === 'Only masked') {
+                interaction.channel.send("Expand mask padding setting will be applied to uploaded mask")
+                mask_padding = mask_increase_padding
+            }
         
             const create_data = get_data_body_img2img(server_index, prompt, neg_prompt, sampling_step, cfg_scale,
                 seed, sampler, session_hash, height, width, attachment, mask_data_uri, denoising_strength, 4, mask_blur, mask_content, "None", false, 
-                coupler_config, color_grading_config, 1, is_censor)
+                extra_config.coupler_config, extra_config.color_grading_config, 1, is_censor, extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config,
+                inpaint_area, mask_padding)
     
             // make option_init but for axios
             const option_init_axios = {
