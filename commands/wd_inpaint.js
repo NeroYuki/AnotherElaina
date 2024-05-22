@@ -241,33 +241,62 @@ module.exports = {
                 return
             })
 
-            const row = new MessageActionRow()
+            const rows = new Array(Math.ceil(Math.min(boundingBox.bb_num, 20) / 5)).fill(new MessageActionRow())
                 
-            for (let i = 0; i < boundingBox.bb_num; i++) {
-                row.addComponents(
+            for (let i = 0; i < Math.min(boundingBox.bb_num, 20); i++) {
+                rows[Math.floor(i / 5)].addComponents(
                     new MessageButton()
                         .setCustomId(`bbSelect_${i}_${interaction.id}`)
-                        .setLabel(`Select ${i}`)
-                        .setStyle('PRIMARY'))
+                        .setLabel(`${i}`)
+                        .setStyle('SECONDARY'))
             }  
+
+            // for the last action row, add a button to submit the selected bounding box
+            rows.push(new MessageActionRow().addComponents(
+                new MessageButton()
+                    .setCustomId(`bbSubmit_${interaction.id}`)
+                    .setLabel(`Submit`)
+                    .setStyle('SUCCESS')))
+
 
             const bb_img_dataURI = boundingBox.bb
             const bb_img = Buffer.from(bb_img_dataURI.split(",")[1], 'base64')
             const bb_img_name = `preview_annotation.png`
-            await interaction.channel.send({files: [{attachment: bb_img, name: bb_img_name}], components: [row]})
+            await interaction.channel.send({files: [{attachment: bb_img, name: bb_img_name}]})
+            let bb_select_msg = await interaction.channel.send({content: "Please select your desired bounding box before submit", components: rows})
 
             const bb_filter = i => i.user.id === user.id;
 
             const bb_collector = interaction.channel.createMessageComponentCollector({ bb_filter, time: 800000 });
 
+            const bb_indices = []
+
             bb_collector.on('collect', async i => {
                 if (i.customId.startsWith('bbSelect') && i.customId.endsWith(interaction.id)) {
-                    // get the bounding box index
                     const bb_index = i.customId.split('_')[1]
                     i.deferUpdate();
+                    // add to bb_indices, change the button to primary and text to deselect, edit bb_select_msg with the altered button
+                    if (bb_indices.includes(bb_index)) {
+                        bb_indices.splice(bb_indices.indexOf(bb_index), 1)
+                        rows[Math.floor(bb_index / 5)].components[bb_index % 5].setStyle('SECONDARY')
+                    }
+                    else {
+                        bb_indices.push(bb_index)
+                        rows[Math.floor(bb_index / 5)].components[bb_index % 5].setStyle('PRIMARY')
+                    }
+                    bb_select_msg.edit({content: "Please select your desired bounding box, press the same button again to deselect", components: rows})
+                } 
+                else if (i.customId.startsWith('bbSubmit_') && i.customId.endsWith(interaction.id)) {
+                    // get the bounding box index
+                    i.deferUpdate();
+                    if (bb_indices.length === 0) {
+                        interaction.editReply({ content: "No bounding box selected, please select at least one before submit", ephemeral: true });
+                        return
+                    }
+
                     bb_collector.stop()
                     // continue the process
-                    let segment_output = await segmentAnything_execute(segment_anything_prompt, bb_index, attachment, session_hash).catch(err => {
+                    let segment_output = await segmentAnything_execute(segment_anything_prompt, bb_indices, attachment, session_hash).catch(err => {
                         console.log(err)
                         interaction.editReply({ content: "Failed to segment image", ephemeral: true });
                         return
@@ -275,8 +304,14 @@ module.exports = {
 
                     let img_buffers = [null, null, null]
                     const file_dirs = segment_output.map(x => x.name)
-                    for (let i = 0; i < 3; i++) {
-                    // all server is remote
+
+                    const is_multiple_box = bb_indices.length > 1
+                    if (is_multiple_box) {
+                        interaction.channel.send("⚠️ Due to issues with showing transparent layers when there are multiple bounding box selected, we will instead show the cut out image of the segmentation result")
+                    }
+
+                    for (let i = (is_multiple_box ? 6 : 0); i < (is_multiple_box ? 9 : 3); i++) {
+                        // all server is remote
                         const img_res = await fetch(`${WORKER_ENDPOINT}/file=${file_dirs[i]}`).catch(err => {
                             throw 'Error while fetching image on remote server'
                         })
@@ -288,6 +323,7 @@ module.exports = {
 
                     img_buffers = img_buffers.filter(x => x != null)
                     const seg_row = new MessageActionRow()
+
                     for (let i = 0; i < 3; i++) {
                         seg_row.addComponents(
                             new MessageButton()
@@ -331,7 +367,7 @@ module.exports = {
 
                             interaction.channel.send({files: [{attachment: final_mask_buffer, name: `final_mask.png`}]})
                             mask_data_uri = "data:image/png;base64," + final_mask_buffer.toString('base64')
-                            console.log(mask_data_uri)
+                            //console.log(mask_data_uri)
 
                             await unloadAllModel(session_hash)
                             execute_inpaint()
@@ -480,11 +516,11 @@ module.exports = {
                 control_net: [
                     {
                         model: "controlnetxlCNXL_destitechInpaintv2 [e799aa20]",
-                        preprocessor: "canny",
+                        preprocessor: "threshold",
                         weight: 1,
                         mode: "My prompt is more important",
                         resolution: 512,
-                        t_a: 100,
+                        t_a: 32,
                         t_b: 200
                     },
                     {

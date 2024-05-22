@@ -48,7 +48,7 @@ function groundingDino_execute(prompt, image, session_hash) {
     })
 }
 
-function segmentAnything_execute(prompt, boundingBox, image, session_hash) {
+function segmentAnything_execute(prompt, boundingBoxes, image, session_hash) {
     // should return array of masks
     const req_data = [
         "sam_vit_h_4b8939.pth",
@@ -60,9 +60,7 @@ function segmentAnything_execute(prompt, boundingBox, image, session_hash) {
         prompt, // dino prompt
         0.3, // threshold
         true, // preview?
-        [
-            boundingBox // selected bounding box
-        ],
+        boundingBoxes, // selected bounding box
         []
     ]
 
