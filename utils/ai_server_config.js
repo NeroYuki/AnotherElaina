@@ -1450,6 +1450,7 @@ const controlnet_preprocessor_selection = [
     { name: 'Threshold', value: 'threshold' },
     { name: 'Shuffle', value: 'shuffle' },
     { name: 'Blur (Gaussian)', value: 'blur_gaussian' },
+    { name: 'Fill', value: 'fill'},
 ]
 
 const controlnet_model_selection = [
