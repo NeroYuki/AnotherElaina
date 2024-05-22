@@ -251,7 +251,11 @@ module.exports = {
                 return
             })
 
-            const rows = new Array(Math.ceil(Math.min(boundingBox.bb_num, 20) / 5)).fill(new MessageActionRow())
+            const rows = new Array(Math.ceil(Math.min(boundingBox.bb_num, 20) / 5))
+
+            for (let i = 0; i < rows.length; i++) {
+                rows[i] = new MessageActionRow()
+            }
                 
             for (let i = 0; i < Math.min(boundingBox.bb_num, 20); i++) {
                 rows[Math.floor(i / 5)].addComponents(
