@@ -242,11 +242,16 @@ module.exports = {
             is_swinb = segment_anything_prompt.includes('(swinb)')
             dino_threshold = segment_anything_prompt.match(/\(t=[0-9.]+\)/)
             
-            if (is_swinb || dino_threshold) {
+            if (is_swinb) {
                 segment_anything_prompt = segment_anything_prompt.replace('(swinb)', '')
-                segment_anything_prompt = segment_anything_prompt.replace(dino_threshold[0], '')
-                segment_anything_prompt = segment_anything_prompt.trim()
             }
+            if (dino_threshold) {
+                dino_threshold = parseFloat(dino_threshold[0].replace('(t=', '').replace(')', ''))
+                segment_anything_prompt = segment_anything_prompt.replace(/\(t=[0-9.]+\)/, '')
+            }
+
+            segment_anything_prompt = segment_anything_prompt.trim()
+            console.log('is_swinb:', is_swinb, 'threshold:', dino_threshold)
         }
 
 
