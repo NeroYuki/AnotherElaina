@@ -175,7 +175,7 @@ module.exports = {
         const default_lora_strength = clamp(interaction.options.getNumber('default_lora_strength') || 0.85, 0, 3)
         const force_server_selection = 0
         const mask_increase_padding = clamp(interaction.options.getInteger('mask_increase_padding') || 24, 0, 64)
-        const segment_anything_prompt = interaction.options.getString('segment_anything_prompt') || null
+        let segment_anything_prompt = interaction.options.getString('segment_anything_prompt') || null
         const controlnet_input_option_2 = interaction.options.getAttachment('controlnet_input_2') || null
         const controlnet_input_option_3 = interaction.options.getAttachment('controlnet_input_3') || null
         const controlnet_config = interaction.options.getString('controlnet_config') || client.controlnet_config.has(interaction.user.id) ? client.controlnet_config.get(interaction.user.id) : null
@@ -234,6 +234,22 @@ module.exports = {
         const WORKER_ENDPOINT = server_pool[0].url
         let mask_data_uri = ""
 
+        let is_swinb = false
+        let dino_threshold = null
+
+        if (segment_anything_prompt) {
+            // check for embedded groundingDINO config in segment_anything_prompt (if prompt include "(swinb)" and (t=<value>))
+            is_swinb = segment_anything_prompt.includes('(swinb)')
+            dino_threshold = segment_anything_prompt.match(/\(t=[0-9.]+\)/)
+            
+            if (is_swinb || dino_threshold) {
+                segment_anything_prompt = segment_anything_prompt.replace('(swinb)', '')
+                segment_anything_prompt = segment_anything_prompt.replace(dino_threshold[0], '')
+                segment_anything_prompt = segment_anything_prompt.trim()
+            }
+        }
+
+
         //download the image from attachment.proxyURL
         let attachment = await loadImage(attachment_option.proxyURL).catch((err) => {
             console.log(err)
@@ -245,7 +261,7 @@ module.exports = {
         if (segment_anything_prompt) {
             // let the madness begin
             interaction.editReply({ content: "Starting auto segmentation process" });
-            let boundingBox = await groundingDino_execute(segment_anything_prompt, attachment, session_hash).catch(err => {
+            let boundingBox = await groundingDino_execute(segment_anything_prompt, attachment, session_hash, is_swinb, threshold).catch(err => {
                 console.log(err)
                 interaction.editReply({ content: "Failed to get bounding box", ephemeral: true });
                 return
@@ -310,7 +326,7 @@ module.exports = {
 
                     bb_collector.stop()
                     // continue the process
-                    let segment_output = await segmentAnything_execute(segment_anything_prompt, bb_indices, attachment, session_hash).catch(err => {
+                    let segment_output = await segmentAnything_execute(segment_anything_prompt, bb_indices, attachment, session_hash, is_swinb, threshold).catch(err => {
                         console.log(err)
                         interaction.editReply({ content: "Failed to segment image", ephemeral: true });
                         return

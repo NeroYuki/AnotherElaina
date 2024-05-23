@@ -2,13 +2,13 @@
 
 const { server_pool } = require("./ai_server_config")
 
-function groundingDino_execute(prompt, image, session_hash) {
+function groundingDino_execute(prompt, image, session_hash, useSwinB = false, threshold = 0.3) {
     // should return array of bouding boxes coordinates
     const req_data = [
         image,
-		"GroundingDINO_SwinT_OGC (694MB)",
+		useSwinB ? "GroundingDINO_SwinB (938MB)" : "GroundingDINO_SwinT_OGC (694MB)",
 		prompt,
-		0.3,            ///threshold
+		threshold || 0.3            ///threshold
     ]
 
     return new Promise(async (resolve, reject) => {
@@ -48,7 +48,7 @@ function groundingDino_execute(prompt, image, session_hash) {
     })
 }
 
-function segmentAnything_execute(prompt, boundingBoxes, image, session_hash) {
+function segmentAnything_execute(prompt, boundingBoxes, image, session_hash, useSwinB = false, threshold = 0.3) {
     // should return array of masks
     const req_data = [
         "sam_vit_h_4b8939.pth",
@@ -56,9 +56,9 @@ function segmentAnything_execute(prompt, boundingBoxes, image, session_hash) {
         [], // segment marker
         [],
         true,   //enable grounding dino
-        "GroundingDINO_SwinT_OGC (694MB)", // dino model
+        useSwinB ? "GroundingDINO_SwinB (938MB)" : "GroundingDINO_SwinT_OGC (694MB)", // grounding dino model
         prompt, // dino prompt
-        0.3, // threshold
+        threshold || 0.3, // threshold
         true, // preview?
         boundingBoxes, // selected bounding box
         []
