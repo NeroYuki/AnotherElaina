@@ -266,7 +266,7 @@ module.exports = {
         if (segment_anything_prompt) {
             // let the madness begin
             interaction.editReply({ content: "Starting auto segmentation process" });
-            let boundingBox = await groundingDino_execute(segment_anything_prompt, attachment, session_hash, is_swinb, threshold).catch(err => {
+            let boundingBox = await groundingDino_execute(segment_anything_prompt, attachment, session_hash, is_swinb, dino_threshold).catch(err => {
                 console.log(err)
                 interaction.editReply({ content: "Failed to get bounding box", ephemeral: true });
                 return
@@ -331,7 +331,7 @@ module.exports = {
 
                     bb_collector.stop()
                     // continue the process
-                    let segment_output = await segmentAnything_execute(segment_anything_prompt, bb_indices, attachment, session_hash, is_swinb, threshold).catch(err => {
+                    let segment_output = await segmentAnything_execute(segment_anything_prompt, bb_indices, attachment, session_hash, is_swinb, dino_threshold).catch(err => {
                         console.log(err)
                         interaction.editReply({ content: "Failed to segment image", ephemeral: true });
                         return
