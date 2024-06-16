@@ -6,29 +6,29 @@ const server_pool = [
     {
         index: 0,
         url: 'http://192.168.196.142:7860',
-        fn_index_create: 540,
+        fn_index_create: 549,
         fn_index_abort: 62,
-        fn_index_img2img: 1180,
-        fn_index_controlnet: [272, 842],        //[txt2img, img2img, 792]
-        fn_index_controlnet_annotation: [1082, 1106],   // 1056
-        fn_index_controlnet_2: [353, 926], 
-        fn_index_controlnet_annotation_2: [1090, 1114],
-        fn_index_controlnet_3: [438, 1009],
-        fn_index_controlnet_annotation_3: [1098, 1112],
-        fn_index_interrogate: 1184,
-        fn_index_upscale: 1263,
-        fn_index_change_model: 1365,
-        fn_index_coupler_region_preview: [187, 757],
-        fn_index_change_adetailer_model1: [97, 667],
+        fn_index_img2img: 1198,
+        fn_index_controlnet: [281, 860],        //[txt2img, img2img, 792]
+        fn_index_controlnet_annotation: [1100, 1124],   // 1056
+        fn_index_controlnet_2: [362, 944], 
+        fn_index_controlnet_annotation_2: [1108, 1132],
+        fn_index_controlnet_3: [447, 1027],
+        fn_index_controlnet_annotation_3: [1116, 1140],
+        fn_index_interrogate: 1202,
+        fn_index_upscale: 1281,
+        fn_index_change_model: 1383,
+        fn_index_coupler_region_preview: [187, 766],
+        fn_index_change_adetailer_model1: [97, 676],
         // fn_index_change_adetailer_prompt1: [99, 644],       //+2
         // fn_index_change_adetailer_neg_prompt1: [100, 645],  //+3
         // fn_index_change_adetailer_model2: [146, 691],       //+49
         // fn_index_change_adetailer_prompt2: [148, 693],      //+51
         // fn_index_change_adetailer_neg_prompt2: [149, 694],  //+52
-        fn_index_execute_segment_anything: 813,
-        fn_index_execute_grounding_dino_preview: 810,
-        fn_index_execute_expand_mask: 814,
-        fn_index_unload_segmentation_model: 830,
+        fn_index_execute_segment_anything: 822,
+        fn_index_execute_grounding_dino_preview: 819,
+        fn_index_execute_expand_mask: 823,
+        fn_index_unload_segmentation_model: 839,
         is_online: true,
     },
     {
@@ -94,7 +94,8 @@ const get_data_controlnet_annotation = (preprocessor = "None", input, mask = nul
 const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed, sampler, session_hash,
     height, width, attachment, attachment2, denoising_strength, mode = 0, mask_blur = 4, mask_content = "original", upscaler = "None", 
     is_using_adetailer = false, coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, 
-    freeu_config = null, dynamic_threshold_config = null, pag_config = null, inpaint_area = "Whole picture", mask_padding = 32) => {
+    freeu_config = null, dynamic_threshold_config = null, pag_config = null, inpaint_area = "Whole picture", mask_padding = 32,
+    use_foocus = false, use_booru_gen = false, booru_gen_config = null) => {
     // default mode 0 is img2img, 4 is inpainting
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 3000000 && upscaler == "None") ? true : false
@@ -272,6 +273,20 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
         "0",
         null,
         null,
+        use_foocus,       // enable foocus
+		0,          // foocus seed
+		use_booru_gen,      // enable booru tag generator
+		"After applying other prompt processings",   // booru tag generator processing position
+		-1,                                          // booru tag generator seed
+		booru_gen_config?.gen_length || "long",                            // booru tag generator length           
+		booru_gen_config?.ban_tags || '.*background.*, .*alternate.*, character doll, multiple.*, .*cosplay.*, .*censor.*',     // booru tag generator blacklist
+		booru_gen_config?.format || '<|special|>, <|characters|>, <|copyrights|>, <|artist|>, <|general|>, <|quality|>, <|meta|>, <|rating|>', // booru tag generator format
+		booru_gen_config?.temperature || 1.2 ,                         // booru tag generator temperature
+		booru_gen_config?.top_p || 0.9,                      // booru tag generator top p
+		booru_gen_config?.top_k || 100,                            // booru tag generator top k
+		"KBlueLeaf/DanTagGen-delta-rev2 | ggml-model-Q8_0.gguf", // booru tag generator model
+		true,                           // use cpu for boo tag generator
+		false,                          // no formating
         null,
         null,
         null,
@@ -435,7 +450,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
 const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed, sampler, session_hash,
     height, width, upscale_multiplier, upscaler, upscale_denoise_strength, upscale_step, face_restore = false, is_using_adetailer = false, 
     coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, 
-    freeu_config = null, dynamic_threshold_config = null, pag_config = null) => {
+    freeu_config = null, dynamic_threshold_config = null, pag_config = null, use_foocus = false, use_booru_gen = false, booru_gen_config = null) => {
 
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 1600000) ? true : false
@@ -592,6 +607,20 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
         "0",
         null,
         null,
+        use_foocus,       // enable foocus
+		0,          // foocus seed
+		use_booru_gen,      // enable booru tag generator
+		"After applying other prompt processings",   // booru tag generator processing position
+		-1,                                          // booru tag generator seed
+		booru_gen_config?.gen_length || "long",                            // booru tag generator length           
+		booru_gen_config?.ban_tags || '.*background.*, .*alternate.*, character doll, multiple.*, .*cosplay.*, .*censor.*',     // booru tag generator blacklist
+		booru_gen_config?.format || '<|special|>, <|characters|>, <|copyrights|>, <|artist|>, <|general|>, <|quality|>, <|meta|>, <|rating|>', // booru tag generator format
+		booru_gen_config?.temperature || 1.2 ,                         // booru tag generator temperature
+		booru_gen_config?.top_p || 0.9,                      // booru tag generator top p
+		booru_gen_config?.top_k || 100,                            // booru tag generator top k
+		"KBlueLeaf/DanTagGen-delta-rev2 | ggml-model-Q8_0.gguf", // booru tag generator model
+		true,                           // use cpu for boo tag generator
+		false,                          // no formating
         null,
         null,
         null,

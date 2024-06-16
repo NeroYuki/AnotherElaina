@@ -305,11 +305,15 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         if (!no_dynamic_lora_load) {
             prompt = load_lora_from_prompt(prompt, default_lora_strength)
         }
+
+        if (extra_config.use_booru_gen) {
+            interaction.channel.send('Enhancing image with BooruGen prompt expansion engine.')
+        }
     
         const create_data = get_data_body(server_index, prompt, neg_prompt, sampling_step, cfg_scale, 
             seed, sampler, session_hash, height, width, upscale_multiplier, upscaler, 
             upscale_denoise_strength, upscale_step, false, false, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
-            extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config)
+            extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, override_neg_prompt ? false : true, extra_config.use_booru_gen, null)
 
         // make option_init but for axios
         const option_init_axios = {

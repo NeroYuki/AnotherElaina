@@ -289,20 +289,43 @@ function get_pag_config_from_prompt(prompt) {
     }
 }
 
+function get_prompt_enhancer_call(prompt) {
+    // if prompt contain [BOORU] return booru_gen = true in result object
+    // if prompt contain [FOOCUS] return foocus = true in result object
+
+    const booru_pattern = /\[BOORU\]/i
+    const foocus_pattern = /\[FOOCUS\]/i
+
+    const booru_match = prompt.match(booru_pattern)
+    const foocus_match = prompt.match(foocus_pattern)
+
+    // remove the [BOORU] and [FOOCUS] from the prompt
+    prompt = prompt.replace(booru_pattern, '').replace(foocus_pattern, '')
+
+    return {
+        prompt: prompt,
+        booru_gen: booru_match ? true : false,
+        foocus: foocus_match ? true : false
+    }
+}
+
 function full_prompt_analyze(prompt, is_xl) {
     let coupler_config = get_coupler_config_from_prompt(prompt)
     let color_grading_config = get_color_grading_config_from_prompt(coupler_config.prompt, is_xl)
     let freeu_config = get_freeu_config_from_prompt(color_grading_config.prompt)
     let dynamic_threshold_config = get_dynamic_threshold_config_from_prompt(freeu_config.prompt)
     let pag_config = get_pag_config_from_prompt(dynamic_threshold_config.prompt)
+    let prompt_enhancer = get_prompt_enhancer_call(pag_config.prompt)
 
     return {
-        prompt: pag_config.prompt,
+        prompt: prompt_enhancer.prompt,
         coupler_config: coupler_config.coupler_config,
         color_grading_config: color_grading_config.color_grading_config,
         freeu_config: freeu_config.freeu_config,
         dynamic_threshold_config: dynamic_threshold_config.dynamic_threshold_config,
-        pag_config: pag_config.pag_config
+        pag_config: pag_config.pag_config,
+        use_foocus: prompt_enhancer.foocus,
+        use_booru_gen: prompt_enhancer.booru_gen
     }
 }
 
@@ -312,6 +335,7 @@ module.exports = {
     get_freeu_config_from_prompt,
     get_dynamic_threshold_config_from_prompt,
     get_pag_config_from_prompt,
+    get_prompt_enhancer_call,
     full_prompt_analyze,
     preview_coupler_setting,
     fetch_user_defined_wildcard
