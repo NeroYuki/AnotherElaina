@@ -274,7 +274,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
         null,
         null,
         use_foocus,       // enable foocus
-		0,          // foocus seed
+		Math.floor(Math.random() * 2147483647),    // foocus seed
 		use_booru_gen,      // enable booru tag generator
 		"After applying other prompt processings",   // booru tag generator processing position
 		-1,                                          // booru tag generator seed
@@ -608,7 +608,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
         null,
         null,
         use_foocus,       // enable foocus
-		0,          // foocus seed
+		Math.floor(Math.random() * 2147483647),    // foocus seed
 		use_booru_gen,      // enable booru tag generator
 		"After applying other prompt processings",   // booru tag generator processing position
 		-1,                                          // booru tag generator seed
