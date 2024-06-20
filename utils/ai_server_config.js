@@ -1480,6 +1480,7 @@ const controlnet_preprocessor_selection = [
     { name: 'Shuffle', value: 'shuffle' },
     { name: 'Blur (Gaussian)', value: 'blur_gaussian' },
     { name: 'Fill', value: 'fill'},
+    { name: 'CLIP Vision (IPAdapter)', value:'CLIP-ViT-bigG (IPAdapter)'}
 ]
 
 const controlnet_model_selection = [
@@ -1513,7 +1514,7 @@ const controlnet_model_selection_xl = [
     { name: 'ControlNet - SoftEdge', value: 'bdsqlsz_controlllite_xl_softedge [c28ff1c4]'},
     { name: 'ControlNet - Lineart Anime', value: 't2i-adapter_diffusers_xl_lineart [bae0efef]'},
     // { name: 'ControlNet - Tile', value: 'control_v11f1e_sd15_tile [04595688]'}
-    // { name: 'IPAdapter', value: 'ip-adapter_sd15_plus [32cd8f7f]'},
+    { name: 'IPAdapter', value: 'ip-adapter_xl [4209e9f7]'},
     { name: 'InstantID - Keypoint', value: 'control_instant_id_sdxl [c5c25a50]'},
     { name: 'InstantID - IPAdapter', value: 'ip-adapter_instant_id_sdxl [eb2d3ec0]'}
 ]
