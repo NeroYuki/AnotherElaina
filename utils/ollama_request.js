@@ -137,6 +137,10 @@ function fallback_to_resource_saving() {
 
         // setup the timeout to load back the 6bit model
         setTimeout(async () => {
+            if (globalThis.operating_mode === "disabled" || globalThis.operating_mode === "4bit") {
+                return
+            }
+
             await unload_model('test_poppy')
             globalThis.operating_mode = previous_mode
         }, 1000 * 60 * 10)
