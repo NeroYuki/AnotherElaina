@@ -1493,12 +1493,13 @@ const controlnet_model_selection = [
     { name: 'T2I-Adapter - Sketch', value: 't2iadapter_sketch_sd14v1 [e5d4b846]' },
     { name: 'T2I-Adapter - Style', value: 't2iadapter_style_sd14v1 [202e85cc]' },
     { name: 'ControlNet - OpenPose', value: 'control_v11p_sd15_openpose [cab727d4]'},
+    { name: 'ControlNet - OpenPose (Accuracy)', value: '<sdxl-only openpose accuracy model>'},
     { name: 'ControlNet - SoftEdge', value: 'control_v11p_sd15_softedge [a8575a2a]'},
     { name: 'ControlNet - Lineart Anime', value: 'control_v11p_sd15s2_lineart_anime [3825e83e]'},
     { name: 'ControlNet - Tile', value: 'control_v11f1e_sd15_tile [04595688]'},
     { name: 'IPAdapter', value: 'ip-adapter_sd15_plus [32cd8f7f]'},
-    { name: 'InstantID - Keypoint', value: 'control_instant_id_sdxl [c5c25a50]'},
-    { name: 'InstantID - IPAdapter', value: 'ip-adapter_instant_id_sdxl [eb2d3ec0]'}
+    { name: 'InstantID - Keypoint', value: '<sdxl-only instant id keypoint model>'},
+    { name: 'InstantID - IPAdapter', value: '<sdxl-only instant id ipadapter model>'}
 ]
 
 const controlnet_model_selection_xl = [
@@ -1511,6 +1512,7 @@ const controlnet_model_selection_xl = [
     { name: 'T2I-Adapter - Sketch', value: 't2i-adapter_diffusers_xl_sketch [72b96ab1]' },
     // { name: 'T2I-Adapter - Style', value: 't2iadapter_style_sd14v1 [202e85cc]' },
     { name: 'ControlNet - OpenPose', value: 'controlnetxlCNXL_xinsirOpenpose [d0333a45]'},
+    { name: 'ControlNet - OpenPose (Accuracy)', value: 'controlnetxlCNXL_xinsirOpenposeTwins [590eff90]'},
     { name: 'ControlNet - SoftEdge', value: 'bdsqlsz_controlllite_xl_softedge [c28ff1c4]'},
     { name: 'ControlNet - Lineart Anime', value: 't2i-adapter_diffusers_xl_lineart [bae0efef]'},
     // { name: 'ControlNet - Tile', value: 'control_v11f1e_sd15_tile [04595688]'}
