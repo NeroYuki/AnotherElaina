@@ -1469,7 +1469,7 @@ const controlnet_preprocessor_selection = [
     { name: 'OpenPose', value: 'openpose' },
     { name: 'OpenPose (Face)', value: 'openpose_face' },
     { name: 'OpenPose (Hand)', value: 'openpose_hand' },
-    { name: 'OpenPose (Full)', value: 'openpose_full' },
+    { name: 'OpenPose (Full)', value: 'dw_openpose_full' },
     { name: 'Segmentation', value: 'seg_ufade20k' },
     { name: 'Tile Resample', value: 'tile_resample' },
     { name: 'IPAdapter', value: 'CLIP-ViT-bigG (IPAdapter)' },
@@ -1510,7 +1510,7 @@ const controlnet_model_selection_xl = [
     // { name: 'T2I-Adapter - Seg', value: 't2iadapter_seg_sd14v1 [6387afb5]' },
     { name: 'T2I-Adapter - Sketch', value: 't2i-adapter_diffusers_xl_sketch [72b96ab1]' },
     // { name: 'T2I-Adapter - Style', value: 't2iadapter_style_sd14v1 [202e85cc]' },
-    { name: 'ControlNet - OpenPose', value: 'kohya_controllllite_xl_openpose_anime_v2 [b0fa10bb]'},
+    { name: 'ControlNet - OpenPose', value: 'controlnetxlCNXL_xinsirOpenpose [d0333a45]'},
     { name: 'ControlNet - SoftEdge', value: 'bdsqlsz_controlllite_xl_softedge [c28ff1c4]'},
     { name: 'ControlNet - Lineart Anime', value: 't2i-adapter_diffusers_xl_lineart [bae0efef]'},
     // { name: 'ControlNet - Tile', value: 'control_v11f1e_sd15_tile [04595688]'}
