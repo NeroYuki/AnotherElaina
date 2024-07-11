@@ -1414,6 +1414,7 @@ const model_name_hash_mapping = new Map([
     ['73ed24bde3', "ArtiWaifu v1"],
     ['b1689257e6', "Juggernaut XL Inpaint"],
     ['ddb3b8b7d6', "AnimagineXL v3.1 Inpaint"],
+    ['eae6ac778c', "ChimeraXL v2"],
 ])
 // limit at 25 (probably less due to character limitation)
 const model_selection = [
@@ -1423,7 +1424,6 @@ const model_selection = [
     { name: 'RefSlave v2', value: 'refslave.safetensors [362dae27f8]' },
     { name: 'Anything v5', value: 'anythingv5.safetensors [7f96a1a9ca]' },
     { name: 'CetusMix (Coda v2)', value: 'cetusmix_coda2.safetensors [68c0a27380]' },
-    { name: 'Momokos v1', value: 'momokos_v10.safetensors [d77922554c]' },
     { name: 'MeinaPastel v6', value: 'meinapastel.safetensors [6292dd40d6]' },
     { name: 'CuteYukiMix', value: 'cuteyukimix.safetensors [6ee4f31532]' },
     { name: '9527 v1', value: '9527v1.ckpt [40a9f4ec37]' },
@@ -1437,6 +1437,7 @@ const model_selection_xl = [
     { name: 'NekorayXL v0.6', value: 'nekorayxl.safetensors [c53dabc181]' },
     { name: 'AnimagineXL v3', value: 'animaginexl_v3.safetensors [1449e5b0b9]' },
     { name: 'AnimagineXL v3.1', value: 'animaginexl_v31.safetensors [e3c47aedb0]'},
+    { name: 'ChimeraXL v2', value: 'chimera2_xl.safetensors [eae6ac778c]'},
     { name: 'KohakuXL Epsilon', value: 'kohakuxl_epsilon.safetensors [516047db97]'},
     { name: 'AAMXL Turbo', value: 'aamxl_turbo.safetensors [8238e80fdd]'},
     { name: 'Juggernaut XL', value: 'juggernautxl_turbo.safetensors [c9e3e68f89]'},
