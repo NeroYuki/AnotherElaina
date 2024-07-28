@@ -34,7 +34,7 @@ module.exports = {
         if (mode == "disabled" || mode == "4bit" || mode == "6bit" || mode == "uncensored" || mode == "vision") {
 
             if (globalThis.operating_mode === "4bit") {
-                unload_model("test_poppy");
+                unload_model("test");
             }
             if (globalThis.operating_mode === "6bit") {
                 unload_model("test_poppy_gpu");

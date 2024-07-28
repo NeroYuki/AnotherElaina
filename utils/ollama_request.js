@@ -124,7 +124,7 @@ function fallback_to_resource_saving() {
         // if (globalThis.operating_mode === "vision") {
         //     await unload_model('test_vision')
         // }
-        if (globalThis.operating_mode === "disabled") {
+        if (globalThis.operating_mode === "disabled" || globalThis.operating_mode === "4bit") {
             return 
         }
 
@@ -141,7 +141,7 @@ function fallback_to_resource_saving() {
                 return
             }
 
-            await unload_model('test_poppy')
+            await unload_model('test')
             globalThis.operating_mode = previous_mode
         }, 1000 * 60 * 10)
     })
