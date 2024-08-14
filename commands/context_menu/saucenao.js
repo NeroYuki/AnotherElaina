@@ -36,19 +36,17 @@ module.exports = {
         let tags = {}
         try {
             tags = ExifReader.load(attachment);
+            // check if image have 
+            const isComfy = tags["workflow"]?.description != null 
+            const isA1111 = tags["parameters"]?.description != nulls
+
+            if (isComfy || isA1111) {
+                interaction.editReply({ content: "This image is AI generated, abort sauce finding", ephemeral: true });
+                return;
+            }
         }
         catch (err) {
-            interaction.editReply({ content: "Failed to load EXIF data", ephemeral: true });
-            return;
-        }
-
-        // check if image have 
-        const isComfy = tags["workflow"]?.description != null 
-        const isA1111 = tags["parameters"]?.description != null
-
-        if (isComfy || isA1111) {
-            interaction.editReply({ content: "This image is AI generated, abort sauce finding", ephemeral: true });
-            return;
+            interaction.editReply({ content: "Failed to read EXIF data, proceed to search...", ephemeral: true });
         }
 
         // send the image to sauceNAO
