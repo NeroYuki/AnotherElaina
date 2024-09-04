@@ -1,7 +1,7 @@
 const { context_storage } = require('../utils/text_gen_store');
 var { is_generating } = require('../utils/text_gen_store');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
-const { chat_completion, text_completion_stream } = require('../utils/ollama_request');
+const { chat_completion, text_completion_stream, text_completion } = require('../utils/ollama_request');
 const { loadImage } = require('../utils/load_discord_img');
 const { maid, poppy } = require('../utils/chat_options');
 
@@ -143,14 +143,23 @@ async function responseToMessage(client, message, content, is_continue = false, 
         let res_gen_elaina = ''
         let is_done = false
         let debug_info = {}
-        text_completion_stream(globalThis.operating_mode === '4bit' ? 'test_poppy' : 'test_poppy_gpu', prompt, options, system_prompt, (value, done) => {
-            if (!value || done) {
-                is_done = true
-                if (!value) return
+        if (globalThis.stream_response !== true) {
+            text_completion(globalThis.operating_mode === '4bit' ? 'test_poppy' : 'test_poppy_gpu', prompt, options, system_prompt, (value) => {
+                res_gen_elaina += value.response
                 debug_info = value
-            }
-            res_gen_elaina += value.response
-        })
+                is_done = true
+            })
+        }
+        else {
+            text_completion_stream(globalThis.operating_mode === '4bit' ? 'test_poppy' : 'test_poppy_gpu', prompt, options, system_prompt, (value, done) => {
+                if (!value || done) {
+                    is_done = true
+                    if (!value) return
+                    debug_info = value
+                }
+                res_gen_elaina += value.response
+            })
+        }
 
         const msgRef = await message.channel.send("...");
 

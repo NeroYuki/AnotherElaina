@@ -18,11 +18,17 @@ module.exports = {
                     { name: 'Uncensored', value: 'uncensored'},
                     { name: 'Standard Vision', value: 'vision'}
                 ))
+        .addBooleanOption(option =>
+            option.setName('stream')
+                .setDescription('Stream the response by constantly edit the message')
+                .setRequired(false)
+        )
     ,
 
 	async execute(interaction) {
 		// parse the option
         const mode = interaction.options.getString('mode');
+        const is_stream = interaction.options.getBoolean('stream') || false;
 
         await interaction.deferReply();
 
@@ -46,6 +52,7 @@ module.exports = {
                 unload_model("test_vision")
             }
             globalThis.operating_mode = mode;
+            globalThis.stream_response = is_stream;
             await interaction.editReply(`Operation mode changed to ${mode}`);
         }
         else {

@@ -27,6 +27,33 @@ function chat_completion(model, context) {
     })
 }
 
+function text_completion(model, prompt, options, system_prompt, callback) {
+    fetch(endpoint + '/api/generate', {
+        method: 'POST',
+        body: JSON.stringify({
+            model: model,
+            stream: false,
+            prompt: prompt,
+            options: options,
+            system: system_prompt
+        }),
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    }).then(async res => {
+        if (res.ok) {
+            const json = await res.json()
+            callback(json)
+        }
+        else {
+            let txt = await res.text()
+            console.log(txt)
+        }
+    }).catch(err => {
+        console.log(err)
+    })
+}
+
 function text_completion_stream(model, prompt, options, system_prompt, callback) {
     fetch(endpoint + '/api/generate', {
         method: 'POST',
@@ -151,5 +178,6 @@ module.exports = {
     chat_completion,
     unload_model,
     fallback_to_resource_saving,
-    text_completion_stream
+    text_completion_stream,
+    text_completion
 }
