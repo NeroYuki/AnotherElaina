@@ -3,15 +3,55 @@
 // const { byPassUser } = require('../config.json');
 const crypt = require('crypto');
 const { default: axios } = require('axios');
-const { server_pool } = require('./ai_server_config');
+const { server_pool, model_selection_flux } = require('./ai_server_config');
 // const { loadImage } = require('../utils/load_discord_img');
 // const sharp = require('sharp');
 
 const cached_model = [
-    "nekorayxl.safetensors [c53dabc181]",
-    "animaginexl_v3.safetensors [1449e5b0b9]",
-    "anythingv5.safetensors [7f96a1a9ca]",
+    "animaginexl_v31.safetensors",
+    "dreamshaperxl_lightning.safetensors",
+    "anythingv5.safetensors",
 ]
+
+const flux_support_models = [
+    "ae.safetensors",
+    "clip_l.safetensors",
+    "t5xxl_fp8_e4m3fn.safetensors"
+]
+
+async function support_model_change(models, session_hash) {
+    return new Promise(async (resolve, reject) => {
+        const option_init_axios = {
+            data: {
+                fn_index: server_pool[0].fn_index_change_support_model,
+                session_hash: session_hash,
+                data: [
+                    models
+                ]
+            },
+            config: {
+                timeout: 900000
+            }
+        }  
+
+        await axios.post(`http://192.168.196.142:7860/run/predict/`, option_init_axios.data, option_init_axios.config)
+            .then(async (res) => {
+                if(res.data) {
+                    console.log('Support model change success')
+                    resolve(true)
+                }
+                else {
+                    console.log('Support model change failed')
+                    reject('Support model change failed')
+                }
+            })
+            .catch(async (err) => {
+                console.log(err)
+                console.log('Support model change failed')
+                reject('Support model change failed: ' + err)
+            })
+    })
+}
 
 function model_change(modelname, forced = false) {
     return new Promise(async (resolve, reject) => {
@@ -48,6 +88,19 @@ function model_change(modelname, forced = false) {
                             }
                         }
                         cached_model.unshift(modelname)
+
+                        if (model_selection_flux.find(element => element.value === modelname)) {
+                            await support_model_change(flux_support_models, session_hash).catch(err => {
+                                console.log("support model cannot be changed due to failure")
+                                // rollback the model change?
+                            })
+                        }
+                        else {
+                            await support_model_change([], session_hash).catch(err => {
+                                console.log("support model cannot be changed due to failure")
+                                // rollback the model change?
+                            })
+                        }
 
                         resolve(true)
                     } else {

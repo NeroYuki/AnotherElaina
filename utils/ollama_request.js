@@ -152,11 +152,13 @@ function fallback_to_resource_saving() {
         //     await unload_model('test_vision')
         // }
         if (globalThis.operating_mode === "disabled" || globalThis.operating_mode === "4bit") {
-            return 
+            return
         }
 
         if (globalThis.operating_mode === "6bit") {
-            await unload_model('test_poppy_gpu')
+            await unload_model('test_poppy_gpu').catch(err => {
+                console.log(err)
+            })
         }
 
         let previous_mode = globalThis.operating_mode
@@ -168,7 +170,9 @@ function fallback_to_resource_saving() {
                 return
             }
 
-            await unload_model('test')
+            await unload_model('test').catch(err => {
+                console.log(err)
+            })
             globalThis.operating_mode = previous_mode
         }, 1000 * 60 * 10)
     })

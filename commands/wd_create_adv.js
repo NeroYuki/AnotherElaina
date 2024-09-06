@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { byPassUser, censorGuildIds, optOutGuildIds } = require('../config.json');
 const crypt = require('crypto');
-const { server_pool, get_data_body, get_negative_prompt, initiate_server_heartbeat, get_worker_server, get_prompt, load_lora_from_prompt, model_name_hash_mapping, get_data_controlnet, get_data_controlnet_annotation, check_model_filename, model_selection, upscaler_selection, model_selection_xl, sampler_selection, model_selection_inpaint } = require('../utils/ai_server_config.js');
+const { server_pool, get_data_body, get_negative_prompt, initiate_server_heartbeat, get_worker_server, get_prompt, load_lora_from_prompt, model_name_hash_mapping, get_data_controlnet, get_data_controlnet_annotation, check_model_filename, model_selection, upscaler_selection, model_selection_xl, sampler_selection, model_selection_inpaint, model_selection_flux } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const { loadImage } = require('../utils/load_discord_img.js');
@@ -106,7 +106,7 @@ module.exports = {
         .addStringOption(option => 
             option.setName('checkpoint')
                 .setDescription('Force a cached checkpoint to be used (not all option is cached)')
-                .addChoices(...model_selection, ...model_selection_xl))
+                .addChoices(...model_selection, ...model_selection_xl, ...model_selection_flux))
         .addStringOption(option =>
             option.setName('profile')
                 .setDescription('Specify the profile to use (default is No Profile)'))
@@ -319,7 +319,9 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
 
         prompt = get_prompt(prompt, remove_nsfw_restriction)
 
-        extra_config = full_prompt_analyze(prompt, model_selection_xl.find(x => x.value === cached_model[0]) != null)
+        const is_xl = model_selection_xl.find(x => x.value === cached_model[0]) != null
+        const is_flux = model_selection_flux.find(x => x.value === cached_model[0]) != null
+        extra_config = full_prompt_analyze(prompt, is_xl)
         prompt = extra_config.prompt
         prompt = await fetch_user_defined_wildcard(prompt, interaction.user.id)
 
@@ -343,7 +345,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                 });
         }
         
-        if (!no_dynamic_lora_load) {
+        if (!no_dynamic_lora_load && !is_flux) {
             prompt = load_lora_from_prompt(prompt, default_lora_strength)
         }
 
@@ -357,7 +359,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         const create_data = get_data_body(server_index, prompt, neg_prompt, sampling_step, cfg_scale, 
             seed, sampler, session_hash, height, width, upscale_multiplier, upscaler, 
             upscale_denoise_strength, upscale_step, false, do_adetailer, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
-            extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, extra_config.use_foocus, extra_config.use_booru_gen, booru_gen_config)
+            extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, extra_config.use_foocus, extra_config.use_booru_gen, booru_gen_config, is_flux)
 
         // make option_init but for axios
         const option_init_axios = {
@@ -383,7 +385,9 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         }
 
         console.log(`requesting: ${WORKER_ENDPOINT}/run/predict/`)
-        fallback_to_resource_saving()
+        fallback_to_resource_saving().catch(err => {
+            console.log("failed to fallback to resource saving chatbot profile")
+        })
 
         function updateInteractionReply(data, state = 'queued') {
             return new Promise(async (resolve, reject) => {
@@ -394,7 +398,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                         .setTitle('Output')
                         .setDescription(`Here you go. Generated in ${data.duration.toFixed(2)} seconds.`)
                         .addField('Random seed', data.seed, true)
-                        .addField('Model used', `${model_name_hash_mapping.get(data.model) || "Unknown Model"} (${data.model})`, true)
+                        .addField('Model used', `${data.model_name || "Unknown Model"} (${data.model})`, true)
                         .setImage(data.catbox_url ? data.catbox_url : `attachment://${data.img_name}`)
                         .setFooter({text: `Putting ${Array("my RTX 3060","plub's RTX 3070")[server_index]} to good use!`});
                 }
@@ -495,7 +499,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                         // if server index == 0, get local image directory, else initiate request to get image from server
                         let img_buffer = null
                         let catbox_url = null
-                        const file_dir = final_res_obj.data[0][0]?.name
+                        const file_dir = final_res_obj.data[0][0]?.image.path
                         console.log(final_res_obj.data)
                         if (!file_dir) {
                             throw 'Request return no image'
@@ -518,6 +522,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                         // attempt to get the image seed (-1 if failed to do so)
                         const seed = JSON.parse(final_res_obj.data[1] || JSON.stringify({seed: -1})).seed.toString()
                         const model_hash = JSON.parse(final_res_obj.data[1] || JSON.stringify({sd_model_hash: "-"})).sd_model_hash
+                        const model_name = JSON.parse(final_res_obj.data[1] || JSON.stringify({sd_model_name: "-"})).sd_model_name
                         console.log(final_res_obj.duration)
                         //console.log(img_buffer, seed)
 
@@ -530,6 +535,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                             img_name: 'img.png',
                             seed: seed,
                             model: model_hash,
+                            model_name: model_name,
                             duration: final_res_obj.duration,
                             catbox_url: catbox_url
                         }, 'completed').catch(err => {

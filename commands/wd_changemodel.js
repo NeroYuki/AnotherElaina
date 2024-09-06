@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { model_change, cached_model } = require('../utils/model_change');
-const { check_model_filename, model_selection, model_selection_xl, model_selection_inpaint } = require('../utils/ai_server_config');
+const { check_model_filename, model_selection, model_selection_xl, model_selection_inpaint, model_selection_flux } = require('../utils/ai_server_config');
 
 
 // ["362dae27f8", "RefSlave v2"],
@@ -20,7 +20,7 @@ module.exports = {
         .addStringOption(option => 
             option.setName('checkpoint')
                 .setDescription('The checkpoint to be used')
-                .addChoices(...model_selection, ...model_selection_xl)
+                .addChoices(...model_selection, ...model_selection_xl, ...model_selection_flux)
                 .setRequired(true))
         .addBooleanOption(option =>
             option.setName('inpaint')
