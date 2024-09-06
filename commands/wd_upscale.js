@@ -42,9 +42,9 @@ module.exports = {
         .addNumberOption(option =>
             option.setName('codeformer_weight')
                 .setDescription('The weight of the Codeformer model (default is "0, no effect)'))       
-        .addNumberOption(option =>
-            option.setName('color_enhance_weight')
-                .setDescription('The weight of the color enhancement script (default is "0, no enhancement")'))
+        // .addNumberOption(option =>
+        //     option.setName('color_enhance_weight')
+        //         .setDescription('The weight of the color enhancement script (default is "0, no enhancement")'))
     ,
 
 	async execute(interaction, client) {
@@ -62,7 +62,7 @@ module.exports = {
         const gfpgan_visibility = clamp(interaction.options.getNumber('gfpgan_visibility') || 0, 0, 1)
         const codeformer_visibility = clamp(interaction.options.getNumber('codeformer_visibility') || 0, 0, 1)
         const codeformer_weight = clamp(interaction.options.getNumber('codeformer_weight') || 0, 0, 1)
-        const color_enhance_weight = clamp(interaction.options.getNumber('color_enhance_weight') || 0, 0, 1)
+        // const color_enhance_weight = clamp(interaction.options.getNumber('color_enhance_weight') || 0, 0, 1)
 
         //make a temporary reply to not get timeout'd
 		await interaction.deferReply();
@@ -94,44 +94,27 @@ module.exports = {
             "",
             "",
             true,
+            true,
             0,
             upscale_multiplier,
+            0,
             512,
             512,
             true,
-            upscaler,
-            upscaler_2,
-            upscaler_2_visibility,
-            gfpgan_visibility > 0 ? true : false,
+            upscaler,     // upscaler 1
+            upscaler_2,                 // upscaler 2
+            upscaler_2_visibility,                      // upscaler 2 visibility
+            gfpgan_visibility > 0 ? true : false,      // gfpgan
             gfpgan_visibility,
-            codeformer_visibility > 0 ? true : false,
+            codeformer_visibility > 0 ? true : false,      // codeformer
             codeformer_visibility,
             codeformer_weight,
-            false, // enable image split
-            0.5,
-            0.2,
-            false, // enable auto focal point crop
+            false,      // focal point crop
             0.9,
             0.15,
             0.5,
-            false, // enable auto sized crop
             false,
-            384,
-            768,
-            4096,
-            409600,
-            "Maximize area",
-            0.1,
-            false, // enable flipped copies
-            [
-                "Horizontal"
-            ],
-            false, // enable captioning
-            [
-                "Deepbooru"
-            ],
-            color_enhance_weight,
-            false, // censor nsfw
+            false,      // nudenet
             true,
             false,
             false,
@@ -148,7 +131,7 @@ module.exports = {
             null,
             [
                 "Draw mask"
-            ],
+            ]
         ]
 
         // make option_init but for axios
@@ -174,7 +157,7 @@ module.exports = {
                 .then(async (final_res_obj) => {
                     // if server index == 0, get local image directory, else initiate request to get image from server
                     let img_buffer = null
-                    const file_dir = final_res_obj.data[0][0]?.name
+                    const file_dir = final_res_obj.data[0][0]?.image.path
                     console.log(final_res_obj.data)
                     if (!file_dir) {
                         throw 'Request return no image'

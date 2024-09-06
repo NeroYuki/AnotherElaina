@@ -55,9 +55,9 @@ module.exports = {
             "",
             "",
             attachment,
-            null,
-            null,
-            null,
+            "",
+            "",
+            "",
             null
         ]
 
