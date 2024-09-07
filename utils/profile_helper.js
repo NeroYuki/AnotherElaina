@@ -32,6 +32,11 @@ function load_profile(profile_option, user_id) {
                 }
             }
 
+            // backward compat to old profile, if checkpoint is not null, remove the hash from the name (encased in square bracket)
+            if (profile.checkpoint != null) {
+                profile.checkpoint = profile.checkpoint.replace(/\[.*\]/, '').trim();
+            }
+
             resolve(profile)
         }
     });
