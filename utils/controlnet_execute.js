@@ -117,7 +117,7 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
                     })
                     .then(async (res) => {
                         // upload an image to the same channel as the interaction
-                        const img_dataURI = res.data[0].value
+                        const img_dataURI = res.data[1]
                         const img = Buffer.from(img_dataURI.split(",")[1], 'base64')
                         if (do_preview_annotation) {
                             const img_name = `preview_annotation.png`
@@ -156,7 +156,7 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
                         })
                         .then(async (res) => {
                             // upload an image to the same channel as the interaction
-                            const img_dataURI = res.data[0].value
+                            const img_dataURI = res.data[1]
                             const img = Buffer.from(img_dataURI.split(",")[1], 'base64')
                             if (do_preview_annotation) {
                                 const img_name = `preview_annotation_2.png`
@@ -196,7 +196,7 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
                         })
                         .then(async (res) => {
                             // upload an image to the same channel as the interaction
-                            const img_dataURI = res.data[0].value
+                            const img_dataURI = res.data[1]
                             const img = Buffer.from(img_dataURI.split(",")[1], 'base64')
                             if (do_preview_annotation) {
                                 const img_name = `preview_annotation_3.png`
