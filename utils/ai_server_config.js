@@ -2,6 +2,8 @@ const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch
 
 const BLANK_IMG = "data:image/png;base64,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CJYuMgECBAgQMAD8AAECBAgQCAoYAMHSRSZAgAABAgaAHyBAgAABAkEBAyBYusgECBAgQMAA8AMECBAgQCAoYAAESxeZAAECBAgYAH6AAAECBAgEBQyAYOkiEyBAgAABA8APECBAgACBoIABECxdZAIECBAgYAD4AQIECBAgEBQwAIKli0yAAAECBAwAP0CAAAECBIICBkCwdJEJECBAgIAB4AcIECBAgEBQwAAIli4yAQIECBAwAPwAAQIECBAIChgAwdJFJkCAAAECBoAfIECAAAECQQEDIFi6yAQIECBAwADwAwQIECBAIChgAARLF5kAAQIECBgAfoAAAQIECAQFDIBg6SITIECAAAEDwA8QIECAAIGggAEQLF1kAgQIECBgAPgBAgQIECAQFDAAgqWLTIAAAQIEDAA/QIAAAQIEggIGQLB0kQkQIECAgAHgBwgQIECAQFDAAAiWLjIBAgQIEDAA/AABAgQIEAgKGADB0kUmQIAAAQIGgB8gQIAAAQJBAQMgWLrIBAgQIEDAAPADBAgQIEAgKGAABEsXmQABAgQIGAB+gAABAgQIBAUMgGDpIhMgQIAAAQPADxAgQIAAgaCAARAsXWQCBAgQIGAA+AECBAgQIBAUMACCpYtMgAABAgQMAD9AgAABAgSCAgZAsHSRCRAgQICAAeAHCBAgQIBAUMAACJYuMgECBAgQMAD8AAECBAgQCAoYAMHSRSZAgAABAgaAHyBAgAABAkEBAyBYusgECBAgQMAA8AMECBAgQCAoYAAESxeZAAECBAgYAH6AAAECBAgEBQyAYOkiEyBAgAABA8APECBAgACBoIABECxdZAIECBAgYAD4AQIECBAgEBQwAIKli0yAAAECBAwAP0CAAAECBIICBkCwdJEJECBAgIAB4AcIECBAgEBQwAAIli4yAQIECBAwAPwAAQIECBAIChgAwdJFJkCAAAECBoAfIECAAAECQQEDIFi6yAQIECBAwADwAwQIECBAIChgAARLF5kAAQIECBgAfoAAAQIECAQFDIBg6SITIECAAAEDwA8QIECAAIGggAEQLF1kAgQIECBgAPgBAgQIECAQFDAAgqWLTIAAAQIEDAA/QIAAAQIEggIGQLB0kQkQIECAgAHgBwgQIECAQFDAAAiWLjIBAgQIEDAA/AABAgQIEAgKGADB0kUmQIAAAQIGgB8g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AD9AgAABAgSCAgZAsHSRCRAgQICAAeAHCBAgQIBAUMAACJYuMgECBAgQMAD8AAECBAgQCAoYAMHSRSZAgAABAgaAHyBAgAABAkEBAyBYusgECBAgQMAA8AMECBAgQCAoYAAESxeZAAECBAgYAH6AAAECBAgEBQyAYOkiEyBAgAABA8APECBAgACBoIABECxdZAIECBAgYAD4AQIECBAgEBQwAIKli0yAAAECBAwAP0CAAAECBIICBkCwdJEJECBAgIAB4AcIECBAgEBQwAAIli4yAQIECBAwAPwAAQIECBAIChgAwdJFJkCAAAECBoAfIECAAAECQQEDIFi6yAQIECBAwADwAwQIECBAIChgAARLF5kAAQIECBgAfoAAAQIECAQFDIBg6SITIECAAAEDwA8QIECAAIGggAEQLF1kAgQIECBgAPgBAgQIECAQFDAAgqWLTIAAAQIEDAA/QIAAAQIEggIGQLB0kQkQIECAgAHgBwgQIECAQFDAAAiWLjIBAgQIEDAA/AABAgQIEAgKGADB0kUmQIAAAQIGgB8gQIAAAQJBAQMgWLrIBAgQIEDAAPADBAgQIEAgKGAABEsXmQABAgQIGAB+gAABAgQIBAUMgGDpIhMgQIAAAQPADxAgQIAAgaCAARAsXWQCBAgQIGAA+AECBAgQIBAUMACCpYtMgAABAgQMAD9AgAABAgSCAgZAsHSRCRAgQICAAeAHCBAgQIBAUMAACJYuMgECBAgQMAD8AAECBAgQCAoYAMHSRSZAgAABAgaAHyBAgAABAkEBAyBYusgECBAgQMAA8AMECBAgQCAoYAAESxeZAAECBAgYAH6AAAECBAgEBQyAYOkiEyBAgAABA8APECBAgACBoIABECxdZAIECBAgYAD4AQIECBAgEBQwAIKli0yAAAECBAwAP0CAAAECBIICBkCwdJEJECBAgIAB4AcIECBAgEBQwAAIli4yAQIECBAwAPwAAQIECBAIChgAwdJFJkCAAAECBoAfIECAAAECQQEDIFi6yAQIECBAwADwAwQIECBAIChgAARLF5kAAQIECBgAfoAAAQIECAQFDIBg6SITIECAAAEDwA8QIECAAIGggAEQLF1kAgQIECBgAPgBAgQIECAQFDAAgqWLTIAAAQIEDAA/QIAAAQIEggIGQLB0kQkQIECAgAHgBwgQIECAQFDAAAiW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"
 
+const { convert_upload_path_to_file_data } = require('./common_helper');
+
 const server_pool = [
     {
         index: 0,
@@ -9,12 +11,12 @@ const server_pool = [
         fn_index_create: 519,
         fn_index_abort: 62,
         fn_index_img2img: 1150,
-        fn_index_controlnet: [281, 860],        //[txt2img, img2img, 792]
-        fn_index_controlnet_annotation: [1100, 1124],   // 1056
-        fn_index_controlnet_2: [362, 944], 
-        fn_index_controlnet_annotation_2: [1108, 1132],
-        fn_index_controlnet_3: [447, 1027],
-        fn_index_controlnet_annotation_3: [1116, 1140],
+        fn_index_controlnet: [362, 927],        //[txt2img, img2img, 792]
+        fn_index_controlnet_annotation: [1059, 1083],   // 1056
+        fn_index_controlnet_2: [409, 976], 
+        fn_index_controlnet_annotation_2: [1067, 1091],
+        fn_index_controlnet_3: [456, 1025],
+        fn_index_controlnet_annotation_3: [1075, 1099],
         fn_index_interrogate: 1154,
         fn_index_upscale: 1273,
         fn_index_change_model: 8,
@@ -26,10 +28,10 @@ const server_pool = [
         // fn_index_change_adetailer_model2: [146, 691],       //+51
         // fn_index_change_adetailer_prompt2: [148, 693],      //+54
         // fn_index_change_adetailer_neg_prompt2: [149, 694],  //+55
-        fn_index_execute_segment_anything: 822,
-        fn_index_execute_grounding_dino_preview: 819,
-        fn_index_execute_expand_mask: 823,
-        fn_index_unload_segmentation_model: 839,
+        fn_index_execute_segment_anything: 880,
+        fn_index_execute_grounding_dino_preview: 877,
+        fn_index_execute_expand_mask: 881,
+        fn_index_unload_segmentation_model: 897,
         is_online: true,
     },
     {
@@ -44,26 +46,22 @@ const server_pool = [
 
 const get_data_controlnet = (preprocessor = "None", controlnet = "None", input, weight = 1, mode = "Balanced", resolution = 512, guide_start = 0, guide_end = 1, mask = null, t_a = 100, t_b = 200) => {
     return [
-        null,
+        "simple",
         false,
         "",
         "",
         [],
         [],
-        null,
-        mask ? {
-            "image": mask,
-            "mask": BLANK_IMG
-        } : null,
+        "",                 // annotated image
+        mask || "",                     // mask
+        mask ? BLANK_IMG : "",          // mask overlay
         "Both",
         input ? true : false,
         preprocessor,
         controlnet,
         weight,
-        input ? {
-            "image": input,
-            "mask": BLANK_IMG
-        } : null,
+        input,                  // input
+        BLANK_IMG,              // input overlay
         "Crop and Resize",
         resolution,        // annotator resolution
         t_a,
@@ -77,10 +75,8 @@ const get_data_controlnet = (preprocessor = "None", controlnet = "None", input, 
 
 const get_data_controlnet_annotation = (preprocessor = "None", input, mask = null) => {
     return [
-        input ? {
-            "image": input,
-            "mask": BLANK_IMG
-        } : null,
+        input,                  // input
+        BLANK_IMG,              // input overlay
         preprocessor,
         512,        // annotator resolution
         preprocessor === "canny" ? 100 : 0,         // threshold a (some preprocessor do not use this)
@@ -92,14 +88,18 @@ const get_data_controlnet_annotation = (preprocessor = "None", input, mask = nul
     ]
 }
 
-const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed, sampler, session_hash,
+const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed, sampler, scheduler, session_hash,
     height, width, attachment, attachment2, denoising_strength, mode = 0, mask_blur = 4, mask_content = "original", upscaler = "None", 
     is_using_adetailer = false, coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, 
     freeu_config = null, dynamic_threshold_config = null, pag_config = null, inpaint_area = "Whole picture", mask_padding = 32,
-    use_foocus = false, use_booru_gen = false, booru_gen_config = null, is_flux = false) => {
+    use_foocus = false, use_booru_gen = false, booru_gen_config = null, is_flux = false,
+    inpaint_img_upload_path = null, inpaint_mask_upload_path = null) => {
     // default mode 0 is img2img, 4 is inpainting
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 3000000 && upscaler == "None") ? true : false
+    console.log(inpaint_img_upload_path, inpaint_mask_upload_path)  
+    const inpaint_img = convert_upload_path_to_file_data(inpaint_img_upload_path, server_pool[0].url)
+    const inpaint_mask = convert_upload_path_to_file_data(inpaint_mask_upload_path, server_pool[0].url)
 
     if (true) {
         return [
@@ -115,11 +115,11 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             "",
             "",
             "",
-            (mode === 4) ? attachment : null,                   // inpaint original
-            (mode === 4) ? attachment2 : null,                   // inpaint mask
+            (mode === 4) ? inpaint_img : null,                   // inpaint original
+            (mode === 4) ? inpaint_mask : null,                   // inpaint mask
             mask_blur,
             0,
-            "original",
+            mask_content,
             1,
             1,
             is_flux ? 1 : cfg_scale,        // sd cfg scale
@@ -144,11 +144,11 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             "upload",
             null,
             "None",
-            20,
-            "Euler",
-            "SGM Uniform",
+            sampling_step,
+            sampler,
+            scheduler,
             false,
-            -1,
+            seed,
             false,
             -1,
             0,
@@ -384,361 +384,15 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             1.2
         ]
     }
-    return [
-        `task(${session_hash})`,
-        mode,                      // mode (0 = img2img, 4 = inpainting)
-        prompt,                 // prompt
-        neg_prompt,             // neg_prompt
-        [],
-        (mode === 0) ? attachment : null,
-        null,
-        null,
-        null,
-        null,
-        (mode === 4) ? attachment : null,                   // inpaint original
-        (mode === 4) ? attachment2 : null,                   // inpaint mask
-        sampling_step,
-        sampler,
-        mask_blur,                  // mask blur
-        0,                  // mask mode
-        mask_content,         // mask content
-        1,
-        1,
-        cfg_scale,
-        1.5,                // the fuck is this?
-        denoising_strength,
-        0,
-        height,
-        width,
-        1,
-        "Crop and resize",      // resize mode
-        inpaint_area,        // inpaint area
-        mask_padding,         // inpaint padding
-        "Inpaint masked",
-        "",
-        "",
-        "",
-        [],
-        false,
-        [],
-        "",
-        upscaler != "None" ? "Ultimate SD upscale" : "None",        // script used
-        false,
-        1,
-        0.5,
-        4,
-        0,
-        0.5,
-        2,
-        false,
-        "",
-        0.8,
-        seed,
-        false,
-        -1,
-        0,
-        0,
-        0,
-        is_using_adetailer,
-        false,
-        null,
-        null,
-        true,
-        false,
-        1,
-        false,
-        false,
-        false,
-        1.1,
-        1.5,
-        100,
-        0.7,
-        false,
-        false,
-        true,
-        false,
-        false,
-        0,
-        "Gustavosta/MagicPrompt-Stable-Diffusion",
-        "",
-        coupler_config || false,               // enable latent coupler
-        coupler_config?.direction || "Horizontal",       // direction (Horizontal or Vertical)
-        coupler_config?.global || "First Line",       // use which line for global effect (First Line or Last Line or None)
-        "",                                         // seperator
-        coupler_config?.mode || "Basic",          // region definition mode (Basic or Advanced)
-        {
-            "data": coupler_config?.adv_regions || [
-                [
-                    "0.0:0.5",
-                    "0.0:1.0",
-                    "1.0"
-                ],
-                [
-                    "0.5:1.0",
-                    "0.0:1.0",
-                    "1.0"
-                ]
-            ],
-            "headers": [
-                "x",
-                "y",
-                "weight"
-            ]
-        },
-        coupler_config?.global_weight || 0.5,                // global weight
-        pag_config || false,                      // toggle PAG
-        pag_config?.pag_scale || 3,                          // PAG scale
-        pag_config?.adaptive_scale || 0,                          // adaptive scale
-        "middle",                   // layer selection
-        0,                          // layer id
-        false,                      // toggle PAG for hires fix
-        7,                          // CFG scale
-        3,                          // PAG scale (hires fix)
-        0,                          // adaptive scale (hires fix)
-        false,
-        false,
-        "LoRA",
-        "None",
-        0,
-        0,
-        "LoRA",
-        "None",
-        0,
-        0,
-        "LoRA",
-        "None",
-        0,
-        0,
-        "LoRA",
-        "None",
-        0,
-        0,
-        "LoRA",
-        "None",
-        0,
-        0,
-        null,
-        "Refresh models",
-        color_grading_config || false,               // use color grading
-        color_grading_config?.method || "XL",               // change method (XL or 1.5)
-        color_grading_config?.weight || 0,                // change recenter weighting
-        color_grading_config?.normalize || false,               // use normalizer
-        0.01,
-        0.5,
-        -0.13,
-        0,
-        0,
-        0,
-        0,
-        false,              // use refiner?
-        "None",             // select refiner model
-        20,                 // percentage of step the refiner will take over
-        false,  // use cpu for segment anything
-        false,  //
-        "0",    // select bounding box
-        null,    // source image
-        [],         // segment anything result
-        "0",    // select mask
-        false,  // expand mask?
-        [],     // mask result
-        [],     // ?
-        false,
-        "0",
-        "2",
-        false,
-        false,
-        "0",
-        null,
-        [],
-        -2,
-        false,
-        [],
-        false,
-        "0",
-        null,
-        null,
-        use_foocus,       // enable foocus
-		Math.floor(Math.random() * 2147483647),    // foocus seed
-		use_booru_gen,      // enable booru tag generator
-		"After applying other prompt processings",   // booru tag generator processing position
-		-1,                                          // booru tag generator seed
-		booru_gen_config?.gen_length || "long",                            // booru tag generator length           
-		booru_gen_config?.ban_tags || '.*background.*, .*alternate.*, character doll, multiple.*, .*cosplay.*, .*censor.*',     // booru tag generator blacklist
-		booru_gen_config?.format || '<|special|>, <|characters|>, <|copyrights|>, <|artist|>, <|general|>, <|quality|>, <|meta|>, <|rating|>', // booru tag generator format
-		booru_gen_config?.temperature || 1.2 ,                         // booru tag generator temperature
-		booru_gen_config?.top_p || 0.9,                      // booru tag generator top p
-		booru_gen_config?.top_k || 100,                            // booru tag generator top k
-		"KBlueLeaf/DanTagGen-delta-rev2 | ggml-model-Q8_0.gguf", // booru tag generator model
-		true,                           // use cpu for boo tag generator
-		false,                          // no formating
-        null,
-        null,
-        null,
-        dynamic_threshold_config || false,              // enable dynamic threshold
-        dynamic_threshold_config?.mimic_scale || 7,                  // mimic scale
-        dynamic_threshold_config?.mimic_percentile || 0.95,                  // mimic percentile
-        "Constant",
-        0,
-        "Constant",
-        0,
-        1,
-        "enable",
-        "MEAN",
-        "AD",
-        1,
-        freeu_config || false,              // enable freeU
-        freeu_config?.values[0] || 1.01,               // freeU B1 (flat -> depth)
-        freeu_config?.values[1] || 1.02,               // freeU B2 (clean -> detail)
-        freeu_config?.values[2] || 0.99,               // freeU S1 (dark -> light)
-        freeu_config?.values[3] || 0.95,               // freeU S2
-        false,
-        0.5,
-        2,
-        false,
-        256,
-        2,
-        0,
-        false,
-        false,
-        3,
-        2,
-        0,
-        0.35,
-        true,
-        "bicubic",
-        "bicubic",
-        false,
-        0,
-        "anisotropic",
-        0,
-        "reinhard",
-        100,
-        0,
-        "subtract",
-        0,
-        0,
-        "gaussian",
-        "add",
-        0,
-        100,
-        127,
-        0,
-        "hard_clamp",
-        5,
-        0,
-        "None",
-        "None",
-        false,
-        "MultiDiffusion",
-        768,
-        768,
-        64,
-        4,
-        false,
-        false,
-        false,
-        "* `CFG Scale` should be 2 or lower.",
-        true,
-        true,
-        "",
-        "",
-        true,
-        50,
-        true,
-        1,
-        0,
-        false,
-        4,
-        0.5,
-        "Linear",
-        "None",
-        "<p style=\"margin-bottom:0.75em\">Recommended settings: Sampling Steps: 80-100, Sampler: Euler a, Denoising strength: 0.8</p>",
-        128,
-        8,
-        [
-            "left",
-            "right",
-            "up",
-            "down"
-        ],
-        1,
-        0.05,
-        128,
-        4,
-        "fill",
-        [
-            "left",
-            "right",
-            "up",
-            "down"
-        ],
-        false,
-        false,
-        "positive",
-        "comma",
-        0,
-        false,
-        false,
-        "start",
-        "",
-        "<p style=\"margin-bottom:0.75em\">Will upscale the image by the selected scale factor; use width and height sliders to set tile size</p>",
-        64,
-        "None",
-        2,
-        "Seed",
-        "",
-        [],
-        "Nothing",
-        "",
-        [],
-        "Nothing",
-        "",
-        [],
-        true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        0,
-        false,
-        "<p style=\"margin-bottom:0.75em\">Will upscale the image depending on the selected target size type</p>",
-        512,
-        0,
-        8,
-        32,
-        64,
-        0.35,
-        32,
-        upscaler,
-        true,
-        "Linear",
-        false,
-        8,
-        "None",
-        "From img2img2 settings",
-        2048,
-        2048,
-        2,
-        enable_censor,
-        clip_skip,
-        "No norm",
-        [],
-        "",
-        "",
-        ""
-    ]
 }
 
-const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed, sampler, session_hash,
+const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed, sampler, scheduler, session_hash,
     height, width, upscale_multiplier, upscaler, upscale_denoise_strength, upscale_step, face_restore = false, is_using_adetailer = false, 
     coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, 
     freeu_config = null, dynamic_threshold_config = null, pag_config = null, use_foocus = false, use_booru_gen = false, booru_gen_config = null, is_flux = false) => {
 
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 1600000) ? true : false
-    const shouldUseNewInstance = true
 
     if (true) {
         return [
@@ -767,8 +421,8 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             null,
             "None",
             sampling_step,
-            "Euler",
-            "SGM Uniform",
+            sampler,
+            scheduler,
             false,  // refiner?
             seed,
             false,
@@ -960,268 +614,6 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             1.2
         ]
     }
-    else return [
-        `task(${session_hash})`,
-        prompt,                 // prompt
-        neg_prompt,             // neg_prompt
-        [],
-        sampling_step,
-        sampler,
-        1,
-        1,
-        cfg_scale,
-        height,
-        width,
-        (upscale_multiplier > 1) ? true : false, //hires fix
-        upscale_denoise_strength, //upscale denoise strength
-        upscale_multiplier, // upscale ratio
-        upscaler, //upscaler
-        upscale_step,
-        0,
-        0,
-        "Use same checkpoint",
-        "Use same sampler",
-        "",
-        "",
-        [],
-        "None",
-        false,
-        "",
-        0.8,
-        seed,
-        false,
-        -1,
-        0,
-        0,
-        0,
-        is_using_adetailer,
-        false,
-        null,
-        null,
-        true,       // dynamic prompt enabled
-        false,
-        1,
-        false,      // magic prompt
-        false,
-        false,
-        1.1,        
-        1.5,
-        100,
-        0.7,
-        false,
-        false,
-        true,    
-        false,
-        false,
-        0,
-        "Gustavosta/MagicPrompt-Stable-Diffusion",      // magic prompt model
-        "",
-        coupler_config || false,               // enable latent coupler
-        coupler_config?.direction || "Horizontal",       // direction (Horizontal or Vertical)
-        coupler_config?.global || "First Line",       // use which line for global effect (First Line or Last Line or None)
-        "",                                         // seperator
-        coupler_config?.mode || "Basic",          // region definition mode (Basic or Advanced)
-        {
-            "data": coupler_config?.adv_regions || [
-                [
-                    "0.0:0.5",
-                    "0.0:1.0",
-                    "1.0"
-                ],
-                [
-                    "0.5:1.0",
-                    "0.0:1.0",
-                    "1.0"
-                ]
-            ],
-            "headers": [
-                "x",
-                "y",
-                "weight"
-            ]
-        },
-        coupler_config?.global_weight || 0.5,                // global weight
-        pag_config || false,                                // toggle PAG
-        pag_config?.pag_scale || 3,                          // PAG scale
-        pag_config?.adaptive_scale || 0,                    // adaptive scale
-        "middle",                   // layer selection
-        0,                          // layer id
-        false,                      // toggle PAG for hires fix
-        7,                          // CFG scale
-        3,                          // PAG scale (hires fix)
-        0,                          // adaptive scale (hires fix)
-        false,
-        false,
-        "LoRA",
-        "None",
-        1,
-        1,
-        "LoRA",
-        "None",
-        1,
-        1,
-        "LoRA",
-        "None",
-        1,
-        1,
-        "LoRA",
-        "None",
-        1,
-        1,
-        "LoRA",
-        "None",
-        1,
-        1,
-        null,
-        "Refresh models",
-        color_grading_config || false,               // use color grading
-        color_grading_config?.method || "XL",               // change method (XL or 1.5)
-        color_grading_config?.weight || 0,                // change recenter weighting
-        color_grading_config?.normalize || false,               // use normalizer
-        0.01,
-        0.5,
-        -0.13,
-        0,
-        0,
-        0,
-        0,
-        false,              // use refiner?
-        "None",             // select refiner model
-        20,                 // percentage of step the refiner will take over
-        false,
-        false,
-        "0",
-        null,
-        [],
-        "0",
-        false,
-        [],
-        [],
-        false,
-        "0",
-        "2",
-        false,
-        false,
-        "0",
-        null,
-        [],
-        -2,
-        false,
-        [],
-        false,
-        "0",
-        null,
-        null,
-        use_foocus,       // enable foocus
-		Math.floor(Math.random() * 2147483647),    // foocus seed
-		use_booru_gen,      // enable booru tag generator
-		"After applying other prompt processings",   // booru tag generator processing position
-		-1,                                          // booru tag generator seed
-		booru_gen_config?.gen_length || "long",                            // booru tag generator length           
-		booru_gen_config?.ban_tags || '.*background.*, .*alternate.*, character doll, multiple.*, .*cosplay.*, .*censor.*',     // booru tag generator blacklist
-		booru_gen_config?.format || '<|special|>, <|characters|>, <|copyrights|>, <|artist|>, <|general|>, <|quality|>, <|meta|>, <|rating|>', // booru tag generator format
-		booru_gen_config?.temperature || 1.2 ,                         // booru tag generator temperature
-		booru_gen_config?.top_p || 0.9,                      // booru tag generator top p
-		booru_gen_config?.top_k || 100,                            // booru tag generator top k
-		"KBlueLeaf/DanTagGen-delta-rev2 | ggml-model-Q8_0.gguf", // booru tag generator model
-		true,                           // use cpu for boo tag generator
-		false,                          // no formating
-        null,
-        null,
-        null,
-        dynamic_threshold_config || false,              // enable dynamic threshold
-        dynamic_threshold_config?.mimic_scale || 7,                  // mimic scale
-        dynamic_threshold_config?.mimic_percentile || 0.95,                  // mimic percentile
-        "Constant",
-        0,
-        "Constant",
-        0,
-        1,
-        "enable",
-        "MEAN",
-        "AD",
-        1,
-        freeu_config || false,              // enable freeU
-        freeu_config?.values[0] || 1.01,               // freeU B1 (flat -> depth)
-        freeu_config?.values[1] || 1.02,               // freeU B2 (clean -> detail)
-        freeu_config?.values[2] || 0.99,               // freeU S1 (dark -> light)
-        freeu_config?.values[3] || 0.95,               // freeU S2
-        false,
-        0.5,
-        2,
-        false,
-        256,
-        2,
-        0,
-        false,
-        false,
-        3,
-        2,
-        0,
-        0.35,
-        true,
-        "bicubic",
-        "bicubic",
-        false,
-        0,
-        "anisotropic",
-        0,
-        "reinhard",
-        100,
-        0,
-        "subtract",
-        0,
-        0,
-        "gaussian",
-        "add",
-        0,
-        100,
-        127,
-        0,
-        "hard_clamp",
-        5,
-        0,
-        "None",
-        "None",
-        false,
-        "MultiDiffusion",
-        768,
-        768,
-        64,
-        4,
-        false,
-        false,
-        false,
-        false,
-        false,
-        "positive",
-        "comma",
-        0,
-        false,
-        false,
-        "start",
-        "",
-        "Seed",
-        "",
-        [],
-        "Nothing",
-        "",
-        [],
-        "Nothing",
-        "",
-        [],
-        true,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        0,
-        false,
-        enable_censor,
-        clip_skip,
-    ]
 }
 
 // all use standard weight of 0.85
@@ -1877,8 +1269,8 @@ const model_selection_xl = [
 ]
 
 const model_selection_inpaint = [
-    { value: 'animaginexl_v31.safetensors [e3c47aedb0]', inpaint: 'animaginexl_v31_inpaint.safetensors'},
-    { value: 'juggernautxl_turbo.safetensors [c9e3e68f89]', inpaint: 'juggernautxl_inpaint.safetensors'},
+    { value: 'animaginexl_v31.safetensors', inpaint: 'animaginexl_v31_inpaint.safetensors'},
+    { value: 'juggernautxl_turbo.safetensors', inpaint: 'juggernautxl_inpaint.safetensors'},
 ]
 
 const model_selection_flux = [
@@ -1887,11 +1279,11 @@ const model_selection_flux = [
 ]
 
 const model_selection_curated = [
-    { name: 'Anything v5', value: 'anythingv5.safetensors [7f96a1a9ca]' },
-    { name: 'AnimagineXL v3.1', value: 'animaginexl_v31.safetensors [e3c47aedb0]'},
-    { name: 'AAMXL Turbo', value: 'aamxl_turbo.safetensors [8238e80fdd]'},
-    { name: 'Juggernaut Lightning', value: 'juggernautxl_lightning.safetensors [c8df560d29]'},
-    { name: 'Dreamshaper XL Lightning', value: 'dreamshaperxl_lightning.safetensors [fdbe56354b]'},
+    { name: 'Anything v5', value: 'anythingv5.safetensors' },
+    { name: 'AnimagineXL v3.1', value: 'animaginexl_v31.safetensors'},
+    { name: 'AAMXL Turbo', value: 'aamxl_turbo.safetensors'},
+    { name: 'Juggernaut Lightning', value: 'juggernautxl_lightning.safetensors'},
+    { name: 'Dreamshaper XL Lightning', value: 'dreamshaperxl_lightning.safetensors'},
 ]
 
 const controlnet_preprocessor_selection = [
@@ -1968,18 +1360,30 @@ const upscaler_selection = [
 
 const sampler_selection = [
     { name: 'Euler a', value: 'Euler a' },
-    { name: 'DPM++ SDE Karras', value: 'DPM++ SDE Karras' },
+    { name: 'Euler', value: 'Euler' },
+    { name: 'DPM++ SDE', value: 'DPM++ SDE' },
     { name: 'LMS', value: 'LMS' },
     { name: 'DPM++ 2S a', value: 'DPM++ 2S a' },
-    { name: 'DPM2 a Karras', value: 'DPM2 a Karras' },
-    { name: 'DPM++ 2M Karras', value: 'DPM++ 2M Karras' },
-    { name: 'DPM++ 3M SDE', value: 'DPM++ 3M SDE' },
+    { name: 'DPM2 a', value: 'DPM2 a' },
+    { name: 'DPM++ 2M', value: 'DPM++ 2M' },
     { name: 'LCM', value: 'LCM' },
     { name: 'UniPC', value: 'UniPC' },
     { name: 'Restart', value: 'Restart' },
     { name: 'DPM fast', value: 'DPM fast' },
-    { name: 'DPM++ 2M SDE SGMUniform', value: 'DPM++ 2M SDE SGMUniform' },
-    { name: 'DPM++ 2M SDE Heun Karras', value: 'DPM++ 2M SDE Heun Karras' },
+    { name: 'DPM++ 2M SDE', value: 'DPM++ 2M SDE' },
+    { name: 'DPM++ 2M SDE Heun', value: 'DPM++ 2M SDE Heun' },
+    { name: 'DEIS', value: 'DEIS' }, 
+]
+
+const scheduler_selection = [
+    { name: 'Automatic', value: 'Automatic' },
+    { name: 'Uniform', value: 'Uniform'},
+    { name: 'Karras', value: 'Karras'},
+    { name: 'Exponential', value: 'Exponential'},
+    { name: 'SGM Uniform', value: 'SGM Uniform'},
+    { name: 'Align Your Step', value: 'Simple'},
+    { name: 'Normal', value: 'Normal'},
+    { name: 'Simple', value: 'Simple'},
 ]
 
 const check_model_filename = (model_filename) => {
@@ -2219,5 +1623,6 @@ module.exports = {
     controlnet_model_selection,
     upscaler_selection,
     controlnet_model_selection_xl,
-    sampler_selection
+    sampler_selection,
+    scheduler_selection,
 }

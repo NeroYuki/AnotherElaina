@@ -30,6 +30,76 @@ function loadImage(url, getBuffer = false, noDataURIHeader = false) {
     })
 }
 
+function uploadDiscordImageToGradio(url, session_hash, worker_endpoint) {
+    // download image from the given url and convert them to buffer and upload to gradio using /upload?upload_id={session_hash}
+    return new Promise((resolve, reject) => {
+        axios.get(url, { responseType: 'arraybuffer' })
+            .then((response) => {
+                // bin_buffer = Buffer.from(response.data, 'binary');
+                let mime = response.headers['content-type'];
+
+                // convert array buffer to blob
+                let blob = new Blob([response.data], { type: mime });
+
+                // check if mime is image
+                if (!mime.startsWith('image')) {
+                    reject('Not an image');
+                    return;
+                }
+                console.log(`Uploading image with mime: ${mime}`);
+                // -----------------------------26627894059524141072594727081
+                // Content-Disposition: form-data; name="files"; filename="Belfast.jpg"
+                // Content-Type: image/jpeg
+
+                // <binary data>
+                // -----------------------------26627894059524141072594727081--
+                // make form data to replicate the above
+                const form_data = new FormData();
+                form_data.append('files', blob, 'image.jpg');
+
+                // upload to gradio (use multipart form data, Content-Type: <mime>, followed by the binary data)
+                axios.post(`${worker_endpoint}/upload?upload_id=${session_hash}`, form_data, 
+                    { headers: {
+                        'Content-Type': 'multipart/form-data',
+                    }})
+                    .then((res) => {
+                        resolve(res.data[0]);
+                    })
+                    .catch((err) => {
+                        console.log(err);
+                        reject(err);
+                    })
+        })
+    })
+}
+
+function uploadPngBufferToGradio(buffer, session_hash, worker_endpoint) {
+    // upload image buffer to gradio using /upload?upload_id={session_hash}
+    return new Promise((resolve, reject) => {
+        // convert array buffer to blob
+        let blob = new Blob([buffer], { type: 'image/png' });
+
+        // make form data to replicate the above
+        const form_data = new FormData();
+        form_data.append('files', blob, 'image.png');
+
+        // upload to gradio (use multipart form data, Content-Type: <mime>, followed by the binary data)
+        axios.post(`${worker_endpoint}/upload?upload_id=${session_hash}`, form_data, 
+            { headers: {
+                'Content-Type': 'multipart/form-data',
+            }})
+            .then((res) => {
+                resolve(res.data[0]);
+            })
+            .catch((err) => {
+                console.log(err);
+                reject(err);
+            })
+    })
+}
+
 module.exports = {
-    loadImage
+    loadImage,
+    uploadDiscordImageToGradio,
+    uploadPngBufferToGradio,
 }

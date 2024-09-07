@@ -1,18 +1,19 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
-const { byPassUser, censorGuildIds } = require('../config.json');
+const { byPassUser, censorGuildIds, optOutGuildIds } = require('../config.json');
 const crypt = require('crypto');
-const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, load_lora_from_prompt, model_name_hash_mapping, check_model_filename, model_selection, sampler_selection, model_selection_xl, model_selection_inpaint, model_selection_flux } = require('../utils/ai_server_config.js');
+const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, load_lora_from_prompt, model_name_hash_mapping, check_model_filename, model_selection, sampler_selection, model_selection_xl, model_selection_inpaint, model_selection_flux, scheduler_selection } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const sharp = require('sharp');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
-const { loadImage } = require('../utils/load_discord_img');
+const { loadImage, uploadDiscordImageToGradio, uploadPngBufferToGradio } = require('../utils/load_discord_img');
 const { load_controlnet } = require('../utils/controlnet_execute');
 const { cached_model, model_change } = require('../utils/model_change');
 const { fallback_to_resource_saving } = require('../utils/ollama_request.js');
 const { segmentAnything_execute, groundingDino_execute, expandMask, unloadAllModel } = require('../utils/segment_execute.js');
 const { full_prompt_analyze, fetch_user_defined_wildcard, preview_coupler_setting } = require('../utils/prompt_analyzer.js');
 const { queryRecordLimit } = require('../database/database_interaction.js');
+const { load_profile } = require('../utils/profile_helper.js');
 
 function clamp(num, min, max) {
     return num <= min ? min : num >= max ? max : num;
@@ -70,8 +71,12 @@ module.exports = {
                 .setDescription('The height of the generated image (default is image upload size, recommended max is 768)'))
         .addStringOption(option => 
             option.setName('sampler')
-                .setDescription('The sampling method for the AI to generate art from (default is "Euler a")')
+                .setDescription('The sampling method for the AI to generate art from (default is "Euler")')
                 .addChoices(...sampler_selection))
+        .addStringOption(option => 
+            option.setName('scheduler')
+                .setDescription('The scheduling method for the AI to generate art from (default is "Automatic")')
+                .addChoices(...scheduler_selection))
         .addNumberOption(option => 
             option.setName('cfg_scale')
                 .setDescription('Lower value = more creative freedom (default is 7, recommended max is 10)'))
@@ -97,12 +102,9 @@ module.exports = {
                     { name: 'Whole picture', value: 'Whole picture' },
                     { name: 'Only masked', value: 'Only masked' },
                 ))
-        .addBooleanOption(option => 
-            option.setName('no_dynamic_lora_load')
-                .setDescription('Do not use the bot\'s dynamic LoRA loading (default is "true")'))
         .addNumberOption(option =>
             option.setName('default_lora_strength')
-                .setDescription('The strength of lora if loaded dynamically (default is "0.85")'))
+                .setDescription('The strength of lora if loaded dynamically (default is "0.85", 0 to disable)'))
         .addStringOption(option =>
             option.setName('segment_anything_prompt')
                 .setDescription('Prompt for segment anything'))
@@ -140,21 +142,9 @@ module.exports = {
         const profile_option = interaction.options.getString('profile') || null
         let profile = null
         if (profile_option != null) {
-            let profile_data = null
-            // attempt to query the profile name on the database
-            profile_data = await queryRecordLimit('wd_profile', { name: profile_option, user_id: interaction.user.id }, 1)
-            if (profile_data.length == 0) {
-                // attempt to query global profile
-                profile_data = await queryRecordLimit('wd_profile', { name: profile_option }, 1)
-                if (profile_data.length == 0) {
-                    // no profile found
-                    interaction.channel.send({ content: `Profile ${profile_option} not found, fallback to default setting` });
-                }
-            }
-
-            if (profile_data.length != 0) {
-                profile = profile_data[0]
-            }
+            profile = await load_profile(profile_option, interaction.user.id).catch(err => {
+                interaction.channel.send(err)
+            })
         }
 
 		// load the option with default value
@@ -167,12 +157,13 @@ module.exports = {
         const mask_content = interaction.options.getString('mask_content') || 'original'
         const mask_color = interaction.options.getString('mask_color') || 'black'
         const sampler = interaction.options.getString('sampler') || profile?.sampler || 'Euler a'
+        const scheduler = interaction.options.getString('scheduler') || profile?.scheduler || 'Automatic'
         const cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || profile?.cfg_scale || 7, 0, 30)
         const sampling_step = clamp(interaction.options.getInteger('sampling_step') || profile?.sampling_step || 20, 1, 100)
         const default_neg_prompt = interaction.options.getString('default_neg_prompt') || 'n_sfw'
         const inpaint_area = interaction.options.getString('inpaint_area') || 'Whole picture'
-        const no_dynamic_lora_load = interaction.options.getBoolean('no_dynamic_lora_load') || true
         const default_lora_strength = clamp(interaction.options.getNumber('default_lora_strength') || 0.85, 0, 3)
+        const no_dynamic_lora_load = default_lora_strength === 0
         const force_server_selection = 0
         const mask_increase_padding = clamp(interaction.options.getInteger('mask_increase_padding') || 24, 0, 64)
         let segment_anything_prompt = interaction.options.getString('segment_anything_prompt') || null
@@ -234,6 +225,7 @@ module.exports = {
         const session_hash = crypt.randomBytes(16).toString('base64');
         const WORKER_ENDPOINT = server_pool[0].url
         let mask_data_uri = ""
+        let mask_upload_path = ""
 
         let is_swinb = false
         let dino_threshold = null
@@ -263,15 +255,23 @@ module.exports = {
             return
         })
 
+        let attachment_upload_path = await uploadDiscordImageToGradio(attachment_option.proxyURL, session_hash, WORKER_ENDPOINT).catch((err) => {
+            console.log(err)
+            interaction.editReply({ content: "Failed to upload image to server", ephemeral: true });
+            return
+        })
+        //console.log(attachment_upload_path)
 
         if (segment_anything_prompt) {
             // let the madness begin
             interaction.editReply({ content: "Starting auto segmentation process" });
-            let boundingBox = await groundingDino_execute(segment_anything_prompt, attachment, session_hash, is_swinb, dino_threshold).catch(err => {
+            let boundingBox = await groundingDino_execute(segment_anything_prompt, attachment_upload_path, session_hash, is_swinb, dino_threshold).catch(err => {
                 console.log(err)
                 interaction.editReply({ content: "Failed to get bounding box", ephemeral: true });
                 return
             })
+
+            console.log(boundingBox)
 
             const rows = new Array(Math.ceil(Math.min(boundingBox.bb_num, 20) / 5))
 
@@ -295,8 +295,18 @@ module.exports = {
                     .setStyle('SUCCESS')))
 
 
-            const bb_img_dataURI = boundingBox.bb
-            const bb_img = Buffer.from(bb_img_dataURI.split(",")[1], 'base64')
+            let bb_img = null
+            // all server is remote
+            const bb_res = await fetch(`${boundingBox.bb.url}`).catch(err => {
+                throw 'Error while fetching image on remote server'
+            })
+            if (bb_res && bb_res.status === 200) {
+                bb_img = Buffer.from(await bb_res.arrayBuffer())
+            }
+            else {
+                interaction.editReply({ content: "Failed to fetch bounding box image", ephemeral: true });
+                return
+            }
             const bb_img_name = `preview_annotation.png`
             await interaction.channel.send({files: [{attachment: bb_img, name: bb_img_name}]})
             let bb_select_msg = await interaction.channel.send({content: "Please select your desired bounding box before submit", components: rows})
@@ -332,14 +342,16 @@ module.exports = {
 
                     bb_collector.stop()
                     // continue the process
-                    let segment_output = await segmentAnything_execute(segment_anything_prompt, bb_indices, attachment, session_hash, is_swinb, dino_threshold).catch(err => {
+                    let segment_output = await segmentAnything_execute(segment_anything_prompt, bb_indices, attachment_upload_path, session_hash, is_swinb, dino_threshold).catch(err => {
                         console.log(err)
                         interaction.editReply({ content: "Failed to segment image", ephemeral: true });
                         return
                     })
 
                     let img_buffers = [null, null, null]
-                    const file_dirs = segment_output.map(x => x.name)
+                    const file_dirs = segment_output.map(x => x.image.url)
+                    // console.log(file_dirs)
+                    // console.dir(segment_output, {depth: null})
 
                     const is_multiple_box = bb_indices.length > 1
                     if (is_multiple_box) {
@@ -348,7 +360,7 @@ module.exports = {
 
                     for (let i = (is_multiple_box ? 6 : 0); i < (is_multiple_box ? 9 : 3); i++) {
                         // all server is remote
-                        const img_res = await fetch(`${WORKER_ENDPOINT}/file=${file_dirs[i]}`).catch(err => {
+                        const img_res = await fetch(`${file_dirs[i]}`).catch(err => {
                             throw 'Error while fetching image on remote server'
                         })
 
@@ -383,14 +395,14 @@ module.exports = {
                             seg_collector.stop()
                             // continue the process with optional mask expanding option
 
-                            let expanded_mask = await expandMask(segment_output, attachment, seg_index, session_hash, mask_increase_padding).catch(err => {
+                            let expanded_mask = await expandMask(segment_output, attachment_upload_path, seg_index, session_hash, mask_increase_padding).catch(err => {
                                 console.log(err)
                                 interaction.editReply({ content: "Failed to expand mask", ephemeral: true });
                                 return
                             })
 
                             let final_mask_buffer = null
-                            const final_mask_dir = expanded_mask[1].name
+                            const final_mask_dir = expanded_mask[1].image.path
                             // all server is remote
 
                             const mask_res = await fetch(`${WORKER_ENDPOINT}/file=${final_mask_dir}`).catch(err => {
@@ -398,6 +410,7 @@ module.exports = {
                             })
 
                             if (mask_res && mask_res.status === 200) {
+                                mask_upload_path = final_mask_dir
                                 final_mask_buffer = Buffer.from(await mask_res.arrayBuffer())
                             }
 
@@ -427,8 +440,13 @@ module.exports = {
                     .threshold(255)
                     .toFormat('png')
                     .toBuffer()
-                    .then(data => {
+                    .then(async data => {
                         mask_data_uri = "data:image/png;base64," + data.toString('base64')
+                        mask_upload_path = await uploadPngBufferToGradio(data, session_hash, WORKER_ENDPOINT).catch((err) => {
+                            console.log(err)
+                            interaction.editReply({ content: "Failed to upload mask image to server", ephemeral: true });
+                            return
+                        })
                     })
                     .catch(err => {
                         console.log(err)
@@ -457,8 +475,13 @@ module.exports = {
                     .threshold(255)
                     .toFormat('png')
                     .toBuffer()
-                    .then(data => {
+                    .then(async data => {
                         mask_data_uri = "data:image/png;base64," + data.toString('base64')
+                        mask_upload_path = await uploadPngBufferToGradio(data, session_hash, WORKER_ENDPOINT).catch((err) => {
+                            console.log(err)
+                            interaction.editReply({ content: "Failed to upload mask image to server", ephemeral: true });
+                            return
+                        })
                     })
                     .catch(err => {
                         console.log('error in mask conversion:', err)
@@ -470,8 +493,13 @@ module.exports = {
                 await sharp(attachment_mask)
                     .toFormat('png')
                     .toBuffer()
-                    .then(data => {
+                    .then(async data => {
                         mask_data_uri = "data:image/png;base64," + data.toString('base64')
+                        mask_upload_path = await uploadPngBufferToGradio(data, session_hash, WORKER_ENDPOINT).catch((err) => {
+                            console.log(err)
+                            interaction.editReply({ content: "Failed to upload mask image to server", ephemeral: true });
+                            return
+                        })
                     })
                     .catch(err => {
                         console.log(err)
@@ -555,13 +583,15 @@ module.exports = {
             let isDone = false
             let isCancelled = false
             let progress_ping_delay = 2000
+            const is_xl = model_selection_xl.find(x => x.value === cached_model[0]) != null || model_selection_inpaint.find(x => x.inpaint === cached_model[0]) != null
+            const is_flux = model_selection_flux.find(x => x.value === cached_model[0]) != null
     
             // override controlnet_config[0] with config exclusively for inpainting
             let controlnet_config_obj = {
                 control_net: [
                     {
-                        model: "controlnetxlCNXL_destitechInpaintv2 [e799aa20]",
-                        preprocessor: "threshold",
+                        model: is_xl ? "controlnetxlCNXL_destitechInpaintv2 [e799aa20]" : "None",
+                        preprocessor: is_xl ? "fill" : "None",
                         weight: 1,
                         mode: "My prompt is more important",
                         resolution: 512,
@@ -591,7 +621,7 @@ module.exports = {
             }
 
             // try to parse controlnet_config and replace [1] and [2] with the parsed config if exists
-            if (controlnet_config) {
+            if (controlnet_config && !is_flux) {
                 try {
                     const controlnet_config_obj_import = JSON.parse(controlnet_config)
 
@@ -682,9 +712,7 @@ module.exports = {
             neg_prompt = get_negative_prompt(neg_prompt, override_neg_prompt, remove_nsfw_restriction, cached_model[0])
     
             prompt = get_prompt(prompt, remove_nsfw_restriction, cached_model[0])
-    
-            const is_xl = model_selection_xl.find(x => x.value === cached_model[0]) != null || model_selection_inpaint.find(x => x.inpaint === cached_model[0]) != null
-            const is_flux = model_selection_flux.find(x => x.value === cached_model[0]) != null
+
             extra_config = full_prompt_analyze(prompt, is_xl)
             prompt = extra_config.prompt
             prompt = await fetch_user_defined_wildcard(prompt, interaction.user.id)
@@ -719,9 +747,9 @@ module.exports = {
             }
         
             const create_data = get_data_body_img2img(server_index, prompt, neg_prompt, sampling_step, cfg_scale,
-                seed, sampler, session_hash, height, width, attachment, mask_data_uri, denoising_strength, 4, mask_blur, mask_content, "None", false, 
+                seed, sampler, scheduler, session_hash, height, width, attachment, mask_data_uri, denoising_strength, 4, mask_blur, mask_content, "None", false, 
                 extra_config.coupler_config, extra_config.color_grading_config, 1, is_censor, extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config,
-                inpaint_area, mask_padding, extra_config.use_foocus, extra_config.use_booru_gen, booru_gen_config, is_flux)
+                inpaint_area, mask_padding, extra_config.use_foocus, extra_config.use_booru_gen, booru_gen_config, is_flux, attachment_upload_path, mask_upload_path)
     
             // make option_init but for axios
             const option_init_axios = {
@@ -758,7 +786,7 @@ module.exports = {
                             .setTitle('Output')
                             .setDescription(`Here you go. Generated in ${data.duration.toFixed(2)} seconds.`)
                             .addField('Random seed', data.seed, true)
-                            .addField('Model used', `${model_name_hash_mapping.get(data.model) || "Unknown Model"} (${data.model})`, true)
+                            .addField('Model used', `${data.model_name || "Unknown Model"} (${data.model})`, true)
                             .setImage(`attachment://${data.img_name}`)
                             .setFooter({text: `Putting ${Array("my RTX 3060","plub's RTX 3070")[0]} to good use!`});
                     }
@@ -857,7 +885,7 @@ module.exports = {
                         if (final_res_obj.data) {
                             // if server index == 0, get local image directory, else initiate request to get image from server
                             let img_buffer = null
-                            const file_dir = final_res_obj.data[0][0]?.name
+                            const file_dir = final_res_obj.data[0][0]?.image.path
                             console.log(final_res_obj.data)
                             if (!file_dir) {
                                 throw 'Request return no image'
@@ -874,6 +902,7 @@ module.exports = {
                             // attempt to get the image seed (-1 if failed to do so)
                             const seed = JSON.parse(final_res_obj.data[1] || JSON.stringify({seed: -1})).seed.toString()
                             const model_hash = JSON.parse(final_res_obj.data[1] || JSON.stringify({sd_model_hash: "-"})).sd_model_hash
+                            const model_name = JSON.parse(final_res_obj.data[1] || JSON.stringify({sd_model_name: "-"})).sd_model_name
                             console.log(final_res_obj.duration)
                             //console.log(img_buffer, seed)
     
@@ -886,6 +915,7 @@ module.exports = {
                                 img_name: 'img.png',
                                 seed: seed,
                                 model: model_hash,
+                                model_name: model_name,
                                 duration: final_res_obj.duration
                             }, 'completed').catch(err => {
                                 console.log(err)

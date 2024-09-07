@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { byPassUser, censorGuildIds, optOutGuildIds } = require('../config.json');
 const crypt = require('crypto');
-const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, load_lora_from_prompt, model_name_hash_mapping, check_model_filename, model_selection, model_selection_xl, upscaler_selection, sampler_selection, model_selection_inpaint, model_selection_flux } = require('../utils/ai_server_config.js');
+const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, load_lora_from_prompt, model_name_hash_mapping, check_model_filename, model_selection, model_selection_xl, upscaler_selection, sampler_selection, model_selection_inpaint, model_selection_flux, scheduler_selection } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const { loadImage } = require('../utils/load_discord_img.js');
@@ -12,6 +12,7 @@ const { queryRecordLimit } = require('../database/database_interaction.js');
 const { load_adetailer } = require('../utils/adetailer_execute.js');
 const { full_prompt_analyze, preview_coupler_setting, fetch_user_defined_wildcard } = require('../utils/prompt_analyzer.js');
 const { fallback_to_resource_saving } = require('../utils/ollama_request.js');
+const { load_profile } = require('../utils/profile_helper.js');
 
 function clamp(num, min, max) {
     return num <= min ? min : num >= max ? max : num;
@@ -43,8 +44,12 @@ module.exports = {
                 .setDescription('The height of the generated image (default is 512, recommended max is 768)'))
         .addStringOption(option => 
             option.setName('sampler')
-                .setDescription('The sampling method for the AI to generate art from (default is "Euler a")')
+                .setDescription('The sampling method for the AI to generate art from (default is "Euler")')
                 .addChoices(...sampler_selection))
+        .addStringOption(option => 
+            option.setName('scheduler')
+                .setDescription('The scheduling method for the AI to generate art from (default is "Automatic")')
+                .addChoices(...scheduler_selection))
         .addNumberOption(option => 
             option.setName('cfg_scale')
                 .setDescription('Lower value = more creative freedom (default is 7, recommended max is 10)'))
@@ -63,12 +68,9 @@ module.exports = {
                     { name: 'None - SFW', value: 'n_sfw' },
                     { name: 'No Default', value: 'n_nsfw' },
                 ))
-        .addBooleanOption(option => 
-            option.setName('no_dynamic_lora_load')
-                .setDescription('Do not use the bot\'s dynamic LoRA loading (default is "false")'))
         .addNumberOption(option =>
             option.setName('default_lora_strength')
-                .setDescription('The strength of lora if loaded dynamically (default is "0.85")'))
+                .setDescription('The strength of lora if loaded dynamically (default is "0.85", 0 to disable)'))
         // .addIntegerOption(option =>
         //     option.setName('force_server_selection')
         //         .setDescription('Force the server to use (default is "-1 - Random")'))
@@ -120,21 +122,9 @@ module.exports = {
         const profile_option = interaction.options.getString('profile') || null
         let profile = null
         if (profile_option != null) {
-            let profile_data = null
-            // attempt to query the profile name on the database
-            profile_data = await queryRecordLimit('wd_profile', { name: profile_option, user_id: interaction.user.id }, 1)
-            if (profile_data.length == 0) {
-                // attempt to query global profile
-                profile_data = await queryRecordLimit('wd_profile', { name: profile_option }, 1)
-                if (profile_data.length == 0) {
-                    // no profile found
-                    interaction.channel.send({ content: `Profile ${profile_option} not found, fallback to default setting` });
-                }
-            }
-
-            if (profile_data.length != 0) {
-                profile = profile_data[0]
-            }
+            profile = await load_profile(profile_option, interaction.user.id).catch(err => {
+                interaction.channel.send(err)
+            })
         }
 
 		// load the option with default value
@@ -143,12 +133,13 @@ module.exports = {
         const width = clamp(interaction.options.getInteger('width') || profile?.width || 512, 64, 4096)
         const height = clamp(interaction.options.getInteger('height') || profile?.height || 512, 64, 4096)
         const denoising_strength = clamp(interaction.options.getNumber('denoising_strength') || 0.7, 0, 1)
-        const sampler = interaction.options.getString('sampler') || profile?.sampler || 'Euler a'
+        const sampler = interaction.options.getString('sampler') || profile?.sampler || 'Euler'
+        const scheduler = interaction.options.getString('scheduler') || profile?.scheduler || 'Automatic'
         const cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || profile?.cfg_scale || 7, 0, 30)
         const sampling_step = clamp(interaction.options.getInteger('sampling_step') || profile?.sampling_step || 20, 1, 100)
         const default_neg_prompt = interaction.options.getString('default_neg_prompt') || 'n_sfw'
-        const no_dynamic_lora_load = interaction.options.getBoolean('no_dynamic_lora_load') || false
         const default_lora_strength = clamp(interaction.options.getNumber('default_lora_strength') || 0.85, 0, 3)
+        const no_dynamic_lora_load = default_lora_strength === 0
         const force_server_selection = clamp(interaction.options.getInteger('force_server_selection') !== null ? interaction.options.getInteger('force_server_selection') : -1 , -1, 1)
         const controlnet_input_option = interaction.options.getAttachment('controlnet_input') || null
         const controlnet_input_option_2 = interaction.options.getAttachment('controlnet_input_2') || null
@@ -246,8 +237,10 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         let isDone = false
         let isCancelled = false
         let progress_ping_delay = 2000
+        const is_xl = model_selection_xl.find(x => x.value === cached_model[0]) != null
+        const is_flux = model_selection_flux.find(x => x.value === cached_model[0]) != null
 
-        if (controlnet_input && controlnet_config) {
+        if (controlnet_input && controlnet_config && !is_flux) {
             await load_controlnet(session_hash, server_index, controlnet_input, controlnet_input_2, controlnet_input_3, controlnet_config, interaction, 1)
                 .catch(err => {
                     console.log(err)
@@ -303,9 +296,6 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         neg_prompt = get_negative_prompt(neg_prompt, override_neg_prompt, remove_nsfw_restriction, cached_model[0])
 
         prompt = get_prompt(prompt, remove_nsfw_restriction, cached_model[0])
-
-        const is_xl = model_selection_xl.find(x => x.value === cached_model[0]) != null
-        const is_flux = model_selection_flux.find(x => x.value === cached_model[0]) != null
         extra_config = full_prompt_analyze(prompt, is_xl)
         prompt = extra_config.prompt
         prompt = await fetch_user_defined_wildcard(prompt, interaction.user.id)
@@ -342,7 +332,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         }
     
         const create_data = get_data_body_img2img(server_index, prompt, neg_prompt, sampling_step, cfg_scale,
-            seed, sampler, session_hash, height, width, attachment, null, denoising_strength, /*img2img mode*/ 0, 4, "original", upscaler, 
+            seed, sampler, scheduler, session_hash, height, width, attachment, null, denoising_strength, /*img2img mode*/ 0, 4, "original", upscaler, 
             do_adetailer, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
             extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, "Whole picture", 32, 
             extra_config.use_foocus, extra_config.use_booru_gen, booru_gen_config, is_flux)

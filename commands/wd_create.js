@@ -9,6 +9,7 @@ const { model_change, cached_model } = require('../utils/model_change.js');
 const { queryRecordLimit } = require('../database/database_interaction.js');
 const { full_prompt_analyze, preview_coupler_setting, fetch_user_defined_wildcard } = require('../utils/prompt_analyzer.js');
 const { fallback_to_resource_saving } = require('../utils/ollama_request.js');
+const { load_profile } = require('../utils/profile_helper.js');
 
 function clamp(num, min, max) {
     return num <= min ? min : num >= max ? max : num;
@@ -84,21 +85,9 @@ module.exports = {
         const profile_option = interaction.options.getString('profile') || null
         let profile = null
         if (profile_option != null) {
-            let profile_data = null
-            // attempt to query the profile name on the database
-            profile_data = await queryRecordLimit('wd_profile', { name: profile_option, user_id: interaction.user.id }, 1)
-            if (profile_data.length == 0) {
-                // attempt to query global profile
-                profile_data = await queryRecordLimit('wd_profile', { name: profile_option }, 1)
-                if (profile_data.length == 0) {
-                    // no profile found
-                    interaction.channel.send({ content: `Profile ${profile_option} not found, fallback to default setting` });
-                }
-            }
-
-            if (profile_data.length != 0) {
-                profile = profile_data[0]
-            }
+            profile = await load_profile(profile_option, interaction.user.id).catch(err => {
+                interaction.channel.send(err)
+            })
         }
 
 		let prompt = (profile?.prompt_pre || '') + (interaction.options.getString('prompt') || '') + (profile?.prompt || '')
@@ -107,12 +96,13 @@ module.exports = {
         let width = clamp(interaction.options.getInteger('width') || profile?.width || 512, 512, 2048) // this can only end well :)
         let height = clamp(interaction.options.getInteger('height') || profile?.height || 512, 512, 2048)
 
-        let sampler =  profile?.sampler || 'Euler a'
+        let sampler =  profile?.sampler || 'Euler'
+        let scheduler = profile?.scheduler || 'Automatic'
         let cfg_scale = clamp(profile?.cfg_scale || 7, 0, 30)
         let sampling_step = clamp(profile?.sampling_step || 25, 1, 100)
 
         const default_neg_prompt = interaction.options.getString('default_neg_prompt') || 'q_sfw'
-        const no_dynamic_lora_load = interaction.options.getBoolean('no_dynamic_lora_load') || false
+        let no_dynamic_lora_load = interaction.options.getBoolean('no_dynamic_lora_load') || false
         let default_lora_strength = 0.85
 
         const force_server_selection = -1
@@ -184,6 +174,16 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
 
             default_lora_strength = 1
         }
+        else if (model_selection_flux.find(x => x.value === cached_model[0])) {
+            if (width === 512 && height === 512) {
+                interaction.channel.send('default resolution detected while Flux model is selected, changing resolution to 1024x1024, disabling dynamic lora load')
+                width = 1024
+                height = 1024
+            }
+
+            default_lora_strength = 0
+            no_dynamic_lora_load = false
+        }
 
         if (cached_model[0] === 'aamxl_turbo.safetensors [8238e80fdd]') {
             sampler = 'Euler a'
@@ -191,12 +191,14 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             sampling_step = 8
         }
         else if (cached_model[0] === 'dreamshaperxl_turbo.safetensors [4496b36d48]') {
-            sampler = 'DPM++ SDE Karras'
+            sampler = 'DPM++ SDE'
+            scheduler = 'Karras'
             cfg_scale = 2
             sampling_step = 8
         }
         else if (cached_model[0] === 'juggernautxl_turbo.safetensors [c9e3e68f89]') {
-            sampler = 'DPM++ 2M Karras'
+            sampler = 'DPM++ 2M'
+            scheduler = 'Karras'
             cfg_scale = 5
             sampling_step = 30
         }
@@ -206,14 +208,28 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             sampling_step = 4
         }
         else if (cached_model[0] === 'dreamshaperxl_lightning.safetensors [fdbe56354b]') {
-            sampler = 'DPM++ SDE Karras'
+            sampler = 'DPM++ SDE'
+            scheduler = 'Karras'
             cfg_scale = 2
             sampling_step = 4
         }
+        else if (model_selection_flux.find(x => x.value === cached_model[0])) {
+            sampler = 'Euler'
+            scheduler = 'SGM Uniform'
+            cfg_scale = 3.5
+            sampling_step = 20
+        }
         else if (model_selection.find(x => x.value === cached_model[0])) {
-            sampler = 'DPM++ 2M Karras'
+            sampler = 'DPM++ 2M'
+            scheduler = 'Karras'
             cfg_scale = 7
             sampling_step = 30
+        }
+        else {
+            sampler = 'Euler'
+            scheduler = 'Automatic'
+            cfg_scale = 7
+            sampling_step = 20
         }
 
         // end forced config
@@ -313,7 +329,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         }
     
         const create_data = get_data_body(server_index, prompt, neg_prompt, sampling_step, cfg_scale, 
-            seed, sampler, session_hash, height, width, upscale_multiplier, upscaler, 
+            seed, sampler, scheduler, session_hash, height, width, upscale_multiplier, upscaler, 
             upscale_denoise_strength, upscale_step, false, false, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
             extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, override_neg_prompt ? false : true, extra_config.use_booru_gen, null, is_flux)
 

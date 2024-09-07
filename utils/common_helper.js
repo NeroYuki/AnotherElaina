@@ -16,6 +16,20 @@ function listAllFiles(root_dir, current_dir = '', allFilesList = []) {
     return allFilesList;
 }
 
+function convert_upload_path_to_file_data(upload_path, worker_endpoint) {
+    if (!upload_path) {
+        return null
+    }
+    // prune the server url
+    upload_path = upload_path.replace(`${worker_endpoint}/file=`, '')
+    return {
+        path: upload_path,
+        url: `${worker_endpoint}/file=${upload_path}`
+    }
+}
+
+
 module.exports = {
-    listAllFiles
+    listAllFiles,
+    convert_upload_path_to_file_data,
 }

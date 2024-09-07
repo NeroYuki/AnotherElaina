@@ -81,6 +81,9 @@ module.exports = {
         if (data.sampler && data.sampler != 'Euler a') {
             embeded.addFields({ name: 'Sampler', value: data.sampler });
         }
+        if (data.scheduler && data.scheduler != 'Automatic') {
+            embeded.addFields({ name: 'Scheduler', value: data.scheduler });
+        }
         if (data.cfg_scale && data.cfg_scale != 7) {
             embeded.addFields({ name: 'CFG Scale', value: data.cfg_scale.toString() });
         }

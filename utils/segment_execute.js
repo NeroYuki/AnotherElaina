@@ -1,11 +1,12 @@
 // use the img2img tab
 
 const { server_pool } = require("./ai_server_config")
+const { convert_upload_path_to_file_data } = require("./common_helper")
 
-function groundingDino_execute(prompt, image, session_hash, useSwinB = false, threshold = 0.3) {
+function groundingDino_execute(prompt, image_path, session_hash, useSwinB = false, threshold = 0.3) {
     // should return array of bouding boxes coordinates
     const req_data = [
-        image,
+        convert_upload_path_to_file_data(image_path, server_pool[0].url),
 		useSwinB ? "GroundingDINO_SwinB (938MB)" : "GroundingDINO_SwinT_OGC (694MB)",
 		prompt,
 		threshold || 0.3            ///threshold
@@ -48,11 +49,11 @@ function groundingDino_execute(prompt, image, session_hash, useSwinB = false, th
     })
 }
 
-function segmentAnything_execute(prompt, boundingBoxes, image, session_hash, useSwinB = false, threshold = 0.3) {
+function segmentAnything_execute(prompt, boundingBoxes, image_path, session_hash, useSwinB = false, threshold = 0.3) {
     // should return array of masks
     const req_data = [
         "sam_vit_h_4b8939.pth",
-        image,
+        convert_upload_path_to_file_data(image_path, server_pool[0].url),
         [], // segment marker
         [],
         true,   //enable grounding dino
@@ -61,7 +62,7 @@ function segmentAnything_execute(prompt, boundingBoxes, image, session_hash, use
         threshold || 0.3, // threshold
         true, // preview?
         boundingBoxes, // selected bounding box
-        []
+        //[]
     ]
 
     return new Promise(async (resolve, reject) => {
@@ -100,12 +101,12 @@ function segmentAnything_execute(prompt, boundingBoxes, image, session_hash, use
     })
 }
 
-function expandMask(segment_output, image, mask_selection, session_hash, extend_by) {
+function expandMask(segment_output, image_path, mask_selection, session_hash, extend_by) {
     const req_data = [
         segment_output,
         mask_selection,    //which mask
         extend_by,     //extend by how much
-        image    // final result
+        convert_upload_path_to_file_data(image_path, server_pool[0].url),   // final result
     ]
 
     return new Promise(async (resolve, reject) => {

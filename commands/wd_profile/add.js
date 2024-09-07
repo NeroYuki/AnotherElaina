@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { upscaler_selection, model_selection, model_selection_xl, sampler_selection } = require('../../utils/ai_server_config');
+const { upscaler_selection, model_selection, model_selection_xl, sampler_selection, scheduler_selection } = require('../../utils/ai_server_config');
 const { addRecord, queryRecord, queryRecordLimit, editRecords } = require('../../database/database_interaction');
 
 module.exports = {
@@ -30,8 +30,12 @@ module.exports = {
                 .setDescription('The height of the generated image (default is 512, recommended max is 768)'))
         .addStringOption(option => 
             option.setName('sampler')
-                .setDescription('The sampling method for the AI to generate art from (default is "Euler a")')
+                .setDescription('The sampling method for the AI to generate art from (default is "Euler")')
                 .addChoices(...sampler_selection))
+        .addStringOption(option => 
+            option.setName('scheduler')
+                .setDescription('The scheduling method for the AI to generate art from (default is "Automatic")')
+                .addChoices(...scheduler_selection))
         .addNumberOption(option => 
             option.setName('cfg_scale')
                 .setDescription('Lower value = more creative freedom (default is 7, recommended max is 10)'))
@@ -78,7 +82,8 @@ module.exports = {
         const neg_prompt_pre = interaction.options.getString('neg_prompt_pre') || '';
         const width = interaction.options.getInteger('width') || null;
         const height = interaction.options.getInteger('height') || null;
-        const sampler = interaction.options.getString('sampler') || 'Euler a';
+        const sampler = interaction.options.getString('sampler') || 'Euler';
+        const scheduler = interaction.options.getString('scheduler') || 'Automatic';
         const cfg_scale = interaction.options.getNumber('cfg_scale') || 7;
         const sampling_step = interaction.options.getInteger('sampling_step') || 20;
         const seed = interaction.options.getString('seed') || '-1';
@@ -120,6 +125,7 @@ module.exports = {
                 width: width,
                 height: height,
                 sampler: sampler,
+                scheduler: scheduler,
                 cfg_scale: cfg_scale,
                 sampling_step: sampling_step,
                 seed: seed,

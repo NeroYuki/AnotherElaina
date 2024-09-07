@@ -10,7 +10,7 @@ function clamp(num, min, max) {
     return num <= min ? min : num >= max ? max : num;
 }
 
-const allowed_extra_params = ["sampler", "steps", "cfg scale", "seed", "model hash", "vae hash", "clip skip"]
+const allowed_extra_params = ["sampler", "steps", "cfg scale", "seed", "model hash", "vae hash", "clip skip", "schedule type", "model"]
 
 module.exports = {
     data: new ContextMenuCommandBuilder()
@@ -117,6 +117,10 @@ ${vae ? `VAE: ${vae.value}` : ""}
         if (x[0].toLowerCase() === "model hash") {
             x[0] = "Model"
             x[1] = model_name_hash_mapping.get(x[1]) ?? x[1]
+        }
+        if (x[0].toLowerCase() === "model") {
+            x[0] = "Model name"
+            x[1] = x[1]
         }
         return x
     })
