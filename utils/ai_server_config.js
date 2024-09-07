@@ -19,13 +19,13 @@ const server_pool = [
         fn_index_upscale: 1273,
         fn_index_change_model: 8,
         fn_index_change_support_model: 9,
-        fn_index_coupler_region_preview: [187, 766],
-        fn_index_change_adetailer_model1: [97, 676],
-        // fn_index_change_adetailer_prompt1: [99, 644],       //+2
-        // fn_index_change_adetailer_neg_prompt1: [100, 645],  //+3
-        // fn_index_change_adetailer_model2: [146, 691],       //+49
-        // fn_index_change_adetailer_prompt2: [148, 693],      //+51
-        // fn_index_change_adetailer_neg_prompt2: [149, 694],  //+52
+        fn_index_coupler_region_preview: [289, 852],
+        fn_index_change_adetailer_model1: [88, 651],
+        // fn_index_change_adetailer_prompt1: [99, 644],       //+3
+        // fn_index_change_adetailer_neg_prompt1: [100, 645],  //+4
+        // fn_index_change_adetailer_model2: [146, 691],       //+51
+        // fn_index_change_adetailer_prompt2: [148, 693],      //+54
+        // fn_index_change_adetailer_neg_prompt2: [149, 694],  //+55
         fn_index_execute_segment_anything: 822,
         fn_index_execute_grounding_dino_preview: 819,
         fn_index_execute_expand_mask: 823,
@@ -156,7 +156,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             0,
             null,
             enable_censor,
-            false,
+            is_using_adetailer,
             1,
             0.5,
             4,
@@ -187,13 +187,13 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             0,
             "Gustavosta/MagicPrompt-Stable-Diffusion",
             "",
-            false,
-            "Basic",
+            coupler_config && !is_flux || false,
+            coupler_config?.mode || "Basic",
             "",
-            "Horizontal",
-            "None",
-            0.5,
-            [
+            coupler_config?.direction || "Horizontal",       // direction (Horizontal or Vertical)
+            coupler_config?.global || "First Line",       // use which line for global effect (First Line or Last Line or None)
+            coupler_config?.global_weight || 0.5,                // global weight
+            coupler_config?.adv_regions || [
                 [
                     0,
                     0.5,
@@ -249,9 +249,9 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             null, 
             null,
             null,
-            false,
-            7,
-            1,
+            dynamic_threshold_config || false,              // enable dynamic threshold
+            dynamic_threshold_config?.mimic_scale || 7,                  // mimic scale
+            dynamic_threshold_config?.mimic_percentile || 0.95,                  // mimic percentile
             "Constant",
             0,
             "Constant",
@@ -261,16 +261,16 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             "MEAN",
             "AD",
             1,
-            false,
-            1.01,
-            1.02,
-            0.99,
-            0.95,
+            freeu_config || false,              // enable freeU
+            freeu_config?.values[0] || 1.01,               // freeU B1 (flat -> depth)
+            freeu_config?.values[1] || 1.02,               // freeU B2 (clean -> detail)
+            freeu_config?.values[2] || 0.99,               // freeU S1 (dark -> light)
+            freeu_config?.values[3] || 0.95,               // freeU S2
             false,
             0.5,
             2,
-            false,
-            3,
+            pag_config || false,                      // toggle PAG
+            pag_config?.pag_scale || 3,                          // PAG scale
             false,
             3,
             2,
@@ -778,8 +778,8 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             0,
             null, // no idea (maybe clip skip?)
             enable_censor,
-            false,
             is_using_adetailer,
+            false,
             null,
             null,
             null,
@@ -802,13 +802,13 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             0,
             "Gustavosta/MagicPrompt-Stable-Diffusion",
             "",
-            false,      // Forge coupler
-            "Basic",
+            coupler_config && !is_flux || false,        // forge coupler
+            coupler_config?.mode || "Basic",
             "",
-            "Horizontal",
-            "None",
-            0.5,
-            [
+            coupler_config?.direction || "Horizontal",       // direction (Horizontal or Vertical)
+            coupler_config?.global || "First Line",       // use which line for global effect (First Line or Last Line or None)
+            coupler_config?.global_weight || 0.5,                // global weight
+            coupler_config?.adv_regions || [
                 [
                     0,
                     0.5,
@@ -864,9 +864,9 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             null,       // ControlNet
             null,
             null,
-            false,      // Dynamic threshold
-            7,
-            1,
+            dynamic_threshold_config || false,              // enable dynamic threshold
+            dynamic_threshold_config?.mimic_scale || 7,                  // mimic scale
+            dynamic_threshold_config?.mimic_percentile || 0.95,                  // mimic percentile
             "Constant",
             0,
             "Constant",
@@ -876,16 +876,16 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             "MEAN",
             "AD",
             1,
-            false,      // FreeU
-            1.01,
-            1.02,
-            0.99,
-            0.95,
-            false,     // Self attention guidance
+            freeu_config || false,              // enable freeU
+            freeu_config?.values[0] || 1.01,               // freeU B1 (flat -> depth)
+            freeu_config?.values[1] || 1.02,               // freeU B2 (clean -> detail)
+            freeu_config?.values[2] || 0.99,               // freeU S1 (dark -> light)
+            freeu_config?.values[3] || 0.95,               // freeU S2
+            false,
             0.5,
             2,
-            false,      // Perturbed guidance
-            3,
+            pag_config || false,                      // toggle PAG
+            pag_config?.pag_scale || 3,                          // PAG scale
             false,      // HR fix
             3,          
             2,

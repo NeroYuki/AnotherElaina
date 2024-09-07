@@ -44,7 +44,7 @@ function get_coupler_config_from_prompt(prompt) {
         // iterate through comp (except the global line) to check if it use advance region
         for (let i = 0; i < comp.length; i++) {
             // advance region syntax is |<x_start_fraction>:<x_end_fraction>,<y_start_fraction>:<y:end_fraction>,<w>|, all >=0 and <=1 and start < end
-            // if found, push ["x_start:x_end", "y_start:y_end", "w"] to adv_region
+            // if found, push [x_start, x_end, y_start, y_end, w] to adv_regions
 
             const adv_pattern = /\|([0-9.]+):([0-9.]+),([0-9.]+):([0-9.]+),([0-9.]+)\|/i
             const adv_match = comp[i].match(adv_pattern)
@@ -72,7 +72,9 @@ function get_coupler_config_from_prompt(prompt) {
                     console.log(`Invalid w value in advance region: ${comp[i]}`)
                     continue
                 }
-                adv_regions.push([`${adv_match[1]}:${adv_match[2]}`, `${adv_match[3]}:${adv_match[4]}`, adv_match[5]])
+                adv_regions.push([
+                    start_x, end_x, start_y, end_y, w
+                ])
             }
         }
 
@@ -131,7 +133,7 @@ async function fetch_user_defined_wildcard(prompt, user_id) {
 
 async function preview_coupler_setting(interaction, width, height, extra_config, index_preview_coupler, session_hash, endpoint = 'http://192.168.196.142:7860') {
     // ask for preview image
-    const coupler_preview_data = [width, height, { "data": extra_config.coupler_config.adv_regions, "headers": ["x", "y", "weight"] }]
+    const coupler_preview_data = ["Advanced", `${width}x${height}`, extra_config.coupler_config.adv_regions]
     const option_coupler_preview = {
         method: 'POST',
         body: JSON.stringify({

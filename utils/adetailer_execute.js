@@ -77,11 +77,11 @@ function load_adetailer(session_hash, server_index, adetailer_config, interactio
         Promise.all(
             [
                 change_option_adetailer(adetailer_model, base_index, session_hash,  WORKER_ENDPOINT),
-                change_option_adetailer(adetailer_prompt, base_index + 2, session_hash, WORKER_ENDPOINT),
-                change_option_adetailer(adetailer_neg_prompt, base_index + 3, session_hash, WORKER_ENDPOINT),
-                change_option_adetailer(adetailer_model_2, base_index + 49, session_hash, WORKER_ENDPOINT),
-                change_option_adetailer(adetailer_prompt_2, base_index + 51, session_hash, WORKER_ENDPOINT),
-                change_option_adetailer(adetailer_neg_prompt_2, base_index + 52, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_prompt, base_index + 3, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_neg_prompt, base_index + 4, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_model_2, base_index + 51, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_prompt_2, base_index + 54, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_neg_prompt_2, base_index + 55, session_hash, WORKER_ENDPOINT),
             ]
         ).then(() => {
             interaction.channel.send("ADetailer config loaded")
