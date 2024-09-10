@@ -1276,6 +1276,7 @@ const model_selection_inpaint = [
 const model_selection_flux = [
     { name: 'Flux.dev Q6_K', value: 'flux1-dev-Q6_K.gguf' },
     { name: 'Flux.dev Q4_K_S', value: 'flux1-dev-Q4_K_S.gguf' },
+    { name: 'Flux.dev Q8_0', value: 'flux1-dev-Q8_0.gguf'}
 ]
 
 const model_selection_curated = [

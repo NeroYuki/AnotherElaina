@@ -16,7 +16,7 @@ const cached_model = [
 const flux_support_models = [
     "ae.safetensors",
     "clip_l.safetensors",
-    "t5xxl_fp8_e4m3fn.safetensors"
+    "t5-v1_1-xxl-encoder-Q8_0.gguf"
 ]
 
 async function support_model_change(models, session_hash) {
@@ -37,7 +37,7 @@ async function support_model_change(models, session_hash) {
         await axios.post(`http://192.168.196.142:7860/run/predict/`, option_init_axios.data, option_init_axios.config)
             .then(async (res) => {
                 if(res.data) {
-                    console.log('Support model change success')
+                    console.log('Support model change success', models)
                     resolve(true)
                 }
                 else {
