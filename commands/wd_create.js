@@ -10,6 +10,7 @@ const { queryRecordLimit } = require('../database/database_interaction.js');
 const { full_prompt_analyze, preview_coupler_setting, fetch_user_defined_wildcard } = require('../utils/prompt_analyzer.js');
 const { fallback_to_resource_saving } = require('../utils/ollama_request.js');
 const { load_profile } = require('../utils/profile_helper.js');
+const { load_adetailer } = require('../utils/adetailer_execute.js');
 
 function clamp(num, min, max) {
     return num <= min ? min : num >= max ? max : num;
@@ -116,6 +117,7 @@ module.exports = {
 
         const checkpoint = interaction.options.getString('checkpoint') || profile?.checkpoint  ||  null
         let clip_skip = clamp(profile?.clip_skip || 1, 1, 12)
+        const adetailer_config = client.adetailer_config.has(interaction.user.id) ? client.adetailer_config.get(interaction.user.id) : null
 
         let seed = -1
         try {
@@ -327,10 +329,21 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         if (extra_config.use_booru_gen) {
             interaction.channel.send('Enhancing image with BooruGen prompt expansion engine.')
         }
+
+        let use_adetailer = false
+        // check if adetailer config is not null and at least 1 of config's model is not None
+        if (adetailer_config && (adetailer_config[0].model !== 'None' || adetailer_config[1].model !== 'None')) {
+            await load_adetailer(session_hash, server_index, adetailer_config, interaction, extra_config.coupler_config, prompt)
+                .catch(err => {
+                    console.log(err)
+                    interaction.editReply({ content: "Failed to load adetailer:" + err });
+                });
+            use_adetailer = true
+        }
     
         const create_data = get_data_body(server_index, prompt, neg_prompt, sampling_step, cfg_scale, 
             seed, sampler, scheduler, session_hash, height, width, upscale_multiplier, upscaler, 
-            upscale_denoise_strength, upscale_step, false, true, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
+            upscale_denoise_strength, upscale_step, false, use_adetailer, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
             extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, override_neg_prompt ? false : true, extra_config.use_booru_gen, null, is_flux)
 
         // make option_init but for axios
