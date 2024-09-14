@@ -10,91 +10,95 @@ module.exports = {
             subcommand
                 .setName('reset')
                 .setDescription('Reset the controlnet config'))
-        .addStringOption(option =>
-            option.setName('controlnet_model')
-                .setDescription('The model to use for the controlnet (default is "T2I-Adapter - OpenPose")')
-                .addChoices(...controlnet_model_selection))
-        .addStringOption(option =>
-            option.setName('controlnet_preprocessor')
-                .setDescription('The preprocessor to use for the controlnet (default is "OpenPose")')
-                .addChoices(...controlnet_preprocessor_selection))
-        .addNumberOption(option =>
-            option.setName('controlnet_weight')
-                .setDescription('The weight of the controlnet (default is 1)'))
-        .addNumberOption(option =>
-            option.setName('controlnet_resolution')
-                .setDescription('The resolution preprocessor to use for the controlnet (default is 512)'))
-        .addStringOption(option =>
-            option.setName('controlnet_mode')
-                .setDescription('The mode of the controlnet (default is "Balanced")')
-                .addChoices(
-                    { name: 'Balanced', value: 'Balanced' },
-                    { name: 'Prompt', value: 'My prompt is more important' },
-                    { name: 'ControlNet', value: 'ControlNet is more important' }))
-        .addNumberOption(option =>
-            option.setName('controlnet_threshold_a')
-                .setDescription('The threshold of the controlnet (default is 100)'))
-        .addNumberOption(option =>
-            option.setName('controlnet_threshold_b')
-                .setDescription('The threshold of the controlnet (default is 200)'))
-        // clone the 3 options above for 2 other controlnet
-        .addStringOption(option =>
-            option.setName('controlnet_model_2')
-                .setDescription('The model to use for the controlnet (default is "None")')
-                .addChoices(...controlnet_model_selection))
-        .addStringOption(option =>
-            option.setName('controlnet_preprocessor_2')
-                .setDescription('The preprocessor to use for the controlnet (default is "None")')
-                .addChoices(...controlnet_preprocessor_selection))
-        .addNumberOption(option =>
-            option.setName('controlnet_weight_2')
-                .setDescription('The weight of the controlnet (default is 1)'))
-        .addNumberOption(option =>
-            option.setName('controlnet_resolution_2')
-                .setDescription('The resolution preprocessor to use for the controlnet (default is 512)'))
-        .addStringOption(option =>
-            option.setName('controlnet_mode_2')
-                .setDescription('The mode of the controlnet (default is "Balanced")')
-                .addChoices(
-                    { name: 'Balanced', value: 'Balanced' },
-                    { name: 'Prompt', value: 'My prompt is more important' },
-                    { name: 'ControlNet', value: 'ControlNet is more important' }))
-        .addNumberOption(option =>
-            option.setName('controlnet_threshold_a_2')
-                .setDescription('The threshold of the controlnet (default is 100)'))
-        .addNumberOption(option =>
-            option.setName('controlnet_threshold_b_2')
-                .setDescription('The threshold of the controlnet (default is 200)'))
-        .addStringOption(option =>
-            option.setName('controlnet_model_3')
-                .setDescription('The model to use for the controlnet (default is "None")')
-                .addChoices(...controlnet_model_selection))
-        .addStringOption(option =>
-            option.setName('controlnet_preprocessor_3')
-                .setDescription('The preprocessor to use for the controlnet (default is "None")')
-                .addChoices(...controlnet_preprocessor_selection))
-        .addBooleanOption(option => 
-            option.setName('do_preview_annotation')
-                .setDescription('Show the annotation after preprocessing (default is "false")'))
-        .addNumberOption(option =>
-            option.setName('controlnet_weight_3')
-                .setDescription('The weight of the controlnet (default is 1)'))
-        .addNumberOption(option =>
-            option.setName('controlnet_resolution_3')
-                .setDescription('The resolution preprocessor to use for the controlnet (default is 512)'))
-        .addStringOption(option =>
-            option.setName('controlnet_mode_3')
-                .setDescription('The mode of the controlnet (default is "Balanced")')
-                .addChoices(
-                    { name: 'Balanced', value: 'Balanced' },
-                    { name: 'Prompt', value: 'My prompt is more important' },
-                    { name: 'ControlNet', value: 'ControlNet is more important' }))
-        .addNumberOption(option =>
-            option.setName('controlnet_threshold_a_3')
-                .setDescription('The threshold of the controlnet (default is 100)'))
-        .addNumberOption(option =>
-            option.setName('controlnet_threshold_b_3')
-                .setDescription('The threshold of the controlnet (default is 200)'))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('set')
+                .setDescription('Setup the controlnet config, will persist through generation')
+                .addStringOption(option =>
+                    option.setName('controlnet_model')
+                        .setDescription('The model to use for the controlnet (default is "T2I-Adapter - OpenPose")')
+                        .addChoices(...controlnet_model_selection))
+                .addStringOption(option =>
+                    option.setName('controlnet_preprocessor')
+                        .setDescription('The preprocessor to use for the controlnet (default is "OpenPose")')
+                        .addChoices(...controlnet_preprocessor_selection))
+                .addNumberOption(option =>
+                    option.setName('controlnet_weight')
+                        .setDescription('The weight of the controlnet (default is 1)'))
+                .addNumberOption(option =>
+                    option.setName('controlnet_resolution')
+                        .setDescription('The resolution preprocessor to use for the controlnet (default is 512)'))
+                .addStringOption(option =>
+                    option.setName('controlnet_mode')
+                        .setDescription('The mode of the controlnet (default is "Balanced")')
+                        .addChoices(
+                            { name: 'Balanced', value: 'Balanced' },
+                            { name: 'Prompt', value: 'My prompt is more important' },
+                            { name: 'ControlNet', value: 'ControlNet is more important' }))
+                .addNumberOption(option =>
+                    option.setName('controlnet_threshold_a')
+                        .setDescription('The threshold of the controlnet (default is 100)'))
+                .addNumberOption(option =>
+                    option.setName('controlnet_threshold_b')
+                        .setDescription('The threshold of the controlnet (default is 200)'))
+                // clone the 3 options above for 2 other controlnet
+                .addStringOption(option =>
+                    option.setName('controlnet_model_2')
+                        .setDescription('The model to use for the controlnet (default is "None")')
+                        .addChoices(...controlnet_model_selection))
+                .addStringOption(option =>
+                    option.setName('controlnet_preprocessor_2')
+                        .setDescription('The preprocessor to use for the controlnet (default is "None")')
+                        .addChoices(...controlnet_preprocessor_selection))
+                .addNumberOption(option =>
+                    option.setName('controlnet_weight_2')
+                        .setDescription('The weight of the controlnet (default is 1)'))
+                .addNumberOption(option =>
+                    option.setName('controlnet_resolution_2')
+                        .setDescription('The resolution preprocessor to use for the controlnet (default is 512)'))
+                .addStringOption(option =>
+                    option.setName('controlnet_mode_2')
+                        .setDescription('The mode of the controlnet (default is "Balanced")')
+                        .addChoices(
+                            { name: 'Balanced', value: 'Balanced' },
+                            { name: 'Prompt', value: 'My prompt is more important' },
+                            { name: 'ControlNet', value: 'ControlNet is more important' }))
+                .addNumberOption(option =>
+                    option.setName('controlnet_threshold_a_2')
+                        .setDescription('The threshold of the controlnet (default is 100)'))
+                .addNumberOption(option =>
+                    option.setName('controlnet_threshold_b_2')
+                        .setDescription('The threshold of the controlnet (default is 200)'))
+                .addStringOption(option =>
+                    option.setName('controlnet_model_3')
+                        .setDescription('The model to use for the controlnet (default is "None")')
+                        .addChoices(...controlnet_model_selection))
+                .addStringOption(option =>
+                    option.setName('controlnet_preprocessor_3')
+                        .setDescription('The preprocessor to use for the controlnet (default is "None")')
+                        .addChoices(...controlnet_preprocessor_selection))
+                .addBooleanOption(option => 
+                    option.setName('do_preview_annotation')
+                        .setDescription('Show the annotation after preprocessing (default is "false")'))
+                .addNumberOption(option =>
+                    option.setName('controlnet_weight_3')
+                        .setDescription('The weight of the controlnet (default is 1)'))
+                .addNumberOption(option =>
+                    option.setName('controlnet_resolution_3')
+                        .setDescription('The resolution preprocessor to use for the controlnet (default is 512)'))
+                .addStringOption(option =>
+                    option.setName('controlnet_mode_3')
+                        .setDescription('The mode of the controlnet (default is "Balanced")')
+                        .addChoices(
+                            { name: 'Balanced', value: 'Balanced' },
+                            { name: 'Prompt', value: 'My prompt is more important' },
+                            { name: 'ControlNet', value: 'ControlNet is more important' }))
+                .addNumberOption(option =>
+                    option.setName('controlnet_threshold_a_3')
+                        .setDescription('The threshold of the controlnet (default is 100)'))
+                .addNumberOption(option =>
+                    option.setName('controlnet_threshold_b_3')
+                        .setDescription('The threshold of the controlnet (default is 200)')))
     ,
 
 	async execute(interaction, client) {

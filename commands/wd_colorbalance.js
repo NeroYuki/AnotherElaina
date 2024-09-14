@@ -11,34 +11,39 @@ module.exports = {
             subcommand
                 .setName('reset')
                 .setDescription('Reset the color balance config'))
-        .addNumberOption(option =>
-            option.setName('brightness')
-                .setDescription('The brightness value to use for the colorbalance (default is 0, -5 to 5)')
-                .setRequired(false))
-        .addNumberOption(option =>
-            option.setName('contrast')
-                .setDescription('The contrast value to use for the colorbalance (default is 0, -5 to 5)')
-                .setRequired(false))
-        .addNumberOption(option =>
-            option.setName('saturation')
-                .setDescription('The saturation value to use for the colorbalance (default is 1, 0.25 to 1.75)')
-                .setRequired(false))
-        .addNumberOption(option =>
-            option.setName('red')
-                .setDescription('The red value to use for the colorbalance (default is 0, -4 to 4)')
-                .setRequired(false))
-        .addNumberOption(option =>
-            option.setName('green')
-                .setDescription('The green value to use for the colorbalance (default is 0, -4 to 4)')
-                .setRequired(false))
-        .addNumberOption(option =>
-            option.setName('blue')
-                .setDescription('The blue value to use for the colorbalance (default is 0, -4 to 4)')
-                .setRequired(false))
-        .addBooleanOption(option =>
-            option.setName('alt_mode')
-                .setDescription('Use the alternate mode for the colorbalance (stronger effect, default is false)')
-                .setRequired(false))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('set')
+                .setDescription('Setup the color balance config, will persist through generation')
+                .addNumberOption(option =>
+                    option.setName('brightness')
+                        .setDescription('The brightness value to use for the colorbalance (default is 0, -5 to 5)')
+                        .setRequired(false))
+                .addNumberOption(option =>
+                    option.setName('contrast')
+                        .setDescription('The contrast value to use for the colorbalance (default is 0, -5 to 5)')
+                        .setRequired(false))
+                .addNumberOption(option =>
+                    option.setName('saturation')
+                        .setDescription('The saturation value to use for the colorbalance (default is 1, 0.25 to 1.75)')
+                        .setRequired(false))
+                .addNumberOption(option =>
+                    option.setName('red')
+                        .setDescription('The red value to use for the colorbalance (default is 0, -4 to 4)')
+                        .setRequired(false))
+                .addNumberOption(option =>
+                    option.setName('green')
+                        .setDescription('The green value to use for the colorbalance (default is 0, -4 to 4)')
+                        .setRequired(false))
+                .addNumberOption(option =>
+                    option.setName('blue')
+                        .setDescription('The blue value to use for the colorbalance (default is 0, -4 to 4)')
+                        .setRequired(false))
+                .addBooleanOption(option =>
+                    option.setName('alt_mode')
+                        .setDescription('Use the alternate mode for the colorbalance (stronger effect, default is false)')
+                        .setRequired(false)))
+
     ,
 
 	async execute(interaction, client) {

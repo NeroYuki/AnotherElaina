@@ -12,36 +12,41 @@ module.exports = {
             subcommand
                 .setName('reset')
                 .setDescription('Reset the BooruGen config'))
-        .addStringOption(option =>
-            option.setName('gen_length')
-                .setDescription('The length of the generated prompt')
-                .addChoices(
-                    { name: 'Very Short', value: 'very short' },
-                    { name: 'Short', value: 'short' },
-                    { name: 'Long', value: 'long' },
-                    { name: 'Very Long', value: 'very long' }
-                )
-                .setRequired(false))
-        .addStringOption(option =>
-            option.setName('ban_tags')
-                .setDescription('Which tags to be banned from the generated prompt')
-                .setRequired(false))
-        .addStringOption(option =>
-            option.setName('format')
-                .setDescription('The format of the generated prompt')
-                .setRequired(false))
-        .addNumberOption(option =>
-            option.setName('temperature')
-                .setDescription('The temperature of the generated prompt')
-                .setRequired(false))
-        .addNumberOption(option =>
-            option.setName('top_p')
-                .setDescription('The top_p of the generated prompt')
-                .setRequired(false))
-        .addNumberOption(option =>
-            option.setName('top_k')
-                .setDescription('The top_k of the generated prompt')
-                .setRequired(false))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('set')
+                .setDescription('Setup the BooruGen config, will persist through generation')
+                .addStringOption(option =>
+                    option.setName('gen_length')
+                        .setDescription('The length of the generated prompt')
+                        .addChoices(
+                            { name: 'Very Short', value: 'very short' },
+                            { name: 'Short', value: 'short' },
+                            { name: 'Long', value: 'long' },
+                            { name: 'Very Long', value: 'very long' }
+                        )
+                        .setRequired(false))
+                .addStringOption(option =>
+                    option.setName('ban_tags')
+                        .setDescription('Which tags to be banned from the generated prompt')
+                        .setRequired(false))
+                .addStringOption(option =>
+                    option.setName('format')
+                        .setDescription('The format of the generated prompt')
+                        .setRequired(false))
+                .addNumberOption(option =>
+                    option.setName('temperature')
+                        .setDescription('The temperature of the generated prompt')
+                        .setRequired(false))
+                .addNumberOption(option =>
+                    option.setName('top_p')
+                        .setDescription('The top_p of the generated prompt')
+                        .setRequired(false))
+                .addNumberOption(option =>
+                    option.setName('top_k')
+                        .setDescription('The top_k of the generated prompt')
+                        .setRequired(false)))
+        
     ,
 
 	async execute(interaction, client) {

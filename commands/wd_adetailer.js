@@ -10,44 +10,49 @@ module.exports = {
             subcommand
                 .setName('reset')
                 .setDescription('Reset the ADetailer config'))
-        .addStringOption(option =>
-            option.setName('adetailer_model')
-                .setDescription('The model to use for the adetailer (default is "face_yolov8s.pt")')
-                .addChoices(
-                    { name: 'None', value: 'None'},
-                    { name: 'YOLO Face v8s', value: 'face_yolov8s.pt' },
-                    { name: 'YOLO Hand v8n', value: 'hand_yolov8n.pt' },
-                    { name: 'YOLO Person v8s (Segment)', value: 'person_yolov8s-seg.pt'},
-                    { name: 'YOLO World v8x', value: 'yolov8x_world.pt'}
-                )
-                .setRequired(false))
-        .addStringOption(option =>
-            option.setName('adetailer_prompt')
-                .setDescription('The prompt to use for the adetailer (default is "" - Same as the original prompt)')
-                .setRequired(false))
-        .addStringOption(option =>
-            option.setName('adetailer_neg_prompt')
-                .setDescription('The negative prompt to use for the adetailer (default is "" - Same as the original prompt)')
-                .setRequired(false))
-        .addStringOption(option =>
-            option.setName('adetailer_model_2')
-                .setDescription('The 2nd model to use for the adetailer (default is "None")')
-                .addChoices(
-                    { name: 'None', value: 'None'},
-                    { name: 'YOLO Face v8s', value: 'face_yolov8s.pt' },
-                    { name: 'YOLO Hand v8n', value: 'hand_yolov8n.pt' },
-                    { name: 'YOLO Person v8s (Segment)', value: 'person_yolov8s-seg.pt'},
-                    { name: 'YOLO World v8x', value: 'yolov8x_world.pt'}
-                )
-                .setRequired(false))
-        .addStringOption(option =>
-            option.setName('adetailer_prompt_2')
-                .setDescription('The 2nd prompt to use for the adetailer (default is "" - Same as the original prompt)')
-                .setRequired(false))
-        .addStringOption(option =>
-            option.setName('adetailer_neg_prompt_2')
-                .setDescription('The 2nd negative prompt to use for the adetailer (default is "" - Same as the original prompt)')
-                .setRequired(false))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('set')
+                .setDescription('Setup the ADetailer config, will persist through generation')
+                .addStringOption(option =>
+                    option.setName('adetailer_model')
+                        .setDescription('The model to use for the adetailer (default is "face_yolov8s.pt")')
+                        .addChoices(
+                            { name: 'None', value: 'None'},
+                            { name: 'YOLO Face v8s', value: 'face_yolov8s.pt' },
+                            { name: 'YOLO Hand v8n', value: 'hand_yolov8n.pt' },
+                            { name: 'YOLO Person v8s (Segment)', value: 'person_yolov8s-seg.pt'},
+                            { name: 'YOLO World v8x', value: 'yolov8x_world.pt'}
+                        )
+                        .setRequired(false))
+                .addStringOption(option =>
+                    option.setName('adetailer_prompt')
+                        .setDescription('The prompt to use for the adetailer (default is "" - Same as the original prompt)')
+                        .setRequired(false))
+                .addStringOption(option =>
+                    option.setName('adetailer_neg_prompt')
+                        .setDescription('The negative prompt to use for the adetailer (default is "" - Same as the original prompt)')
+                        .setRequired(false))
+                .addStringOption(option =>
+                    option.setName('adetailer_model_2')
+                        .setDescription('The 2nd model to use for the adetailer (default is "None")')
+                        .addChoices(
+                            { name: 'None', value: 'None'},
+                            { name: 'YOLO Face v8s', value: 'face_yolov8s.pt' },
+                            { name: 'YOLO Hand v8n', value: 'hand_yolov8n.pt' },
+                            { name: 'YOLO Person v8s (Segment)', value: 'person_yolov8s-seg.pt'},
+                            { name: 'YOLO World v8x', value: 'yolov8x_world.pt'}
+                        )
+                        .setRequired(false))
+                .addStringOption(option =>
+                    option.setName('adetailer_prompt_2')
+                        .setDescription('The 2nd prompt to use for the adetailer (default is "" - Same as the original prompt)')
+                        .setRequired(false))
+                .addStringOption(option =>
+                    option.setName('adetailer_neg_prompt_2')
+                        .setDescription('The 2nd negative prompt to use for the adetailer (default is "" - Same as the original prompt)')
+                        .setRequired(false)))
+        
     ,
 
 	async execute(interaction, client) {
