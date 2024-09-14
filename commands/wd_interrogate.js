@@ -6,10 +6,6 @@ const { server_pool, get_prompt, get_negative_prompt, get_worker_server, model_n
 const { default: axios } = require('axios');
 const { loadImage } = require('../utils/load_discord_img');
 
-function clamp(num, min, max) {
-    return num <= min ? min : num >= max ? max : num;
-}
-
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('wd_interrogate')
@@ -17,7 +13,16 @@ module.exports = {
 		.addAttachmentOption(option =>
 			option.setName('image')
 				.setDescription('The image to be described')
-				.setRequired(true)),
+				.setRequired(true))
+        .addStringOption(option =>
+            option.setName('engine')
+                .setDescription('The engine to use for the interrogation (default is "CLIP")')
+                .addChoices(
+                    { name: 'CLIP', value: 'CLIP' },
+                    { name: 'Deepbooru', value: 'Deepbooru' },
+                )
+                .setRequired(false))
+    ,
 
 	async execute(interaction, client) {
         if (client.cooldowns.has(interaction.user.id) && !byPassUser.includes(interaction.user.id)) {
@@ -27,6 +32,7 @@ module.exports = {
         }
 
         let attachment_option = interaction.options.getAttachment('image')
+        let engine = interaction.options.getString('engine') || 'CLIP'
 
         //make a temporary reply to not get timeout'd
 		await interaction.deferReply();
@@ -61,10 +67,12 @@ module.exports = {
             null
         ]
 
+        const fn_index_interrogate = engine === 'Deepbooru' ? server_pool[server_index].fn_index_interrogate_deepbooru : server_pool[server_index].fn_index_interrogate
+
         // make option_init but for axios
         const option_init_axios = {
             data: {
-                fn_index: server_pool[server_index].fn_index_interrogate,
+                fn_index: fn_index_interrogate,
                 session_hash: session_hash,
                 data: interrogate_data
             },
@@ -84,7 +92,7 @@ module.exports = {
                 .then(async (final_res_obj) => {
                     const duration = final_res_obj.duration
                     const description = final_res_obj.data[0]
-                    await interaction.editReply({content: `Description from CLIP: ${description} (${duration.toFixed(2)}s)`, files: [{attachment: attachment_option.proxyURL, name: attachment.name}]})
+                    await interaction.editReply({content: `Description from ${engine}: ${description} (${duration.toFixed(2)}s)`, files: [{attachment: attachment_option.proxyURL, name: attachment.name}]})
                 })
                 .catch(err => {
                     throw err

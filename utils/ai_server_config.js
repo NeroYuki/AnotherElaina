@@ -18,6 +18,7 @@ const server_pool = [
         fn_index_controlnet_3: [456, 1025],
         fn_index_controlnet_annotation_3: [1075, 1099],
         fn_index_interrogate: 1154,
+        fn_index_interrogate_deepbooru: 1155,
         fn_index_upscale: 1273,
         fn_index_change_model: 8,
         fn_index_change_support_model: 9,
@@ -93,7 +94,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
     is_using_adetailer = false, coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, 
     freeu_config = null, dynamic_threshold_config = null, pag_config = null, inpaint_area = "Whole picture", mask_padding = 32,
     use_foocus = false, use_booru_gen = false, booru_gen_config = null, is_flux = false,
-    inpaint_img_upload_path = null, inpaint_mask_upload_path = null) => {
+    inpaint_img_upload_path = null, inpaint_mask_upload_path = null, colorbalance_config = null) => {
     // default mode 0 is img2img, 4 is inpainting
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 3000000 && upscaler == "None") ? true : false
@@ -233,16 +234,16 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             "0",
             null,
             null,
-            false,
-            false,
-            0,
-            0,
-            1,
-            0,
-            0,
-            0,
-            false,
-            false,
+            colorbalance_config || false,
+            colorbalance_config?.alt_mode || false,
+            color_grading_config?.brightness || 0,
+            color_grading_config?.contrast || 0,
+            color_grading_config?.saturation || 1,
+            color_grading_config?.red || 0,
+            color_grading_config?.green || 0,
+            color_grading_config?.blue || 0,
+            (color_grading_config && upscale_multiplier > 1) || false,
+            (color_grading_config && is_using_adetailer) || false,
             false,
             "Straight Abs.",
             "Flat",
@@ -389,7 +390,8 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
 const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed, sampler, scheduler, session_hash,
     height, width, upscale_multiplier, upscaler, upscale_denoise_strength, upscale_step, face_restore = false, is_using_adetailer = false, 
     coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, 
-    freeu_config = null, dynamic_threshold_config = null, pag_config = null, use_foocus = false, use_booru_gen = false, booru_gen_config = null, is_flux = false) => {
+    freeu_config = null, dynamic_threshold_config = null, pag_config = null, use_foocus = false, use_booru_gen = false, booru_gen_config = null, 
+    is_flux = false, colorbalance_config = null) => {
 
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 1600000) ? true : false
@@ -502,16 +504,16 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             "0",
             null,
             null,
-            false,      // vectorscope cc
-            false,
-            0,
-            0,
-            1,
-            0,
-            0,
-            0,
-            false,
-            false,
+            colorbalance_config || false,
+            colorbalance_config?.alt_mode || false,
+            color_grading_config?.brightness || 0,
+            color_grading_config?.contrast || 0,
+            color_grading_config?.saturation || 1,
+            color_grading_config?.red || 0,
+            color_grading_config?.green || 0,
+            color_grading_config?.blue || 0,
+            (color_grading_config && upscale_multiplier > 1) || false,
+            (color_grading_config && is_using_adetailer) || false,
             false,
             "Straight Abs.",
             "Flat",
