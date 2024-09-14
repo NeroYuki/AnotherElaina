@@ -23,6 +23,7 @@ console.log(commandFiles)
 client.cooldowns = new Collection();
 client.controlnet_config = new Map();
 client.adetailer_config = new Map();
+client.colorbalance_config = new Map();
 client.boorugen_config = new Map();
 client.COOLDOWN_SECONDS = 30; // replace with desired cooldown time in seconds
 
