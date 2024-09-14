@@ -330,8 +330,17 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         if (extra_config.use_booru_gen) {
             interaction.channel.send('Enhancing image with BooruGen prompt expansion engine.')
         }
+        let colorbalance_config_obj = null
         if (colorbalance_config) {
-            interaction.channel.send('Applying color balance to the vectorscope plugin')
+            // try parse the config string
+            try {
+                colorbalance_config_obj = JSON.parse(colorbalance_config)
+                interaction.channel.send('Applying color balance to the vectorscope plugin')
+            }
+            catch (err) {
+                interaction.channel.send("Failed to parse ColorBalance config")
+                return
+            }
         }
 
         let use_adetailer = false
@@ -349,7 +358,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             seed, sampler, scheduler, session_hash, height, width, upscale_multiplier, upscaler, 
             upscale_denoise_strength, upscale_step, false, use_adetailer, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
             extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, override_neg_prompt ? false : true, extra_config.use_booru_gen, 
-            null, is_flux, colorbalance_config)
+            null, is_flux, colorbalance_config_obj)
 
         // make option_init but for axios
         const option_init_axios = {

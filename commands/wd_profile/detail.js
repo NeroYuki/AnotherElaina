@@ -113,13 +113,31 @@ module.exports = {
             embeded.addFields({ name: 'Checkpoint', value: data.checkpoint });
         }
         if (data.adetailer_config) {
-            embeded.addFields({ name: 'Adetailer Config', value: `\`\`\`${truncate(JSON.stringify(data.adetailer_config, null, 2), 1000)}\`\`\`` });
+            try {
+                const adetailer_config_obj = JSON.parse(data.adetailer_config);
+                embeded.addFields({ name: 'Adetailer Config', value: `\`\`\`${truncate(JSON.stringify(adetailer_config_obj, null, 2), 1000)}\`\`\`` });
+            }
+            catch (err) {
+                embeded.addFields({ name: 'ADetailer Config', value: 'Failed to parse config' });
+            }
         }
         if (data.controlnet_config) {
-            embeded.addFields({ name: 'Controlnet Config', value: `\`\`\`${truncate(JSON.stringify(data.controlnet_config, null, 2), 1000)}\`\`\`` });
+            try {
+                const controlnet_config_obj = JSON.parse(data.controlnet_config);
+                embeded.addFields({ name: 'Controlnet Config', value: `\`\`\`${truncate(JSON.stringify(controlnet_config_obj, null, 2), 1000)}\`\`\`` });
+            }
+            catch (err) {
+                embeded.addFields({ name: 'Controlnet Config', value: 'Failed to parse config' });
+            }
         }
         if (data.colorbalance_config) {
-            embeded.addFields({ name: 'Color Balance Config', value: `\`\`\`${truncate(JSON.stringify(data.colorbalance_config, null, 2), 1000)}\`\`\`` });
+            try {
+                const colorbalance_config_obj = JSON.parse(data.colorbalance_config);
+                embeded.addFields({ name: 'Colorbalance Config', value: `\`\`\`${truncate(JSON.stringify(colorbalance_config_obj, null, 2), 1000)}\`\`\`` });
+            }
+            catch (err) {
+                embeded.addFields({ name: 'Colorbalance Config', value: 'Failed to parse config' });
+            }
         }
 
         const reply_content = { embeds: [embeded] };

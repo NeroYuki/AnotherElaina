@@ -327,15 +327,24 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         if (extra_config.use_booru_gen) {
             interaction.channel.send('Enhancing image with BooruGen prompt expansion engine.')
         }
+        let colorbalance_config_obj = null
         if (colorbalance_config) {
-            interaction.channel.send('Applying color balance to the vectorscope plugin')
+            // try parse the config string
+            try {
+                colorbalance_config_obj = JSON.parse(colorbalance_config)
+                interaction.channel.send('Applying color balance to the vectorscope plugin')
+            }
+            catch (err) {
+                interaction.channel.send("Failed to parse ColorBalance config")
+                return
+            }
         }
     
         const create_data = get_data_body_img2img(server_index, prompt, neg_prompt, sampling_step, cfg_scale,
             seed, sampler, scheduler, session_hash, height, width, attachment, null, denoising_strength, /*img2img mode*/ 0, 4, "original", upscaler, 
             false, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
             extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, "Whole picture", 32, 
-            override_neg_prompt ? false : true, extra_config.use_booru_gen, null, is_flux, null, null, colorbalance_config)
+            override_neg_prompt ? false : true, extra_config.use_booru_gen, null, is_flux, null, null, colorbalance_config_obj)
 
         // make option_init but for axios
         const option_init_axios = {
