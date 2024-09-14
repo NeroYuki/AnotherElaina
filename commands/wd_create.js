@@ -115,10 +115,10 @@ module.exports = {
         const checkpoint = interaction.options.getString('checkpoint') || profile?.checkpoint  ||  null
         let clip_skip = clamp(profile?.clip_skip || 1, 1, 12)
         const adetailer_config = profile?.adetailer_config ||
-            client.adetailer_config.has(interaction.user.id) ? client.adetailer_config.get(interaction.user.id) : null
+            (client.adetailer_config.has(interaction.user.id) ? client.adetailer_config.get(interaction.user.id) : null)
         const booru_gen_config = client.boorugen_config.has(interaction.user.id) ? client.boorugen_config.get(interaction.user.id) : null
         const colorbalance_config = profile?.colorbalance_config ||
-            client.colorbalance_config.has(interaction.user.id) ? client.colorbalance_config.get(interaction.user.id) : null
+            (client.colorbalance_config.has(interaction.user.id) ? client.colorbalance_config.get(interaction.user.id) : null)
 
         let seed = -1
         try {

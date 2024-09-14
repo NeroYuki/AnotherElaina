@@ -168,11 +168,11 @@ module.exports = {
         const controlnet_input_option_3 = interaction.options.getAttachment('controlnet_input_3') || null
         const controlnet_config = interaction.options.getString('controlnet_config') || 
             profile?.controlnet_config ||
-            client.controlnet_config.has(interaction.user.id) ? client.controlnet_config.get(interaction.user.id) : null
+            (client.controlnet_config.has(interaction.user.id) ? client.controlnet_config.get(interaction.user.id) : null)
         let checkpoint = interaction.options.getString('checkpoint') || profile?.checkpoint || null
         const booru_gen_config = client.boorugen_config.has(interaction.user.id) ? client.boorugen_config.get(interaction.user.id) : null
         const colorbalance_config = profile?.colorbalance_config ||
-            client.colorbalance_config.has(interaction.user.id) ? client.colorbalance_config.get(interaction.user.id) : null
+            (client.colorbalance_config.has(interaction.user.id) ? client.colorbalance_config.get(interaction.user.id) : null)
 
         let seed = -1
         try {

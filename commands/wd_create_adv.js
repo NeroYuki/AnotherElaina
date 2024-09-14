@@ -162,18 +162,18 @@ module.exports = {
         const controlnet_input_option_3 = interaction.options.getAttachment('controlnet_input_3') || null
         const controlnet_config = interaction.options.getString('controlnet_config') || 
             profile?.controlnet_config ||
-            client.controlnet_config.has(interaction.user.id) ? client.controlnet_config.get(interaction.user.id) : null
+            (client.controlnet_config.has(interaction.user.id) ? client.controlnet_config.get(interaction.user.id) : null)
         const checkpoint = interaction.options.getString('checkpoint') || profile?.checkpoint || null
         const keep_metadata = interaction.options.getBoolean('keep_metadata') || false
         const clip_skip = clamp(interaction.options.getInteger('clip_skip') || profile?.clip_skip || 1, 1, 12)
         const do_adetailer = interaction.options.getBoolean('do_adetailer') || false
         const adetailer_config = interaction.options.getString('adetailer_config') || 
             profile?.adetailer_config ||
-            client.adetailer_config.has(interaction.user.id) ? client.adetailer_config.get(interaction.user.id) : null
+            (client.adetailer_config.has(interaction.user.id) ? client.adetailer_config.get(interaction.user.id) : null)
         const booru_gen_config = client.boorugen_config.has(interaction.user.id) ? client.boorugen_config.get(interaction.user.id) : null
         const colorbalance_config = interaction.options.getString('colorbalance_config') ||
             profile?.colorbalance_config ||
-            client.colorbalance_config.has(interaction.user.id) ? client.colorbalance_config.get(interaction.user.id) : null
+            (client.colorbalance_config.has(interaction.user.id) ? client.colorbalance_config.get(interaction.user.id) : null)
 
         let seed = -1
         try {
