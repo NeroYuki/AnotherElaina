@@ -98,7 +98,6 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
     // default mode 0 is img2img, 4 is inpainting
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 3000000 && upscaler == "None") ? true : false
-    console.log(inpaint_img_upload_path, inpaint_mask_upload_path)  
     const inpaint_img = convert_upload_path_to_file_data(inpaint_img_upload_path, server_pool[0].url)
     const inpaint_mask = convert_upload_path_to_file_data(inpaint_mask_upload_path, server_pool[0].url)
 
@@ -188,7 +187,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             0,
             "Gustavosta/MagicPrompt-Stable-Diffusion",
             "",
-            coupler_config && !is_flux || false,
+            coupler_config && !is_flux ? true : false,
             coupler_config?.mode || "Basic",
             "",
             coupler_config?.direction || "Horizontal",       // direction (Horizontal or Vertical)
@@ -234,7 +233,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             "0",
             null,
             null,
-            colorbalance_config || false,
+            colorbalance_config ? true : false,
             colorbalance_config?.alt_mode || false,
             color_grading_config?.brightness || 0,
             color_grading_config?.contrast || 0,
@@ -250,7 +249,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             null, 
             null,
             null,
-            dynamic_threshold_config || false,              // enable dynamic threshold
+            dynamic_threshold_config ? true : false,             // enable dynamic threshold
             dynamic_threshold_config?.mimic_scale || 7,                  // mimic scale
             dynamic_threshold_config?.mimic_percentile || 0.95,                  // mimic percentile
             "Constant",
@@ -262,7 +261,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             "MEAN",
             "AD",
             1,
-            freeu_config || false,              // enable freeU
+            freeu_config ? true : false,              // enable freeU
             freeu_config?.values[0] || 1.01,               // freeU B1 (flat -> depth)
             freeu_config?.values[1] || 1.02,               // freeU B2 (clean -> detail)
             freeu_config?.values[2] || 0.99,               // freeU S1 (dark -> light)
@@ -270,7 +269,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             false,
             0.5,
             2,
-            pag_config || false,                      // toggle PAG
+            pag_config ? true : false,                      // toggle PAG
             pag_config?.pag_scale || 3,                          // PAG scale
             false,
             3,
@@ -458,7 +457,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             0,
             "Gustavosta/MagicPrompt-Stable-Diffusion",
             "",
-            coupler_config && !is_flux || false,        // forge coupler
+            coupler_config && !is_flux ? true : false,        // forge coupler
             coupler_config?.mode || "Basic",
             "",
             coupler_config?.direction || "Horizontal",       // direction (Horizontal or Vertical)
@@ -504,7 +503,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             "0",
             null,
             null,
-            colorbalance_config || false,
+            colorbalance_config & !is_flux ? true : false,
             colorbalance_config?.alt_mode || false,
             color_grading_config?.brightness || 0,
             color_grading_config?.contrast || 0,
@@ -520,7 +519,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             null,       // ControlNet
             null,
             null,
-            dynamic_threshold_config || false,              // enable dynamic threshold
+            dynamic_threshold_config ? true : false,              // enable dynamic threshold
             dynamic_threshold_config?.mimic_scale || 7,                  // mimic scale
             dynamic_threshold_config?.mimic_percentile || 0.95,                  // mimic percentile
             "Constant",
@@ -532,7 +531,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             "MEAN",
             "AD",
             1,
-            freeu_config || false,              // enable freeU
+            freeu_config ? true : false,              // enable freeU
             freeu_config?.values[0] || 1.01,               // freeU B1 (flat -> depth)
             freeu_config?.values[1] || 1.02,               // freeU B2 (clean -> detail)
             freeu_config?.values[2] || 0.99,               // freeU S1 (dark -> light)
@@ -540,7 +539,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             false,
             0.5,
             2,
-            pag_config || false,                      // toggle PAG
+            pag_config ? true : false,                      // toggle PAG
             pag_config?.pag_scale || 3,                          // PAG scale
             false,      // HR fix
             3,          
