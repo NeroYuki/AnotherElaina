@@ -8,6 +8,10 @@ module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('wd_boorugen')
 		.setDescription('Output a DanTagGen config string based on the settings, also set as your default config')
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('reset')
+                .setDescription('Reset the BooruGen config'))
         .addStringOption(option =>
             option.setName('gen_length')
                 .setDescription('The length of the generated prompt')
@@ -41,6 +45,12 @@ module.exports = {
     ,
 
 	async execute(interaction, client) {
+
+        if (interaction.options.getSubcommand() === 'reset') {
+            client.boorugen_config.delete(interaction.user.id)
+            await interaction.reply('BooruGen config has been reset');
+            return
+        }
         //parse the options
         const gen_length = interaction.options.getString('gen_length') || 'long'
         const ban_tags = interaction.options.getString('ban_tags') || '.*background.*, .*alternate.*, character doll, multiple.*, .*cosplay.*, .*censor.*'

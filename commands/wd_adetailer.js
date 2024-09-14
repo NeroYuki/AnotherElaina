@@ -6,6 +6,10 @@ module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('wd_adetailer')
 		.setDescription('Output an ADetailer config string based on the settings, also set as your default config')
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('reset')
+                .setDescription('Reset the ADetailer config'))
         .addStringOption(option =>
             option.setName('adetailer_model')
                 .setDescription('The model to use for the adetailer (default is "face_yolov8s.pt")')
@@ -47,6 +51,13 @@ module.exports = {
     ,
 
 	async execute(interaction, client) {
+
+        if (interaction.options.getSubcommand() === 'reset') {
+            client.adetailer_config.delete(interaction.user.id)
+            await interaction.reply('ADetailer config has been reset');
+            return
+        }
+
         //parse the options
         const adetailer_model = interaction.options.getString('adetailer_model') || 'face_yolov8s.pt'
         const adetailer_prompt = interaction.options.getString('adetailer_prompt') || ''

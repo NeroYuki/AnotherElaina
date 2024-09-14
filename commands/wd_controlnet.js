@@ -6,6 +6,10 @@ module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('wd_controlnet')
 		.setDescription('Output a controlnet config string based on the settings, also set as your default config')
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('reset')
+                .setDescription('Reset the controlnet config'))
         .addStringOption(option =>
             option.setName('controlnet_model')
                 .setDescription('The model to use for the controlnet (default is "T2I-Adapter - OpenPose")')
@@ -94,6 +98,13 @@ module.exports = {
     ,
 
 	async execute(interaction, client) {
+
+        if (interaction.options.getSubcommand() === 'reset') {
+            client.controlnet_config.delete(interaction.user.id)
+            await interaction.reply('ControlNet config has been reset');
+            return
+        }
+
         let controlnet_model = interaction.options.getString('controlnet_model') || "t2iadapter_openpose_sd14v1 [7e267e5e]";
         const controlnet_preprocessor = interaction.options.getString('controlnet_preprocessor') || "openpose"; 
         const controlnet_weight = interaction.options.getNumber('controlnet_weight') || 1;
