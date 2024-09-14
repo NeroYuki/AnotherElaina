@@ -353,8 +353,6 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                 });
             use_adetailer = true
         }
-
-        console.log(colorbalance_config_obj)
     
         const create_data = get_data_body(server_index, prompt, neg_prompt, sampling_step, cfg_scale, 
             seed, sampler, scheduler, session_hash, height, width, upscale_multiplier, upscaler, 

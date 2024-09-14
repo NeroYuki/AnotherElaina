@@ -63,17 +63,15 @@ module.exports = {
         const blue = clamp(interaction.options.getNumber('blue') || 0, -4, 4)
         const alt_mode = interaction.options.getBoolean('alt_mode') || false
 
-        const config = [
-            {
-                "brightness": brightness,
-                "contrast": contrast,
-                "saturation": saturation,
-                "red": red,
-                "green": green,
-                "blue": blue,
-                "alt_mode": alt_mode
-            }
-        ]
+        const config = {
+            "brightness": brightness,
+            "contrast": contrast,
+            "saturation": saturation,
+            "red": red,
+            "green": green,
+            "blue": blue,
+            "alt_mode": alt_mode
+        }
 
         const config_string = JSON.stringify(config)
 
