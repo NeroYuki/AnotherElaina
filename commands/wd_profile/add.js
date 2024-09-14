@@ -71,6 +71,15 @@ module.exports = {
             option.setName('checkpoint')
                 .setDescription('The checkpoint to use for the profile')
                 .addChoices(...model_selection, ...model_selection_xl))
+        .addStringOption(option =>
+            option.setName('adetailer_config')
+                .setDescription('Config string for the adetailer (use wd_adetailer to generate)'))
+        .addStringOption(option =>
+            option.setName('controlnet_config')
+                .setDescription('Config string for the controlnet (use wd_controlnet to generate)'))
+        .addStringOption(option =>
+            option.setName('colorbalance_config')
+                .setDescription('Config string for the controlnet (use wd_colorbalance to generate)'))
     ,
 
 	async execute(interaction) {
@@ -93,6 +102,9 @@ module.exports = {
         const upscale_step = interaction.options.getInteger('upscale_step') || 20;
         const clip_skip = interaction.options.getInteger('clip_skip') || 1
         const checkpoint = interaction.options.getString('checkpoint') || null
+        const adetailer_config = interaction.options.getString('adetailer_config') || null
+        const controlnet_config = interaction.options.getString('controlnet_config') || null
+        const colorbalance_config = interaction.options.getString('colorbalance_config') || null
 
 		await interaction.deferReply();
 
@@ -135,6 +147,9 @@ module.exports = {
                 upscale_step: upscale_step,
                 clip_skip: clip_skip,
                 checkpoint: checkpoint,
+                adetailer_config: adetailer_config,
+                controlnet_config: controlnet_config,
+                colorbalance_config: colorbalance_config,
             }
         };
 

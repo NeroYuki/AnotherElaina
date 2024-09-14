@@ -2,6 +2,10 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { queryRecordLimit } = require('../../database/database_interaction');
 const { MessageEmbed, MessageAttachment } = require('discord.js');
 
+function truncate(str, n){
+    return (str.length > n) ? str.substr(0, n-1) + '...' : str;
+}
+
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('wd_profile_detail')
@@ -107,6 +111,15 @@ module.exports = {
         }
         if (data.checkpoint) {
             embeded.addFields({ name: 'Checkpoint', value: data.checkpoint });
+        }
+        if (data.adetailer_config) {
+            embeded.addFields({ name: 'Adetailer Config', value: `\`\`\`${truncate(JSON.stringify(data.adetailer_config, null, 2), 1000)}\`\`\`` });
+        }
+        if (data.controlnet_config) {
+            embeded.addFields({ name: 'Controlnet Config', value: `\`\`\`${truncate(JSON.stringify(data.controlnet_config, null, 2), 1000)}\`\`\`` });
+        }
+        if (data.colorbalance_config) {
+            embeded.addFields({ name: 'Color Balance Config', value: `\`\`\`${truncate(JSON.stringify(data.colorbalance_config, null, 2), 1000)}\`\`\`` });
         }
 
         const reply_content = { embeds: [embeded] };
