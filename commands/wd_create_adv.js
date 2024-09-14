@@ -15,10 +15,7 @@ const { queryRecordLimit } = require('../database/database_interaction.js');
 const { full_prompt_analyze, preview_coupler_setting, fetch_user_defined_wildcard } = require('../utils/prompt_analyzer.js');
 const { fallback_to_resource_saving } = require('../utils/ollama_request.js');
 const { load_profile } = require('../utils/profile_helper.js');
-
-function clamp(num, min, max) {
-    return num <= min ? min : num >= max ? max : num;
-}
+const { clamp } = require('../utils/common_helper');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -163,13 +160,20 @@ module.exports = {
         const controlnet_input_option = interaction.options.getAttachment('controlnet_input') || null
         const controlnet_input_option_2 = interaction.options.getAttachment('controlnet_input_2') || null
         const controlnet_input_option_3 = interaction.options.getAttachment('controlnet_input_3') || null
-        const controlnet_config = interaction.options.getString('controlnet_config') || client.controlnet_config.has(interaction.user.id) ? client.controlnet_config.get(interaction.user.id) : null
+        const controlnet_config = interaction.options.getString('controlnet_config') || 
+            profile?.controlnet_config ||
+            client.controlnet_config.has(interaction.user.id) ? client.controlnet_config.get(interaction.user.id) : null
         const checkpoint = interaction.options.getString('checkpoint') || profile?.checkpoint || null
         const keep_metadata = interaction.options.getBoolean('keep_metadata') || false
         const clip_skip = clamp(interaction.options.getInteger('clip_skip') || profile?.clip_skip || 1, 1, 12)
         const do_adetailer = interaction.options.getBoolean('do_adetailer') || false
-        const adetailer_config = interaction.options.getString('adetailer_config') || client.adetailer_config.has(interaction.user.id) ? client.adetailer_config.get(interaction.user.id) : null
+        const adetailer_config = interaction.options.getString('adetailer_config') || 
+            profile?.adetailer_config ||
+            client.adetailer_config.has(interaction.user.id) ? client.adetailer_config.get(interaction.user.id) : null
         const booru_gen_config = client.boorugen_config.has(interaction.user.id) ? client.boorugen_config.get(interaction.user.id) : null
+        const colorbalance_config = interaction.options.getString('colorbalance_config') ||
+            profile?.colorbalance_config ||
+            client.colorbalance_config.has(interaction.user.id) ? client.colorbalance_config.get(interaction.user.id) : null
 
         let seed = -1
         try {
@@ -346,11 +350,15 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         if (extra_config.use_booru_gen) {
             interaction.channel.send('Enhancing image with BooruGen prompt expansion engine.')
         }
+        if (colorbalance_config) {
+            interaction.channel.send('Applying color balance to the vectorscope plugin')
+        }
     
         const create_data = get_data_body(server_index, prompt, neg_prompt, sampling_step, cfg_scale, 
             seed, sampler, scheduler, session_hash, height, width, upscale_multiplier, upscaler, 
             upscale_denoise_strength, upscale_step, false, do_adetailer, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
-            extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, extra_config.use_foocus, extra_config.use_booru_gen, booru_gen_config, is_flux)
+            extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, extra_config.use_foocus, extra_config.use_booru_gen, 
+            booru_gen_config, is_flux, colorbalance_config)
 
         // make option_init but for axios
         const option_init_axios = {

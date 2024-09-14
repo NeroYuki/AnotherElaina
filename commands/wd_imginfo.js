@@ -5,10 +5,6 @@ const { MessageEmbed } = require('discord.js');
 const { model_name_hash_mapping } = require('../utils/ai_server_config');
 const { parsePromptGraph } = require('../utils/comfy_parser');
 
-function clamp(num, min, max) {
-    return num <= min ? min : num >= max ? max : num;
-}
-
 const allowed_extra_params = ["sampler", "steps", "cfg scale", "seed", "model hash", "vae hash", "clip skip", "schedule type", "model"]
 
 module.exports = {

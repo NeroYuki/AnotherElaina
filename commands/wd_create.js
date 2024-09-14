@@ -11,10 +11,7 @@ const { full_prompt_analyze, preview_coupler_setting, fetch_user_defined_wildcar
 const { fallback_to_resource_saving } = require('../utils/ollama_request.js');
 const { load_profile } = require('../utils/profile_helper.js');
 const { load_adetailer } = require('../utils/adetailer_execute.js');
-
-function clamp(num, min, max) {
-    return num <= min ? min : num >= max ? max : num;
-}
+const { clamp } = require('../utils/common_helper');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -117,7 +114,11 @@ module.exports = {
 
         const checkpoint = interaction.options.getString('checkpoint') || profile?.checkpoint  ||  null
         let clip_skip = clamp(profile?.clip_skip || 1, 1, 12)
-        const adetailer_config = client.adetailer_config.has(interaction.user.id) ? client.adetailer_config.get(interaction.user.id) : null
+        const adetailer_config = profile?.adetailer_config ||
+            client.adetailer_config.has(interaction.user.id) ? client.adetailer_config.get(interaction.user.id) : null
+        const booru_gen_config = client.boorugen_config.has(interaction.user.id) ? client.boorugen_config.get(interaction.user.id) : null
+        const colorbalance_config = profile?.colorbalance_config ||
+            client.colorbalance_config.has(interaction.user.id) ? client.colorbalance_config.get(interaction.user.id) : null
 
         let seed = -1
         try {
@@ -329,6 +330,9 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         if (extra_config.use_booru_gen) {
             interaction.channel.send('Enhancing image with BooruGen prompt expansion engine.')
         }
+        if (colorbalance_config) {
+            interaction.channel.send('Applying color balance to the vectorscope plugin')
+        }
 
         let use_adetailer = false
         // check if adetailer config is not null and at least 1 of config's model is not None
@@ -344,7 +348,8 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         const create_data = get_data_body(server_index, prompt, neg_prompt, sampling_step, cfg_scale, 
             seed, sampler, scheduler, session_hash, height, width, upscale_multiplier, upscaler, 
             upscale_denoise_strength, upscale_step, false, use_adetailer, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
-            extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, override_neg_prompt ? false : true, extra_config.use_booru_gen, null, is_flux)
+            extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, override_neg_prompt ? false : true, extra_config.use_booru_gen, 
+            null, is_flux, colorbalance_config)
 
         // make option_init but for axios
         const option_init_axios = {

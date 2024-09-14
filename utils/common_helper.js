@@ -29,7 +29,12 @@ function convert_upload_path_to_file_data(upload_path, worker_endpoint) {
 }
 
 
+function clamp(num, min, max) {
+    return num <= min ? min : num >= max ? max : num;
+}
+
 module.exports = {
     listAllFiles,
     convert_upload_path_to_file_data,
+    clamp
 }
