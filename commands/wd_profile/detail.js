@@ -115,6 +115,7 @@ module.exports = {
         if (data.adetailer_config) {
             try {
                 const adetailer_config_obj = JSON.parse(data.adetailer_config);
+                // TODO: validate the adetailer_config_obj
                 embeded.addFields({ name: 'ADetailer Config', value: "\`\`\`json\n" + truncate(JSON.stringify(adetailer_config_obj, null, 2), 998) + "\`\`\`" });
             }
             catch (err) {
@@ -124,6 +125,7 @@ module.exports = {
         if (data.controlnet_config) {
             try {
                 const controlnet_config_obj = JSON.parse(data.controlnet_config);
+                // TODO: validate the controlnet_config_obj
                 embeded.addFields({ name: 'Controlnet Config', value: "\`\`\`json\n" + truncate(JSON.stringify(controlnet_config_obj, null, 2), 998) + "\`\`\`" });
             }
             catch (err) {
@@ -133,6 +135,7 @@ module.exports = {
         if (data.colorbalance_config) {
             try {
                 const colorbalance_config_obj = JSON.parse(data.colorbalance_config);
+                // TODO: validate the colorbalance_config_obj
                 embeded.addFields({ name: 'Colorbalance Config', value: "\`\`\`json\n" + truncate(JSON.stringify(colorbalance_config_obj, null, 2), 998) + "\`\`\`" });
             }
             catch (err) {
