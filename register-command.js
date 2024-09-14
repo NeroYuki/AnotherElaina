@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { REST } = require('@discordjs/rest');
+const { SlashCommandSubcommandBuilder } = require('@discordjs/builders');
 const { Routes } = require('discord-api-types/v9');
 const { clientId, guildIds } = require('./config.json');
 const { listAllFiles } = require('./utils/common_helper');
@@ -23,7 +24,17 @@ if (!doClear) {
 	for (const file of commandFiles) {
 		const filePath = path.join(commandsPath, file);
 		const command = require(filePath);
-		if (!isGlobal) command.data.description = "[DEBUG] " + command.data.description
+		if (!isGlobal) {
+			command.data.description = "[DEBUG] " + command.data.description
+			// set subcommand description
+			if (command.data.options) {
+				command.data.options.forEach(subcommand => {
+					if (subcommand instanceof SlashCommandSubcommandBuilder) {
+						subcommand.description = "[DEBUG] " + subcommand.description
+					}
+				})
+			}
+		}
 		commands.push(command.data.toJSON());
 	}
 }
