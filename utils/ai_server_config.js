@@ -1257,7 +1257,7 @@ const model_selection = [
 
 const model_selection_xl = [
     { name: 'PonyDiffusionXL v6', value: 'ponydiffusionxl_v6.safetensors'},
-    { name: 'ArtiWaifu v1', value: 'artiwaifu_v1.safetensors' },
+    { name: 'CrossMixXL', value: 'crossmix_xl.safetensors' },
     { name: 'NekorayXL v0.6', value: 'nekorayxl.safetensors' },
     { name: 'AnimagineXL v3', value: 'animaginexl_v3.safetensors' },
     { name: 'AnimagineXL v3.1', value: 'animaginexl_v31.safetensors'},
@@ -1291,8 +1291,9 @@ const model_selection_curated = [
 const controlnet_preprocessor_selection = [
     { name: 'None', value: 'None' },
     { name: 'Canny', value: 'canny' },
-    { name: 'Depth', value: 'depth_midas' },
+    { name: 'Depth', value: 'depth_anything_v2' },
     { name: 'Depth (LERes)', value: 'depth_leres++' },
+    { name: 'Depth (MiDaS)', value: 'depth_midas' },
     { name: 'HED', value: 'softedge_hed' },
     { name: 'Lineart Anime', value: 'lineart_anime' },
     { name: 'OpenPose', value: 'openpose' },
@@ -1344,7 +1345,7 @@ const controlnet_model_selection_xl = [
     { name: 'ControlNet - OpenPose (Accuracy)', value: 'controlnetxlCNXL_xinsirOpenposeTwins [590eff90]'},
     { name: 'ControlNet - SoftEdge', value: 'bdsqlsz_controlllite_xl_softedge [c28ff1c4]'},
     { name: 'ControlNet - Lineart Anime', value: 't2i-adapter_diffusers_xl_lineart [bae0efef]'},
-    // { name: 'ControlNet - Tile', value: 'control_v11f1e_sd15_tile [04595688]'}
+    { name: 'ControlNet - Tile', value: 'controlnetxlCNXL_xinsirTile [4d6257d3]'},
     { name: 'IPAdapter', value: 'ip-adapter_xl [4209e9f7]'},
     { name: 'InstantID - Keypoint', value: 'control_instant_id_sdxl [c5c25a50]'},
     { name: 'InstantID - IPAdapter', value: 'ip-adapter_instant_id_sdxl [eb2d3ec0]'}
