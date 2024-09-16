@@ -1,4 +1,5 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
+const { truncate, try_parse_json_and_return_formated_string } = require('../utils/common_helper');
 
 function clamp(num, min, max) {
     return num <= min ? min : num >= max ? max : num;
@@ -12,6 +13,10 @@ module.exports = {
             subcommand
                 .setName('reset')
                 .setDescription('Reset the BooruGen config'))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('check')
+                .setDescription('Check the current BooruGen config'))
         .addSubcommand(subcommand =>
             subcommand
                 .setName('set')
@@ -56,6 +61,17 @@ module.exports = {
             await interaction.reply('BooruGen config has been reset');
             return
         }
+        else if (interaction.options.getSubcommand() === 'check') {
+            const config_string = client.boorugen_config.get(interaction.user.id)
+            if (config_string) {
+                await interaction.reply("\`\`\`json\n" + truncate(try_parse_json_and_return_formated_string(config_string), 2000) + "\`\`\`");
+            }
+            else {
+                await interaction.reply('No Booru gen config set');
+            }
+            return
+        }
+
         //parse the options
         const gen_length = interaction.options.getString('gen_length') || 'long'
         const ban_tags = interaction.options.getString('ban_tags') || '.*background.*, .*alternate.*, character doll, multiple.*, .*cosplay.*, .*censor.*'

@@ -33,8 +33,24 @@ function clamp(num, min, max) {
     return num <= min ? min : num >= max ? max : num;
 }
 
+function truncate(str, n){
+    return (str.length > n) ? str.substr(0, n-1) + '...' : str;
+}
+
+function try_parse_json_and_return_formated_string(input) {
+    try {
+        const json = JSON.parse(input)
+        return JSON.stringify(json, null, 2)
+    }
+    catch (error) {
+        return "Invalid JSON"
+    }
+}
+
 module.exports = {
     listAllFiles,
     convert_upload_path_to_file_data,
-    clamp
+    clamp,
+    truncate,
+    try_parse_json_and_return_formated_string
 }

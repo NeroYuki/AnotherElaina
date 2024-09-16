@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { controlnet_model_selection, controlnet_preprocessor_selection, model_selection_xl } = require('../utils/ai_server_config');
 const { cached_model } = require('../utils/model_change');
+const { truncate, try_parse_json_and_return_formated_string } = require('../utils/common_helper');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -10,6 +11,10 @@ module.exports = {
             subcommand
                 .setName('reset')
                 .setDescription('Reset the ADetailer config'))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('check')
+                .setDescription('Check the current ADetailer config'))
         .addSubcommand(subcommand =>
             subcommand
                 .setName('set')
@@ -60,6 +65,16 @@ module.exports = {
         if (interaction.options.getSubcommand() === 'reset') {
             client.adetailer_config.delete(interaction.user.id)
             await interaction.reply('ADetailer config has been reset');
+            return
+        }
+        else if (interaction.options.getSubcommand() === 'check') {
+            const config_string = client.adetailer_config.get(interaction.user.id)
+            if (config_string) {
+                await interaction.reply("\`\`\`json\n" + truncate(try_parse_json_and_return_formated_string(config_string), 2000) + "\`\`\`");
+            }
+            else {
+                await interaction.reply('No ADetailer config set');
+            }
             return
         }
 

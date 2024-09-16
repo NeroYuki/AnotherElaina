@@ -1,10 +1,7 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { queryRecordLimit } = require('../../database/database_interaction');
 const { MessageEmbed, MessageAttachment } = require('discord.js');
-
-function truncate(str, n){
-    return (str.length > n) ? str.substr(0, n-1) + '...' : str;
-}
+const { truncate } = require('../../utils/common_helper');
 
 module.exports = {
 	data: new SlashCommandBuilder()

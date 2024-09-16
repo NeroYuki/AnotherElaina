@@ -1,7 +1,7 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { controlnet_model_selection, controlnet_preprocessor_selection, model_selection_xl } = require('../utils/ai_server_config');
 const { cached_model } = require('../utils/model_change');
-const { clamp } = require('../utils/common_helper');
+const { clamp, truncate, try_parse_json_and_return_formated_string } = require('../utils/common_helper');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -11,6 +11,10 @@ module.exports = {
             subcommand
                 .setName('reset')
                 .setDescription('Reset the color balance config'))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('check')
+                .setDescription('Check the current color balance config'))
         .addSubcommand(subcommand =>
             subcommand
                 .setName('set')
@@ -51,6 +55,16 @@ module.exports = {
         if (interaction.options.getSubcommand() === 'reset') {
             client.colorbalance_config.delete(interaction.user.id)
             await interaction.reply('ColorBalance config has been reset');
+            return
+        }
+        else if (interaction.options.getSubcommand() === 'check') {
+            const config_string = client.colorbalance_config.get(interaction.user.id)
+            if (config_string) {
+                await interaction.reply("\`\`\`json\n" + truncate(try_parse_json_and_return_formated_string(config_string), 2000) + "\`\`\`");
+            }
+            else {
+                await interaction.reply('No color balance config set');
+            }
             return
         }
 
