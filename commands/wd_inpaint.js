@@ -788,7 +788,9 @@ module.exports = {
             }
     
             console.log(`requesting: ${WORKER_ENDPOINT}/run/predict/`)
-            fallback_to_resource_saving()
+            fallback_to_resource_saving().catch(err => {
+                console.log("failed to fallback to resource saving chatbot profile")
+            })
     
             function updateInteractionReply(data, state = 'queued') {
                 return new Promise(async (resolve, reject) => {
@@ -872,12 +874,13 @@ module.exports = {
                             .catch(err => {
                                 throw err
                             })
-    
-                        progress_ping_delay += 500
-                        fetch_progress()
                     }
                     catch (err) {
                         console.log(err)
+                    }
+                    finally {
+                        progress_ping_delay += 500
+                        fetch_progress()
                     }
                 }, progress_ping_delay);
             }
@@ -901,12 +904,24 @@ module.exports = {
                             const file_dir = final_res_obj.data[0][0]?.image.path
                             console.log(final_res_obj.data)
                             if (!file_dir) {
+                                // error from python server side, we bail
                                 throw 'Request return no image'
                             }
-                            // all server is remote
-                            const img_res = await fetch(`${WORKER_ENDPOINT}/file=${file_dir}`).catch(err => {
+                            // all server is now remote
+                            // retry fetch before throwing
+                            let fetch_final_retry_count = 0
+                            let img_res = null
+                            while (fetch_final_retry_count < 3 && !img_res) {
+                                img_res = await fetch(`${WORKER_ENDPOINT}/file=${file_dir}`).catch(err => {
+                                    console.log('Error while fetching image on remote server, retrying...')
+                                })
+                                fetch_final_retry_count++
+                                // wait for 2 seconds before retry
+                                await new Promise(resolve => setTimeout(resolve, 2000))
+                            }
+                            if (!img_res) {
                                 throw 'Error while fetching image on remote server'
-                            })
+                            }
     
                             if (img_res && img_res.status === 200) {
                                 img_buffer = Buffer.from(await img_res.arrayBuffer())
