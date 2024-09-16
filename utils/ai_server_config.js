@@ -1247,7 +1247,7 @@ const model_selection = [
     { name: 'Pastel Mix v2.1', value: 'pastelmix.safetensors' },
     { name: 'Counterfeit v2.5', value: 'counterfeit.safetensors' },
     { name: 'MeinaMix v11', value: 'meinamix_v11.safetensors' },
-    { name: 'RefSlave v2', value: 'refslave.safetensors' },
+    { name: 'HimawariMix v8', value: 'himawarimix.safetensors' },
     { name: 'Anything v5', value: 'anythingv5.safetensors' },
     { name: 'CetusMix (Coda v2)', value: 'cetusmix_coda2.safetensors' },
     { name: 'MeinaPastel v6', value: 'meinapastel.safetensors' },
