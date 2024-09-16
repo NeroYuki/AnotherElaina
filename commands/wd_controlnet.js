@@ -82,9 +82,6 @@ module.exports = {
                     option.setName('controlnet_preprocessor_3')
                         .setDescription('The preprocessor to use for the controlnet (default is "None")')
                         .addChoices(...controlnet_preprocessor_selection))
-                .addBooleanOption(option => 
-                    option.setName('do_preview_annotation')
-                        .setDescription('Show the annotation after preprocessing (default is "false")'))
                 .addNumberOption(option =>
                     option.setName('controlnet_weight_3')
                         .setDescription('The weight of the controlnet (default is 1)'))
@@ -103,7 +100,10 @@ module.exports = {
                         .setDescription('The threshold of the controlnet (default is 100)'))
                 .addNumberOption(option =>
                     option.setName('controlnet_threshold_b_3')
-                        .setDescription('The threshold of the controlnet (default is 200)')))
+                        .setDescription('The threshold of the controlnet (default is 200)'))
+                .addBooleanOption(option => 
+                    option.setName('do_preview_annotation')
+                        .setDescription('Show the annotation after preprocessing (default is "false")')))
     ,
 
 	async execute(interaction, client) {

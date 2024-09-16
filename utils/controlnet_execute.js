@@ -2,7 +2,7 @@
 // const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 // const { byPassUser } = require('../config.json');
 // const crypt = require('crypto');
-const { server_pool, get_data_controlnet, get_data_controlnet_annotation, model_selection_xl, controlnet_model_selection, controlnet_model_selection_xl, model_selection_inpaint } = require('../utils/ai_server_config.js');
+const { server_pool, get_data_controlnet, get_data_controlnet_annotation, model_selection_xl, controlnet_model_selection, controlnet_model_selection_xl, model_selection_inpaint, model_selection_flux, controlnet_model_selection_flux, controlnet_model_selection_sd } = require('../utils/ai_server_config.js');
 // const { default: axios } = require('axios');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const { cached_model } = require('./model_change.js');
@@ -56,16 +56,24 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
 
         if (model_selection_xl.find(x => x.value === cached_model[0]) != null || model_selection_inpaint.find(x => x.inpaint === cached_model[0]) != null) {
             interaction.channel.send("Detected active XL model, translating controlnet model to XL version")
-            // search for the model name in the controlnet_model_selection
             // get the value with the same name from the controlnet_model_selection_xl
-            const controlnet_name = controlnet_model_selection.find(x => x.value === controlnet_model)?.name || "Unknown"
-            controlnet_model = controlnet_model_selection_xl.find(x => x.name === controlnet_name)?.value || controlnet_model
-
-            const controlnet_name_2 = controlnet_model_selection.find(x => x.value === controlnet_model_2)?.name || "Unknown"
-            controlnet_model_2 = controlnet_model_selection_xl.find(x => x.name === controlnet_name_2)?.value || controlnet_model_2
-
-            const controlnet_name_3 = controlnet_model_selection.find(x => x.value === controlnet_model_3)?.name || "Unknown"
-            controlnet_model_3 = controlnet_model_selection_xl.find(x => x.name === controlnet_name_3)?.value || controlnet_model_3
+            controlnet_model = controlnet_model_selection_xl.find(x => x.name === controlnet_model)?.value || "None"
+            controlnet_model_2 = controlnet_model_selection_xl.find(x => x.name === controlnet_model_2)?.value || "None"
+            controlnet_model_3 = controlnet_model_selection_xl.find(x => x.name === controlnet_model_3)?.value || "None"
+        }
+        else if (model_selection_flux.find(x => x.value === cached_model[0]) != null) {
+            interaction.channel.send("Detected active Flux model, translating controlnet model to Flux version")
+            // get the value with the same name from the controlnet_model_selection_flux
+            controlnet_model = controlnet_model_selection_flux.find(x => x.name === controlnet_model)?.value || "None"
+            controlnet_model_2 = controlnet_model_selection_flux.find(x => x.name === controlnet_model_2)?.value || "None"
+            controlnet_model_3 = controlnet_model_selection_flux.find(x => x.name === controlnet_model_3)?.value || "None"
+        }
+        else {
+            interaction.channel.send("Detected active SD model, translating controlnet model to SD version")
+            // search for the model name in the controlnet_model_selection_sd
+            controlnet_model = controlnet_model_selection_sd.find(x => x.name === controlnet_model)?.value || "None"
+            controlnet_model_2 = controlnet_model_selection_sd.find(x => x.name === controlnet_model_2)?.value || "None"
+            controlnet_model_3 = controlnet_model_selection_sd.find(x => x.name === controlnet_model_3)?.value || "None"
         }
 
         const do_preview_annotation = controlnet_config_obj.do_preview_annotation
