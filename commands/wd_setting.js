@@ -57,7 +57,7 @@ module.exports = {
 
 		await interaction.reply("Personal generation setting has been set");
 
-        client.colorbalance_config.set(interaction.user.id, config_string);
+        client.usersetting_config.set(interaction.user.id, config_string);
 
 	},
 };
