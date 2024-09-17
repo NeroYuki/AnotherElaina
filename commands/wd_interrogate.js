@@ -57,8 +57,8 @@ module.exports = {
                         .png()
                         .toBuffer()
                 })
-                .then((data) => {
-                    attachment = data
+                .then(async data => {
+                    attachment = "data:image/png;base64," + data.toString('base64')
                 })
                 .catch((err) => {
                     console.log(err)
@@ -71,8 +71,8 @@ module.exports = {
             await sharp(attachment)
                 .png()
                 .toBuffer()
-                .then((data) => {
-                    attachment = data
+                .then(async data => {
+                    attachment = "data:image/png;base64," + data.toString('base64')
                 })
                 .catch((err) => {
                     console.log(err)
