@@ -48,11 +48,16 @@ module.exports = {
         if (engine === 'Deepbooru') {
             // load attachment_mask to resize image to the nearest size dividible by 8 then ((export to png data URI)) (use pipline to avoid memory leak)
             await sharp(attachment)
-                .resize({ width: Math.floor(attachment.width / 8) * 8, height: Math.floor(attachment.height / 8) * 8 })
-                .png()
-                .toBuffer()
-                .then((data) => {
-                    attachment = data
+                .metadata()
+                .then((metadata) => {
+                    attachment = sharp(attachment)
+                        .resize({
+                            width: Math.floor(metadata.width / 8) * 8,
+                            height: Math.floor(metadata.height / 8) * 8,
+                            fit: 'contain'
+                        })
+                        .png()
+                        .toBuffer()
                 })
                 .catch((err) => {
                     console.log(err)
