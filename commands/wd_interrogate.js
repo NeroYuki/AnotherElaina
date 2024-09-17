@@ -2,6 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { byPassUser } = require('../config.json');
 const crypt = require('crypto');
+const sharp = require('sharp');
 const { server_pool, get_prompt, get_negative_prompt, get_worker_server, model_name_hash_mapping } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const { loadImage } = require('../utils/load_discord_img');
