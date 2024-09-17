@@ -155,8 +155,19 @@ module.exports = {
         const colorbalance_config = interaction.options.getString('colorbalance_config') ||
             profile?.colorbalance_config ||
             (client.colorbalance_config.has(interaction.user.id) ? client.colorbalance_config.get(interaction.user.id) : null)
+    
+        // parse the user setting config
+        const usersetting_config = client.usersetting_config.has(interaction.user.id) ? client.usersetting_config.get(interaction.user.id) : null
+        let do_preview = false
 
-
+        try {
+            const usersetting_config_obj = JSON.parse(usersetting_config)
+            do_preview = usersetting_config_obj.do_preview
+        }
+        catch (err) {
+            console.log("Failed to parse usersetting config:", err)
+        }
+        
         let seed = -1
         try {
             seed = parseInt(interaction.options.getString('seed')) || parseInt('-1')
@@ -352,7 +363,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             seed, sampler, scheduler, session_hash, height, width, attachment, null, denoising_strength, /*img2img mode*/ 0, 4, "original", upscaler, 
             do_adetailer, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
             extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, "Whole picture", 32, 
-            extra_config.use_foocus, extra_config.use_booru_gen, booru_gen_config, is_flux, null, null, colorbalance_config_obj)
+            extra_config.use_foocus, extra_config.use_booru_gen, booru_gen_config, is_flux, null, null, colorbalance_config_obj, do_preview)
 
         // make option_init but for axios
         const option_init_axios = {

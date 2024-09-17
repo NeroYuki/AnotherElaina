@@ -25,6 +25,7 @@ client.controlnet_config = new Map();
 client.adetailer_config = new Map();
 client.colorbalance_config = new Map();
 client.boorugen_config = new Map();
+client.usersetting_config = new Map();
 client.COOLDOWN_SECONDS = 30; // replace with desired cooldown time in seconds
 
 for (const file of commandFiles) {
@@ -109,6 +110,7 @@ client.on('interactionCreate', async interaction => {
 			'wd_img2img_adv', 
 			'wd_boorugen',
 			'wd_colorbalance',
+			'wd_setting',
 		].includes(interaction.commandName)) {
 			await command.execute(interaction, client)
 		}

@@ -94,7 +94,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
     is_using_adetailer = false, coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, 
     freeu_config = null, dynamic_threshold_config = null, pag_config = null, inpaint_area = "Whole picture", mask_padding = 32,
     use_foocus = false, use_booru_gen = false, booru_gen_config = null, is_flux = false,
-    inpaint_img_upload_path = null, inpaint_mask_upload_path = null, colorbalance_config = null) => {
+    inpaint_img_upload_path = null, inpaint_mask_upload_path = null, colorbalance_config = null, do_preview = false) => {
     // default mode 0 is img2img, 4 is inpainting
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 3000000 && upscaler == "None") ? true : false
@@ -156,6 +156,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             0,
             null,
             enable_censor,
+            do_preview,
             is_using_adetailer,
             1,
             0.5,
@@ -390,7 +391,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
     height, width, upscale_multiplier, upscaler, upscale_denoise_strength, upscale_step, face_restore = false, is_using_adetailer = false, 
     coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, 
     freeu_config = null, dynamic_threshold_config = null, pag_config = null, use_foocus = false, use_booru_gen = false, booru_gen_config = null, 
-    is_flux = false, colorbalance_config = null) => {
+    is_flux = false, colorbalance_config = null, do_preview = false) => {
 
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 1600000) ? true : false
@@ -433,6 +434,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             0,
             null, // no idea (maybe clip skip?)
             enable_censor,
+            do_preview,
             is_using_adetailer,
             false,
             null,

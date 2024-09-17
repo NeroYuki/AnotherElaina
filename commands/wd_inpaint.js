@@ -174,6 +174,18 @@ module.exports = {
         const colorbalance_config = profile?.colorbalance_config ||
             (client.colorbalance_config.has(interaction.user.id) ? client.colorbalance_config.get(interaction.user.id) : null)
 
+        // parse the user setting config
+        const usersetting_config = client.usersetting_config.has(interaction.user.id) ? client.usersetting_config.get(interaction.user.id) : null
+        let do_preview = false
+
+        try {
+            const usersetting_config_obj = JSON.parse(usersetting_config)
+            do_preview = usersetting_config_obj.do_preview
+        }
+        catch (err) {
+            console.log("Failed to parse usersetting config:", err)
+        }
+
         let seed = -1
         try {
             seed = parseInt(interaction.options.getString('seed')) || parseInt('-1')
@@ -762,7 +774,7 @@ module.exports = {
             const create_data = get_data_body_img2img(server_index, prompt, neg_prompt, sampling_step, cfg_scale,
                 seed, sampler, scheduler, session_hash, height, width, attachment, mask_data_uri, denoising_strength, 4, mask_blur, mask_content, "None", false, 
                 extra_config.coupler_config, extra_config.color_grading_config, 1, is_censor, extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config,
-                inpaint_area, mask_padding, extra_config.use_foocus, extra_config.use_booru_gen, booru_gen_config, is_flux, attachment_upload_path, mask_upload_path, colorbalance_config_obj)
+                inpaint_area, mask_padding, extra_config.use_foocus, extra_config.use_booru_gen, booru_gen_config, is_flux, attachment_upload_path, mask_upload_path, colorbalance_config_obj, do_preview)
     
             // make option_init but for axios
             const option_init_axios = {
