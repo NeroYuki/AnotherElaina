@@ -38,11 +38,41 @@ module.exports = {
 		await interaction.deferReply();
 
         //download the image from attachment.proxyURL
-        let attachment = await loadImage(attachment_option.proxyURL).catch((err) => {
+        let attachment = await loadImage(attachment_option.proxyURL, true).catch((err) => {
             console.log(err)
             interaction.reply({ content: "Failed to retrieve image", ephemeral: true });
             return
         })
+
+        if (engine === 'Deepbooru') {
+            // load attachment_mask to resize image to the nearest size dividible by 8 then ((export to png data URI)) (use pipline to avoid memory leak)
+            await sharp(attachment)
+                .resize({ width: Math.floor(attachment.width / 8) * 8, height: Math.floor(attachment.height / 8) * 8 })
+                .png()
+                .toBuffer()
+                .then((data) => {
+                    attachment = data
+                })
+                .catch((err) => {
+                    console.log(err)
+                    interaction.reply({ content: "Failed to resize image", ephemeral: true });
+                    return
+                })
+        }
+        else {
+            // convert buffer to png data URI
+            await sharp(attachment)
+                .png()
+                .toBuffer()
+                .then((data) => {
+                    attachment = data
+                })
+                .catch((err) => {
+                    console.log(err)
+                    interaction.reply({ content: "Failed to convert image to png", ephemeral: true });
+                    return
+                })
+        }
 
         let server_index = get_worker_server(-1)
 
