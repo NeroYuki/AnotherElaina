@@ -340,7 +340,7 @@ module.exports = {
 			const cur_scores = quiz_data.scores
 
 			//resize and blacken the image (if hardmode is selected)
-			if (isHardmode) {
+			if (quiz_data.hardmode) {
 				img = await sharp(ship.filename)
 					.resize({height: 512})
 					
@@ -427,7 +427,7 @@ module.exports = {
 				result_embeded.addField('People who answered correctly:', answerer_list)
 				result_embeded.addField('People whose answers are nearly correct (~80% match):', near_answerer_list)
 
-				if (isHardmode) {
+				if (quiz_data.hardmode) {
 					const new_question_embeded = question_embeded.setImage('attachment://img_base.png')
 					msgRef.edit({ embeds: [new_question_embeded], files: [
 						{ attachment: img_base, name: 'img_base.png' } ]
