@@ -18,6 +18,14 @@ module.exports = {
                 .setDescription('Stop the current quiz'))
 		.addSubcommand(subcommand =>
 			subcommand
+				.setName('pause')
+				.setDescription('Pause the current quiz'))
+		.addSubcommand(subcommand =>
+			subcommand
+				.setName('resume')
+				.setDescription('Resume the current quiz'))
+		.addSubcommand(subcommand =>
+			subcommand
 				.setName('start')
 				.setDescription('Start a new quiz')
 				.addNumberOption(option =>
@@ -138,152 +146,192 @@ module.exports = {
 			client.shipgirl_quiz_multi.delete(interaction.user.id)
 			return
 		}
-
-		//parse option
-
-		let round = clamp(interaction.options.getNumber('round') || 10, 1, 100)
-		const category = interaction.options.getString('category') || (shipgirl_config.category ? shipgirl_config.category : null)
-		const isHardmode = interaction.options.getBoolean('hardmode') || (shipgirl_config.hardmode ? shipgirl_config.hardmode : false)
-		const requireBase = interaction.options.getBoolean('base_only') || (shipgirl_config.base_only ? shipgirl_config.base_only : false)
-		const nation = interaction.options.getString('nation') || (shipgirl_config.nation ? shipgirl_config.nation : null)
-		const hull_type = interaction.options.getString('hull_type') || (shipgirl_config.hull_type ? shipgirl_config.hull_type : null)
-		const scoring_mode = interaction.options.getString('scoring_mode') || 'Classic'
-
-		//make a temporary reply to not get timeout'd
-
-		await interaction.deferReply();
-
-		//select a question (randomly)
-
-		//let { fr_name, ship } = get_random_selection(category, requireBase)
-
-		let db_query = {
-			$and: []
-		}
-
-		const hardmode_allow_list = ['Azur Lane', 'Kantai Collection', 'Akushizu Senki', 'Abyss Horizon', 'Black Surgenights', 'Blue Oath', 'Velvet Code', 'Battleship Bishoujo Puzzle'] 
-
-		const non_minor_power_nation = ['United Kingdom', 'United States', 'Japan', 'Germany', 'Soviet Union', 'Italy', 'France', 'Fictional']
-	
-		if (isHardmode) {
-			// match folder against hardmode allow list
-			db_query.folder = {$in: hardmode_allow_list}
-		}
-		if (category) {
-			db_query.folder = category
-		}
-		if (nation) {
-			if (nation === 'Minor Power') {
-				db_query.$and.push({
-					$or: non_minor_power_nation.map(val => {
-						return {
-							$not: {
-								$or: [
-									{nation: val},
-									{nation: "? " + val}
-								]
-							}
-						}
-					}).concat([
-						{nation: {$exists: false}}
-					])
+		if (interaction.options.getSubcommand() === 'pause') {
+			const quiz_data = client.shipgirl_quiz_multi.get(interaction.user.id)
+			if (quiz_data) {
+				client.shipgirl_quiz_multi.set(interaction.user.id, {
+					...quiz_data,
+					is_paused: true
 				})
+				interaction.reply('Quiz will be paused after this round')
 			}
 			else {
-				db_query.$and.push({
-					$or: [
-						// any element in nation field is query.nation or query.nation with question mark
-						{nation: nation},
-						{nation: "? " + nation}
-					]
-				})
+				interaction.reply('There is no quiz to pause')
 			}
-		}
-		if (hull_type) {
-			db_query.$and.push({
-				$or: [
-					{ship_type: hull_type},
-					{ship_type: "? " + hull_type}
-				]
-			})
-		}
-		if (requireBase) {
-			db_query.is_base = true
-		}
-	
-		// if db_query.$and is empty, remove it
-		if (!db_query.$and.length) {
-			delete db_query.$and
-		}
-	
-		// console.dir(db_query, {depth: null})
-
-		// make aggregate pipeline to get the random ship with the query
-		const db_agg = [
-			{$match: db_query},
-			{$sample: {size: round}}
-		]
-	
-		let query_res = await aggregateRecord('shipgirl', db_agg, /*use_ext*/ true)
-			.catch(e => {
-				console.log(e)
-			})
-
-		if (!query_res || query_res.length === 0) {
-			await interaction.editReply({content: 'Sorry, i can\'t get a new quiz for you :('})
 			return
 		}
 
-		if (query_res.length < round) {
-			interaction.channel.send(`Only ${query_res.length} questions available, truncating the round to ${query_res.length}`)
-			round = query_res.length
-		}
+		//parse option
+		let quiz_data = null
 
-		// let ship = {
-		// 	char: query_res[0].char,
-		// 	filename: './resources/shipgirls/' + query_res[0].folder + '/' + query_res[0].filename,
-		// 	is_base: query_res[0].is_base
-		// }
-		// let fr_name = query_res[0].folder
-		// let alias = query_res[0].alias || []
-		// let alias_lowercase = alias.map(val => val.toLowerCase())
+		if (interaction.options.getSubcommand() === 'start') {
+			let round = clamp(interaction.options.getNumber('round') || 10, 1, 100)
+			const category = interaction.options.getString('category') || (shipgirl_config.category ? shipgirl_config.category : null)
+			const isHardmode = interaction.options.getBoolean('hardmode') || (shipgirl_config.hardmode ? shipgirl_config.hardmode : false)
+			const requireBase = interaction.options.getBoolean('base_only') || (shipgirl_config.base_only ? shipgirl_config.base_only : false)
+			const nation = interaction.options.getString('nation') || (shipgirl_config.nation ? shipgirl_config.nation : null)
+			const hull_type = interaction.options.getString('hull_type') || (shipgirl_config.hull_type ? shipgirl_config.hull_type : null)
+			const scoring_mode = interaction.options.getString('scoring_mode') || 'Classic'
 
-		// create the quiz multi object
-		let quiz_data = {
-			round: round,
-			current_round: 0,
-			category: category,
-			hardmode: isHardmode,
-			base_only: requireBase,
-			nation: nation,
-			hull_type: hull_type,
-			scoring_mode: scoring_mode,
-			quiz: query_res.map(val => {
-				return {
-					ship: {
-						char: val.char,
-						filename: './resources/shipgirls/' + val.folder + '/' + val.filename,
-						is_base: val.is_base
-					},
-					fr_name: val.folder,
-					alias: val.alias || [],
-					alias_lowercase: (val.alias || []).map(val => val.toLowerCase())
-				}
-			}),
-			scores: new Map()
-		}
+			//make a temporary reply to not get timeout'd
 
-		client.shipgirl_quiz_multi.set(interaction.user.id, quiz_data)
-		interaction.editReply('Quiz starting now')
+			await interaction.deferReply();
+
+			//select a question (randomly)
+
+			//let { fr_name, ship } = get_random_selection(category, requireBase)
+
+			let db_query = {
+				$and: []
+			}
+
+			const hardmode_allow_list = ['Azur Lane', 'Kantai Collection', 'Akushizu Senki', 'Abyss Horizon', 'Black Surgenights', 'Blue Oath', 'Velvet Code', 'Battleship Bishoujo Puzzle'] 
+
+			const non_minor_power_nation = ['United Kingdom', 'United States', 'Japan', 'Germany', 'Soviet Union', 'Italy', 'France', 'Fictional']
 		
-		//resize and blacken the image (if hardmode is selected)
+			if (isHardmode) {
+				// match folder against hardmode allow list
+				db_query.folder = {$in: hardmode_allow_list}
+			}
+			if (category) {
+				db_query.folder = category
+			}
+			if (nation) {
+				if (nation === 'Minor Power') {
+					db_query.$and.push({
+						$or: non_minor_power_nation.map(val => {
+							return {
+								$not: {
+									$or: [
+										{nation: val},
+										{nation: "? " + val}
+									]
+								}
+							}
+						}).concat([
+							{nation: {$exists: false}}
+						])
+					})
+				}
+				else {
+					db_query.$and.push({
+						$or: [
+							// any element in nation field is query.nation or query.nation with question mark
+							{nation: nation},
+							{nation: "? " + nation}
+						]
+					})
+				}
+			}
+			if (hull_type) {
+				db_query.$and.push({
+					$or: [
+						{ship_type: hull_type},
+						{ship_type: "? " + hull_type}
+					]
+				})
+			}
+			if (requireBase) {
+				db_query.is_base = true
+			}
+		
+			// if db_query.$and is empty, remove it
+			if (!db_query.$and.length) {
+				delete db_query.$and
+			}
+		
+			// console.dir(db_query, {depth: null})
 
-		for (let i = 0; i < round; i++) {
+			// make aggregate pipeline to get the random ship with the query
+			const db_agg = [
+				{$match: db_query},
+				{$sample: {size: round}}
+			]
+		
+			let query_res = await aggregateRecord('shipgirl', db_agg, /*use_ext*/ true)
+				.catch(e => {
+					console.log(e)
+				})
+
+			if (!query_res || query_res.length === 0) {
+				await interaction.editReply({content: 'Sorry, i can\'t get a new quiz for you :('})
+				return
+			}
+
+			if (query_res.length < round) {
+				interaction.channel.send(`Only ${query_res.length} questions available, truncating the round to ${query_res.length}`)
+				round = query_res.length
+			}
+			
+
+			// let ship = {
+			// 	char: query_res[0].char,
+			// 	filename: './resources/shipgirls/' + query_res[0].folder + '/' + query_res[0].filename,
+			// 	is_base: query_res[0].is_base
+			// }
+			// let fr_name = query_res[0].folder
+			// let alias = query_res[0].alias || []
+			// let alias_lowercase = alias.map(val => val.toLowerCase())
+
+			// create the quiz multi object
+			let quiz_data = {
+				round: round,
+				current_round: 0,
+				category: category,
+				hardmode: isHardmode,
+				base_only: requireBase,
+				nation: nation,
+				hull_type: hull_type,
+				scoring_mode: scoring_mode,
+				quiz: query_res.map(val => {
+					return {
+						ship: {
+							char: val.char,
+							filename: './resources/shipgirls/' + val.folder + '/' + val.filename,
+							is_base: val.is_base
+						},
+						fr_name: val.folder,
+						alias: val.alias || [],
+						alias_lowercase: (val.alias || []).map(val => val.toLowerCase())
+					}
+				}),
+				scores: new Map(),
+				is_paused: false
+			}
+
+			client.shipgirl_quiz_multi.set(interaction.user.id, quiz_data)
+			interaction.editReply('Quiz starting now')
+		}
+		else if (interaction.options.getSubcommand() === 'resume') {
+			const quiz_data = client.shipgirl_quiz_multi.get(interaction.user.id)
+			if (quiz_data) {
+				client.shipgirl_quiz_multi.set(interaction.user.id, {
+					...quiz_data,
+					is_paused: false
+				})
+				interaction.reply('Quiz resuming now')
+			}
+			else {
+				interaction.reply('There is no quiz to resume')
+			}
+		}
+
+		if (!quiz_data) {
+			await interaction.channel.send('How does this happened?')
+			return
+		}
+
+		for (let i = quiz_data.current_round; i < round; i++) {
 			// check if the quiz is still active
 			if (!client.shipgirl_quiz_multi.has(interaction.user.id)) {
 				await interaction.channel.send('Quiz has been stopped')
 				break;
 			}
+			if (client.shipgirl_quiz_multi.get(interaction.user.id).is_paused) {
+				await interaction.channel.send('Quiz has been paused')
+				break;
+			}
+
 			interaction.channel.send(`Next question (${i + 1}/${round})`)
 
 			let { ship, fr_name, alias, alias_lowercase } = quiz_data.quiz[i]
@@ -291,6 +339,7 @@ module.exports = {
 			let img_base = null
 			const cur_scores = quiz_data.scores
 
+			//resize and blacken the image (if hardmode is selected)
 			if (isHardmode) {
 				img = await sharp(ship.filename)
 					.resize({height: 512})
@@ -416,7 +465,13 @@ module.exports = {
 			// post current score
 			quiz_data.scores = cur_scores
 			quiz_data.current_round = i + 1
-			client.shipgirl_quiz_multi.set(interaction.user.id, quiz_data)
+			if (client.shipgirl_quiz_multi.has(interaction.user.id)) {
+				const is_paused = quiz_data.is_paused
+				client.shipgirl_quiz_multi.set(interaction.user.id, {
+					...quiz_data,
+					is_paused: is_paused
+				})
+			}
 
 			let score_list = ""
 			console.dir(cur_scores, {depth: null})
