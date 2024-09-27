@@ -332,7 +332,7 @@ module.exports = {
 				break;
 			}
 
-			interaction.channel.send(`Next question (${i + 1}/${round})`)
+			interaction.channel.send(`Next question (${i + 1}/${quiz_data.round})`)
 
 			let { ship, fr_name, alias, alias_lowercase } = quiz_data.quiz[i]
 			let img = null
