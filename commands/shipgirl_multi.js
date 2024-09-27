@@ -466,7 +466,7 @@ module.exports = {
 			quiz_data.scores = cur_scores
 			quiz_data.current_round = i + 1
 			if (client.shipgirl_quiz_multi.has(interaction.user.id)) {
-				const is_paused = quiz_data.is_paused
+				const is_paused = client.shipgirl_quiz_multi.get(interaction.user.id).is_paused
 				client.shipgirl_quiz_multi.set(interaction.user.id, {
 					...quiz_data,
 					is_paused: is_paused
