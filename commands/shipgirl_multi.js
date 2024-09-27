@@ -321,7 +321,7 @@ module.exports = {
 			return
 		}
 
-		for (let i = quiz_data.current_round; i < round; i++) {
+		for (let i = quiz_data.current_round; i < quiz_data.round; i++) {
 			// check if the quiz is still active
 			if (!client.shipgirl_quiz_multi.has(interaction.user.id)) {
 				await interaction.channel.send('Quiz has been stopped')
