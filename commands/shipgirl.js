@@ -70,11 +70,14 @@ module.exports = {
 					{ name: 'Azur Lane', value: 'Azur Lane' },
 					{ name: 'Kantai Collection', value: 'Kantai Collection' },
 					{ name: 'Warship Girls R', value: 'Warship Girls R' },
-					{ name: 'Akushizu Senki', value: 'Akushizu Senki' },
+					{ name: 'Axis Senki', value: 'Axis Senki' },
 					{ name: 'Abyss Horizon', value: 'Abyss Horizon' },
 					{ name: 'Black Surgenights', value: 'Black Surgenights' },
 					{ name: 'Blue Oath', value: 'Blue Oath' },
 					{ name: 'Velvet Code', value: 'Velvet Code' },
+					{ name: 'Victory Belles', value: 'Victory Belles' },
+					{ name: "Battleship Girl", value: "Battleship Girl" },
+					{ name: "Battleship Bishoujo Puzzle", value: "Battleship Bishoujo Puzzle" },
 				))
 		.addBooleanOption(option =>
 			option.setName('hardmode')
@@ -170,7 +173,13 @@ module.exports = {
 		let db_query = {
 			$and: []
 		}
+
+		const hardmode_allow_list = ['Azur Lane', 'Kantai Collection', 'Akushizu Senki', 'Abyss Horizon', 'Black Surgenights', 'Blue Oath', 'Velvet Code', 'Battleship Bishoujo Puzzle'] 
 	
+		if (isHardmode) {
+			// match folder against hardmode allow list
+			db_query.folder = {$in: hardmode_allow_list}
+		}
 		if (category) {
 			db_query.folder = category
 		}
@@ -232,7 +241,7 @@ module.exports = {
 		let img = null
 		let img_base = null
 
-		if (isHardmode && category) {
+		if (isHardmode) {
 			img = await sharp(ship.filename)
 				.resize({height: 512})
 				
