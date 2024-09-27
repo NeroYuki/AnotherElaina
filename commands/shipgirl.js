@@ -1,63 +1,8 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const shipgirl = require('../resources/shipgirl_quiz.json')
 const { MessageEmbed } = require('discord.js');
 const sharp = require('sharp');
 const levenshtein = require('fast-levenshtein');
 const { aggregateRecord } = require('../database/database_interaction');
-const base_shipgirl = []
-
-const all_sum = shipgirl.reduce((pv, cv) => pv + cv.count, 0)
-let base_sum = 0
-
-function get_random_selection(category = null, require_base = false) {
-	let fr_name = ""
-	let ship = null
-
-	let selector = 0
-	if (!category) {
-		//from random series
-		let cur_entry = 0
-		if (!require_base) {
-			selector = Math.floor(Math.random() * all_sum)
-			while (selector >= shipgirl[cur_entry].count) {
-				selector -= shipgirl[cur_entry].count
-				cur_entry += 1
-			}
-			fr_name = shipgirl[cur_entry].name
-			ship = shipgirl[cur_entry].img[selector]
-		}
-		else {
-			selector = Math.floor(Math.random() * base_sum)
-			while (selector >= base_shipgirl[cur_entry].count) {
-				selector -= base_shipgirl[cur_entry].count
-				cur_entry += 1
-			}
-			fr_name = base_shipgirl[cur_entry].name
-			ship = base_shipgirl[cur_entry].img[selector]
-		}
-
-	}
-	else {
-		//from fixed series
-		let fr_index = shipgirl.findIndex(val => val.name === category)
-		if (fr_index !== -1) {
-			fr_name = shipgirl[fr_index].name
-			if (!require_base) {
-				selector = Math.floor(Math.random() * shipgirl[fr_index].count)
-				ship = shipgirl[fr_index].img[selector]
-			}
-			else {
-				selector = Math.floor(Math.random() * base_shipgirl[fr_index].count)
-				ship = base_shipgirl[fr_index].img[selector]
-			}
-		}
-	}
-
-	return {
-		ship: ship,
-		fr_name: fr_name
-	}
-}
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -98,9 +43,6 @@ module.exports = {
 					{ name: 'Soviet Union', value: 'Soviet Union' },
 					{ name: 'Italy', value: 'Italy' },
 					{ name: 'France', value: 'France' },
-					{ name: 'China', value: 'China' },
-					{ name: 'Netherlands', value: 'Netherlands' },
-					{ name: 'Russian Empire', value: 'Russian Empire' },
 					{ name: 'Minor Power', value: 'Minor Power' },
 					{ name: 'Fictional', value: 'Fictional' },
 				)
@@ -132,17 +74,7 @@ module.exports = {
 			)
 	,
 
-	async init() {
-		shipgirl.forEach(entry => {
-			base_shipgirl.push({
-				name: entry.name,
-				count: entry.base_count,
-				img: entry.img.filter(val => val.is_base === true)
-			})
-		})
-
-		base_sum = base_shipgirl.reduce((pv, cv) => pv + cv.count, 0)
-	},
+	async init() {},
 
 	async execute(interaction, client) {
 
@@ -175,6 +107,8 @@ module.exports = {
 		}
 
 		const hardmode_allow_list = ['Azur Lane', 'Kantai Collection', 'Akushizu Senki', 'Abyss Horizon', 'Black Surgenights', 'Blue Oath', 'Velvet Code', 'Battleship Bishoujo Puzzle'] 
+
+		const non_minor_power_nation = ['United Kingdom', 'United States', 'Japan', 'Germany', 'Soviet Union', 'Italy', 'France', 'Fictional']
 	
 		if (isHardmode) {
 			// match folder against hardmode allow list
@@ -184,13 +118,31 @@ module.exports = {
 			db_query.folder = category
 		}
 		if (nation) {
-			db_query.$and.push({
-				$or: [
-					// any element in nation field is query.nation or query.nation with question mark
-					{nation: nation},
-					{nation: "? " + nation}
-				]
-			})
+			if (nation === 'Minor Power') {
+				db_query.$and.push({
+					$or: non_minor_power_nation.map(val => {
+						return {
+							$not: {
+								$or: [
+									{nation: val},
+									{nation: "? " + val}
+								]
+							}
+						}
+					}).concat([
+						{nation: {$exists: false}}
+					])
+				})
+			}
+			else {
+				db_query.$and.push({
+					$or: [
+						// any element in nation field is query.nation or query.nation with question mark
+						{nation: nation},
+						{nation: "? " + nation}
+					]
+				})
+			}
 		}
 		if (hull_type) {
 			db_query.$and.push({
@@ -307,10 +259,10 @@ module.exports = {
 
 			answerer.forEach(entry => {
 				if (entry.content.toLowerCase() === ship.char.toLowerCase() || alias_lowercase.includes(entry.content.toLowerCase()))
-					correct_answerer.push(`- ${entry.author.username + "#" + entry.author.discriminator} - ${(entry.createdTimestamp - startTimestamp)/1000}s`)
+					correct_answerer.push(`- ${entry.author.username} - ${(entry.createdTimestamp - startTimestamp)/1000}s`)
 				else if (levenshtein.get(entry.content.toLowerCase(), ship.char.toLowerCase()) <= Math.floor(ship.char.length * 0.2)
 					|| alias_lowercase.some(val => levenshtein.get(entry.content.toLowerCase(), val) <= Math.floor(val.length * 0.2)))
-					near_correct_answerer.push(`- ${entry.author.username + "#" + entry.author.discriminator} - ${(entry.createdTimestamp - startTimestamp)/1000}s`)
+					near_correct_answerer.push(`- ${entry.author.username} - ${(entry.createdTimestamp - startTimestamp)/1000}s`)
 			})
 			let answerer_list = ""
 			if (correct_answerer.length === 0) answerer_list = "None"			
