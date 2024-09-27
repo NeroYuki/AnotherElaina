@@ -153,11 +153,11 @@ module.exports = {
 
 		//parse option
 
-		const category = interaction.options.getString('category') || shipgirl_config.category ? shipgirl_config.category : null
-		const isHardmode = interaction.options.getBoolean('hardmode') || shipgirl_config.hardmode ? shipgirl_config.hardmode : false
-		const requireBase = interaction.options.getBoolean('base_only') || shipgirl_config.base_only ? shipgirl_config.base_only : false
-		const nation = interaction.options.getString('nation') || shipgirl_config.nation ? shipgirl_config.nation : null
-		const hull_type = interaction.options.getString('hull_type') || shipgirl_config.hull_type ? shipgirl_config.hull_type : null
+		const category = interaction.options.getString('category') || (shipgirl_config.category ? shipgirl_config.category : null)
+		const isHardmode = interaction.options.getBoolean('hardmode') || (shipgirl_config.hardmode ? shipgirl_config.hardmode : false)
+		const requireBase = interaction.options.getBoolean('base_only') || (shipgirl_config.base_only ? shipgirl_config.base_only : false)
+		const nation = interaction.options.getString('nation') || (shipgirl_config.nation ? shipgirl_config.nation : null)
+		const hull_type = interaction.options.getString('hull_type') || (shipgirl_config.hull_type ? shipgirl_config.hull_type : null)
 
 		//make a temporary reply to not get timeout'd
 
@@ -192,7 +192,7 @@ module.exports = {
 			})
 		}
 		if (requireBase) {
-			db_query.is_base = false
+			db_query.is_base = true
 		}
 	
 		// if db_query.$and is empty, remove it
