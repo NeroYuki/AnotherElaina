@@ -46,9 +46,9 @@ module.exports.removeRecords = (colName, query) => {
     }).catch()
 }
 
-module.exports.queryRecord = (colName, query, projection = {}, mysort = {}) => {
+module.exports.queryRecord = (colName, query, projection = {}, mysort = {}, use_ext = false) => {
     return new Promise((resolve, reject) => {
-        let col = databaseConn.getConnection().collection(colName)
+        let col = databaseConn.getConnection(use_ext).collection(colName)
         col.find(query).sort(mysort).project(projection).toArray(function(err, res) {
             if (err) {
                 console.log(err)
@@ -61,9 +61,9 @@ module.exports.queryRecord = (colName, query, projection = {}, mysort = {}) => {
     }).catch()
 }
 
-module.exports.queryRecordLimit = (colName, query, limit, projection = {}, mysort = {}, skip = 0) => {
+module.exports.queryRecordLimit = (colName, query, limit, projection = {}, mysort = {}, skip = 0, use_ext = false) => {
     return new Promise((resolve, reject) => {
-        let col = databaseConn.getConnection().collection(colName)
+        let col = databaseConn.getConnection(use_ext).collection(colName)
         col.find(query).sort(mysort).project(projection).limit(limit).skip(skip).toArray(function(err, res) {
             if (err) {
                 console.log(err)
@@ -76,9 +76,9 @@ module.exports.queryRecordLimit = (colName, query, limit, projection = {}, mysor
     }).catch()
 }
 
-module.exports.aggregateRecord = (colName, pipeline) => {
+module.exports.aggregateRecord = (colName, pipeline, use_ext = false) => {
     return new Promise((resolve, reject) => {
-        let col = databaseConn.getConnection().collection(colName)
+        let col = databaseConn.getConnection(use_ext).collection(colName)
         col.aggregate(pipeline).toArray(function (err, res) {
             if (err) {
                 console.log(err)

@@ -26,6 +26,7 @@ client.adetailer_config = new Map();
 client.colorbalance_config = new Map();
 client.boorugen_config = new Map();
 client.usersetting_config = new Map();
+client.shipgirl_quiz_config = new Map();	
 client.COOLDOWN_SECONDS = 30; // replace with desired cooldown time in seconds
 
 for (const file of commandFiles) {
@@ -111,6 +112,8 @@ client.on('interactionCreate', async interaction => {
 			'wd_boorugen',
 			'wd_colorbalance',
 			'wd_setting',
+			'shipgirl',
+			'shipgirl_config',
 		].includes(interaction.commandName)) {
 			await command.execute(interaction, client)
 		}
