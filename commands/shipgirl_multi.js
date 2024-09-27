@@ -274,7 +274,7 @@ module.exports = {
 			// let alias_lowercase = alias.map(val => val.toLowerCase())
 
 			// create the quiz multi object
-			let quiz_data = {
+			quiz_data = {
 				round: round,
 				current_round: 0,
 				category: category,
@@ -303,7 +303,7 @@ module.exports = {
 			interaction.editReply('Quiz starting now')
 		}
 		else if (interaction.options.getSubcommand() === 'resume') {
-			const quiz_data = client.shipgirl_quiz_multi.get(interaction.user.id)
+			quiz_data = client.shipgirl_quiz_multi.get(interaction.user.id)
 			if (quiz_data) {
 				client.shipgirl_quiz_multi.set(interaction.user.id, {
 					...quiz_data,
