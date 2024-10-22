@@ -1260,14 +1260,14 @@ const model_selection = [
 const model_selection_xl = [
     { name: 'PonyDiffusionXL v6', value: 'ponydiffusionxl_v6.safetensors'},
     { name: 'CrossMixXL', value: 'crossmix_xl.safetensors' },
+    { name: 'Illustrious v0.1', value: 'illustriousxl_v1.safetensors'},
     { name: 'NekorayXL v0.6', value: 'nekorayxl.safetensors' },
     { name: 'AnimagineXL v3', value: 'animaginexl_v3.safetensors' },
     { name: 'AnimagineXL v3.1', value: 'animaginexl_v31.safetensors'},
     { name: 'ChimeraXL v2', value: 'chimera2_xl.safetensors'},
-    { name: 'KohakuXL Epsilon', value: 'kohakuxl_epsilon.safetensors'},
-    { name: 'AAMXL Turbo', value: 'aamxl_turbo.safetensors'},
+    { name: 'KohakuXL Zeta', value: 'kohakuxl_zeta.safetensors'},
     { name: 'Juggernaut XL', value: 'juggernautxl_turbo.safetensors'},
-    { name: 'Juggernaut Lightning', value: 'juggernautxl_lightning.safetensors'},
+    { name: 'PonyRealism v2.2', value: 'ponyrealism_v22.safetensors'},
     { name: 'Dreamshaper XL Lightning', value: 'dreamshaperxl_lightning.safetensors'},
 ]
 
@@ -1277,15 +1277,13 @@ const model_selection_inpaint = [
 ]
 
 const model_selection_flux = [
-    { name: 'Flux.dev Q6_K', value: 'flux1-dev-Q6_K.gguf' },
     { name: 'Flux.dev Q4_K_S', value: 'flux1-dev-Q4_K_S.gguf' },
-    { name: 'Flux.dev Q8_0', value: 'flux1-dev-Q8_0.gguf'}
+    { name: 'Flux.dev Q8_0', value: 'flux1-dev-Q8_0.gguf'},
 ]
 
 const model_selection_curated = [
     { name: 'Anything v5', value: 'anythingv5.safetensors' },
     { name: 'AnimagineXL v3.1', value: 'animaginexl_v31.safetensors'},
-    { name: 'AAMXL Turbo', value: 'aamxl_turbo.safetensors'},
     { name: 'Juggernaut Lightning', value: 'juggernautxl_lightning.safetensors'},
     { name: 'Dreamshaper XL Lightning', value: 'dreamshaperxl_lightning.safetensors'},
 ]
