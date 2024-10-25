@@ -111,16 +111,16 @@ module.exports = {
             (client.colorbalance_config.has(interaction.user.id) ? client.colorbalance_config.get(interaction.user.id) : null)
 
         // parse the user setting config
-        const usersetting_config = client.usersetting_config.has(interaction.user.id) ? client.usersetting_config.get(interaction.user.id) : null
+        // const usersetting_config = client.usersetting_config.has(interaction.user.id) ? client.usersetting_config.get(interaction.user.id) : null
         let do_preview = false
 
-        try {
-            const usersetting_config_obj = JSON.parse(usersetting_config)
-            do_preview = usersetting_config_obj.do_preview
-        }
-        catch (err) {
-            console.log("Failed to parse usersetting config:", err)
-        }
+        // try {
+        //     const usersetting_config_obj = JSON.parse(usersetting_config)
+        //     do_preview = usersetting_config_obj.do_preview
+        // }
+        // catch (err) {
+        //     console.log("Failed to parse usersetting config:", err)
+        // }
 
         let seed = -1
         try {
@@ -133,7 +133,8 @@ module.exports = {
         let attachment_option = interaction.options.getAttachment('image')
 
         //download the image from attachment.proxyURL
-        let attachment = await loadImage(attachment_option.proxyURL).catch((err) => {
+        let attachment = await loadImage(attachment_option.proxyURL,
+            /*getBuffer:*/ false, /*noDataURIHeader*/ false, /*safeMode*/ true).catch((err) => {
             console.log(err)
             interaction.editReply({ content: "Failed to retrieve image", ephemeral: true });
             return

@@ -157,16 +157,16 @@ module.exports = {
             (client.colorbalance_config.has(interaction.user.id) ? client.colorbalance_config.get(interaction.user.id) : null)
     
         // parse the user setting config
-        const usersetting_config = client.usersetting_config.has(interaction.user.id) ? client.usersetting_config.get(interaction.user.id) : null
+        // const usersetting_config = client.usersetting_config.has(interaction.user.id) ? client.usersetting_config.get(interaction.user.id) : null
         let do_preview = false
 
-        try {
-            const usersetting_config_obj = JSON.parse(usersetting_config)
-            do_preview = usersetting_config_obj.do_preview
-        }
-        catch (err) {
-            console.log("Failed to parse usersetting config:", err)
-        }
+        // try {
+        //     const usersetting_config_obj = JSON.parse(usersetting_config)
+        //     do_preview = usersetting_config_obj.do_preview
+        // }
+        // catch (err) {
+        //     console.log("Failed to parse usersetting config:", err)
+        // }
         
         let seed = -1
         try {
@@ -179,23 +179,27 @@ module.exports = {
         let attachment_option = interaction.options.getAttachment('image')
 
         //download the image from attachment.proxyURL
-        let attachment = await loadImage(attachment_option.proxyURL).catch((err) => {
+        let attachment = await loadImage(attachment_option.proxyURL,
+            /*getBuffer:*/ false, /*noDataURIHeader*/ false, /*safeMode*/ true).catch((err) => {
             console.log(err)
             interaction.editReply({ content: "Failed to retrieve image", ephemeral: true });
             return
         })
 
-        let controlnet_input = controlnet_input_option ? await loadImage(controlnet_input_option.proxyURL).catch((err) => {
+        let controlnet_input = controlnet_input_option ? await loadImage(controlnet_input_option.proxyURL,
+            /*getBuffer:*/ false, /*noDataURIHeader*/ false, /*safeMode*/ true).catch((err) => {
             console.log(err)
             interaction.editReply({ content: "Failed to retrieve control net image", ephemeral: true });
         }) : null
 
-        let controlnet_input_2 = controlnet_input_option_2 ? await loadImage(controlnet_input_option_2.proxyURL).catch((err) => {
+        let controlnet_input_2 = controlnet_input_option_2 ? await loadImage(controlnet_input_option_2.proxyURL,
+            /*getBuffer:*/ false, /*noDataURIHeader*/ false, /*safeMode*/ true).catch((err) => {
             console.log(err)
             interaction.editReply({ content: "Failed to retrieve control net image 2", ephemeral: true });
         }) : null
 
-        let controlnet_input_3 = controlnet_input_option_3 ? await loadImage(controlnet_input_option_3.proxyURL).catch((err) => {
+        let controlnet_input_3 = controlnet_input_option_3 ? await loadImage(controlnet_input_option_3.proxyURL,
+            /*getBuffer:*/ false, /*noDataURIHeader*/ false, /*safeMode*/ true).catch((err) => {
             console.log(err)
             interaction.editReply({ content: "Failed to retrieve control net image 3", ephemeral: true });
         }) : null

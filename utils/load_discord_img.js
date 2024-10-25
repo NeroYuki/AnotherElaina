@@ -1,12 +1,13 @@
 const { default: axios } = require('axios');
+const sharp = require('sharp');
 
-function loadImage(url, getBuffer = false, noDataURIHeader = false) {
+function loadImage(url, getBuffer = false, noDataURIHeader = false, safeLoad = false) {
     // download image from the given url and convert them to base64 dataURI (with proper mime type) or buffer use axios
     // possible security issue with arbitrary file download, need to check for magic header that match the mime type
 
     return new Promise((resolve, reject) => {
         axios.get(url, { responseType: 'arraybuffer' })
-            .then((response) => {
+            .then(async (response) => {
                 if (getBuffer) {
                     resolve(Buffer.from(response.data, 'binary'));
                     return;
@@ -16,11 +17,35 @@ function loadImage(url, getBuffer = false, noDataURIHeader = false) {
 
                 // TODO: check for magic header
 
+                if (safeLoad && mime != 'image/png') {
+                    console.log("Attempt safe image load")
+                    const attachment_process = sharp(Buffer.from(response.data, 'binary'))
+
+                    await attachment_process
+                        // .metadata()
+                        // .then((metadata) => {
+                        //     return attachment_process
+                        //         .resize(Math.ceil(metadata.width / 8) * 8, Math.ceil(metadata.height / 8) * 8)
+                        //         .png()
+                        //         .toBuffer()
+                        // })
+                        .png()
+                        .toBuffer()
+                        .then(async data => {
+                            image = data.toString('base64')
+                        })
+                        .catch((err) => {
+                            console.log("Safe image load:", err)
+                            interaction.reply({ content: "Failed to convert image to png", ephemeral: true });
+                            return
+                        })
+                }
+
                 if (noDataURIHeader) {
                     resolve(image);
                 }
                 else {
-                    resolve(`data:${mime};base64,${image}`);
+                    resolve(safeLoad ? `data:image/png;base64,${image}` : `data:${mime};base64,${image}`);
                 }
             })
             .catch((error) => {

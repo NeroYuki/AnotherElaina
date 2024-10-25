@@ -65,7 +65,8 @@ module.exports = {
 		await interaction.deferReply();
 
         //download the image from attachment.proxyURL
-        let attachment = await loadImage(attachment_option.proxyURL).catch((err) => {
+        let attachment = await loadImage(attachment_option.proxyURL,
+            /*getBuffer:*/ false, /*noDataURIHeader*/ false, /*safeMode*/ true).catch((err) => {
             console.log(err)
             interaction.reply({ content: "Failed to retrieve image", ephemeral: true });
             return

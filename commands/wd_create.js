@@ -120,17 +120,17 @@ module.exports = {
         const colorbalance_config = profile?.colorbalance_config ||
             (client.colorbalance_config.has(interaction.user.id) ? client.colorbalance_config.get(interaction.user.id) : null)
         
-        // parse the user setting config
-        const usersetting_config = client.usersetting_config.has(interaction.user.id) ? client.usersetting_config.get(interaction.user.id) : null
+        // // parse the user setting config
+        // const usersetting_config = client.usersetting_config.has(interaction.user.id) ? client.usersetting_config.get(interaction.user.id) : null
         let do_preview = false
 
-        try {
-            const usersetting_config_obj = JSON.parse(usersetting_config)
-            do_preview = usersetting_config_obj.do_preview
-        }
-        catch (err) {
-            console.log("Failed to parse usersetting config:", err)
-        }
+        // try {
+        //     const usersetting_config_obj = JSON.parse(usersetting_config)
+        //     do_preview = usersetting_config_obj.do_preview
+        // }
+        // catch (err) {
+        //     console.log("Failed to parse usersetting config:", err)
+        // }
         
         let seed = -1
         try {
