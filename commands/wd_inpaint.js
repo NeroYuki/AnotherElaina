@@ -97,6 +97,7 @@ module.exports = {
                 .setDescription('The area to inpaint (default is "Whole picture", only change if you know what you\'re doing)')
                 .addChoices(
                     { name: 'Whole picture', value: 'Whole picture' },
+                    { name: 'Whole picture - Masked control', value: 'Whole picture_M' },
                     { name: 'Only masked', value: 'Only masked' },
                 ))
         .addNumberOption(option =>
@@ -158,7 +159,12 @@ module.exports = {
         const cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || profile?.cfg_scale || 7, 0, 30)
         const sampling_step = clamp(interaction.options.getInteger('sampling_step') || profile?.sampling_step || 20, 1, 100)
         const default_neg_prompt = interaction.options.getString('default_neg_prompt') || 'n_sfw'
-        const inpaint_area = interaction.options.getString('inpaint_area') || 'Whole picture'
+        let inpaint_area = interaction.options.getString('inpaint_area') || 'Whole picture'
+        let should_mask_control = false
+        if (inpaint_area === 'Whole picture_M') {
+            inpaint_area = 'Whole picture'
+            should_mask_control = true
+        }
         const default_lora_strength = clamp(interaction.options.getNumber('default_lora_strength') || 0.85, 0, 3)
         const no_dynamic_lora_load = default_lora_strength === 0
         const force_server_selection = 0
@@ -661,7 +667,10 @@ module.exports = {
                 }
             }
             
-            await load_controlnet(session_hash, server_index, attachment, controlnet_input_2, controlnet_input_3, JSON.stringify(controlnet_config_obj), interaction, 1, mask_data_uri)
+            await load_controlnet(session_hash, server_index, attachment, controlnet_input_2, controlnet_input_3, JSON.stringify(controlnet_config_obj), interaction, 1, mask_data_uri, should_mask_control, {
+                width: width,
+                height: height,
+            })
                 .catch(err => {
                     console.log(err)
                     interaction.editReply({ content: "Failed to load control net:" + err });
