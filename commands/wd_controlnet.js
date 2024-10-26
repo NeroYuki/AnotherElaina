@@ -124,8 +124,8 @@ module.exports = {
             return
         }
 
-        let controlnet_model = interaction.options.getString('controlnet_model') || "t2iadapter_openpose_sd14v1 [7e267e5e]";
-        const controlnet_preprocessor = interaction.options.getString('controlnet_preprocessor') || "openpose"; 
+        let controlnet_model = interaction.options.getString('controlnet_model') || "controlnet_openpose";
+        const controlnet_preprocessor = interaction.options.getString('controlnet_preprocessor') || "dw_openpose"; 
         const controlnet_weight = interaction.options.getNumber('controlnet_weight') || 1;
         const controlnet_resolution = interaction.options.getNumber('controlnet_resolution') || 512;
         const controlnet_mode = interaction.options.getString('controlnet_mode') || "Balanced";
