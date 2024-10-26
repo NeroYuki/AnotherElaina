@@ -68,7 +68,7 @@ module.exports = {
                 .setDescription('The height of the generated image (default is image upload size, recommended max is 768)'))
         .addStringOption(option => 
             option.setName('sampler')
-                .setDescription('The sampling method for the AI to generate art from (default is "Euler")')
+                .setDescription('The sampling method for the AI to generate art from (default is "Euler a")')
                 .addChoices(...sampler_selection))
         .addStringOption(option => 
             option.setName('scheduler')
@@ -151,7 +151,7 @@ module.exports = {
         let height = interaction.options.getInteger('height') || profile?.height
         const denoising_strength = clamp(interaction.options.getNumber('denoising_strength') || 1, 0, 1)
         const mask_blur = clamp(interaction.options.getInteger('mask_blur') || 4, 0, 64)
-        const mask_content = interaction.options.getString('mask_content') || 'original'
+        const mask_content = interaction.options.getString('mask_content') || 'latent nothing'
         const mask_color = interaction.options.getString('mask_color') || 'black'
         const sampler = interaction.options.getString('sampler') || profile?.sampler || 'Euler a'
         const scheduler = interaction.options.getString('scheduler') || profile?.scheduler || 'Automatic'
@@ -174,6 +174,7 @@ module.exports = {
         const colorbalance_config = profile?.colorbalance_config ||
             (client.colorbalance_config.has(interaction.user.id) ? client.colorbalance_config.get(interaction.user.id) : null)
 
+        const should_override_1st_controlnet = (interaction.options.getString('controlnet_config') || profile?.controlnet_config)? true : false
         // parse the user setting config
         // const usersetting_config = client.usersetting_config.has(interaction.user.id) ? client.usersetting_config.get(interaction.user.id) : null
         let do_preview = false
@@ -572,7 +573,7 @@ module.exports = {
                     checkpoint = inpaint_model.inpaint
                 }
 
-                const change_result = await model_change(checkpoint, false).catch(err => {
+                const change_result = await model_change(checkpoint, inpaint_model ? true : false).catch(err => {
                     console.log(err)
                 })
         
@@ -606,7 +607,7 @@ module.exports = {
             let controlnet_config_obj = {
                 control_net: [
                     {
-                        model: is_xl ? "controlnetxlCNXL_destitechInpaintv2 [e799aa20]" : "None",
+                        model: is_xl ? "controlnet_inpaint" : "None",
                         preprocessor: is_xl ? "fill" : "None",
                         weight: 1,
                         mode: "My prompt is more important",
@@ -641,13 +642,15 @@ module.exports = {
                 try {
                     const controlnet_config_obj_import = JSON.parse(controlnet_config)
 
-                    if (controlnet_config_obj_import.control_net[0]) {
+                    if (controlnet_config_obj_import.control_net[0] && controlnet_config_obj_import.control_net[0].model === "controlnet_inpaint") {
                         controlnet_config_obj.control_net[0].preprocessor = controlnet_config_obj_import.control_net[0].preprocessor || controlnet_config_obj.control_net[0].preprocessor
                         controlnet_config_obj.control_net[0].weight = controlnet_config_obj_import.control_net[0].weight || controlnet_config_obj.control_net[0].weight
                         controlnet_config_obj.control_net[0].mode = controlnet_config_obj_import.control_net[0].mode || controlnet_config_obj.control_net[0].mode
                         controlnet_config_obj.control_net[0].resolution = controlnet_config_obj_import.control_net[0].resolution || controlnet_config_obj.control_net[0].resolution
                         controlnet_config_obj.control_net[0].t_a = controlnet_config_obj_import.control_net[0].t_a || controlnet_config_obj.control_net[0].t_a
                         controlnet_config_obj.control_net[0].t_b = controlnet_config_obj_import.control_net[0].t_b || controlnet_config_obj.control_net[0].t_b
+
+                        interaction.channel.send('dedicated controlnet config (from command/profile) or inpaint-specific config detected, overriding first controlnet config')
                     }
                     controlnet_config_obj.control_net[1] = controlnet_config_obj_import.control_net[1] || controlnet_config_obj.control_net[1]
                     controlnet_config_obj.control_net[2] = controlnet_config_obj_import.control_net[2] || controlnet_config_obj.control_net[2]
