@@ -18,7 +18,7 @@ function pick_instantid_preprocessor(model, preprocessor) {
 }
 
 // mode: 0 = txt2img, 1 = img2img
-function load_controlnet(session_hash, server_index, controlnet_input, controlnet_input_2, controlnet_input_3, controlnet_config, interaction, mode = 0, mask = null) {
+function load_controlnet(session_hash, server_index, controlnet_input, controlnet_input_2, controlnet_input_3, controlnet_config, interaction, mode = 0, mask = null, controlnet_mask = false, extra_data = {}) {
     return new Promise(async (resolve, reject) => {
         // parse config string here
         const WORKER_ENDPOINT = server_pool[server_index].url
@@ -100,6 +100,39 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
         }
 
         console.log(server_pool[server_index].fn_index_controlnet[mode])
+
+        // mask control setup
+        const mask_control_data = [
+            controlnet_mask,
+            extra_data.height ?? 512,
+            extra_data.width ?? 512,
+        ]
+
+        const option_mask_control = {
+            method: 'POST',
+            body: JSON.stringify({
+                fn_index: 1088,
+                session_hash: session_hash,
+                data: mask_control_data
+            }),
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        }
+
+        try {
+            await fetch(`${WORKER_ENDPOINT}/run/predict/`, option_mask_control)
+                .then(res => {
+                    if (res.status !== 200) {
+                        throw 'Failed to change controlnet'
+                    }
+                })
+        }
+        catch (err) {
+            console.log(err)
+            reject(err)
+            return
+        }
 
         if (do_preview_annotation) {
             const controlnet_annotation_data = get_data_controlnet_annotation(controlnet_preprocessor, controlnet_input)
