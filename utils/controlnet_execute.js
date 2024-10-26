@@ -104,8 +104,8 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
         // mask control setup
         const mask_control_data = [
             controlnet_mask,
-            extra_data.height ?? 512,
-            extra_data.width ?? 512,
+            extra_data.height ? `${extra_data.height}` : "512",
+            extra_data.width ? `${extra_data.width}` : "512",
         ]
 
         const option_mask_control = {
