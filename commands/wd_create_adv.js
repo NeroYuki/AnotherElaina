@@ -285,9 +285,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         // calculate compute (upscale)
         compute += upscale_multiplier > 1 ? (upscale_multiplier * height * upscale_multiplier * width * upscale_step * (slow_sampler.includes(sampler) ? 1.5 : 1)) : 0
         // calculate compute (change model)
-        compute += checkpoint ? 2_000_000 : 0
-
-        const cooldown = compute / 1_000_000
+        const cooldown = compute / 1_250_000
 
         await interaction.editReply({ content: `Generating image, you can create another image in ${cooldown.toFixed(2)} seconds`});
 

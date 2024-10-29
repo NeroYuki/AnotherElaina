@@ -333,17 +333,9 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         // calculate compute (change model)
         compute += checkpoint ? 2_000_000 : 0
 
-        const cooldown = compute / 1_000_000
+        const cooldown = compute / 1_250_000
 
         await interaction.editReply({ content: `Generating image, you can create another image in ${cooldown.toFixed(2)} seconds`});
-
-        if (controlnet_input && controlnet_config && !is_flux) {
-            await load_controlnet(session_hash, server_index, controlnet_input, controlnet_input_2, controlnet_input_3, controlnet_config, interaction)
-                .catch(err => {
-                    console.log(err)
-                    interaction.editReply({ content: "Failed to load control net:" + err });
-                });
-        }
 
         if (extra_config.coupler_config && (height % 64 !== 0 || width % 64 !== 0)) {
             interaction.channel.send('Coupler detected, changing resolution to multiple of 64')
