@@ -1406,7 +1406,7 @@ const scheduler_selection = [
     { name: 'Karras', value: 'Karras'},
     { name: 'Exponential', value: 'Exponential'},
     { name: 'SGM Uniform', value: 'SGM Uniform'},
-    { name: 'Align Your Step', value: 'Simple'},
+    { name: 'Align Your Step', value: 'Align Your Step'},
     { name: 'Normal', value: 'Normal'},
     { name: 'Simple', value: 'Simple'},
 ]

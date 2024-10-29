@@ -241,10 +241,10 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             sampling_step = 30
         }
         else {
-            sampler = 'Euler'
-            scheduler = 'Automatic'
+            sampler = 'DPM++ 2M'
+            scheduler = 'Align Your Step'
             cfg_scale = 7
-            sampling_step = 20
+            sampling_step = 10
         }
 
         // end forced config
@@ -255,8 +255,6 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             await interaction.editReply({ content: "No server is available, please try again later"});
             return
         }
-
-        const cooldown = (width * height * sampling_step + (checkpoint ? 2000000 : 0)) / 1000000
 
         // TODO: add progress ping
         let current_preview_id = 0
@@ -320,6 +318,21 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         prompt = extra_config.prompt
         prompt = await fetch_user_defined_wildcard(prompt, interaction.user.id)
 
+        if ((is_flux || is_xl) ? width * height > 1_200_000 : width * height > 640_000) {
+            await interaction.channel.send(`:warning: Image size is too large for model's capability and may introduce distorsion, please consider using smaller image size unless you know what you're doing`);
+        }
+
+        const slow_sampler = ['DPM++ SDE', 'DPM++ 2M SDE', 'DPM++ 2M SDE Heun', 'Restart']
+        // calculate cooldown (first pass)
+        let compute = width * height * sampling_step * (is_flux ? 2 : (is_xl ? 1.5 : 1)) * (slow_sampler.includes(sampler) ? 1.5 : 1) * denoising_strength
+        // calculate compute (adetailer)
+        compute = compute * (adetailer_config ? 1.5 : 1)
+        // calculate compute (change model)
+        compute += checkpoint ? 2_000_000 : 0
+
+        const cooldown = compute / 1_000_000
+
+        await interaction.editReply({ content: `Generating image, you can create another image in ${cooldown.toFixed(2)} seconds`});
 
         if (extra_config.coupler_config && (height % 64 !== 0 || width % 64 !== 0)) {
             interaction.channel.send('Coupler detected, changing resolution to multiple of 64')

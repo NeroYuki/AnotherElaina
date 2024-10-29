@@ -249,8 +249,6 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             return
         }
 
-        const cooldown = (width * height * sampling_step + (checkpoint ? 2000000 : 0)) / 1000000
-
         // TODO: add progress ping
         let current_preview_id = 0
         const session_hash = crypt.randomBytes(16).toString('base64');
@@ -259,6 +257,24 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         let progress_ping_delay = 2000
         const is_xl = model_selection_xl.find(x => x.value === cached_model[0]) != null
         const is_flux = model_selection_flux.find(x => x.value === cached_model[0]) != null
+
+        if ((is_flux || is_xl) ? width * height > 1_200_000 : width * height > 640_000) {
+            await interaction.channel.send(`:warning: Image size is too large for model's capability and may introduce distorsion, please consider using smaller image size unless you know what you're doing`);
+        }
+
+        const slow_sampler = ['DPM++ SDE', 'DPM++ 2M SDE', 'DPM++ 2M SDE Heun', 'Restart']
+        // calculate cooldown (first pass)
+        let compute = width * height * sampling_step * (is_flux ? 2 : (is_xl ? 1.5 : 1)) * (slow_sampler.includes(sampler) ? 1.5 : 1) * denoising_strength
+        // calculate cooldown (controlnet)
+        compute = compute * (1 + (controlnet_input ? 0.5 : 0) + (controlnet_input_2 ? 0.5 : 0) + (controlnet_input_3 ? 0.5 : 0))
+        // calculate compute (adetailer)
+        compute = compute * (do_adetailer ? 1.5 : 1)
+        // calculate compute (change model)
+        compute += checkpoint ? 2_000_000 : 0
+
+        const cooldown = compute / 1_000_000
+        
+        await interaction.editReply({ content: `Generating image, you can create another image in ${cooldown.toFixed(2)} seconds`});
 
         if (controlnet_input && controlnet_config && !is_flux) {
             await load_controlnet(session_hash, server_index, controlnet_input, controlnet_input_2, controlnet_input_3, controlnet_config, interaction, 1)
