@@ -1260,7 +1260,8 @@ const model_selection = [
 const model_selection_xl = [
     { name: 'PonyDiffusionXL v6', value: 'ponydiffusionxl_v6.safetensors'},
     { name: 'CrossMixXL', value: 'crossmix_xl.safetensors' },
-    { name: 'Illustrious v0.1', value: 'illustriousxl_v1.safetensors'},
+    { name: 'Illustrious v0.1', value: 'illustriousxl_v0_1.safetensors'},
+    { name: 'NoobAIXL v0.75', value: 'noobaixl_v0_75.safetensors'},
     { name: 'NekorayXL v0.6', value: 'nekorayxl.safetensors' },
     { name: 'AnimagineXL v3', value: 'animaginexl_v3.safetensors' },
     { name: 'AnimagineXL v3.1', value: 'animaginexl_v31.safetensors'},
@@ -1269,11 +1270,13 @@ const model_selection_xl = [
     { name: 'Juggernaut XL', value: 'juggernautxl_turbo.safetensors'},
     { name: 'PonyRealism v2.2', value: 'ponyrealism_v22.safetensors'},
     { name: 'Dreamshaper XL Lightning', value: 'dreamshaperxl_lightning.safetensors'},
+    { name: 'RealVisXL v5', value: 'realvisxl_v5.safetensors'}
 ]
 
 const model_selection_inpaint = [
     { value: 'animaginexl_v31.safetensors', inpaint: 'animaginexl_v31_inpaint.safetensors'},
     { value: 'juggernautxl_turbo.safetensors', inpaint: 'juggernautxl_inpaint.safetensors'},
+    { value: 'realvisxl_v5.safetensors', inpaint: 'realvisxl_v3_inpaint.safetensors'}
 ]
 
 const model_selection_flux = [
