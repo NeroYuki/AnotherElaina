@@ -1274,6 +1274,7 @@ const model_selection = [
 
 const model_selection_xl = [
     { name: 'PonyDiffusionXL v6', value: 'ponydiffusionxl_v6.safetensors'},
+    { name: 'AutismMix PonyXL', value: 'autismmix_ponyxl.safetensors'},
     { name: 'CrossMixXL', value: 'crossmix_xl.safetensors' },
     { name: 'Illustrious v0.1', value: 'illustriousxl_v0_1.safetensors'},
     { name: 'NoobAIXL v0.75', value: 'noobaixl_v0_75.safetensors'},
