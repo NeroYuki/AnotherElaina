@@ -25,8 +25,7 @@ module.exports = {
 				.setRequired(true))
 		.addStringOption(option =>
             option.setName('prompt')
-                .setDescription('The prompt for the AI to generate art from')
-                .setRequired(true))
+                .setDescription('The prompt for the AI to generate art from'))
         .addStringOption(option => 
             option.setName('neg_prompt')
                 .setDescription('The negative prompt for the AI to avoid generate art from'))
@@ -35,10 +34,10 @@ module.exports = {
                 .setDescription('How much the image is noised before regen, closer to 0 = closer to original (0 - 1, default 0.7)'))
         .addIntegerOption(option => 
             option.setName('width')
-                .setDescription('The width of the generated image (default is 512, recommended max is 768)'))
+                .setDescription('The width of the generated image (default is image upload size, recommended max is 768)'))
         .addIntegerOption(option =>
             option.setName('height')
-                .setDescription('The height of the generated image (default is 512, recommended max is 768)'))
+                .setDescription('The height of the generated image (default is image upload size, recommended max is 768)'))
         .addStringOption(option => 
             option.setName('sampler')
                 .setDescription('The sampling method for the AI to generate art from (default is "Euler")')
@@ -103,6 +102,14 @@ module.exports = {
         .addStringOption(option =>
             option.setName('adetailer_config')
                 .setDescription('Config string for the adetailer (use wd_adetailer to generate)'))
+        .addStringOption(option =>
+            option.setName('extra_script')
+                .setDescription('Specify an extra script to be used during the process')
+                .addChoices(
+                    { name: 'None', value: 'None' },
+                    { name: 'Img2Img Upscale', value: 'Ultimate SD upscale' },
+                    { name: 'Outpainting', value: 'Outpainting mk2' },
+                ))
                 
     ,
 
@@ -127,8 +134,8 @@ module.exports = {
 		// load the option with default value
 		let prompt = (profile?.prompt_pre || '') + (interaction.options.getString('prompt') || '') + (profile?.prompt || '')
 		let neg_prompt = (profile?.neg_prompt_pre || '') + (interaction.options.getString('neg_prompt') || '') + (profile?.neg_prompt || '')
-        const width = clamp(interaction.options.getInteger('width') || profile?.width || 512, 64, 4096)
-        const height = clamp(interaction.options.getInteger('height') || profile?.height || 512, 64, 4096)
+        let width = interaction.options.getInteger('width') || profile?.width 
+        let height = interaction.options.getInteger('height') || profile?.height
         const denoising_strength = clamp(interaction.options.getNumber('denoising_strength') || 0.7, 0, 1)
         const sampler = interaction.options.getString('sampler') || profile?.sampler || 'Euler'
         const scheduler = interaction.options.getString('scheduler') || profile?.scheduler || 'Automatic'
@@ -155,6 +162,11 @@ module.exports = {
         const colorbalance_config = interaction.options.getString('colorbalance_config') ||
             profile?.colorbalance_config ||
             (client.colorbalance_config.has(interaction.user.id) ? client.colorbalance_config.get(interaction.user.id) : null)
+        const extra_script = interaction.options.getString('extra_script') || 'None'
+        const outpaint_config = profile?.script_outpaint_config || 
+            (client.img2img_outpaint_config.has(interaction.user.id) ? client.img2img_outpaint_config.get(interaction.user.id) : null)
+        const upscale_config = profile?.script_upscale_config ||
+            (client.img2img_upscale_config.has(interaction.user.id) ? client.img2img_upscale_config.get(interaction.user.id) : null)
     
         // parse the user setting config
         // const usersetting_config = client.usersetting_config.has(interaction.user.id) ? client.usersetting_config.get(interaction.user.id) : null
@@ -220,7 +232,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         }
 
         // if cached_model[0] is inpaint model, force change to the main model
-        if (cached_model[0].includes('_inpaint')) {
+        if (cached_model[0].includes('_inpaint') && extra_script !== 'Outpainting mk2') {
             interaction.channel.send(`Active model is inpaint model, changing to main model`)
             const main_model = model_selection_inpaint.find(x => x.inpaint === cached_model[0])?.value || cached_model[0]
             const change_result = await model_change(main_model, true).catch(err => 
@@ -235,6 +247,37 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                 await interaction.channel.send(`Active model changed to **${check_model_filename(main_model)}**
 currently cached models: ${cached_model.map(x => check_model_filename(x)).join(', ')}`)
             }
+        }
+
+        if (!height) {
+            height = attachment_option.height
+            console.log('height not set, using attachment height:', height)
+            if (!height) {
+                height = 1024
+                console.log('height not set, using default height:', height)
+            }
+        }
+        if (!width) {
+            width = attachment_option.width
+            console.log('width not set, using attachment width:', width)
+            if (!width) {
+                width = 1024
+                console.log('width not set, using default width:', width)
+            }
+        }
+
+        // if the width and height is too big (exceed 2048) attempt to shrink width and height with the same ratio
+        if (width > 2048 || height > 2048) {
+            const ratio = width / height
+            if (width > height) {
+                width = 2048
+                height = Math.floor(2048 / ratio)
+            }
+            else {
+                height = 2048
+                width = Math.floor(2048 * ratio)
+            }
+            console.log('width and height exceed 2048, shrink to:', width, height)
         }
 
         if (height % 8 !== 0 || width % 8 !== 0) {
@@ -282,6 +325,45 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                     console.log(err)
                     interaction.editReply({ content: "Failed to load control net:" + err });
                 });
+        }
+
+        // load extra script
+        let outpaint_config_obj = null
+        let upscale_config_obj = null
+        if (extra_script === 'Outpainting mk2') {
+            if (!outpaint_config) {
+                interaction.editReply({ content: "Outpainting config is not set, please set it first using /wd_script_outpaint"});
+                return
+            }
+
+            // parse the config string
+            try {
+                outpaint_config_obj = JSON.parse(outpaint_config)
+            }
+            catch (err) {
+                interaction.editReply({ content: "Failed to parse Outpainting config"});
+                return
+            }
+
+            interaction.channel.send('Outpainting mk2 script loaded')
+        }
+        else if (extra_script === 'Ultimate SD upscale') {
+            if (!upscale_config) {
+                interaction.editReply({ content: "Upscale config is not set, please set it first using /wd_script_upscale"});
+                return
+            }
+            //console.log(upscale_config)
+            // parse the config string
+            try {
+                upscale_config_obj = JSON.parse(upscale_config)
+            }
+            catch (err) {
+                //console.log(err)
+                interaction.editReply({ content: "Failed to parse Upscale config"});
+                return
+            }
+
+            interaction.channel.send('Ultimate SD upscale script loaded')
         }
 
         const WORKER_ENDPOINT = server_pool[server_index].url
@@ -383,7 +465,9 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             seed, sampler, scheduler, session_hash, height, width, attachment, null, denoising_strength, /*img2img mode*/ 0, 4, "original", upscaler, 
             do_adetailer, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
             extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, "Whole picture", 32, 
-            extra_config.use_foocus, extra_config.use_booru_gen, booru_gen_config, is_flux, null, null, colorbalance_config_obj, do_preview)
+            extra_config.use_foocus, extra_config.use_booru_gen, booru_gen_config, is_flux, null, null, colorbalance_config_obj, do_preview, outpaint_config_obj, upscale_config_obj, extra_script)
+
+        // console.log(JSON.stringify(create_data.filter((x, i) => i !== 5), null, 2))
 
         // make option_init but for axios
         const option_init_axios = {

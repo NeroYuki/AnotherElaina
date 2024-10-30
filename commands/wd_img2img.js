@@ -23,8 +23,7 @@ module.exports = {
 				.setRequired(true))
 		.addStringOption(option =>
             option.setName('prompt')
-                .setDescription('The prompt for the AI to generate art from')
-                .setRequired(true))
+                .setDescription('The prompt for the AI to generate art from'))
         .addStringOption(option => 
             option.setName('neg_prompt')
                 .setDescription('The negative prompt for the AI to avoid generate art from'))
@@ -33,10 +32,10 @@ module.exports = {
                 .setDescription('How much the image is noised before regen, closer to 0 = closer to original (0 - 1, default 0.7)'))
         .addIntegerOption(option => 
             option.setName('width')
-                .setDescription('The width of the generated image (default is 512, 1024 if XL model is used)'))
+                .setDescription('The width of the generated image (default is image upload size, recommended max is 768)'))
         .addIntegerOption(option =>
             option.setName('height')
-                .setDescription('The height of the generated image (default is 512, 1024 if XL model is used)'))
+                .setDescription('The height of the generated image (default is image upload size, recommended max is 768)'))
         .addStringOption(option => 
             option.setName('seed')
                 .setDescription('Random seed for AI generate art from (default is "-1 - Random")'))
@@ -87,8 +86,8 @@ module.exports = {
 		// load the option with default value
 		let prompt = (profile?.prompt_pre || '') + (interaction.options.getString('prompt') || '') + (profile?.prompt || '')
 		let neg_prompt = (profile?.neg_prompt_pre || '') + (interaction.options.getString('neg_prompt') || '') + (profile?.neg_prompt || '')
-        let width = clamp(interaction.options.getInteger('width') || profile?.width || 512, 512, 2048) // this can only end well :)
-        let height = clamp(interaction.options.getInteger('height') || profile?.height || 512, 512, 2048)
+        let width = interaction.options.getInteger('width') || profile?.width 
+        let height = interaction.options.getInteger('height') || profile?.height
 
         let sampler =  profile?.sampler || 'Euler'
         let scheduler = profile?.scheduler || 'Automatic'
@@ -175,24 +174,35 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
 
         //TODO: refactor all forced config
 
-        if (model_selection_xl.find(x => x.value === cached_model[0])) {
-            if (width === 512 && height === 512) {
-                interaction.channel.send('default resolution detected while XL model is selected, changing resolution to 1024x1024')
-                width = 1024
+        if (!height) {
+            height = attachment_option.height
+            console.log('height not set, using attachment height:', height)
+            if (!height) {
                 height = 1024
+                console.log('height not set, using default height:', height)
             }
-
-            default_lora_strength = 1
         }
-        else if (model_selection_flux.find(x => x.value === cached_model[0])) {
-            if (width === 512 && height === 512) {
-                interaction.channel.send('default resolution detected while Flux model is selected, changing resolution to 1024x1024, disabling dynamic lora load')
+        if (!width) {
+            width = attachment_option.width
+            console.log('width not set, using attachment width:', width)
+            if (!width) {
                 width = 1024
-                height = 1024
+                console.log('width not set, using default width:', width)
             }
+        }
 
-            default_lora_strength = 0
-            no_dynamic_lora_load = false
+        // if the width and height is too big (exceed 2048) attempt to shrink width and height with the same ratio
+        if (width > 2048 || height > 2048) {
+            const ratio = width / height
+            if (width > height) {
+                width = 2048
+                height = Math.floor(2048 / ratio)
+            }
+            else {
+                height = 2048
+                width = Math.floor(2048 * ratio)
+            }
+            console.log('width and height exceed 2048, shrink to:', width, height)
         }
 
         if (height % 8 !== 0 || width % 8 !== 0) {
