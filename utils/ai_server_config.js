@@ -10,16 +10,17 @@ const server_pool = [
         url: 'http://192.168.196.142:7860',
         fn_index_create: 519,
         fn_index_abort: 62,
-        fn_index_img2img: 1150,
+        fn_index_img2img: 1152,
         fn_index_controlnet: [362, 927],        //[txt2img, img2img, 792]
         fn_index_controlnet_annotation: [1059, 1083],   // 1056
         fn_index_controlnet_2: [409, 976], 
         fn_index_controlnet_annotation_2: [1067, 1091],
         fn_index_controlnet_3: [456, 1025],
         fn_index_controlnet_annotation_3: [1075, 1099],
-        fn_index_interrogate: 1154,
-        fn_index_interrogate_deepbooru: 1155,
-        fn_index_upscale: 1273,
+        fn_index_interrogate: 1156,
+        fn_index_interrogate_deepbooru: 1157,
+        // fn_index_use_script: 1138,
+        fn_index_upscale: 1275,
         fn_index_change_model: 8,
         fn_index_change_support_model: 9,
         fn_index_coupler_region_preview: [289, 852],
@@ -94,7 +95,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
     is_using_adetailer = false, coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, 
     freeu_config = null, dynamic_threshold_config = null, pag_config = null, inpaint_area = "Whole picture", mask_padding = 32,
     use_foocus = false, use_booru_gen = false, booru_gen_config = null, is_flux = false,
-    inpaint_img_upload_path = null, inpaint_mask_upload_path = null, colorbalance_config = null, do_preview = false) => {
+    inpaint_img_upload_path = null, inpaint_mask_upload_path = null, colorbalance_config = null, do_preview = false, outpaint_config = null, upscale_config = null, extra_script = "None") => {
     // default mode 0 is img2img, 4 is inpainting
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 3000000 && upscaler == "None") ? true : false
@@ -143,7 +144,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             "",
             "upload",
             null,
-            "None",
+            extra_script,
             sampling_step,
             sampler,
             scheduler,
@@ -327,17 +328,13 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             "Linear",
             "None",
             "<p style=\"margin-bottom:0.75em\">Recommended settings: Sampling Steps: 80-100, Sampler: Euler a, Denoising strength: 0.8</p>",
-            128,
-            8,
-            [
-                "left",
-                "right",
-                "up",
-                "down"
-            ],
-            1,
-            0.05,
-            128,
+            outpaint_config?.size || 128,       // outpainting mk2
+            outpaint_config?.mask_blur || 8,
+            // parse direction string "LRUD" (in any order, any case) to array ["left", "right", "up", "down"]
+            outpaint_config?.direction || ["left", "right", "up", "down"],
+            outpaint_config?.falloff_exp || 1,
+            outpaint_config?.color_var || 0.05,
+            128,                            // poor man's outpaint
             4,
             "fill",
             [
@@ -382,7 +379,25 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             true,
             "16bpc",
             ".tiff",
-            1.2
+            1.2,
+            "<p style=\"margin-bottom:0.75em\">Will upscale the image depending on the selected target size type</p>",
+            upscale_config?.tile_width || 1024,       // upscale
+            upscale_config?.tile_height || 0,
+            upscale_config?.mask_blur || 16,
+            upscale_config?.padding || 32,
+            upscale_config?.seam_fix_width || 64,
+            upscale_config?.seam_fix_denoise || 0.35,
+            upscale_config?.seam_fix_padding || 32,
+            upscale_config?.upscaler || "R-ESRGAN 4x+",
+            true,
+            upscale_config?.tile_pattern || "Linear",
+            false,
+            upscale_config?.seam_fix_mask_blur || 8,
+            upscale_config?.seam_fix || "None", 
+            "Scale from image size",
+            2048,
+            2048,
+            upscale_config?.scale || 2,
         ]
     }
 }
@@ -1379,6 +1394,7 @@ const controlnet_model_selection_flux = [
 const upscaler_selection = [
     { name: 'Lanczos - Fast', value: 'Lanczos' },
     { name: 'ESRGAN_4x', value: 'ESRGAN_4x' },
+    { name: 'R-ESRGAN 4x+', value: 'R-ESRGAN 4x+' },
     { name: 'R-ESRGAN 4x+ Anime6B', value: 'R-ESRGAN 4x+ Anime6B' },
     { name: 'SwinIR 4x', value: 'SwinIR_4x' },
     { name: 'AnimeSharp 4x', value: '4x_AnimeSharp' },
