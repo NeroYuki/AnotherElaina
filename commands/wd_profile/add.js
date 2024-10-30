@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { upscaler_selection, model_selection, model_selection_xl, sampler_selection, scheduler_selection } = require('../../utils/ai_server_config');
 const { addRecord, queryRecord, queryRecordLimit, editRecords } = require('../../database/database_interaction');
+const { clamp } = require('../../utils/common_helper');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -24,10 +25,10 @@ module.exports = {
                 .setDescription('The beginning negative prompt to use for the profile'))
         .addIntegerOption(option => 
             option.setName('width')
-                .setDescription('The width of the generated image (default is 512, recommended max is 768)'))
+                .setDescription('The width of the generated image (recommended max is 768, 1024 for XL and flux)'))
         .addIntegerOption(option =>
             option.setName('height')
-                .setDescription('The height of the generated image (default is 512, recommended max is 768)'))
+                .setDescription('The height of the generated image (recommended max is 768, 1024 for XL and flux)'))
         .addStringOption(option => 
             option.setName('sampler')
                 .setDescription('The sampling method for the AI to generate art from (default is "Euler")')
@@ -80,6 +81,12 @@ module.exports = {
         .addStringOption(option =>
             option.setName('colorbalance_config')
                 .setDescription('Config string for the controlnet (use wd_colorbalance to generate)'))
+        .addStringOption(option =>
+            option.setName('script_outpaint_config')
+                .setDescription('Config string for the outpaint script (use wd_script_outpaint to generate)'))
+        .addStringOption(option =>
+            option.setName('script_upscale_config')
+                .setDescription('Config string for the upscale script (use wd_script_upscale to generate)'))
     ,
 
 	async execute(interaction) {
@@ -93,24 +100,26 @@ module.exports = {
         const height = interaction.options.getInteger('height') || null;
         const sampler = interaction.options.getString('sampler') || 'Euler';
         const scheduler = interaction.options.getString('scheduler') || 'Automatic';
-        const cfg_scale = interaction.options.getNumber('cfg_scale') || 7;
+        const cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || 7, 0, 30);
         const sampling_step = interaction.options.getInteger('sampling_step') || 20;
         const seed = interaction.options.getString('seed') || '-1';
-        const upscale_multiplier = interaction.options.getNumber('upscale_multiplier') || 1;
+        const upscale_multiplier = clamp(interaction.options.getNumber('upscale_multiplier') || 1, 1, 4);
         const upscaler = interaction.options.getString('upscaler') || 'Lanczos';
-        const upscale_denoise_strength = interaction.options.getNumber('upscale_denoise_strength') || 0.7;
+        const upscale_denoise_strength = clamp(interaction.options.getNumber('upscale_denoise_strength') || 0.7, 0, 1);
         const upscale_step = interaction.options.getInteger('upscale_step') || 20;
-        const clip_skip = interaction.options.getInteger('clip_skip') || 1
+        const clip_skip = clamp(interaction.options.getInteger('clip_skip') || 1, 1, 2);
         const checkpoint = interaction.options.getString('checkpoint') || null
         const adetailer_config = interaction.options.getString('adetailer_config') || null
         const controlnet_config = interaction.options.getString('controlnet_config') || null
         const colorbalance_config = interaction.options.getString('colorbalance_config') || null
+        const script_outpaint_config = interaction.options.getString('script_outpaint_config') || null
+        const script_upscale_config = interaction.options.getString('script_upscale_config') || null
 
 		await interaction.deferReply();
 
         // check if name is valid /([a-zA-Z0-9_\/]+)/
         if (!/^[a-zA-Z0-9_\/]+$/.test(name)) {
-            await interaction.editReply("Invalid profile name, it must not include whitespace or special characters other than underscore amd slash");
+            await interaction.editReply("Invalid profile name, it must not include whitespace or special characters other than underscore and slash");
             return;
         }
 
@@ -150,6 +159,8 @@ module.exports = {
                 adetailer_config: adetailer_config,
                 controlnet_config: controlnet_config,
                 colorbalance_config: colorbalance_config,
+                script_outpaint_config: script_outpaint_config,
+                script_upscale_config: script_upscale_config
             }
         };
 

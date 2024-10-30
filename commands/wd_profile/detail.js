@@ -139,6 +139,26 @@ module.exports = {
                 embeded.addFields({ name: 'Colorbalance Config', value: 'Failed to parse config' });
             }
         }
+        if (data.script_outpaint_config) {
+            try {
+                const script_outpaint_config_obj = JSON.parse(data.script_outpaint_config);
+                // TODO: validate the script_outpaint_config_obj
+                embeded.addFields({ name: 'Script Outpaint Config', value: "\`\`\`json\n" + truncate(JSON.stringify(script_outpaint_config_obj, null, 2), 998) + "\`\`\`" });
+            }
+            catch (err) {
+                embeded.addFields({ name: 'Script Outpaint Config', value: 'Failed to parse config' });
+            }
+        }
+        if (data.script_upscale_config) {
+            try {
+                const script_upscale_config_obj = JSON.parse(data.script_upscale_config);
+                // TODO: validate the script_upscale_config_obj
+                embeded.addFields({ name: 'Script Upscale Config', value: "\`\`\`json\n" + truncate(JSON.stringify(script_upscale_config_obj, null, 2), 998) + "\`\`\`" });
+            }
+            catch (err) {
+                embeded.addFields({ name: 'Script Upscale Config', value: 'Failed to parse config' });
+            }
+        }
 
         const reply_content = { embeds: [embeded] };
         if (attachment) {
