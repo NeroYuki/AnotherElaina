@@ -1267,7 +1267,7 @@ const model_selection = [
     { name: 'HimawariMix v8', value: 'himawarimix.safetensors' },
     { name: 'Anything v5', value: 'anythingv5.safetensors' },
     { name: 'CetusMix (Coda v2)', value: 'cetusmix_coda2.safetensors' },
-    { name: 'MeinaPastel v6', value: 'meinapastel.safetensors' },
+    { name: 'RichyRichMix v2', value: 'richyrichmix_v2.safetensors' },
     { name: 'CuteYukiMix', value: 'cuteyukimix.safetensors' },
     { name: 'IrisMix v5b', value: 'irismix_v5b.safetensors'},
 ]
