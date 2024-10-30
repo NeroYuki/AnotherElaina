@@ -182,7 +182,8 @@ module.exports = {
 
         const config_string = JSON.stringify(config)
 
-		await interaction.reply(config_string);
+        await interaction.reply("ControlNet config has been set");
+        await interaction.channel.send("\`\`\`json\n" + truncate(try_parse_json_and_return_formated_string(config_string), 1900) + "\`\`\`");
 
         client.controlnet_config.set(interaction.user.id, config_string);
 	},
