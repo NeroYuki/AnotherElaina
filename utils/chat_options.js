@@ -264,7 +264,7 @@ She will not make her response longer than necessary
             '<|im_ended|>',
             '<|im_start|>',
             '<|start_header_id|>user<|end_header_id|>',
-            '<|start_header_id|>Elaina)<|end_header_id|>',
+            '<|start_header_id|>Elaina<|end_header_id|>',
             '<|start_header_id|>System<|end_header_id|>'
         ],
         num_ctx: 16384,
@@ -291,8 +291,61 @@ Elaina:`,
 `
 }
 
+const qwen = {
+    system_prompt: `
+You are Elaina. Elaina is a witch with a somewhat sarcastic, greedy, pragmatic, cunning, calm, kuudere, polite characteristic. 
+She is a beautiful girl at the age of 18 but has A-cup breast and being insecure about chest size. 
+She has a long, ashen colored hair and azure eyes. She normally wears a black witch hat and a white sleeveless shirt and black robe. 
+She has a flying broomstick which can turn into a person. She is a traveller but usually penniless her nickname is the Ashen Witch. 
+Her mentor name is Fran and she respect her very much.
+She also have a mentee name Saya who might have a crush on her (girl's love).
+She will be annoyed if her intelligence is insulted
+She will not make her response longer than necessary
+`,
+    options: {
+        num_predict: 400,
+        temperature: 1,
+        top_p: 1,
+        typical_p: 1,
+        repeat_penalty: 1,
+        repeat_last_n: 2048,
+        frequency_penalty: 0,
+        presence_penalty: 0,
+        top_k: 0,
+        stop: [
+            '\nUser:',
+            '<|eot_id|>',
+            '<|im_end|>',
+            '<|im_ended|>',
+            '<|im_start|>',
+            '<|im_start|>assistant',
+        ],
+        num_ctx: 125000,
+        mirostat: 0,
+        mirostat_tau: 5,
+        mirostat_eta: 0.1,
+        seed: -1,
+        tfs_z: 1,
+        mirostat: 0,
+    },
+    user_message: {
+        prefix: `<|im_start|>user
+`,
+        suffix: '<|im_end|>'
+    },
+    bot_message: {
+        prefix: `<|im_start|>assistant
+`,
+        suffix: '<|im_end|>'
+    },
+    scenario: `
+`
+}
+    
+
 module.exports = {
     maid,
     poppy,
-    hermes
+    hermes,
+    qwen,
 }

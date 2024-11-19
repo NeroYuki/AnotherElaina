@@ -3,10 +3,10 @@ var { is_generating } = require('../utils/text_gen_store');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { chat_completion, text_completion_stream, text_completion } = require('../utils/ollama_request');
 const { loadImage } = require('../utils/load_discord_img');
-const { maid, poppy, hermes } = require('../utils/chat_options');
+const { maid, poppy, hermes, qwen } = require('../utils/chat_options');
 
 const USE_NATIVE_EMBEDDING = false
-const persona = hermes
+const persona = qwen
 
 async function responseToMessage(client, message, content, is_continue = false, is_regen = false, ctx_enc_len = 0) {
     // let prompt = content
