@@ -1,11 +1,11 @@
-const endpoint = 'http://192.168.196.142:11434'
+const endpoint = 'http://127.0.0.1:11434'
 
 function chat_completion(model, context) {
     return new Promise((resolve, reject) => {
         fetch(endpoint + '/api/chat', {
             method: 'POST',
             body: JSON.stringify({
-                model: model,
+                model: 'test_qwen_lite',
                 stream: false,
                 messages: context
             }),
@@ -31,7 +31,7 @@ function text_completion(model, prompt, options, system_prompt, callback) {
     fetch(endpoint + '/api/generate', {
         method: 'POST',
         body: JSON.stringify({
-            model: model,
+            model: 'test_qwen_lite',
             stream: false,
             prompt: prompt,
             options: options,
@@ -58,7 +58,7 @@ function text_completion_stream(model, prompt, options, system_prompt, callback)
     fetch(endpoint + '/api/generate', {
         method: 'POST',
         body: JSON.stringify({
-            model: model,
+            model: 'test_qwen_lite',
             stream: true,
             prompt: prompt,
             options: options,
@@ -116,7 +116,7 @@ function unload_model(model) {
         fetch(endpoint + '/api/generate', {
             method: 'POST',
             body: JSON.stringify({
-                model: model,
+                model: 'test_qwen_lite',
                 keep_alive: 0
             }),
             headers: {
