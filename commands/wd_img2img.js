@@ -421,7 +421,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                         .addField('Random seed', data.seed, true)
                         .addField('Model used', `${data.model_name || "Unknown Model"} (${data.model})`, true)
                         .setImage(`attachment://${data.img_name}`)
-                        .setFooter({text: `Putting ${Array("my RTX 3060","plub's RTX 3070")[server_index]} to good use!`});
+                        .setFooter({text: `Putting ${Array("my RTX 4060 Ti","plub's RTX 3070")[server_index]} to good use!`});
                 }
                 else if (state === 'progress') {
                     embeded = new MessageEmbed()

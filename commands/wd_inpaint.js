@@ -830,7 +830,7 @@ module.exports = {
                             .addField('Random seed', data.seed, true)
                             .addField('Model used', `${data.model_name || "Unknown Model"} (${data.model})`, true)
                             .setImage(`attachment://${data.img_name}`)
-                            .setFooter({text: `Putting ${Array("my RTX 3060","plub's RTX 3070")[0]} to good use!`});
+                            .setFooter({text: `Putting ${Array("my RTX 4060 Ti","plub's RTX 3070")[0]} to good use!`});
                     }
                     else if (state === 'progress') {
                         embeded = new MessageEmbed()

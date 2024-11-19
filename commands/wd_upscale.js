@@ -186,7 +186,7 @@ module.exports = {
                         .setTitle('Output')
                         .setDescription(`Here you go. Generated in ${output_data.duration.toFixed(2)} seconds.`)
                         .setImage(`attachment://${output_data.img_name}`)
-                        .setFooter({text: `Putting ${Array("my RTX 3060","plub's RTX 3070")[server_index]} to good use!`});
+                        .setFooter({text: `Putting ${Array("my RTX 4060 Ti","plub's RTX 3070")[server_index]} to good use!`});
 
                     const reply_content = {embeds: [embeded]}
                     if (output_data.img) {
