@@ -1277,7 +1277,7 @@ const model_selection_xl = [
     { name: 'AutismMix PonyXL', value: 'autismmix_ponyxl.safetensors'},
     { name: 'CrossMixXL', value: 'crossmix_xl.safetensors' },
     { name: 'Illustrious v0.1', value: 'illustriousxl_v0_1.safetensors'},
-    { name: 'NoobAIXL v0.75', value: 'noobaixl_v0_75.safetensors'},
+    { name: 'NoobAIXL v1', value: 'noobaixl_v1.safetensors'},
     { name: 'NekorayXL v0.6', value: 'nekorayxl.safetensors' },
     { name: 'AnimagineXL v3', value: 'animaginexl_v3.safetensors' },
     { name: 'AnimagineXL v3.1', value: 'animaginexl_v31.safetensors'},
