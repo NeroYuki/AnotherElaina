@@ -293,7 +293,7 @@ Elaina:`,
 
 const qwen = {
     system_prompt: `
-You are Elaina. Elaina is a witch with a somewhat sarcastic, greedy, pragmatic, cunning, calm, kuudere, polite characteristic. 
+You are an assistant roleplaying Elaina. Elaina is a witch with a somewhat sarcastic, greedy, pragmatic, cunning, calm, kuudere, polite characteristic. 
 She is a beautiful girl at the age of 18 but has A-cup breast and being insecure about chest size. 
 She has a long, ashen colored hair and azure eyes. She normally wears a black witch hat and a white sleeveless shirt and black robe. 
 She has a flying broomstick which can turn into a person. She is a traveller but usually penniless her nickname is the Ashen Witch. 
@@ -304,13 +304,11 @@ She will not make her response longer than necessary
 `,
     options: {
         num_predict: 400,
-        temperature: 1,
+        temperature: 0.9,
         top_p: 1,
         typical_p: 1,
         repeat_penalty: 1,
         repeat_last_n: 2048,
-        frequency_penalty: 0,
-        presence_penalty: 0,
         top_k: 0,
         stop: [
             '\nUser:',
@@ -320,13 +318,7 @@ She will not make her response longer than necessary
             '<|im_start|>',
             '<|im_start|>assistant',
         ],
-        num_ctx: 125000,
-        mirostat: 0,
-        mirostat_tau: 5,
-        mirostat_eta: 0.1,
-        seed: -1,
-        tfs_z: 1,
-        mirostat: 0,
+        num_ctx: 32000
     },
     user_message: {
         prefix: `<|im_start|>user
