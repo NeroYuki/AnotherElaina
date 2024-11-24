@@ -158,7 +158,7 @@ module.exports = {
         const adetailer_config = interaction.options.getString('adetailer_config') || 
             profile?.adetailer_config ||
             (client.adetailer_config.has(interaction.user.id) ? client.adetailer_config.get(interaction.user.id) : null)
-        const booru_gen_config = client.boorugen_config.has(interaction.user.id) ? client.boorugen_config.get(interaction.user.id) : null
+        const booru_gen_config = profile?.boorugen_config || (client.boorugen_config.has(interaction.user.id) ? client.boorugen_config.get(interaction.user.id) : null)
         const colorbalance_config = interaction.options.getString('colorbalance_config') ||
             profile?.colorbalance_config ||
             (client.colorbalance_config.has(interaction.user.id) ? client.colorbalance_config.get(interaction.user.id) : null)
@@ -465,7 +465,8 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             seed, sampler, scheduler, session_hash, height, width, attachment, null, denoising_strength, /*img2img mode*/ 0, 4, "original", upscaler, 
             do_adetailer, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
             extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, "Whole picture", 32, 
-            extra_config.use_foocus, extra_config.use_booru_gen, booru_gen_config, is_flux, null, null, colorbalance_config_obj, do_preview, outpaint_config_obj, upscale_config_obj, extra_script)
+            extra_config.use_foocus, extra_config.use_booru_gen, booru_gen_config, is_flux, null, null, colorbalance_config_obj, do_preview, outpaint_config_obj, 
+            upscale_config_obj, extra_script, extra_config.detail_daemon_config)
 
         // console.log(JSON.stringify(create_data.filter((x, i) => i !== 5), null, 2))
 

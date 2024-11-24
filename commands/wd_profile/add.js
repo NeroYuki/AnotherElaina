@@ -82,6 +82,9 @@ module.exports = {
             option.setName('colorbalance_config')
                 .setDescription('Config string for the controlnet (use wd_colorbalance to generate)'))
         .addStringOption(option =>
+            option.setName('boorugen_config')
+                .setDescription('Config string for the booru prompt enhancement (use wd_boorugen to generate)'))
+        .addStringOption(option =>
             option.setName('script_outpaint_config')
                 .setDescription('Config string for the outpaint script (use wd_script_outpaint to generate)'))
         .addStringOption(option =>
@@ -112,6 +115,7 @@ module.exports = {
         const adetailer_config = interaction.options.getString('adetailer_config') || null
         const controlnet_config = interaction.options.getString('controlnet_config') || null
         const colorbalance_config = interaction.options.getString('colorbalance_config') || null
+        const boorugen_config = interaction.options.getString('boorugen_config') || null
         const script_outpaint_config = interaction.options.getString('script_outpaint_config') || null
         const script_upscale_config = interaction.options.getString('script_upscale_config') || null
 
@@ -159,6 +163,7 @@ module.exports = {
                 adetailer_config: adetailer_config,
                 controlnet_config: controlnet_config,
                 colorbalance_config: colorbalance_config,
+                boorugen_config: boorugen_config,
                 script_outpaint_config: script_outpaint_config,
                 script_upscale_config: script_upscale_config
             }

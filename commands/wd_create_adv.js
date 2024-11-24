@@ -170,7 +170,7 @@ module.exports = {
         const adetailer_config = interaction.options.getString('adetailer_config') || 
             profile?.adetailer_config ||
             (client.adetailer_config.has(interaction.user.id) ? client.adetailer_config.get(interaction.user.id) : null)
-        const booru_gen_config = client.boorugen_config.has(interaction.user.id) ? client.boorugen_config.get(interaction.user.id) : null
+        const booru_gen_config = profile?.boorugen_config || (client.boorugen_config.has(interaction.user.id) ? client.boorugen_config.get(interaction.user.id) : null)
         const colorbalance_config = interaction.options.getString('colorbalance_config') ||
             profile?.colorbalance_config ||
             (client.colorbalance_config.has(interaction.user.id) ? client.colorbalance_config.get(interaction.user.id) : null)
@@ -398,7 +398,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             seed, sampler, scheduler, session_hash, height, width, upscale_multiplier, upscaler, 
             upscale_denoise_strength, upscale_step, false, do_adetailer, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
             extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, extra_config.use_foocus, extra_config.use_booru_gen, 
-            booru_gen_config, is_flux, colorbalance_config_obj, do_preview)
+            booru_gen_config, is_flux, colorbalance_config_obj, do_preview, extra_config.detail_daemon_config)
 
         // make option_init but for axios
         const option_init_axios = {

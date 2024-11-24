@@ -139,6 +139,16 @@ module.exports = {
                 embeded.addFields({ name: 'Colorbalance Config', value: 'Failed to parse config' });
             }
         }
+        if (data.boorugen_config) {
+            try {
+                const boorugen_config_obj = JSON.parse(data.boorugen_config);
+
+                embeded.addFields({ name: 'Boorugen Config', value: "\`\`\`json\n" + truncate(JSON.stringify(boorugen_config_obj, null, 2), 998) + "\`\`\`" });
+            }
+            catch (err) {
+                embeded.addFields({ name: 'Boorugen Config', value: 'Failed to parse config' });
+            }
+        }
         if (data.script_outpaint_config) {
             try {
                 const script_outpaint_config_obj = JSON.parse(data.script_outpaint_config);

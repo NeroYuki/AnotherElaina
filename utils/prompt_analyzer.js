@@ -235,6 +235,55 @@ function get_freeu_config_from_prompt(prompt) {
     }
 }
 
+function get_detail_daemon_config_from_prompt(prompt) {
+    // check for following pattern in prompt |dd: <amount>| or |dd: <amount>, <start>-<end>, <bias>| or |dd: <amount>, <start>-<end>| or |dd: <amount>, <bias>| WHITE SPACE CAN BE OMITTED
+    // if found, return the value {values: <array of values>}
+    // else return null
+
+    // white space can be omitted
+    const dd_pattern = /\|dd: ([0-9.]+)(,\s*([0-9.]+)-([0-9.]+)(,\s*([0-9.]+))?)?|([0-9.]+)(,\s*([0-9.]+))?\|/i
+
+    const dd_match = prompt.match(dd_pattern)
+
+    if (dd_match && dd_match[0]) {
+        const values_pattern = /([0-9.]+)/gi
+        const values_match = dd_match[0].match(values_pattern)
+
+        let temp_value = new Array(4).fill(null)
+        temp_value[0] = parseFloat(values_match[0])
+
+        if (values_match.length > 1) {
+            if (values_match.length === 2) {
+                temp_value[3] = parseFloat(values_match[1])
+            }
+            else if (values_match.length === 3) {
+                temp_value[1] = parseFloat(values_match[1])
+                temp_value[2] = parseFloat(values_match[2])
+            }
+            else if (values_match.length === 4) {
+                temp_value[1] = parseFloat(values_match[1])
+                temp_value[2] = parseFloat(values_match[2])
+                temp_value[3] = parseFloat(values_match[3])
+            }
+        }
+
+        return {
+            prompt: prompt.replace(dd_pattern, ''),
+            detail_daemon_config: {
+                amount: temp_value[0],
+                start: temp_value[1],
+                end: temp_value[2],
+                bias: temp_value[3]
+            }
+        }
+    }
+
+    return {
+        prompt: prompt,
+        detail_daemon_config: null
+    }
+}
+
 function get_dynamic_threshold_config_from_prompt(prompt) {
     // check for following pattern in prompt |dt: <mimic_scale>, <mimic percentile>|
     // if found, return the value {mimic_scale: <value>, mimic_percentile: <value>}
@@ -307,7 +356,7 @@ function get_prompt_enhancer_call(prompt) {
     return {
         prompt: prompt,
         booru_gen: booru_match ? true : false,
-        foocus: foocus_match ? true : false
+        foocus: false,
     }
 }
 
@@ -318,13 +367,15 @@ function full_prompt_analyze(prompt, is_xl) {
     let dynamic_threshold_config = get_dynamic_threshold_config_from_prompt(freeu_config.prompt)
     let pag_config = get_pag_config_from_prompt(dynamic_threshold_config.prompt)
     let prompt_enhancer = get_prompt_enhancer_call(pag_config.prompt)
+    let detail_daemon_config = get_detail_daemon_config_from_prompt(prompt_enhancer.prompt)
 
     return {
-        prompt: prompt_enhancer.prompt,
+        prompt: detail_daemon_config.prompt,
         coupler_config: coupler_config.coupler_config,
         color_grading_config: color_grading_config.color_grading_config,
         freeu_config: freeu_config.freeu_config,
         dynamic_threshold_config: dynamic_threshold_config.dynamic_threshold_config,
+        detail_daemon_config: detail_daemon_config.detail_daemon_config,
         pag_config: pag_config.pag_config,
         use_foocus: prompt_enhancer.foocus,
         use_booru_gen: prompt_enhancer.booru_gen
