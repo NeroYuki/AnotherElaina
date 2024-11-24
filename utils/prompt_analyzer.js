@@ -241,7 +241,7 @@ function get_detail_daemon_config_from_prompt(prompt) {
     // else return null
 
     // white space can be omitted
-    const dd_pattern = /\|dd: ([0-9.]+)(,\s*([0-9.]+)-([0-9.]+)(,\s*([0-9.]+))?)?|([0-9.]+)(,\s*([0-9.]+))?\|/i
+    const dd_pattern = /\|dd: ([0-9.]+)(,\s*([0-9.]+)-([0-9.]+)(,\s*([0-9.]+))?)?\||([0-9.]+)(,\s*([0-9.]+))?\|/i
 
     const dd_match = prompt.match(dd_pattern)
 
