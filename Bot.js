@@ -108,6 +108,7 @@ client.on('interactionCreate', async interaction => {
 			'wd_inpaint', 
 			'wd_interrogate', 
 			'wd_upscale', 
+			'wd_rembg',
 			'wd_controlnet', 
 			'wd_adetailer', 
 			'wd_create_adv', 
