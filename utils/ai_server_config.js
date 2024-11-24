@@ -8,32 +8,33 @@ const server_pool = [
     {
         index: 0,
         url: 'http://192.168.196.142:7860',
-        fn_index_create: 519,
+        fn_index_create: 550,
         fn_index_abort: 62,
-        fn_index_img2img: 1152,
-        fn_index_controlnet: [362, 927],        //[txt2img, img2img, 792]
-        fn_index_controlnet_annotation: [1059, 1083],   // 1056
-        fn_index_controlnet_2: [409, 976], 
-        fn_index_controlnet_annotation_2: [1067, 1091],
-        fn_index_controlnet_3: [456, 1025],
-        fn_index_controlnet_annotation_3: [1075, 1099],
-        fn_index_interrogate: 1156,
-        fn_index_interrogate_deepbooru: 1157,
+        fn_index_img2img: 1214,
+        fn_index_controlnet: [393, 989],        //[txt2img, img2img, 792]  
+        fn_index_controlnet_annotation: [1121, 1145],   // 1121 - 1059 = 62
+        // fn_index_controlnet_2: [440, 976], 
+        // fn_index_controlnet_annotation_2: [1129, 1091],
+        // fn_index_controlnet_3: [487, 1025],
+        // fn_index_controlnet_annotation_3: [1137, 1099],
+        fn_index_interrogate: 1218,
+        fn_index_interrogate_deepbooru: 1219,
         // fn_index_use_script: 1138,
-        fn_index_upscale: 1275,
+        fn_index_upscale: 1337,
         fn_index_change_model: 8,
         fn_index_change_support_model: 9,
-        fn_index_coupler_region_preview: [289, 852],
-        fn_index_change_adetailer_model1: [88, 651],
+        fn_index_coupler_region_preview: [289, 883],
+        fn_index_change_adetailer_model1: [88, 682],
         // fn_index_change_adetailer_prompt1: [99, 644],       //+3
         // fn_index_change_adetailer_neg_prompt1: [100, 645],  //+4
         // fn_index_change_adetailer_model2: [146, 691],       //+51
         // fn_index_change_adetailer_prompt2: [148, 693],      //+54
         // fn_index_change_adetailer_neg_prompt2: [149, 694],  //+55
-        fn_index_execute_segment_anything: 880,
-        fn_index_execute_grounding_dino_preview: 877,
-        fn_index_execute_expand_mask: 881,
-        fn_index_unload_segmentation_model: 897,
+        fn_index_execute_segment_anything: 928,
+        // fn_index_execute_grounding_dino_preview: 877,            // -3
+        // fn_index_execute_expand_mask: 881,                       // +1
+        // fn_index_unload_segmentation_model: 897,                 // +17
+        fn_index_rembg: 1351,
         is_online: true,
     },
     {
@@ -90,12 +91,68 @@ const get_data_controlnet_annotation = (preprocessor = "None", input, mask = nul
     ]
 }
 
+const get_data_rembg = (input, rembg_model = "birefnet-general", edge_width = 0, edge_color = "#FFFFFF", alpha_mat = false, alpha_mat_fg = 240, alpha_mat_bg = 10, 
+    add_shadow = false, shadow_opacity = 0.5, shadow_blur = 5, adjust_color = false, brightness = 0, contrast = 1, saturation = 1
+) => {
+    return [
+		"Image",
+		input,
+		null,
+		"Image",
+		rembg_model,
+		"RGBA",
+		alpha_mat,
+		alpha_mat_fg,
+		alpha_mat_bg,
+		false,
+		"none",
+		30,
+		20,
+		"transparent",
+		"#000000",
+		null,
+		null,
+		false,
+		0,
+		edge_width > 0 ? true : false,
+		edge_width,
+		edge_color,
+		add_shadow,
+		shadow_blur,
+		shadow_opacity,
+		adjust_color,
+		brightness,
+		contrast,
+		saturation,
+		0,
+		0,
+		0,
+		1,
+		false,
+		false,
+		0,
+		0,
+		1,
+		"",
+		true,
+		"PNG",
+		"MP4",
+		95,
+		false,
+		512,
+		512,
+		"Foreground",
+		"normal"
+    ]
+}
+
 const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed, sampler, scheduler, session_hash,
     height, width, attachment, attachment2, denoising_strength, mode = 0, mask_blur = 4, mask_content = "original", upscaler = "None", 
     is_using_adetailer = false, coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, 
     freeu_config = null, dynamic_threshold_config = null, pag_config = null, inpaint_area = "Whole picture", mask_padding = 32,
     use_foocus = false, use_booru_gen = false, booru_gen_config = null, is_flux = false,
-    inpaint_img_upload_path = null, inpaint_mask_upload_path = null, colorbalance_config = null, do_preview = false, outpaint_config = null, upscale_config = null, extra_script = "None") => {
+    inpaint_img_upload_path = null, inpaint_mask_upload_path = null, colorbalance_config = null, do_preview = false, outpaint_config = null, 
+    upscale_config = null, extra_script = "None", detail_daemon_config = null) => {
     // default mode 0 is img2img, 4 is inpainting
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 3000000 && upscaler == "None") ? true : false
@@ -211,6 +268,17 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
                     1
                 ]
             ],
+            detail_daemon_config ? true : false,           // enable detail daemon
+            "both",
+            detail_daemon_config?.start || 0.2,
+            detail_daemon_config?.end || 0.8,
+            detail_daemon_config?.amount || 0.5,
+            detail_daemon_config?.bias || 0.5,
+            detail_daemon_config?.exponent || 1,
+            detail_daemon_config?.start_offset || 0,
+            detail_daemon_config?.end_offset || 0,
+            detail_daemon_config?.fade || 0,
+            true,           // DD smooth schedule
             false,
             false,
             "0",
@@ -248,6 +316,34 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             false,
             "Straight Abs.",
             "Flat",
+            use_booru_gen,          // enable DanTagGen
+            "After applying other prompt processings",
+            -1,
+            booru_gen_config?.gen_length || "long",
+            booru_gen_config?.ban_tags || "",
+            booru_gen_config?.format || "<|special|>, \n<|characters|>, <|copyrights|>, \n<|artist|>, \n\n<|general|>, \n\n<|quality|>, <|meta|>, <|rating|>",
+            booru_gen_config?.temperature || 1.35,
+            booru_gen_config?.top_p || 0.9,
+            booru_gen_config?.top_k || 100,
+            "KBlueLeaf/DanTagGen-delta-rev2 | ggml-model-Q8_0.gguf",
+            true,              // use CPU for DanTagGen
+            false,
+            false,              // enable TIPO
+            "After applying other prompt processings",
+            -1,
+            "long",
+            "long",
+            "",
+            "NL only (Tag to NL)",
+            "<|extended|>.",
+            0.5,
+            0.95,
+            80,
+            "KBlueLeaf/TIPO-200M-ft | TIPO-200M-ft-F16.gguf",
+            true,               // use CPU for TIPO
+            false,
+            "",
+            "",
             null, 
             null,
             null,
@@ -406,7 +502,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
     height, width, upscale_multiplier, upscaler, upscale_denoise_strength, upscale_step, face_restore = false, is_using_adetailer = false, 
     coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, 
     freeu_config = null, dynamic_threshold_config = null, pag_config = null, use_foocus = false, use_booru_gen = false, booru_gen_config = null, 
-    is_flux = false, colorbalance_config = null, do_preview = false) => {
+    is_flux = false, colorbalance_config = null, do_preview = false, detail_daemon_config = null) => {
 
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 1600000) ? true : false
@@ -496,6 +592,17 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
                     1
                 ]
             ],
+            detail_daemon_config ? true : false,           // enable detail daemon
+            "both",
+            detail_daemon_config?.start || 0.2,
+            detail_daemon_config?.end || 0.8,
+            detail_daemon_config?.amount || 0.5,
+            detail_daemon_config?.bias || 0.5,
+            detail_daemon_config?.exponent || 1,
+            detail_daemon_config?.start_offset || 0,
+            detail_daemon_config?.end_offset || 0,
+            detail_daemon_config?.fade || 0,
+            true,           // DD smooth schedule
             false,      // segment anything?
             false,
             "0",
@@ -533,6 +640,34 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             false,
             "Straight Abs.",
             "Flat",
+            use_booru_gen,          // enable DanTagGen
+            "After applying other prompt processings",
+            -1,
+            booru_gen_config?.gen_length || "long",
+            booru_gen_config?.ban_tags || "",
+            booru_gen_config?.format || "<|special|>, \n<|characters|>, <|copyrights|>, \n<|artist|>, \n\n<|general|>, \n\n<|quality|>, <|meta|>, <|rating|>",
+            booru_gen_config?.temperature || 1.35,
+            booru_gen_config?.top_p || 0.9,
+            booru_gen_config?.top_k || 100,
+            "KBlueLeaf/DanTagGen-delta-rev2 | ggml-model-Q8_0.gguf",
+            true,              // use CPU for DanTagGen
+            false,
+            false,              // enable TIPO
+            "After applying other prompt processings",
+            -1,
+            "long",
+            "long",
+            "",
+            "NL only (Tag to NL)",
+            "<|extended|>.",
+            0.5,
+            0.95,
+            80,
+            "KBlueLeaf/TIPO-200M-ft | TIPO-200M-ft-F16.gguf",
+            true,               // use CPU for TIPO
+            false,
+            "",
+            "",
             null,       // ControlNet
             null,
             null,
@@ -1275,7 +1410,6 @@ const model_selection = [
 const model_selection_xl = [
     { name: 'PonyDiffusionXL v6', value: 'ponydiffusionxl_v6.safetensors'},
     { name: 'AutismMix PonyXL', value: 'autismmix_ponyxl.safetensors'},
-    { name: 'CrossMixXL', value: 'crossmix_xl.safetensors' },
     { name: 'Illustrious v0.1', value: 'illustriousxl_v0_1.safetensors'},
     { name: 'NoobAIXL v1', value: 'noobaixl_v1.safetensors'},
     { name: 'NekorayXL v0.6', value: 'nekorayxl.safetensors' },
@@ -1298,6 +1432,7 @@ const model_selection_inpaint = [
 const model_selection_flux = [
     { name: 'Flux.dev Q4_K_S', value: 'flux1-dev-Q4_K_S.gguf' },
     { name: 'Flux.dev Q8_0', value: 'flux1-dev-Q8_0.gguf'},
+    { name: 'Pixelwave Flux v3 Q8_0', value: 'pixelwave-flux-Q8_0.gguf'},
 ]
 
 const model_selection_curated = [
@@ -1651,6 +1786,7 @@ module.exports = {
     get_data_body,
     get_data_controlnet,
     get_data_controlnet_annotation,
+    get_data_rembg,
     get_worker_server,
     initiate_server_heartbeat,
     get_prompt,

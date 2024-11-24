@@ -17,6 +17,10 @@ function pick_instantid_preprocessor(model, preprocessor) {
     return preprocessor
 }
 
+const FN_OFFSET_TXT2IMG = 47
+const FN_OFFSET_IMG2IMG = 49
+const FN_OFFSET_ANNOTATION = 8
+
 // mode: 0 = txt2img, 1 = img2img
 function load_controlnet(session_hash, server_index, controlnet_input, controlnet_input_2, controlnet_input_3, controlnet_config, interaction, mode = 0, mask = null, controlnet_mask = false, extra_data = {}) {
     return new Promise(async (resolve, reject) => {
@@ -178,7 +182,7 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
                 const option_controlnet_annotation_2 = {
                     method: 'POST',
                     body: JSON.stringify({
-                        fn_index: server_pool[server_index].fn_index_controlnet_annotation_2[mode],
+                        fn_index: server_pool[server_index].fn_index_controlnet_annotation[mode] + FN_OFFSET_ANNOTATION,
                         session_hash: session_hash,
                         data: controlnet_annotation_data_2
                     }),
@@ -218,7 +222,7 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
                 const option_controlnet_annotation_3 = {
                     method: 'POST',
                     body: JSON.stringify({
-                        fn_index: server_pool[server_index].fn_index_controlnet_annotation_3[mode],
+                        fn_index: server_pool[server_index].fn_index_controlnet_annotation[mode] + (FN_OFFSET_ANNOTATION * 2),
                         session_hash: session_hash,
                         data: controlnet_annotation_data_3
                     }),
@@ -272,7 +276,7 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
             const option_controlnet_2 = {
                 method: 'POST',
                 body: JSON.stringify({
-                    fn_index: server_pool[server_index].fn_index_controlnet_2[mode],
+                    fn_index: server_pool[server_index].fn_index_controlnet[mode] + (mode === 0 ? FN_OFFSET_TXT2IMG : FN_OFFSET_IMG2IMG),
                     session_hash: session_hash,
                     data: controlnet_data_2
                 }),
@@ -300,7 +304,7 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
             const option_controlnet_3 = {
                 method: 'POST',
                 body: JSON.stringify({
-                    fn_index: server_pool[server_index].fn_index_controlnet_3[mode],
+                    fn_index: server_pool[server_index].fn_index_controlnet[mode] + ((mode === 0 ? FN_OFFSET_TXT2IMG : FN_OFFSET_IMG2IMG) * 2),
                     session_hash: session_hash,
                     data: controlnet_data_3
                 }),

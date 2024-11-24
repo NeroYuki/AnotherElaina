@@ -72,6 +72,12 @@ function uploadDiscordImageToGradio(url, session_hash, worker_endpoint) {
                     return;
                 }
                 console.log(`Uploading image with mime: ${mime}`);
+                // adjust filename to match the mime type
+                let filename_ext = mime.split('/')[1];
+                // add random filename
+                let random_string = Date.now().toString(36) + Math.random().toString(36).substring(2);
+                let filename = `image_${random_string}.${filename_ext}`;
+
                 // -----------------------------26627894059524141072594727081
                 // Content-Disposition: form-data; name="files"; filename="Belfast.jpg"
                 // Content-Type: image/jpeg
@@ -80,7 +86,7 @@ function uploadDiscordImageToGradio(url, session_hash, worker_endpoint) {
                 // -----------------------------26627894059524141072594727081--
                 // make form data to replicate the above
                 const form_data = new FormData();
-                form_data.append('files', blob, 'image.jpg');
+                form_data.append('files', blob, filename);
 
                 // upload to gradio (use multipart form data, Content-Type: <mime>, followed by the binary data)
                 axios.post(`${worker_endpoint}/upload?upload_id=${session_hash}`, form_data, 

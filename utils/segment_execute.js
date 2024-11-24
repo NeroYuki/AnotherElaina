@@ -16,7 +16,7 @@ function groundingDino_execute(prompt, image_path, session_hash, useSwinB = fals
         const option_adetailer = {
             method: 'POST',
             body: JSON.stringify({
-                fn_index: server_pool[0].fn_index_execute_grounding_dino_preview,
+                fn_index: server_pool[0].fn_index_execute_segment_anything - 3,
                 session_hash: session_hash,
                 data: req_data
             }),
@@ -113,7 +113,7 @@ function expandMask(segment_output, image_path, mask_selection, session_hash, ex
         const option_adetailer = {
             method: 'POST',
             body: JSON.stringify({
-                fn_index: server_pool[0].fn_index_execute_expand_mask,
+                fn_index: server_pool[0].fn_index_execute_segment_anything + 1,
                 session_hash: session_hash,
                 data: req_data
             }),
@@ -150,7 +150,7 @@ function unloadAllModel(session_hash) {
         const option_adetailer = {
             method: 'POST',
             body: JSON.stringify({
-                fn_index: server_pool[0].fn_index_unload_segmentation_model,
+                fn_index: server_pool[0].fn_index_execute_segment_anything + 17,
                 session_hash: session_hash,
                 data: req_data
             }),
