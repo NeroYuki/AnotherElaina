@@ -346,17 +346,37 @@ function get_prompt_enhancer_call(prompt) {
 
     const booru_pattern = /\[BOORU\]/i
     const foocus_pattern = /\[FOOCUS\]/i
+    const tipo_pattern = /\[TIPO\]/i
 
     const booru_match = prompt.match(booru_pattern)
     const foocus_match = prompt.match(foocus_pattern)
+    const tipo_match = prompt.match(tipo_pattern)
+
+    // if tipo_match, parse the prompt with following syntax [TIPO]<raw prompt>===<tag prompt>===<nl prompt>, tag prompt, nl prompt and === must be removed from the prompt
+    if (tipo_match) {
+        const component = prompt.split("===")
+
+        if (component && component.length > 0) {
+            return {
+                prompt: prompt.replace(tipo_match, "").replace(/===(.*)/g, "").trim(),
+                booru_gen: booru_match ? true : false,
+                foocus: foocus_match ? true : false,
+                tipo: {
+                    tag: component[1] || "",
+                    nl: component[2] || ""
+                }
+            }
+        }
+    }
 
     // remove the [BOORU] and [FOOCUS] from the prompt
-    prompt = prompt.replace(booru_pattern, '').replace(foocus_pattern, '')
+    prompt = prompt.replace(booru_pattern, '').replace(foocus_pattern, '').replace(tipo_pattern, '')
 
     return {
         prompt: prompt,
         booru_gen: booru_match ? true : false,
         foocus: false,
+        tipo: null
     }
 }
 
@@ -378,7 +398,8 @@ function full_prompt_analyze(prompt, is_xl) {
         detail_daemon_config: detail_daemon_config.detail_daemon_config,
         pag_config: pag_config.pag_config,
         use_foocus: prompt_enhancer.foocus,
-        use_booru_gen: prompt_enhancer.booru_gen
+        use_booru_gen: prompt_enhancer.booru_gen,
+        tipo_input: prompt_enhancer.tipo
     }
 }
 

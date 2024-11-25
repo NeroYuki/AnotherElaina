@@ -448,6 +448,21 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         if (extra_config.use_booru_gen) {
             interaction.channel.send('Enhancing image with BooruGen prompt expansion engine.')
         }
+        if (extra_config.tipo_input) {
+            interaction.channel.send('Enhancing image with TIPO input expansion engine.')
+        }
+        let booru_gen_config_obj = null
+        if (booru_gen_config) {
+            // try parse the config string
+            try {
+                booru_gen_config_obj = JSON.parse(booru_gen_config)
+                interaction.channel.send('Applying BooruGen config')
+            }
+            catch (err) {
+                interaction.channel.send("Failed to parse BooruGen config")
+                return
+            }
+        }
         let colorbalance_config_obj = null
         if (colorbalance_config) {
             // try parse the config string
@@ -465,8 +480,8 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             seed, sampler, scheduler, session_hash, height, width, attachment, null, denoising_strength, /*img2img mode*/ 0, 4, "original", upscaler, 
             do_adetailer, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
             extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, "Whole picture", 32, 
-            extra_config.use_foocus, extra_config.use_booru_gen, booru_gen_config, is_flux, null, null, colorbalance_config_obj, do_preview, outpaint_config_obj, 
-            upscale_config_obj, extra_script, extra_config.detail_daemon_config)
+            extra_config.use_foocus, extra_config.use_booru_gen, booru_gen_config_obj, is_flux, null, null, colorbalance_config_obj, do_preview, outpaint_config_obj, 
+            upscale_config_obj, extra_script, extra_config.detail_daemon_config, extra_config.tipo_input)
 
         // console.log(JSON.stringify(create_data.filter((x, i) => i !== 5), null, 2))
 

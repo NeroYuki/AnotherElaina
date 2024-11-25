@@ -146,13 +146,61 @@ const get_data_rembg = (input, rembg_model = "birefnet-general", edge_width = 0,
     ]
 }
 
+const tipo_mode_to_format = (mode = "Both, tag first (recommend)") => {
+    if (mode === "tag only (DTG mode)") {
+        return `<|special|>, <|characters|>, <|copyrights|>, 
+<|artist|>, 
+
+<|general|>,
+
+<|quality|>, <|meta|>, <|rating|>`
+    }
+    if (mode === "NL only (Tag to NL)") {
+        return "<|extended|>."
+    }
+    if (mode === "Both, tag first (recommend)") {
+        return `<|special|>, <|characters|>, <|copyrights|>, 
+<|artist|>, 
+
+<|general|>,
+
+<|extended|>.
+
+<|quality|>, <|meta|>, <|rating|>`
+    }
+    if (mode === "Both, NL first (recommend)") {
+        return `<|special|>, <|characters|>, <|copyrights|>, 
+<|artist|>, 
+
+<|extended|>.
+
+<|general|>,
+
+<|quality|>, <|meta|>, <|rating|>`
+    }
+    if (mode === "Both + generated NL") {
+        return `<|special|>, <|characters|>, <|copyrights|>, 
+<|artist|>, 
+
+<|generated|>.
+
+<|general|>,
+
+<|extended|>.
+
+<|quality|>, <|meta|>, <|rating|>`
+    }
+
+    return null
+}
+
 const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed, sampler, scheduler, session_hash,
     height, width, attachment, attachment2, denoising_strength, mode = 0, mask_blur = 4, mask_content = "original", upscaler = "None", 
     is_using_adetailer = false, coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, 
     freeu_config = null, dynamic_threshold_config = null, pag_config = null, inpaint_area = "Whole picture", mask_padding = 32,
     use_foocus = false, use_booru_gen = false, booru_gen_config = null, is_flux = false,
     inpaint_img_upload_path = null, inpaint_mask_upload_path = null, colorbalance_config = null, do_preview = false, outpaint_config = null, 
-    upscale_config = null, extra_script = "None", detail_daemon_config = null) => {
+    upscale_config = null, extra_script = "None", detail_daemon_config = null, tipo_input = null) => {
     // default mode 0 is img2img, 4 is inpainting
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 3000000 && upscaler == "None") ? true : false
@@ -318,7 +366,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             "Flat",
             use_booru_gen,          // enable DanTagGen
             "After applying other prompt processings",
-            -1,
+            booru_gen_config?.random_seed || -1,
             booru_gen_config?.gen_length || "long",
             booru_gen_config?.ban_tags || "",
             booru_gen_config?.format || "<|special|>, \n<|characters|>, <|copyrights|>, \n<|artist|>, \n\n<|general|>, \n\n<|quality|>, <|meta|>, <|rating|>",
@@ -328,22 +376,22 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             "KBlueLeaf/DanTagGen-delta-rev2 | ggml-model-Q8_0.gguf",
             true,              // use CPU for DanTagGen
             false,
-            false,              // enable TIPO
+            tipo_input ? true : false,              // enable TIPO
             "After applying other prompt processings",
-            -1,
-            "long",
-            "long",
-            "",
-            "NL only (Tag to NL)",
-            "<|extended|>.",
-            0.5,
-            0.95,
-            80,
+            booru_gen_config?.random_seed || -1,
+            booru_gen_config?.tipo_tag_gen_length || "long",
+            booru_gen_config?.tipo_nl_gen_length || "long",
+            booru_gen_config?.ban_tags || "",
+            booru_gen_config?.tipo_mode || "NL only (Tag to NL)",
+            tipo_mode_to_format(booru_gen_config?.tipo_mode || "NL only (Tag to NL)") || (booru_gen_config?.tipo_mode === "custom" ?  booru_gen_config?.format : "<|extended|>."),
+            booru_gen_config?.temperature || 0.5,
+            booru_gen_config?.top_p || 0.95,
+            booru_gen_config?.top_k || 80,
             "KBlueLeaf/TIPO-200M-ft | TIPO-200M-ft-F16.gguf",
             true,               // use CPU for TIPO
             false,
-            "",
-            "",
+            tipo_input?.tag || "",
+            tipo_input?.nl || "",
             null, 
             null,
             null,
@@ -502,7 +550,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
     height, width, upscale_multiplier, upscaler, upscale_denoise_strength, upscale_step, face_restore = false, is_using_adetailer = false, 
     coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, 
     freeu_config = null, dynamic_threshold_config = null, pag_config = null, use_foocus = false, use_booru_gen = false, booru_gen_config = null, 
-    is_flux = false, colorbalance_config = null, do_preview = false, detail_daemon_config = null) => {
+    is_flux = false, colorbalance_config = null, do_preview = false, detail_daemon_config = null, tipo_input = null) => {
 
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 1600000) ? true : false
@@ -642,7 +690,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             "Flat",
             use_booru_gen,          // enable DanTagGen
             "After applying other prompt processings",
-            -1,
+            booru_gen_config?.random_seed || -1,
             booru_gen_config?.gen_length || "long",
             booru_gen_config?.ban_tags || "",
             booru_gen_config?.format || "<|special|>, \n<|characters|>, <|copyrights|>, \n<|artist|>, \n\n<|general|>, \n\n<|quality|>, <|meta|>, <|rating|>",
@@ -652,22 +700,22 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             "KBlueLeaf/DanTagGen-delta-rev2 | ggml-model-Q8_0.gguf",
             true,              // use CPU for DanTagGen
             false,
-            false,              // enable TIPO
+            tipo_input ? true : false,              // enable TIPO
             "After applying other prompt processings",
-            -1,
-            "long",
-            "long",
-            "",
-            "NL only (Tag to NL)",
-            "<|extended|>.",
-            0.5,
-            0.95,
-            80,
+            booru_gen_config?.random_seed || -1,
+            booru_gen_config?.tipo_tag_gen_length || "long",
+            booru_gen_config?.tipo_nl_gen_length || "long",
+            booru_gen_config?.ban_tags || "",
+            booru_gen_config?.tipo_mode || "NL only (Tag to NL)",
+            tipo_mode_to_format(booru_gen_config?.tipo_mode || "NL only (Tag to NL)") || (booru_gen_config?.tipo_mode === "custom" ?  booru_gen_config?.format : "<|extended|>."),
+            booru_gen_config?.temperature || 0.5,
+            booru_gen_config?.top_p || 0.95,
+            booru_gen_config?.top_k || 80,
             "KBlueLeaf/TIPO-200M-ft | TIPO-200M-ft-F16.gguf",
             true,               // use CPU for TIPO
             false,
-            "",
-            "",
+            tipo_input?.tag || "",
+            tipo_input?.nl || "",
             null,       // ControlNet
             null,
             null,
