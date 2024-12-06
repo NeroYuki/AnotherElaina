@@ -1458,8 +1458,7 @@ const model_selection = [
 const model_selection_xl = [
     { name: 'PonyDiffusionXL v6', value: 'ponydiffusionxl_v6.safetensors'},
     { name: 'AutismMix PonyXL', value: 'autismmix_ponyxl.safetensors'},
-    { name: 'Illustrious v0.1', value: 'illustriousxl_v0_1.safetensors'},
-    { name: 'NoobAIXL v1', value: 'noobaixl_v1.safetensors'},
+    { name: 'NoobAIXL v1.1', value: 'noobaixl_v1_1.safetensors'},
     { name: 'NekorayXL v0.6', value: 'nekorayxl.safetensors' },
     { name: 'AnimagineXL v3', value: 'animaginexl_v3.safetensors' },
     { name: 'AnimagineXL v3.1', value: 'animaginexl_v31.safetensors'},
@@ -1481,6 +1480,7 @@ const model_selection_flux = [
     { name: 'Flux.dev Q4_K_S', value: 'flux1-dev-Q4_K_S.gguf' },
     { name: 'Flux.dev Q8_0', value: 'flux1-dev-Q8_0.gguf'},
     { name: 'Pixelwave Flux v3 Q8_0', value: 'pixelwave-flux-Q8_0.gguf'},
+    { name: 'Flux AnimePro fp8', value: 'flux-animepro-fp8.safetensors'}
 ]
 
 const model_selection_curated = [
