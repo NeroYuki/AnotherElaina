@@ -103,40 +103,40 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
             }
         }
 
-        console.log(server_pool[server_index].fn_index_controlnet[mode])
+        // console.log(server_pool[server_index].fn_index_controlnet[mode])
 
-        // mask control setup
-        const mask_control_data = [
-            controlnet_mask,
-            extra_data.height ?? 512,
-            extra_data.width ?? 512,
-        ]
+        // // mask control setup
+        // const mask_control_data = [
+        //     controlnet_mask,
+        //     extra_data.height ?? 512,
+        //     extra_data.width ?? 512,
+        // ]
 
-        const option_mask_control = {
-            method: 'POST',
-            body: JSON.stringify({
-                fn_index: 1088,
-                session_hash: session_hash,
-                data: mask_control_data
-            }),
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        }
+        // const option_mask_control = {
+        //     method: 'POST',
+        //     body: JSON.stringify({
+        //         fn_index: 1088,
+        //         session_hash: session_hash,
+        //         data: mask_control_data
+        //     }),
+        //     headers: {
+        //         'Content-Type': 'application/json'
+        //     }
+        // }
 
-        try {
-            await fetch(`${WORKER_ENDPOINT}/run/predict/`, option_mask_control)
-                .then(res => {
-                    if (res.status !== 200) {
-                        throw 'Failed to change controlnet'
-                    }
-                })
-        }
-        catch (err) {
-            console.log(err)
-            reject(err)
-            return
-        }
+        // try {
+        //     await fetch(`${WORKER_ENDPOINT}/run/predict/`, option_mask_control)
+        //         .then(res => {
+        //             if (res.status !== 200) {
+        //                 throw 'Failed to change controlnet'
+        //             }
+        //         })
+        // }
+        // catch (err) {
+        //     console.log(err)
+        //     reject(err)
+        //     return
+        // }
 
         if (do_preview_annotation) {
             const controlnet_annotation_data = get_data_controlnet_annotation(controlnet_preprocessor, controlnet_input)
