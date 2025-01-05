@@ -11,6 +11,9 @@ module.exports = {
                 option.setName('image')
                     .setDescription('The image to be converted')
                     .setRequired(true))
+            .addBooleanOption(option => 
+                option.setName('remove_background')
+                    .setDescription('Force remove background from input image'))
 
     ,
 
@@ -23,6 +26,7 @@ module.exports = {
         await interaction.deferReply();
 
         const attachment_option = interaction.options.getAttachment('image');
+        const remove_background = interaction.options.getBoolean('remove_background') || false;
 
         //download the image from attachment.proxyURL
         let attachment = await loadImage(attachment_option.proxyURL,
@@ -46,6 +50,7 @@ module.exports = {
 
         workflow["2"]["inputs"]["seed"] = Math.floor(Math.random() * 2_000_000_000)
         workflow["4"]["inputs"]["image"] = image_info.name
+        workflow["2"]["inputs"]["preprocess_image"] = remove_background
 
         ComfyClient.sendPrompt(workflow, (data) => {
             if (data.node !== null) interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] });

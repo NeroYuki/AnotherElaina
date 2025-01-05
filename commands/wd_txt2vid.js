@@ -10,13 +10,50 @@ module.exports = {
                 option.setName('prompt')
                     .setDescription('The text prompt to generate the video')
                     .setRequired(true))
+            .addStringOption(option => 
+                option.setName('preset')
+                    .setDescription('The preset to use for the generation')
+                    .addChoices(
+                        { name: '512x320 - 3 secs', value: 'fast' },
+                        { name: '640x480 - 3 secs', value: 'sd' },
+                        { name: '512x320 - 5 secs', value: 'long' },
+                    ))
+            .addBooleanOption(option =>
+                option.setName('portrait')
+                    .setDescription('Generate a portrait video')
+                    .setRequired(false))
 
     ,
 
 	async execute(interaction, client) {
         const prompt = interaction.options.getString('prompt');
+        const preset = interaction.options.getString('preset') || 'fast';
+        const portrait = interaction.options.getBoolean('portrait') || false;
 
         workflow["15"]["inputs"]["text"] = prompt
+
+        if (preset == 'fast') {
+            workflow["12"]["inputs"]["width"] = 512
+            workflow["12"]["inputs"]["height"] = 320
+            workflow["12"]["inputs"]["length"] = 49
+        }
+        if (preset == 'sd') {
+            workflow["12"]["inputs"]["width"] = 640
+            workflow["12"]["inputs"]["height"] = 480
+            workflow["12"]["inputs"]["length"] = 49
+        }
+        if (preset == 'long') {
+            workflow["12"]["inputs"]["width"] = 512
+            workflow["12"]["inputs"]["height"] = 320
+            workflow["12"]["inputs"]["length"] = 81
+        }
+
+        if (portrait) {
+            // swap width and height
+            var a = workflow["12"]["inputs"]["width"]
+            workflow["12"]["inputs"]["width"] = workflow["12"]["inputs"]["height"]
+            workflow["12"]["inputs"]["height"] = a
+        }
 
         await interaction.deferReply();
 
