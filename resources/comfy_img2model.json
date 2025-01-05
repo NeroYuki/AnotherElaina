@@ -1,0 +1,79 @@
+{
+  "1": {
+    "inputs": {
+      "repo": "JeffreyXiang/TRELLIS-image-large",
+      "dino": "dinov2_vitl14_reg4_pretrain.pth",
+      "attn_backend": "xformers",
+      "spconv_algo": "auto"
+    },
+    "class_type": "Trellis_LoadModel",
+    "_meta": {
+      "title": "Trellis_LoadModel"
+    }
+  },
+  "2": {
+    "inputs": {
+      "seed": 0,
+      "cfg": 7.5,
+      "steps": 18,
+      "slat_cfg": 3,
+      "slat_steps": 12,
+      "preprocess_image": false,
+      "texture_size": 1024,
+      "mesh_simplify": 0.95,
+      "mode": "fast",
+      "multi_image": false,
+      "multiimage_algo": "multidiffusion",
+      "gaussians2ply": false,
+      "covert2video": true,
+      "glb2obj": false,
+      "glb2fbx": false,
+      "image": [
+        "4",
+        0
+      ],
+      "model": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "Trellis_Sampler",
+    "_meta": {
+      "title": "Trellis_Sampler"
+    }
+  },
+  "3": {
+    "inputs": {
+      "text": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "ShowText|pysssss",
+    "_meta": {
+      "title": "Show Text 🐍"
+    }
+  },
+  "4": {
+    "inputs": {
+      "image": "Acasta_Fashionable Outing.png",
+      "upload": "image"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "5": {
+    "inputs": {
+      "value": [
+        "2",
+        0
+      ]
+    },
+    "class_type": "UnloadAllModels",
+    "_meta": {
+      "title": "UnloadAllModels"
+    }
+  }
+}

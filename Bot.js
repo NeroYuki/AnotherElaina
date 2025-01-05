@@ -5,6 +5,7 @@ const { byPassUser} = require('./config.json');
 const { responseToMessage } = require('./event/on_message');
 const databaseConnection = require('./database/database_connection');
 const { listAllFiles } = require('./utils/common_helper');
+const ComfyClient = require('./utils/comfy_client');
 
 require('dotenv').config()
 
@@ -101,27 +102,51 @@ client.on('interactionCreate', async interaction => {
 	// 	return;
 	// }
 
+	const forge_backend_require = [
+		'wd_create', 
+		'wd_img2img', 
+		'wd_inpaint', 
+		'wd_interrogate', 
+		'wd_create_adv', 
+		'wd_img2img_adv', 
+		'wd_upscale', 
+		'wd_rembg',
+	]
+
+	const comfy_backend_require = [
+		'wd_img2model',
+		'wd_txt2vid',
+	]
+
+	const no_backend_require = [
+		'wd_controlnet', 
+		'wd_adetailer', 
+		'wd_boorugen',
+		'wd_colorbalance',
+		'wd_setting',
+		'shipgirl',
+		'shipgirl_config',
+		'shipgirl_multi',
+		'wd_script_outpaint',
+		'wd_script_upscale',
+	]
+
 	try {
 		if ([
-			'wd_create', 
-			'wd_img2img', 
-			'wd_inpaint', 
-			'wd_interrogate', 
-			'wd_upscale', 
-			'wd_rembg',
-			'wd_controlnet', 
-			'wd_adetailer', 
-			'wd_create_adv', 
-			'wd_img2img_adv', 
-			'wd_boorugen',
-			'wd_colorbalance',
-			'wd_setting',
-			'shipgirl',
-			'shipgirl_config',
-			'shipgirl_multi',
-			'wd_script_outpaint',
-			'wd_script_upscale',
+			...forge_backend_require,
+			...comfy_backend_require,
+			...no_backend_require
 		].includes(interaction.commandName)) {
+
+			const isEstimatedNotEnoughResource = (forge_backend_require.includes(interaction.commandName) && ComfyClient.promptListener.length > 0) ||
+				(interaction.commandName === "wd_txt2vid" && ComfyClient.promptListener.length == 0 && ComfyClient.comfyStat.gpu_vram_used > 3.5) ||
+				(interaction.commandName === "wd_img2model" && ComfyClient.promptListener.length == 0 && ComfyClient.comfyStat.gpu_vram_used > 6)
+
+			if (isEstimatedNotEnoughResource) {
+				await interaction.reply({ content: 'Not enough resource can be allocated to finish this command, please try again later', ephemeral: true });
+				return;
+			} 
+
 			await command.execute(interaction, client)
 		}
 		else {
