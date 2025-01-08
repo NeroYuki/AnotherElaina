@@ -24,6 +24,7 @@
 		"mongodb": "^4.8.0",
 		"node-fetch": "^3.3.0",
 		"sharp": "^0.30.6",
+		"systeminformation": "^5.25.5",
 		"unzipper": "^0.10.14",
 		"ws": "^8.14.1",
 		"zlib": "^1.0.5"
