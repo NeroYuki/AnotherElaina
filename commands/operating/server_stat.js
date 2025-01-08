@@ -26,11 +26,6 @@ module.exports = {
             return
         })
 
-        const cpuTemp = await si.cpuTemperature().catch((err) => {
-            console.log("Failed to retrieve cpu temp", err)
-            return
-        })
-
         const ram_percent = (memStat?.used && memStat?.total) ? memStat.used / memStat.total * 100 : 0
         const ram_used = memStat?.used ? memStat.used / 1024 / 1024 / 1024 : 0
         const ram_total = memStat?.total ? memStat.total / 1024 / 1024 / 1024 : 0
@@ -38,25 +33,26 @@ module.exports = {
         // get the main cpu usage percentage from os.cpus()
         let cpus = os.cpus();
 
-        let cpu_main_percent = 0;
+        let avg_cpu_percent = 0;
+        let total_cpu_percent = 0;
         for(let i = 0, len = cpus.length; i < len; i++) {
-            var cpu = cpus[i], total = 0;
+            let cpu = cpus[i], total = 0;
 
             for(var type in cpu.times) {
                 total += cpu.times[type];
             }
 
             for(type in cpu.times) {
-                cpu_main_percent = Math.round(100 * cpu.times[type] / total)
+                total_cpu_percent += (type !== "idle") ? Math.round(100 * cpu.times[type] / total) : 0;
             }
         }
+        avg_cpu_percent = total_cpu_percent / cpus.length;  
 
-        console.log(cpuTemp)
+        console.log(avg_cpu_percent)
 
         const botServerTitle = "Bot Server - " + `${osInfo.distro} ${osInfo.release} (${osInfo.arch})`
         const botServerStat = '------------------------------------------' + "\n"
-            + '**CPU Usage: **' + cpu_main_percent.toFixed(2) + "%" + "\n"
-            + (osInfo.distro.includes('Windows') ? '' : '**CPU Temp: **' + cpuTemp.main + "°C" + "\n")
+            + '**CPU Usage: **' + avg_cpu_percent.toFixed(2) + "%" + "\n"
             + '**RAM Usage: **' + `${ram_used.toFixed(2)}/${ram_total.toFixed(2)}GB (${ram_percent.toFixed(2)}%)` + "\n"
 
         const aiServerTitle = "AI Server -  Microsoft Windows 10 Education 10.0.19045 (x64)"
