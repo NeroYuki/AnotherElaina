@@ -36,6 +36,7 @@ const server_pool = [
         // fn_index_unload_segmentation_model: 897,                 // +17
         fn_index_rembg: 1351,
         is_online: true,
+        queue: [],
     },
     {
         index: 1,
