@@ -159,6 +159,7 @@ module.exports = {
             profile?.adetailer_config ||
             (client.adetailer_config.has(interaction.user.id) ? client.adetailer_config.get(interaction.user.id) : null)
         const booru_gen_config = profile?.boorugen_config || (client.boorugen_config.has(interaction.user.id) ? client.boorugen_config.get(interaction.user.id) : null)
+        const latentmod_config = profile?.latentmod_config || (client.latentmod_config.has(interaction.user.id) ? client.latentmod_config.get(interaction.user.id) : null)
         const colorbalance_config = interaction.options.getString('colorbalance_config') ||
             profile?.colorbalance_config ||
             (client.colorbalance_config.has(interaction.user.id) ? client.colorbalance_config.get(interaction.user.id) : null)
@@ -300,9 +301,13 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         let progress_ping_delay = 2000
         const is_xl = model_selection_xl.find(x => x.value === cached_model[0]) != null
         const is_flux = model_selection_flux.find(x => x.value === cached_model[0]) != null
+        const is_vpred = cached_model[0].includes('vpred')
 
         if ((is_flux || is_xl) ? width * height > 1_200_000 : width * height > 640_000) {
             await interaction.channel.send(`:warning: Image size is too large for model's capability and may introduce distorsion, please consider using smaller image size unless you know what you're doing`);
+        }
+        if (is_vpred) {
+            await interaction.channel.send(`:information_source: This model is using v-prediction method, which may not be compatible with every setting of the command`);
         }
 
         const slow_sampler = ['DPM++ SDE', 'DPM++ 2M SDE', 'DPM++ 2M SDE Heun', 'Restart']
@@ -475,13 +480,25 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                 return
             }
         }
+        let latentmod_config_obj = null
+        if (latentmod_config) {
+            // try parse the config string
+            try {
+                latentmod_config_obj = JSON.parse(latentmod_config)
+                interaction.channel.send('Applying Latent Modifier config')
+            }
+            catch (err) {
+                interaction.channel.send("Failed to parse Latent Modifier config")
+                return
+            }
+        }
     
         const create_data = get_data_body_img2img(server_index, prompt, neg_prompt, sampling_step, cfg_scale,
             seed, sampler, scheduler, session_hash, height, width, attachment, null, denoising_strength, /*img2img mode*/ 0, 4, "original", upscaler, 
             do_adetailer, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
             extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, "Whole picture", 32, 
             extra_config.use_foocus, extra_config.use_booru_gen, booru_gen_config_obj, is_flux, null, null, colorbalance_config_obj, do_preview, outpaint_config_obj, 
-            upscale_config_obj, extra_script, extra_config.detail_daemon_config, extra_config.tipo_input)
+            upscale_config_obj, extra_script, extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config)
 
         // console.log(JSON.stringify(create_data.filter((x, i) => i !== 5), null, 2))
 
@@ -550,6 +567,12 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                     const reply_content = {embeds: [embeded], components: [row]}
                     if (data.img) {
                         reply_content.files = [{attachment: data.img, name: data.img_name}]
+                    }
+
+                    // if completed, only allow edit if the state is completed
+                    if ((state === 'progress' || state === 'queued') && (isDone || isCancelled)) {
+                        resolve()
+                        return
                     }
 
                     await interaction.editReply(reply_content)

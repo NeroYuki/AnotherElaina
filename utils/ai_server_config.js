@@ -201,7 +201,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
     freeu_config = null, dynamic_threshold_config = null, pag_config = null, inpaint_area = "Whole picture", mask_padding = 32,
     use_foocus = false, use_booru_gen = false, booru_gen_config = null, is_flux = false,
     inpaint_img_upload_path = null, inpaint_mask_upload_path = null, colorbalance_config = null, do_preview = false, outpaint_config = null, 
-    upscale_config = null, extra_script = "None", detail_daemon_config = null, tipo_input = null) => {
+    upscale_config = null, extra_script = "None", detail_daemon_config = null, tipo_input = null, latentmod_config = null) => {
     // default mode 0 is img2img, 4 is inpainting
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 3000000 && upscaler == "None") ? true : false
@@ -426,27 +426,27 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             true,
             "bicubic",
             "bicubic",
-            false,
-            0,
-            "anisotropic",
-            0,
-            "reinhard",
-            100,
-            0,
-            "subtract",
-            0,
-            0,
-            "gaussian",
-            "add",
-            0,
-            100,
-            127,
-            0,
-            "hard_clamp",
-            5,
-            0,
-            "None",
-            "None",
+            latentmod_config ? true : false,      // latent modifier
+            latentmod_config?.sharpness_multiplier || 0,
+            latentmod_config?.sharpness_method || "anisotropic",
+            latentmod_config?.tonemap_multiplier || 0,
+            latentmod_config?.tonemap_method || "reinhard",
+            latentmod_config?.tonemap_percentile || 100,
+            latentmod_config?.contrast_multiplier || 0,
+            latentmod_config?.contrast_method || "subtract",
+            latentmod_config?.combat_cfg_drift || 0,
+            latentmod_config?.rescale_cfg_phi || 0,
+            latentmod_config?.extra_noise_type || "gaussian",
+            latentmod_config?.extra_noise_method || "add",
+            latentmod_config?.extra_noise_multiplier || 0,
+            latentmod_config?.extra_noise_lowpass || 100,
+            latentmod_config?.divisive_norm_size || 127,
+            latentmod_config?.divisive_norm_multiplier || 0,
+            latentmod_config?.spectral_mod_mode || "hard_clamp",
+            latentmod_config?.spectral_mod_percentile || 5,
+            latentmod_config?.spectral_mod_multiplier || 0,
+            latentmod_config?.affect_uncond || "None",
+            latentmod_config?.dyncfg_augment || "None",
             false,
             "MultiDiffusion",
             768,
@@ -551,7 +551,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
     height, width, upscale_multiplier, upscaler, upscale_denoise_strength, upscale_step, face_restore = false, is_using_adetailer = false, 
     coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, 
     freeu_config = null, dynamic_threshold_config = null, pag_config = null, use_foocus = false, use_booru_gen = false, booru_gen_config = null, 
-    is_flux = false, colorbalance_config = null, do_preview = false, detail_daemon_config = null, tipo_input = null) => {
+    is_flux = false, colorbalance_config = null, do_preview = false, detail_daemon_config = null, tipo_input = null, latentmod_config = null) => {
 
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 1600000) ? true : false
@@ -750,27 +750,27 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             true,
             "bicubic",
             "bicubic",
-            false,      // latent modifier
-            0,
-            "anisotropic",
-            0,
-            "reinhard",
-            100,
-            0,
-            "subtract",
-            0,
-            0,
-            "gaussian",
-            "add",
-            0,
-            100,
-            127,
-            0,
-            "hard_clamp",
-            5,
-            0,
-            "None",
-            "None",
+            latentmod_config ? true : false,      // latent modifier
+            latentmod_config?.sharpness_multiplier || 0,
+            latentmod_config?.sharpness_method || "anisotropic",
+            latentmod_config?.tonemap_multiplier || 0,
+            latentmod_config?.tonemap_method || "reinhard",
+            latentmod_config?.tonemap_percentile || 100,
+            latentmod_config?.contrast_multiplier || 0,
+            latentmod_config?.contrast_method || "subtract",
+            latentmod_config?.combat_cfg_drift || 0,
+            latentmod_config?.rescale_cfg_phi || 0,
+            latentmod_config?.extra_noise_type || "gaussian",
+            latentmod_config?.extra_noise_method || "add",
+            latentmod_config?.extra_noise_multiplier || 0,
+            latentmod_config?.extra_noise_lowpass || 100,
+            latentmod_config?.divisive_norm_size || 127,
+            latentmod_config?.divisive_norm_multiplier || 0,
+            latentmod_config?.spectral_mod_mode || "hard_clamp",
+            latentmod_config?.spectral_mod_percentile || 5,
+            latentmod_config?.spectral_mod_multiplier || 0,
+            latentmod_config?.affect_uncond || "None",
+            latentmod_config?.dyncfg_augment || "None",
             false,
             "MultiDiffusion",
             768,
@@ -1457,9 +1457,10 @@ const model_selection = [
 ]
 
 const model_selection_xl = [
-    { name: 'PonyDiffusionXL v6', value: 'ponydiffusionxl_v6.safetensors'},
+    { name: 'PrefectPony v5.0', value: 'prefectpony_v50.safetensors'},
     { name: 'AutismMix PonyXL', value: 'autismmix_ponyxl.safetensors'},
     { name: 'NoobAIXL v1.1', value: 'noobaixl_v1_1.safetensors'},
+    { name: 'NoobAIXL V-pred v1.0', value: 'noobaixl_vpred_v1.safetensors'},
     { name: 'NekorayXL v0.6', value: 'nekorayxl.safetensors' },
     { name: 'AnimagineXL v3', value: 'animaginexl_v3.safetensors' },
     { name: 'AnimagineXL v3.1', value: 'animaginexl_v31.safetensors'},
@@ -1480,8 +1481,7 @@ const model_selection_inpaint = [
 const model_selection_flux = [
     { name: 'Flux.dev Q4_K_S', value: 'flux1-dev-Q4_K_S.gguf' },
     { name: 'Flux.dev Q8_0', value: 'flux1-dev-Q8_0.gguf'},
-    { name: 'Pixelwave Flux v3 Q8_0', value: 'pixelwave-flux-Q8_0.gguf'},
-    { name: 'Flux AnimePro fp8', value: 'flux-animepro-fp8.safetensors'}
+    { name: 'Pixelwave Flux v3 Q8_0', value: 'pixelwave-flux-Q8_0.gguf'}
 ]
 
 const model_selection_curated = [

@@ -106,6 +106,7 @@ module.exports = {
         const adetailer_config = profile?.adetailer_config ||
             (client.adetailer_config.has(interaction.user.id) ? client.adetailer_config.get(interaction.user.id) : null)
         const booru_gen_config = profile?.boorugen_config || (client.boorugen_config.has(interaction.user.id) ? client.boorugen_config.get(interaction.user.id) : null)
+        const latentmod_config = profile?.latentmod_config || (client.latentmod_config.has(interaction.user.id) ? client.latentmod_config.get(interaction.user.id) : null)
         const colorbalance_config = profile?.colorbalance_config ||
             (client.colorbalance_config.has(interaction.user.id) ? client.colorbalance_config.get(interaction.user.id) : null)
 
@@ -210,33 +211,39 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             width = Math.ceil(width / 8) * 8
         }
 
-        if (cached_model[0] === 'aamxl_turbo.safetensors [8238e80fdd]') {
+        if (cached_model[0] === 'aamxl_turbo.safetensors') {
             sampler = 'Euler a'
             cfg_scale = 3.5
             sampling_step = 8
         }
-        else if (cached_model[0] === 'dreamshaperxl_turbo.safetensors [4496b36d48]') {
+        else if (cached_model[0] === 'dreamshaperxl_turbo.safetensors') {
             sampler = 'DPM++ SDE'
             scheduler = 'Karras'
             cfg_scale = 2
             sampling_step = 8
         }
-        else if (cached_model[0] === 'juggernautxl_turbo.safetensors [c9e3e68f89]') {
+        else if (cached_model[0] === 'juggernautxl_turbo.safetensors') {
             sampler = 'DPM++ 2M'
             scheduler = 'Karras'
             cfg_scale = 5
             sampling_step = 30
         }
-        else if (cached_model[0] === 'juggernautxl_lightning.safetensors [c8df560d29]') {
+        else if (cached_model[0] === 'juggernautxl_lightning.safetensors') {
             sampler = 'DPM++ SDE'
             cfg_scale = 2
             sampling_step = 4
         }
-        else if (cached_model[0] === 'dreamshaperxl_lightning.safetensors [fdbe56354b]') {
+        else if (cached_model[0] === 'dreamshaperxl_lightning.safetensors') {
             sampler = 'DPM++ SDE'
             scheduler = 'Karras'
             cfg_scale = 2
             sampling_step = 4
+        }
+        else if (cached_model[0].includes('vpred')) {
+            sampler = 'Euler'
+            scheduler = 'Automatic'
+            cfg_scale = 5.5
+            sampling_step = 30
         }
         else if (model_selection_flux.find(x => x.value === cached_model[0])) {
             sampler = 'Euler'
@@ -390,13 +397,25 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                 return
             }
         }
+        let latentmod_config_obj = null
+        if (latentmod_config) {
+            // try parse the config string
+            try {
+                latentmod_config_obj = JSON.parse(latentmod_config)
+                interaction.channel.send('Applying Latent Modifier config')
+            }
+            catch (err) {
+                interaction.channel.send("Failed to parse Latent Modifier config")
+                return
+            }
+        }
     
         const create_data = get_data_body_img2img(server_index, prompt, neg_prompt, sampling_step, cfg_scale,
             seed, sampler, scheduler, session_hash, height, width, attachment, null, denoising_strength, /*img2img mode*/ 0, 4, "original", upscaler, 
             false, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
             extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, "Whole picture", 32, 
             override_neg_prompt ? false : true, extra_config.use_booru_gen, booru_gen_config_obj, is_flux, null, null, colorbalance_config_obj, do_preview, 
-            null, null, "None", extra_config.detail_daemon_config, extra_config.tipo_input)
+            null, null, "None", extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config)
 
         // make option_init but for axios
         const option_init_axios = {
@@ -463,6 +482,12 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                     const reply_content = {embeds: [embeded], components: [row]}
                     if (data.img) {
                         reply_content.files = [{attachment: data.img, name: data.img_name}]
+                    }
+
+                    // if completed, only allow edit if the state is completed
+                    if ((state === 'progress' || state === 'queued') && (isDone || isCancelled)) {
+                        resolve()
+                        return
                     }
 
                     await interaction.editReply(reply_content)

@@ -177,6 +177,7 @@ module.exports = {
             (client.controlnet_config.has(interaction.user.id) ? client.controlnet_config.get(interaction.user.id) : null)
         let checkpoint = interaction.options.getString('checkpoint') || profile?.checkpoint || null
         const booru_gen_config = client.boorugen_config.has(interaction.user.id) ? client.boorugen_config.get(interaction.user.id) : null
+        const latentmod_config = client.latentmod_config.has(interaction.user.id) ? client.latentmod_config.get(interaction.user.id) : null
         const colorbalance_config = profile?.colorbalance_config ||
             (client.colorbalance_config.has(interaction.user.id) ? client.colorbalance_config.get(interaction.user.id) : null)
 
@@ -608,6 +609,11 @@ module.exports = {
             let progress_ping_delay = 2000
             const is_xl = model_selection_xl.find(x => x.value === cached_model[0]) != null || model_selection_inpaint.find(x => x.inpaint === cached_model[0]) != null
             const is_flux = model_selection_flux.find(x => x.value === cached_model[0]) != null
+            const is_vpred = cached_model[0].includes('vpred')
+
+            if (is_vpred) {
+                await interaction.channel.send(`:information_source: This model is using v-prediction method, which may not be compatible with every setting of the command`);
+            }
     
             // override controlnet_config[0] with config exclusively for inpainting
             let controlnet_config_obj = {
@@ -800,12 +806,24 @@ module.exports = {
                     return
                 }
             }
+            let latentmod_config_obj = null
+            if (latentmod_config) {
+                // try parse the config string
+                try {
+                    latentmod_config_obj = JSON.parse(latentmod_config)
+                    interaction.channel.send('Applying Latent Modifier config')
+                }
+                catch (err) {
+                    interaction.channel.send("Failed to parse Latent Modifier config")
+                    return
+                }
+            }
         
             const create_data = get_data_body_img2img(server_index, prompt, neg_prompt, sampling_step, cfg_scale,
                 seed, sampler, scheduler, session_hash, height, width, attachment, mask_data_uri, denoising_strength, 4, mask_blur, mask_content, "None", false, 
                 extra_config.coupler_config, extra_config.color_grading_config, 1, is_censor, extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config,
                 inpaint_area, mask_padding, extra_config.use_foocus, extra_config.use_booru_gen, booru_gen_config_obj, is_flux, attachment_upload_path, mask_upload_path, 
-                colorbalance_config_obj, do_preview, null, null, "None", extra_config.detail_daemon_config, extra_config.tipo_input)
+                colorbalance_config_obj, do_preview, null, null, "None", extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config)
     
             // make option_init but for axios
             const option_init_axios = {
@@ -873,7 +891,13 @@ module.exports = {
                         if (data.img) {
                             reply_content.files = [{attachment: data.img, name: data.img_name}]
                         }
-    
+
+                        // if completed, only allow edit if the state is completed
+                        if ((state === 'progress' || state === 'queued') && (isDone || isCancelled)) {
+                            resolve()
+                            return
+                        }
+
                         await interaction.editReply(reply_content)
                             .catch(err => {
                                 console.log(err)

@@ -169,6 +169,16 @@ module.exports = {
                 embeded.addFields({ name: 'Script Upscale Config', value: 'Failed to parse config' });
             }
         }
+        if (data.latentmod_config) {
+            try {
+                const latentmod_config_obj = JSON.parse(data.latentmod_config);
+
+                embeded.addFields({ name: 'Latentmod Config', value: "\`\`\`json\n" + truncate(JSON.stringify(latentmod_config_obj, null, 2), 998) + "\`\`\`" });
+            }
+            catch (err) {
+                embeded.addFields({ name: 'Latentmod Config', value: 'Failed to parse config' });
+            }
+        }
 
         const reply_content = { embeds: [embeded] };
         if (attachment) {

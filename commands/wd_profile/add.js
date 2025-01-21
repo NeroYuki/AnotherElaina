@@ -90,6 +90,9 @@ module.exports = {
         .addStringOption(option =>
             option.setName('script_upscale_config')
                 .setDescription('Config string for the upscale script (use wd_script_upscale to generate)'))
+        .addStringOption(option =>
+            option.setName('latentmod_config')
+                .setDescription('Config string for the latentmod script (use wd_latentmod to generate)'))
     ,
 
 	async execute(interaction) {
@@ -118,6 +121,7 @@ module.exports = {
         const boorugen_config = interaction.options.getString('boorugen_config') || null
         const script_outpaint_config = interaction.options.getString('script_outpaint_config') || null
         const script_upscale_config = interaction.options.getString('script_upscale_config') || null
+        const latentmod_config = interaction.options.getString('latentmod_config') || null
 
 		await interaction.deferReply();
 
@@ -165,7 +169,8 @@ module.exports = {
                 colorbalance_config: colorbalance_config,
                 boorugen_config: boorugen_config,
                 script_outpaint_config: script_outpaint_config,
-                script_upscale_config: script_upscale_config
+                script_upscale_config: script_upscale_config,
+                latentmod_config: latentmod_config,
             }
         };
 
