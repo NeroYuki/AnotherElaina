@@ -347,7 +347,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         // calculate compute (change model)
         compute += checkpoint ? 2_000_000 : 0
 
-        const cooldown = compute / 1_250_000
+        const cooldown = compute / 1_700_000
 
         await interaction.editReply({ content: `Generating image, you can create another image in ${cooldown.toFixed(2)} seconds`});
 
