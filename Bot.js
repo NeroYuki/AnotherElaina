@@ -29,6 +29,7 @@ client.boorugen_config = new Map();
 client.usersetting_config = new Map();
 client.img2img_upscale_config = new Map();
 client.img2img_outpaint_config = new Map();
+client.latentmod_config = new Map();
 client.shipgirl_quiz_config = new Map();	
 client.shipgirl_quiz_multi = new Map();
 client.COOLDOWN_SECONDS = 30; // replace with desired cooldown time in seconds
@@ -129,6 +130,7 @@ client.on('interactionCreate', async interaction => {
 		'shipgirl_multi',
 		'wd_script_outpaint',
 		'wd_script_upscale',
+		'wd_latentmod',
 	]
 
 	try {
