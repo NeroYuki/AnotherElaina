@@ -159,12 +159,12 @@ module.exports = {
 	async execute(interaction, client) {
 
         if (interaction.options.getSubcommand() === 'reset') {
-            client.boorugen_config.delete(interaction.user.id)
+            client.latentmod_config.delete(interaction.user.id)
             await interaction.reply('Latent Modifier config has been reset');
             return
         }
         else if (interaction.options.getSubcommand() === 'check') {
-            const config_string = client.boorugen_config.get(interaction.user.id)
+            const config_string = client.latentmod_config.get(interaction.user.id)
             if (config_string) {
                 await interaction.reply("\`\`\`json\n" + truncate(try_parse_json_and_return_formated_string(config_string), 2000) + "\`\`\`");
             }
