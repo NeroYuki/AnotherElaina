@@ -239,10 +239,22 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             cfg_scale = 2
             sampling_step = 4
         }
-        else if (cached_model[0].includes('vpred')) {
+        else if (cached_model[0] === 'noobaixl_vpred_v1.safetensors') {
             sampler = 'Euler'
             scheduler = 'Automatic'
             cfg_scale = 5.5
+            sampling_step = 30
+        }
+        else if (cached_model[0] === 'noobaixl_v1_1.safetensors') {
+            sampler = 'DPM++ 2M'
+            scheduler = 'Automatic'
+            cfg_scale = 5.5
+            sampling_step = 30
+        }
+        else if (cached_model[0] === 'animaginexl_v40.safetensors') {
+            sampler = 'Euler a'
+            scheduler = 'Automatic'
+            cfg_scale = 6
             sampling_step = 30
         }
         else if (model_selection_flux.find(x => x.value === cached_model[0])) {
@@ -259,7 +271,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         }
         else {
             sampler = 'DPM++ 2M'
-            scheduler = 'Align Your Step'
+            scheduler = 'Automatic'
             cfg_scale = 7
             sampling_step = 10
         }
