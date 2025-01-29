@@ -1485,10 +1485,11 @@ const model_selection_flux = [
 ]
 
 const model_selection_curated = [
-    { name: 'Anything v5', value: 'anythingv5.safetensors' },
-    { name: 'AnimagineXL v3.1', value: 'animaginexl_v31.safetensors'},
+    { name: 'NoobAIXL v1.1', value: 'noobaixl_v1_1.safetensors'},
+    { name: 'AnimagineXL v3.1', value: 'animaginexl_v40.safetensors'},
     { name: 'Juggernaut Lightning', value: 'juggernautxl_lightning.safetensors'},
     { name: 'Dreamshaper XL Lightning', value: 'dreamshaperxl_lightning.safetensors'},
+    { name: 'Anything v5', value: 'anythingv5.safetensors' },
 ]
 
 const controlnet_preprocessor_selection = [
