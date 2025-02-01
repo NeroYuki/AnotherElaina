@@ -201,12 +201,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             no_dynamic_lora_load = false
         }
 
-        if (cached_model[0] === 'aamxl_turbo.safetensors') {
-            sampler = 'Euler a'
-            cfg_scale = 3.5
-            sampling_step = 8
-        }
-        else if (cached_model[0] === 'dreamshaperxl_turbo.safetensors') {
+        if (cached_model[0] === 'dreamshaperxl_turbo.safetensors') {
             sampler = 'DPM++ SDE'
             scheduler = 'Karras'
             cfg_scale = 2
@@ -260,10 +255,10 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             sampling_step = 30
         }
         else {
-            sampler = 'DPM++ 2M'
-            scheduler = 'Automatic'
-            cfg_scale = 7
-            sampling_step = 10
+            sampler = profile?.sampler ?? 'DPM++ 2M'
+            scheduler = profile?.scheduler ?? 'Align Your Step'
+            cfg_scale = profile?.cfg_scale ?? 7
+            sampling_step = profile?.sampling_step ?? 12
         }
 
         // end forced config
