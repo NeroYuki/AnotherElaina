@@ -1,6 +1,8 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
+const { MessageActionRow, MessageSelectMenu } = require('discord.js');
 const { model_change, cached_model } = require('../utils/model_change');
-const { check_model_filename, model_selection, model_selection_xl, model_selection_inpaint, model_selection_flux } = require('../utils/ai_server_config');
+const { byPassUser } = require('../config.json');
+const { check_model_filename, model_selection, model_selection_xl, model_selection_inpaint, model_selection_flux, model_selection_legacy} = require('../utils/ai_server_config');
 
 
 // ["362dae27f8", "RefSlave v2"],
@@ -11,7 +13,6 @@ const { check_model_filename, model_selection, model_selection_xl, model_selecti
 // ["d01a68ae76", "PastelMix v2.1"],
 // ["4b118b2d1b", "Yozora v1"],
 
-let isReady = true
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -20,7 +21,11 @@ module.exports = {
         .addStringOption(option => 
             option.setName('checkpoint')
                 .setDescription('The checkpoint to be used')
-                .addChoices(...model_selection, ...model_selection_xl, ...model_selection_flux)
+                // this list is combining model_selection, model_selection_xl ,model_selection_flux but exclusding all model_selection_legacy
+                .addChoices(
+                    ...(model_selection.concat(model_selection_xl).concat(model_selection_flux).filter(x => !model_selection_legacy.map(y => y.value).includes(x.value))),
+                    { name: 'LEGACY MODELS', value: 'legacy' }
+                )
                 .setRequired(true))
         .addBooleanOption(option =>
             option.setName('inpaint')
@@ -29,18 +34,15 @@ module.exports = {
 
     ,
 
-	async execute(interaction) {
-
-        let checkpoint = interaction.options.getString('checkpoint')
-        const inpaint = interaction.options.getBoolean('inpaint') || false
-
-        if(!isReady) {
-            await interaction.reply('There is a request not long ago, please let people use it first lol')
-            return
-        }
-
+    async selectModel(interaction, checkpoint, inpaint) {
         //make a temporary reply to not get timeout'd
         await interaction.deferReply();
+
+        //console.log(globalThis.can_change_model, interaction.user.id, byPassUser)
+        if(!globalThis.can_change_model && !(interaction.user.id == byPassUser)) {
+            await interaction.editReply('There is a request not long ago, please let people use it first lol')
+            return
+        }
 
         if (inpaint) {
             const inpaint_model = model_selection_inpaint.find(x => x.value === checkpoint)
@@ -67,10 +69,38 @@ module.exports = {
             await interaction.editReply(`Active model force changed to **${check_model_filename(checkpoint)}**
 currently cached models: ${cached_model.map(x => check_model_filename(x)).join(', ')}`)
 
-            // set isReady to true after 60 minutes
+            globalThis.can_change_model = false
+
             setTimeout(() => {
-                isReady = true
-            }, 3600000)
+                globalThis.can_change_model = true
+            }, 1_800_000)
+        }
+    },
+
+	async execute(interaction) {
+
+        let checkpoint = interaction.options.getString('checkpoint')
+        const inpaint = interaction.options.getBoolean('inpaint') || false
+
+        if (checkpoint == 'legacy') {
+            // make a dropdown for legacy models
+            const row = new MessageActionRow()
+                .addComponents(
+                    new MessageSelectMenu()
+                        .setCustomId('legacy_model_picker')
+                        .setPlaceholder('Nothing has been selected')
+                        .addOptions(model_selection_legacy.map(x => {
+                            return {
+                                label: x.name,
+                                value: x.value
+                            }
+                        }))
+                );
+
+            await interaction.reply({ content: 'Select a model from the following list (:warning: There aren\'t many reasons to use these models, make sure you know what your are selecting)', components: [row] });
+        }   
+        else {
+            await this.selectModel(interaction, checkpoint, inpaint)
         }
 	},
 };

@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { upscaler_selection, model_selection, model_selection_xl, sampler_selection, scheduler_selection } = require('../../utils/ai_server_config');
+const { upscaler_selection, model_selection, model_selection_xl, model_selection_flux, model_selection_legacy, sampler_selection, scheduler_selection } = require('../../utils/ai_server_config');
 const { addRecord, queryRecord, queryRecordLimit, editRecords } = require('../../database/database_interaction');
 const { clamp } = require('../../utils/common_helper');
 
@@ -71,7 +71,9 @@ module.exports = {
         .addStringOption(option =>
             option.setName('checkpoint')
                 .setDescription('The checkpoint to use for the profile')
-                .addChoices(...model_selection, ...model_selection_xl))
+                .addChoices(
+                    ...(model_selection.concat(model_selection_xl).concat(model_selection_flux).filter(x => !model_selection_legacy.map(y => y.value).includes(x.value)))
+                ))
         .addStringOption(option =>
             option.setName('adetailer_config')
                 .setDescription('Config string for the adetailer (use wd_adetailer to generate)'))

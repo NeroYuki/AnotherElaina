@@ -12,6 +12,7 @@ require('dotenv').config()
 const token = process.env.DISCORD_BOT_TOKEN
 globalThis.operating_mode = "6bit" // disabled, 4bit, vision, uncensored or 6bit
 globalThis.sd_available = true
+globalThis.can_change_model = true
 
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES] });
 
@@ -92,7 +93,12 @@ client.on('messageCreate', async message => {
 
 
 client.on('interactionCreate', async interaction => {
-	if (!(interaction.isCommand() || interaction.isMessageContextMenu())) return;
+	if (!(interaction.isCommand() || interaction.isMessageContextMenu() || interaction.isSelectMenu())) return;
+
+	if (interaction.isSelectMenu() && interaction.customId === 'legacy_model_picker') {
+		await client.commands.get("wd_modelchange").selectModel(interaction, interaction.values[0], false)
+		return;
+	}
 
 	const command = client.commands.get(interaction.commandName);
 

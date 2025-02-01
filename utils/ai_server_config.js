@@ -1454,6 +1454,21 @@ const model_selection = [
     { name: 'RichyRichMix v2', value: 'richyrichmix_v2.safetensors' },
     { name: 'CuteYukiMix', value: 'cuteyukimix.safetensors' },
     { name: 'IrisMix v5b', value: 'irismix_v5b.safetensors'},
+    { name: 'RefSlave v1', value: 'refslave.safetensors' },
+]
+
+// if model is in this list, remove it when construct the model selection
+const model_selection_legacy = [
+    { name: 'Counterfeit v2.5', value: 'counterfeit.safetensors' },
+    { name: 'Anything v5', value: 'anythingv5.safetensors' },
+    { name: 'CetusMix (Coda v2)', value: 'cetusmix_coda2.safetensors' },
+    { name: 'RichyRichMix v2', value: 'richyrichmix_v2.safetensors' },
+    { name: 'CuteYukiMix', value: 'cuteyukimix.safetensors' },
+    { name: 'RefSlave v1', value: 'refslave.safetensors' },
+    { name: 'KohakuXL Zeta', value: 'kohakuxl_zeta.safetensors'},
+    { name: 'PonyDiffusionXL v6', value: 'ponydiffusionxl_v6.safetensors'},
+    { name: 'PonyRealism v2.2', value: 'ponyrealism_v22.safetensors'},
+    { name: 'ArtiWaifu v1', value: 'artiwaifu_v1.safetensors'},
 ]
 
 const model_selection_xl = [
@@ -1469,7 +1484,11 @@ const model_selection_xl = [
     { name: 'Juggernaut XL', value: 'juggernautxl_turbo.safetensors'},
     { name: 'PonyRealism v2.2', value: 'ponyrealism_v22.safetensors'},
     { name: 'Dreamshaper XL Lightning', value: 'dreamshaperxl_lightning.safetensors'},
-    { name: 'RealVisXL v5', value: 'realvisxl_v5.safetensors'}
+    { name: 'RealVisXL v5', value: 'realvisxl_v5.safetensors'},
+    { name: 'PonyDiffusionXL v6', value: 'ponydiffusionxl_v6.safetensors'},
+    { name: 'SilverMoonMix3 v2', value: 'silvermoonmix03_v20.safetensors'},
+    { name: 'IllusionBreed v3', value: 'illusionbreed_vpred_v30.safetenors'},
+    { name: 'ArtiWaifu v1', value: 'artiwaifu_v1.safetensors'},
 ]
 
 const model_selection_inpaint = [
@@ -1489,7 +1508,7 @@ const model_selection_curated = [
     { name: 'AnimagineXL v3.1', value: 'animaginexl_v40.safetensors'},
     { name: 'Juggernaut Lightning', value: 'juggernautxl_lightning.safetensors'},
     { name: 'Dreamshaper XL Lightning', value: 'dreamshaperxl_lightning.safetensors'},
-    { name: 'Anything v5', value: 'anythingv5.safetensors' },
+    { name: 'Pastel Mix v2.1', value: 'pastelmix.safetensors' },
 ]
 
 const controlnet_preprocessor_selection = [
@@ -1850,6 +1869,7 @@ module.exports = {
     model_selection_flux,
     model_selection_curated,
     model_selection_inpaint,
+    model_selection_legacy,
     controlnet_preprocessor_selection,
     controlnet_model_selection,
     upscaler_selection,
