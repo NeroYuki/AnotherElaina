@@ -1487,7 +1487,7 @@ const model_selection_xl = [
     { name: 'RealVisXL v5', value: 'realvisxl_v5.safetensors'},
     { name: 'PonyDiffusionXL v6', value: 'ponydiffusionxl_v6.safetensors'},
     { name: 'SilverMoonMix3 v2', value: 'silvermoonmix03_v20.safetensors'},
-    { name: 'IllusionBreed v3', value: 'illusionbreed_vpred_v30.safetenors'},
+    { name: 'IllusionBreed v3', value: 'illusionbreed_vpred_v30.safetensors'},
     { name: 'ArtiWaifu v1', value: 'artiwaifu_v1.safetensors'},
 ]
 
