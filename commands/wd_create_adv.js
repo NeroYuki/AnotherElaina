@@ -4,7 +4,9 @@ const { byPassUser, censorGuildIds, optOutGuildIds } = require('../config.json')
 const crypt = require('crypto');
 const { server_pool, get_data_body, get_negative_prompt, initiate_server_heartbeat, get_worker_server, get_prompt, load_lora_from_prompt, 
     model_name_hash_mapping, get_data_controlnet, get_data_controlnet_annotation, check_model_filename, model_selection, upscaler_selection, model_selection_xl, model_selection_legacy,
-    sampler_selection, model_selection_inpaint, model_selection_flux, scheduler_selection } = require('../utils/ai_server_config.js');
+    sampler_selection, model_selection_inpaint, model_selection_flux, scheduler_selection, 
+    sampler_to_comfy_name_mapping,
+    scheduler_to_comfy_name_mapping} = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const { loadImage } = require('../utils/load_discord_img.js');
@@ -18,6 +20,8 @@ const { full_prompt_analyze, preview_coupler_setting, fetch_user_defined_wildcar
 const { fallback_to_resource_saving } = require('../utils/ollama_request.js');
 const { load_profile } = require('../utils/profile_helper.js');
 const { clamp } = require('../utils/common_helper');
+const workflow = require('../resources/flux_lora.json')
+const ComfyClient = require('../utils/comfy_client');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -123,6 +127,50 @@ module.exports = {
     async init() {
         // setup heartbeat routine to check which server is alive
         initiate_server_heartbeat()
+    },
+
+    async execute_comfy(interaction, client, data) {
+        workflow["5"]["inputs"]["width"] = data.width
+        workflow["5"]["inputs"]["height"] = data.height
+        workflow["17"]["inputs"]["steps"] = data.sampling_step
+        workflow["6"]["inputs"]["text"] = data.prompt
+        workflow["27"]["inputs"]["unet_name"] = "sd\\" + data.model
+
+        // extract lora name and strength from syntax <lora:<name>:<strength>>
+        const lora_regex = /<lora:([^:]+):([^>]+)>/g
+        const lora_match = lora_regex.exec(data.prompt)
+        if (lora_match) {
+            workflow["26"]["inputs"]["lora_name"] = "flux_lora\\" + lora_match[1] + ".safetensors"
+            workflow["26"]["inputs"]["strength_model"] = parseFloat(lora_match[2])
+        }
+
+        ComfyClient.sendPrompt(workflow, (data) => {
+            if (data.node !== null) interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] });
+        }, (data) => {
+            console.log('received success')
+            const filename = data.output.images[0].filename
+
+            // fetch video from comfyUI
+            ComfyClient.getImage(filename, '', '', /*only_filename*/ true).then(async (arraybuffer) => {
+                // convert arraybuffer to buffer
+                const buffer = Buffer.from(arraybuffer)
+
+                await interaction.editReply({ content: "Generation Success", files: [{ attachment: buffer, name: filename }] });
+            }).catch((err) => {
+                console.log("Failed to retrieve image", err)
+                interaction.editReply({ content: "Failed to retrieve image" });
+            }).finally(() => {
+                ComfyClient.freeMemory(true)
+            })
+
+        }, (data) => {
+            console.log('received error')
+            interaction.editReply(data.error);
+            ComfyClient.freeMemory(true)
+        }, (data) => {
+            console.log('received progress')
+            interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] + ` (${data.value}/${data.max})` });
+        });
     },
 
 	async execute(interaction, client) {
@@ -293,6 +341,32 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         compute += upscale_multiplier > 1 ? (upscale_multiplier * height * upscale_multiplier * width * upscale_step * (slow_sampler.includes(sampler) ? 1.5 : 1)) : 0
         // calculate compute (change model)
         const cooldown = compute / 1_700_000
+
+        // search for lora load call <lora:...:...>
+        if (is_flux && prompt.includes('<lora:')) {
+            // flux lora is broken in forge backend, switch to comfyUI backend
+            interaction.channel.send({ content: `Flux LoRA load is broken in Forge backend, switching to ComfyUI backend, some options will be ignore. You can create another image in ${cooldown.toFixed(2)} seconds` });
+            if (ComfyClient.promptListener.length == 0 && ComfyClient.comfyStat.gpu_vram_used > 6) {
+                await interaction.editReply({ content: 'Not enough resource can be allocated to finish this command, please try again later' });
+                return;
+            }
+            this.execute_comfy(interaction, client, {
+                prompt,
+                width,
+                height,
+                sampling_step,
+                model: cached_model[0],
+                sampler: sampler_to_comfy_name_mapping[sampler] ?? "euler",
+                scheduler: scheduler_to_comfy_name_mapping[scheduler] ?? "normal"
+            })
+
+            client.cooldowns.set(interaction.user.id, true);
+
+            setTimeout(() => {
+                client.cooldowns.delete(interaction.user.id);
+            }, cooldown * 1000);
+            return
+        }
 
         await interaction.editReply({ content: `Generating image, you can create another image in ${cooldown.toFixed(2)} seconds`});
 

@@ -1640,6 +1640,30 @@ const scheduler_selection = [
     { name: 'Simple', value: 'Simple'},
 ]
 
+const sampler_to_comfy_name_mapping = {
+    "Euler a": "euler_ancestral",
+    "Euler": "euler",
+    "DPM++ SDE": "dpmpp_sde",
+    "LMS": "lms",
+    "DPM++ 2S a": "dpmpp_2s_ancestral",
+    "DPM2 a": "dpm_2_ancestral",
+    "DPM++ 2M": "dpmpp_2m",
+    "LCM": "lcm",
+    "UniPC": "unipc",
+    "DPM fast": "dpm_fast",
+    "DPM++ 2M SDE": "dpmpp_2m_sde",
+    "DEIS": "deis"
+}
+
+const scheduler_to_comfy_name_mapping = {
+    "Uniform": "uniform",
+    "Karras": "karras",
+    "Exponential": "exponential",
+    "SGM Uniform": "sgm_uniform",
+    "Normal": "normal",
+    "Simple": "simple"
+}
+
 const check_model_filename = (model_filename) => {
     for (let [key, value] of model_name_hash_mapping) {
         if (model_filename.includes(key)) {
@@ -1883,4 +1907,6 @@ module.exports = {
     controlnet_model_selection_flux,
     sampler_selection,
     scheduler_selection,
+    sampler_to_comfy_name_mapping,
+    scheduler_to_comfy_name_mapping
 }
