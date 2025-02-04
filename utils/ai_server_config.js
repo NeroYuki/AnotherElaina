@@ -1469,6 +1469,8 @@ const model_selection_legacy = [
     { name: 'PonyDiffusionXL v6', value: 'ponydiffusionxl_v6.safetensors'},
     { name: 'PonyRealism v2.2', value: 'ponyrealism_v22.safetensors'},
     { name: 'ArtiWaifu v1', value: 'artiwaifu_v1.safetensors'},
+    { name: 'IllusionBreed v3', value: 'illusionbreed_vpred_v30.safetensors'},
+    { name: 'Flux.dev Q4_K_S', value: 'flux1-dev-Q4_K_S.gguf' },
 ]
 
 const model_selection_xl = [
@@ -1488,6 +1490,8 @@ const model_selection_xl = [
     { name: 'PonyDiffusionXL v6', value: 'ponydiffusionxl_v6.safetensors'},
     { name: 'SilverMoonMix3 v2', value: 'silvermoonmix03_v20.safetensors'},
     { name: 'IllusionBreed v3', value: 'illusionbreed_vpred_v30.safetensors'},
+    { name: 'SilenceMix v1', value: 'silencemix_v10.safetensors'},
+    { name: 'ZukiCuteIL v5', value: 'zukicuteil_v50.safetensors'},
     { name: 'ArtiWaifu v1', value: 'artiwaifu_v1.safetensors'},
 ]
 
@@ -1499,6 +1503,7 @@ const model_selection_inpaint = [
 
 const model_selection_flux = [
     { name: 'Flux.dev Q4_K_S', value: 'flux1-dev-Q4_K_S.gguf' },
+    { name: 'Flux.dev Q6_K', value: 'flux1-dev-Q6_K.gguf' },
     { name: 'Flux.dev Q8_0', value: 'flux1-dev-Q8_0.gguf'},
     { name: 'Pixelwave Flux v3 Q8_0', value: 'pixelwave-flux-Q8_0.gguf'}
 ]
