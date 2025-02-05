@@ -78,6 +78,9 @@ module.exports = {
         workflow["17"]["inputs"]["steps"] = data.sampling_step
         workflow["6"]["inputs"]["text"] = data.prompt
         workflow["27"]["inputs"]["unet_name"] = "sd\\" + data.model
+        workflow["16"]["inputs"]["sampler_name"] = data.sampler
+        workflow["17"]["inputs"]["scheduler"] = data.scheduler
+        workflow["25"]["inputs"]["noise_seed"] = Math.floor(Math.random() * 2_000_000_000)
 
         // extract lora name and strength from syntax <lora:<name>:<strength>>
         const lora_regex = /<lora:([^:]+):([^>]+)>/g
