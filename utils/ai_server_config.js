@@ -1464,12 +1464,13 @@ const model_selection_legacy = [
     { name: 'CetusMix (Coda v2)', value: 'cetusmix_coda2.safetensors' },
     { name: 'RichyRichMix v2', value: 'richyrichmix_v2.safetensors' },
     { name: 'CuteYukiMix', value: 'cuteyukimix.safetensors' },
+    { name: 'IrisMix v5b', value: 'irismix_v5b.safetensors'},
     { name: 'RefSlave v1', value: 'refslave.safetensors' },
     { name: 'KohakuXL Zeta', value: 'kohakuxl_zeta.safetensors'},
     { name: 'PonyDiffusionXL v6', value: 'ponydiffusionxl_v6.safetensors'},
     { name: 'PonyRealism v2.2', value: 'ponyrealism_v22.safetensors'},
-    { name: 'ArtiWaifu v1', value: 'artiwaifu_v1.safetensors'},
     { name: 'IllusionBreed v3', value: 'illusionbreed_vpred_v30.safetensors'},
+    { name: 'AnimagineXL v3', value: 'animaginexl_v3.safetensors'},
     { name: 'Flux.dev Q4_K_S', value: 'flux1-dev-Q4_K_S.gguf' },
 ]
 
@@ -1480,6 +1481,7 @@ const model_selection_xl = [
     { name: 'NoobAIXL V-pred v1.0', value: 'noobaixl_vpred_v1.safetensors'},
     { name: 'NekorayXL v0.6', value: 'nekorayxl.safetensors' },
     { name: 'AnimagineXL v4', value: 'animaginexl_v40.safetensors' },
+    { name: 'AnimagineXL v3', value: 'animaginexl_v3.safetensors'},
     { name: 'AnimagineXL v3.1', value: 'animaginexl_v31.safetensors'},
     { name: 'ChimeraXL v2', value: 'chimera2_xl.safetensors'},
     { name: 'KohakuXL Zeta', value: 'kohakuxl_zeta.safetensors'},
@@ -1492,7 +1494,8 @@ const model_selection_xl = [
     { name: 'IllusionBreed v3', value: 'illusionbreed_vpred_v30.safetensors'},
     { name: 'SilenceMix v1', value: 'silencemix_v10.safetensors'},
     { name: 'ZukiCuteIL v5', value: 'zukicuteil_v50.safetensors'},
-    { name: 'ArtiWaifu v1', value: 'artiwaifu_v1.safetensors'},
+    { name: 'ArtiWaifu v2', value: 'artiwaifu_v2.safetensors'},
+    { name: 'WAI-NSFW-IllustriousXL v10', value: 'wai_nsfw_illustrious_v100.safetensors'}
 ]
 
 const model_selection_inpaint = [
