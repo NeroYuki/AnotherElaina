@@ -1480,7 +1480,7 @@ const model_selection_xl = [
     { name: 'NoobAIXL v1.1', value: 'noobaixl_v1_1.safetensors'},
     { name: 'NoobAIXL V-pred v1.0', value: 'noobaixl_vpred_v1.safetensors'},
     { name: 'NekorayXL v0.6', value: 'nekorayxl.safetensors' },
-    { name: 'AnimagineXL v4', value: 'animaginexl_v40.safetensors' },
+    { name: 'AnimagineXL v4', value: 'animaginexl_v40_opt.safetensors' },
     { name: 'AnimagineXL v3', value: 'animaginexl_v3.safetensors'},
     { name: 'AnimagineXL v3.1', value: 'animaginexl_v31.safetensors'},
     { name: 'ChimeraXL v2', value: 'chimera2_xl.safetensors'},
@@ -1495,6 +1495,7 @@ const model_selection_xl = [
     { name: 'SilenceMix v1', value: 'silencemix_v10.safetensors'},
     { name: 'ZukiCuteIL v5', value: 'zukicuteil_v50.safetensors'},
     { name: 'ArtiWaifu v2', value: 'artiwaifu_v2.safetensors'},
+    { name: 'IllustriousXL v1', value: 'Illustriousxl_v10.safetensors'},
     { name: 'WAI-NSFW-IllustriousXL v10', value: 'wai_nsfw_illustrious_v100.safetensors'}
 ]
 
