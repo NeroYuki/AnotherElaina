@@ -8,33 +8,33 @@ const server_pool = [
     {
         index: 0,
         url: 'http://192.168.196.142:7860',
-        fn_index_create: 550,
+        fn_index_create: 553,
         fn_index_abort: 62,
-        fn_index_img2img: 1214,
-        fn_index_controlnet: [393, 989],        //[txt2img, img2img, 792]  
-        fn_index_controlnet_annotation: [1121, 1145],   // 1121 - 1059 = 62
+        fn_index_img2img: 1220,
+        fn_index_controlnet: [394, 993],        //[txt2img, img2img, 792]  
+        fn_index_controlnet_annotation: [1125, 1149],   // 1121 - 1059 = 62
         // fn_index_controlnet_2: [440, 976], 
         // fn_index_controlnet_annotation_2: [1129, 1091],
         // fn_index_controlnet_3: [487, 1025],
         // fn_index_controlnet_annotation_3: [1137, 1099],
-        fn_index_interrogate: 1218,
-        fn_index_interrogate_deepbooru: 1219,
+        fn_index_interrogate: 1224,
+        fn_index_interrogate_deepbooru: 1225,
         // fn_index_use_script: 1138,
-        fn_index_upscale: 1337,
+        fn_index_upscale: 1343,
         fn_index_change_model: 8,
         fn_index_change_support_model: 9,
-        fn_index_coupler_region_preview: [289, 883],
-        fn_index_change_adetailer_model1: [88, 682],
+        fn_index_coupler_region_preview: [290, 887],
+        fn_index_change_adetailer_model1: [88, 685],
         // fn_index_change_adetailer_prompt1: [99, 644],       //+3
         // fn_index_change_adetailer_neg_prompt1: [100, 645],  //+4
         // fn_index_change_adetailer_model2: [146, 691],       //+51
         // fn_index_change_adetailer_prompt2: [148, 693],      //+54
         // fn_index_change_adetailer_neg_prompt2: [149, 694],  //+55
-        fn_index_execute_segment_anything: 928,
+        fn_index_execute_segment_anything: 932,
         // fn_index_execute_grounding_dino_preview: 877,            // -3
         // fn_index_execute_expand_mask: 881,                       // +1
         // fn_index_unload_segmentation_model: 897,                 // +17
-        fn_index_rembg: 1351,
+        fn_index_rembg: 1357,
         is_online: true,
         queue: [],
     },
@@ -201,7 +201,8 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
     freeu_config = null, dynamic_threshold_config = null, pag_config = null, inpaint_area = "Whole picture", mask_padding = 32,
     use_foocus = false, use_booru_gen = false, booru_gen_config = null, is_flux = false,
     inpaint_img_upload_path = null, inpaint_mask_upload_path = null, colorbalance_config = null, do_preview = false, outpaint_config = null, 
-    upscale_config = null, extra_script = "None", detail_daemon_config = null, tipo_input = null, latentmod_config = null) => {
+    upscale_config = null, extra_script = "None", detail_daemon_config = null, tipo_input = null, latentmod_config = null,
+    mahiro_config = null, teacache_config = null) => {
     // default mode 0 is img2img, 4 is inpainting
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 3000000 && upscaler == "None") ? true : false
@@ -295,6 +296,12 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             0,
             "Gustavosta/MagicPrompt-Stable-Diffusion",
             "",
+            teacache_config ? true : false,		// teacache
+            teacache_config?.type || "TeaCache",
+            teacache_config?.threshold || 0.1,
+            1,
+            0,
+            true,
             (coupler_config && !is_flux) ? true : false,
             coupler_config?.mode || "Basic",
             "",
@@ -418,6 +425,11 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             2,
             pag_config ? true : false,                      // toggle PAG
             pag_config?.pag_scale || 3,                          // PAG scale
+            false,		// HyperTile
+            256,
+            2,
+            2,
+            false,
             false,
             3,
             2,
@@ -447,6 +459,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             latentmod_config?.spectral_mod_multiplier || 0,
             latentmod_config?.affect_uncond || "None",
             latentmod_config?.dyncfg_augment || "None",
+            mahiro_config?.mahiro || false,			// mahiro guidance
             false,
             "MultiDiffusion",
             768,
@@ -457,6 +470,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             1,
             false,
             false,
+            "m + (M-m)*(1-x)**3",
             "* `CFG Scale` should be 2 or lower.",
             true,
             true,
@@ -551,7 +565,8 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
     height, width, upscale_multiplier, upscaler, upscale_denoise_strength, upscale_step, face_restore = false, is_using_adetailer = false, 
     coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, 
     freeu_config = null, dynamic_threshold_config = null, pag_config = null, use_foocus = false, use_booru_gen = false, booru_gen_config = null, 
-    is_flux = false, colorbalance_config = null, do_preview = false, detail_daemon_config = null, tipo_input = null, latentmod_config = null) => {
+    is_flux = false, colorbalance_config = null, do_preview = false, detail_daemon_config = null, tipo_input = null, latentmod_config = null,
+    mahiro_config = null, teacache_config = null) => {
 
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 1600000) ? true : false
@@ -619,6 +634,12 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             0,
             "Gustavosta/MagicPrompt-Stable-Diffusion",
             "",
+            teacache_config ? true : false,		// teacache
+            teacache_config?.type || "TeaCache",
+            teacache_config?.threshold || 0.1,
+            1,
+            0,
+            true,
             (coupler_config && !is_flux) ? true : false,        // forge coupler
             coupler_config?.mode || "Basic",
             "",
@@ -742,6 +763,11 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             2,
             pag_config ? true : false,                      // toggle PAG
             pag_config?.pag_scale || 3,                          // PAG scale
+            false,		// HyperTile
+            256,
+            2,
+            2,
+            false,
             false,      // HR fix
             3,          
             2,
@@ -771,6 +797,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             latentmod_config?.spectral_mod_multiplier || 0,
             latentmod_config?.affect_uncond || "None",
             latentmod_config?.dyncfg_augment || "None",
+            mahiro_config?.mahiro || false,			// mahiro guidance
             false,
             "MultiDiffusion",
             768,
@@ -781,6 +808,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             1,
             false,      // never OOM
             false,
+            "m + (M-m)*(1-x)**3",
             false,      // extra script (default)
             false,
             "positive",
@@ -1618,7 +1646,10 @@ const upscaler_selection = [
 
 const sampler_selection = [
     { name: 'Euler a', value: 'Euler a' },
+    { name: 'Euler a CFG++', value: 'Euler a CFG++' },
     { name: 'Euler', value: 'Euler' },
+    { name: 'Euler Dy CFG++', value: 'Euler Dy CFG++' },
+    { name: 'Euler SMEA Dy CFG++', value: 'Euler Dy SMEA CFG++' },
     { name: 'DPM++ SDE', value: 'DPM++ SDE' },
     { name: 'LMS', value: 'LMS' },
     { name: 'DPM++ 2S a', value: 'DPM++ 2S a' },
@@ -1639,9 +1670,15 @@ const scheduler_selection = [
     { name: 'Karras', value: 'Karras'},
     { name: 'Exponential', value: 'Exponential'},
     { name: 'SGM Uniform', value: 'SGM Uniform'},
-    { name: 'Align Your Step', value: 'Align Your Step'},
+    { name: 'Align Your Steps', value: 'Align Your Steps'},
     { name: 'Normal', value: 'Normal'},
     { name: 'Simple', value: 'Simple'},
+    { name: 'Cosine', value: 'Cosine'},
+    { name: 'Beta', value: 'Beta'},
+    { name: 'Karras Dynamic', value: 'Karras Dynamic'},
+    { name: 'KL Optimal', value: 'KL Optimal'},
+    { name: 'Align Your Steps GITS', value: 'Align Your Steps GITS'},
+    { name: 'Align Your Steps 32', value: 'Align Your Steps 32'},
 ]
 
 const sampler_to_comfy_name_mapping = {
