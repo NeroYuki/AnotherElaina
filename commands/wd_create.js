@@ -7,7 +7,7 @@ const { default: axios } = require('axios');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const { model_change, cached_model } = require('../utils/model_change.js');
 const { queryRecordLimit } = require('../database/database_interaction.js');
-const { full_prompt_analyze, preview_coupler_setting, fetch_user_defined_wildcard } = require('../utils/prompt_analyzer.js');
+const { full_prompt_analyze, preview_coupler_setting, fetch_user_defined_wildcard, get_teacache_config_from_prompt } = require('../utils/prompt_analyzer.js');
 const { fallback_to_resource_saving } = require('../utils/ollama_request.js');
 const { load_profile } = require('../utils/profile_helper.js');
 const { load_adetailer } = require('../utils/adetailer_execute.js');
@@ -383,15 +383,20 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         prompt = extra_config.prompt
         prompt = await fetch_user_defined_wildcard(prompt, interaction.user.id)
 
-        if ((is_flux || is_xl) ? width * height > 1_200_000 : width * height > 640_000) {
+        if (is_flux ? width * height > 1_800_000 : is_xl ? width * height > 1_200_000 : width * height > 640_000) {
             await interaction.channel.send(`:warning: Image size is too large for model's capability and may introduce distorsion, please consider using smaller image size unless you know what you're doing`);
         }
 
         const slow_sampler = ['DPM++ SDE', 'DPM++ 2M SDE', 'DPM++ 2M SDE Heun', 'Restart']
         // calculate cooldown (first pass)
-        let compute = width * height * sampling_step * (is_flux ? 2 : (is_xl ? 1.5 : 1)) * (slow_sampler.includes(sampler) ? 1.5 : 1)
+        let compute = width * height * sampling_step * (is_flux ? 3 : (is_xl ? 1.5 : 1)) * (slow_sampler.includes(sampler) ? 1.5 : 1)
         // calculate compute (adetailer)
         compute = compute * (adetailer_config ? 1.5 : 1)
+        // reduce time if use teacache
+        const teacache_check = get_teacache_config_from_prompt(prompt, true)
+        if (teacache_check.teacache_config) {
+            compute = compute * Math.pow(1 - (teacache_check.teacache_config.threshold || 0.1), 2)
+        }
         // calculate compute (upscale)
         compute += upscale_multiplier > 1 ? (upscale_multiplier * height * upscale_multiplier * width * upscale_step * (slow_sampler.includes(sampler) ? 1.5 : 1)) : 0
         // calculate compute (change model)
@@ -425,7 +430,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             return
         }
 
-        await interaction.editReply({ content: `Generating image, you can create another image in ${cooldown.toFixed(2)} seconds`});
+        await interaction.editReply({ content: `Generating image, you can create another image in ${cooldown.toFixed(2)} seconds ${teacache_check.teacache_config ? "(Teacache activated: -" + (100 * (1 - Math.pow(1 - teacache_check.teacache_config?.threshold || 0.1, 2))).toFixed(0) + "%)" : ""}` });
 
         if (extra_config.coupler_config && (height % 64 !== 0 || width % 64 !== 0)) {
             interaction.channel.send('Coupler detected, changing resolution to multiple of 64')
@@ -501,7 +506,8 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             seed, sampler, scheduler, session_hash, height, width, upscale_multiplier, upscaler, 
             upscale_denoise_strength, upscale_step, false, use_adetailer, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
             extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, override_neg_prompt ? false : true, extra_config.use_booru_gen, 
-            booru_gen_config_obj, is_flux, colorbalance_config_obj, do_preview, extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config_obj)
+            booru_gen_config_obj, is_flux, colorbalance_config_obj, do_preview, extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config_obj,
+            extra_config.mahiro_config, extra_config.teacache_config)
 
         // make option_init but for axios
         const option_init_axios = {

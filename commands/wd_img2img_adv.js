@@ -11,7 +11,7 @@ const { load_controlnet } = require('../utils/controlnet_execute.js');
 const { cached_model, model_change } = require('../utils/model_change.js');
 const { queryRecordLimit } = require('../database/database_interaction.js');
 const { load_adetailer } = require('../utils/adetailer_execute.js');
-const { full_prompt_analyze, preview_coupler_setting, fetch_user_defined_wildcard } = require('../utils/prompt_analyzer.js');
+const { full_prompt_analyze, preview_coupler_setting, fetch_user_defined_wildcard, get_teacache_config_from_prompt } = require('../utils/prompt_analyzer.js');
 const { fallback_to_resource_saving } = require('../utils/ollama_request.js');
 const { load_profile } = require('../utils/profile_helper.js');
 const { clamp } = require('../utils/common_helper');
@@ -304,7 +304,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         const is_flux = model_selection_flux.find(x => x.value === cached_model[0]) != null
         const is_vpred = cached_model[0].includes('vpred')
 
-        if ((is_flux || is_xl) ? width * height > 1_200_000 : width * height > 640_000) {
+        if (is_flux ? width * height > 1_800_000 : is_xl ? width * height > 1_200_000 : width * height > 640_000) {
             await interaction.channel.send(`:warning: Image size is too large for model's capability and may introduce distorsion, please consider using smaller image size unless you know what you're doing`);
         }
         if (is_vpred) {
@@ -313,17 +313,22 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
 
         const slow_sampler = ['DPM++ SDE', 'DPM++ 2M SDE', 'DPM++ 2M SDE Heun', 'Restart']
         // calculate cooldown (first pass)
-        let compute = width * height * sampling_step * (is_flux ? 2 : (is_xl ? 1.5 : 1)) * (slow_sampler.includes(sampler) ? 1.5 : 1) * denoising_strength
+        let compute = width * height * sampling_step * (is_flux ? 3 : (is_xl ? 1.5 : 1)) * (slow_sampler.includes(sampler) ? 1.5 : 1) * denoising_strength
         // calculate cooldown (controlnet)
         compute = compute * (1 + (controlnet_input ? 0.5 : 0) + (controlnet_input_2 ? 0.5 : 0) + (controlnet_input_3 ? 0.5 : 0))
         // calculate compute (adetailer)
         compute = compute * (do_adetailer ? 1.5 : 1)
+        // reduce time if use teacache
+        const teacache_check = get_teacache_config_from_prompt(prompt, true)
+        if (teacache_check.teacache_config) {
+            compute = compute * Math.pow(1 - (teacache_check.teacache_config.threshold || 0.1), 2)
+        }
         // calculate compute (change model)
         compute += checkpoint ? 2_000_000 : 0
 
         const cooldown = compute / 1_700_000
         
-        await interaction.editReply({ content: `Generating image, you can create another image in ${cooldown.toFixed(2)} seconds`});
+        await interaction.editReply({ content: `Generating image, you can create another image in ${cooldown.toFixed(2)} seconds ${teacache_check.teacache_config ? "(Teacache activated: -" + (100 * (1 - Math.pow(1 - teacache_check.teacache_config?.threshold || 0.1, 2))).toFixed(0) + "%)" : ""}` });
 
         if (controlnet_input && controlnet_config && !is_flux) {
             await load_controlnet(session_hash, server_index, controlnet_input, controlnet_input_2, controlnet_input_3, controlnet_config, interaction, 1)
@@ -499,7 +504,8 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             do_adetailer, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
             extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, "Whole picture", 32, 
             extra_config.use_foocus, extra_config.use_booru_gen, booru_gen_config_obj, is_flux, null, null, colorbalance_config_obj, do_preview, outpaint_config_obj, 
-            upscale_config_obj, extra_script, extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config)
+            upscale_config_obj, extra_script, extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config,
+            extra_config.mahiro_config, extra_config.teacache_config)
 
         // console.log(JSON.stringify(create_data.filter((x, i) => i !== 5), null, 2))
 

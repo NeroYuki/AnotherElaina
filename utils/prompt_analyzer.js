@@ -340,6 +340,30 @@ function get_pag_config_from_prompt(prompt) {
     }
 }
 
+function get_mahiro_config_from_prompt(prompt) {
+    // check for following pattern in prompt |mahiro|
+    // if found, return the value {mahiro: true}
+    // else return null
+
+    const mahiro_pattern = /\|mahiro\|/i
+
+    const mahiro_match = prompt.match(mahiro_pattern)
+
+    if (mahiro_match && mahiro_match[0]) {
+        return {
+            prompt: prompt.replace(mahiro_pattern, ''),
+            mahiro_config: {
+                mahiro: true
+            }
+        }
+    }
+
+    return {
+        prompt: prompt,
+        mahiro_config: null
+    }
+}
+
 function get_prompt_enhancer_call(prompt) {
     // if prompt contain [BOORU] return booru_gen = true in result object
     // if prompt contain [FOOCUS] return foocus = true in result object
@@ -380,14 +404,52 @@ function get_prompt_enhancer_call(prompt) {
     }
 }
 
+function get_teacache_config_from_prompt(prompt, dry_check = false) {
+    // check for following pattern in prompt (>> <fbc|tc> <value>) or (>> <value>)
+    // if found, return the value {type: <First Block Cache if fbc, TeaCache if tc or (>> <value>) if found>, threshold: <value>}
+    // else return null
+
+    const teacache_pattern_full = />>\s*(fbc|tc)?\s*([0-9.]+)?/i
+    const teacache_pattern_simple = />>\s*([0-9.]+)/i
+
+    const teacache_match_full = prompt.match(teacache_pattern_full)
+    const teacache_match_simple = prompt.match(teacache_pattern_simple)
+
+    if (teacache_match_full && teacache_match_full[0]) {
+        return {
+            prompt: dry_check ? prompt : prompt.replace(teacache_pattern_full, ''),
+            teacache_config: {
+                type: teacache_match_full[1] ? (teacache_match_full[1] === 'fbc' ? 'First Block Cache' : 'TeaCache') : 'TeaCache',
+                threshold: parseFloat(teacache_match_full[2])
+            }
+        }
+    }
+    else if (teacache_match_simple && teacache_match_simple[0]) {
+        return {
+            prompt: dry_check ? prompt : prompt.replace(teacache_pattern_simple, ''),
+            teacache_config: {
+                type: 'TeaCache',
+                threshold: parseFloat(teacache_match_simple[1])
+            }
+        }
+    }
+
+    return {
+        prompt: prompt,
+        teacache_config: null
+    }
+}
+
 function full_prompt_analyze(prompt, is_xl) {
     let coupler_config = get_coupler_config_from_prompt(prompt)
     let color_grading_config = get_color_grading_config_from_prompt(coupler_config.prompt, is_xl)
     let freeu_config = get_freeu_config_from_prompt(color_grading_config.prompt)
     let dynamic_threshold_config = get_dynamic_threshold_config_from_prompt(freeu_config.prompt)
     let pag_config = get_pag_config_from_prompt(dynamic_threshold_config.prompt)
+    let mahiro_config = get_mahiro_config_from_prompt(pag_config.prompt)
     let prompt_enhancer = get_prompt_enhancer_call(pag_config.prompt)
     let detail_daemon_config = get_detail_daemon_config_from_prompt(prompt_enhancer.prompt)
+    let teacache_config = get_teacache_config_from_prompt(detail_daemon_config.prompt)
 
     return {
         prompt: detail_daemon_config.prompt,
@@ -397,9 +459,11 @@ function full_prompt_analyze(prompt, is_xl) {
         dynamic_threshold_config: dynamic_threshold_config.dynamic_threshold_config,
         detail_daemon_config: detail_daemon_config.detail_daemon_config,
         pag_config: pag_config.pag_config,
+        mahiro_config: mahiro_config.mahiro_config,
         use_foocus: prompt_enhancer.foocus,
         use_booru_gen: prompt_enhancer.booru_gen,
-        tipo_input: prompt_enhancer.tipo
+        tipo_input: prompt_enhancer.tipo,
+        teacache_config: teacache_config.teacache_config
     }
 }
 
@@ -412,5 +476,6 @@ module.exports = {
     get_prompt_enhancer_call,
     full_prompt_analyze,
     preview_coupler_setting,
-    fetch_user_defined_wildcard
+    fetch_user_defined_wildcard,
+    get_teacache_config_from_prompt,
 }
