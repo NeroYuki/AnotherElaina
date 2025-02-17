@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const workflow = require('../resources/comfy_txt2vid.json')
 const ComfyClient = require('../utils/comfy_client');
+const { get_teacache_config_from_prompt } = require('../utils/prompt_analyzer');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -22,13 +23,28 @@ module.exports = {
                 option.setName('portrait')
                     .setDescription('Generate a portrait video')
                     .setRequired(false))
+            .addBooleanOption(option =>
+                option.setName('no_optimize')
+                    .setDescription('Do not use fast video LoRA, generation time will be doubled')
+                    .setRequired(false))
+            .addBooleanOption(option =>
+                option.setName('do_upscale')
+                    .setDescription('Upscale the video to quadruple the resolution')
+                    .setRequired(false))
+            .addBooleanOption(option =>
+                option.setName('do_frame_interpolation')
+                    .setDescription('Use frame interpolation to double the frame rate')
+                    .setRequired(false))
 
     ,
 
 	async execute(interaction, client) {
-        const prompt = interaction.options.getString('prompt');
+        let prompt = interaction.options.getString('prompt');
         const preset = interaction.options.getString('preset') || 'fast';
         const portrait = interaction.options.getBoolean('portrait') || false;
+        const no_optimize = interaction.options.getBoolean('no_optimize') || false;
+        const do_upscale = interaction.options.getBoolean('do_upscale') || false;
+        const do_frame_interpolation = interaction.options.getBoolean('do_frame_interpolation') || false;
 
         workflow["15"]["inputs"]["text"] = prompt
 
@@ -55,7 +71,29 @@ module.exports = {
             workflow["12"]["inputs"]["height"] = a
         }
 
+        if (no_optimize) {
+            delete workflow["51"]
+            workflow["8"]["inputs"]["model"] = ["45", 0]
+        }
+
+        if (!do_upscale) {
+            delete workflow["55"]
+            delete workflow["56"]
+            workflow["46"]["inputs"]["frames"] = ["37", 0]
+        }
+
+        if (!do_frame_interpolation) {
+            workflow["47"]["inputs"]["Value"] = 1
+        }
+
         await interaction.deferReply();
+
+        // check if user want to use teacache
+        const teacache_check = get_teacache_config_from_prompt(prompt)
+        if (teacache_check.teacache_config) {
+            workflow["45"]["inputs"]["rel_l1_thresh"] = teacache_check.teacache_config.threshold
+        }
+        prompt = teacache_check.prompt
 
         ComfyClient.sendPrompt(workflow, (data) => {
             if (data.node !== null) interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] });

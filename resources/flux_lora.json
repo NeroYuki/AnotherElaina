@@ -127,7 +127,7 @@
   "22": {
     "inputs": {
       "model": [
-        "26",
+        "28",
         0
       ],
       "conditioning": [
@@ -142,7 +142,7 @@
   },
   "25": {
     "inputs": {
-      "noise_seed": 0
+      "noise_seed": 808143012385942
     },
     "class_type": "RandomNoise",
     "_meta": {
@@ -170,11 +170,25 @@
   },
   "27": {
     "inputs": {
-      "unet_name": "flux1-dev-Q6_K.gguf"
+      "unet_name": "sd\\flux1-dev-Q8_0.gguf"
     },
     "class_type": "UnetLoaderGGUF",
     "_meta": {
       "title": "Unet Loader (GGUF)"
+    }
+  },
+  "28": {
+    "inputs": {
+      "model_type": "flux",
+      "rel_l1_thresh": 0,
+      "model": [
+        "26",
+        0
+      ]
+    },
+    "class_type": "TeaCacheForImgGen",
+    "_meta": {
+      "title": "TeaCache For Img Gen"
     }
   }
 }

@@ -1683,6 +1683,7 @@ const scheduler_selection = [
 
 const sampler_to_comfy_name_mapping = {
     "Euler a": "euler_ancestral",
+    "Euler a CFG++": "euler_ancestral_cfg_pp",
     "Euler": "euler",
     "DPM++ SDE": "dpmpp_sde",
     "LMS": "lms",
@@ -1702,7 +1703,8 @@ const scheduler_to_comfy_name_mapping = {
     "Exponential": "exponential",
     "SGM Uniform": "sgm_uniform",
     "Normal": "normal",
-    "Simple": "simple"
+    "Simple": "simple",
+    "Beta": "beta",
 }
 
 const check_model_filename = (model_filename) => {

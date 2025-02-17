@@ -6,15 +6,15 @@
         "42",
         0
       ],
-      "steps": 30,
+      "steps": 7,
       "cfg": 1,
       "sampler_name": "euler",
-      "scheduler": "normal",
+      "scheduler": "beta",
       "start_at_step": 0,
       "end_at_step": 30,
       "return_with_leftover_noise": "disable",
       "model": [
-        "11",
+        "51",
         0
       ],
       "positive": [
@@ -134,7 +134,7 @@
       "pingpong": false,
       "save_output": true,
       "images": [
-        "37",
+        "46",
         0
       ]
     },
@@ -150,6 +150,89 @@
     "class_type": "Seed (rgthree)",
     "_meta": {
       "title": "Seed (rgthree)"
+    }
+  },
+  "45": {
+    "inputs": {
+      "model_type": "hunyuan_video",
+      "rel_l1_thresh": 0,
+      "model": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "TeaCacheForVidGen",
+    "_meta": {
+      "title": "TeaCache For Vid Gen"
+    }
+  },
+  "46": {
+    "inputs": {
+      "ckpt_name": "rife47.pth",
+      "clear_cache_after_n_frames": 20,
+      "multiplier": [
+        "47",
+        0
+      ],
+      "fast_mode": true,
+      "ensemble": true,
+      "scale_factor": 1,
+      "frames": [
+        "56",
+        0
+      ]
+    },
+    "class_type": "RIFE VFI",
+    "_meta": {
+      "title": "RIFE VFI (recommend rife47 and rife49)"
+    }
+  },
+  "47": {
+    "inputs": {
+      "Value": 2
+    },
+    "class_type": "DF_Integer",
+    "_meta": {
+      "title": "Multiply Frames By (1 means no interpolation)"
+    }
+  },
+  "51": {
+    "inputs": {
+      "lora_name": "hyvid\\hyvideo_FastVideo_LoRA-fp8.safetensors",
+      "strength_model": 1,
+      "model": [
+        "45",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "LoraLoaderModelOnly"
+    }
+  },
+  "55": {
+    "inputs": {
+      "model_name": "ESRGAN_4x.pth"
+    },
+    "class_type": "UpscaleModelLoader",
+    "_meta": {
+      "title": "Load Upscale Model"
+    }
+  },
+  "56": {
+    "inputs": {
+      "upscale_model": [
+        "55",
+        0
+      ],
+      "image": [
+        "37",
+        0
+      ]
+    },
+    "class_type": "ImageUpscaleWithModel",
+    "_meta": {
+      "title": "Upscale Image (using Model)"
     }
   }
 }

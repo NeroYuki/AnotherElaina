@@ -138,6 +138,7 @@ module.exports = {
         workflow["16"]["inputs"]["sampler_name"] = data.sampler
         workflow["17"]["inputs"]["scheduler"] = data.scheduler
         workflow["25"]["inputs"]["noise_seed"] = Math.floor(Math.random() * 2_000_000_000)
+        workflow["28"]["inputs"]["rel_l1_thresh"] = data.teacache_strength
 
         // extract lora name and strength from syntax <lora:<name>:<strength>>
         const lora_regex = /<lora:([^:]+):([^>]+)>/g
@@ -353,7 +354,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         // search for lora load call <lora:...:...>
         if (is_flux && prompt.includes('<lora:')) {
             // flux lora is broken in forge backend, switch to comfyUI backend
-            interaction.channel.send({ content: `Flux LoRA load is broken in Forge backend, switching to ComfyUI backend, some options will be ignore. You can create another image in ${cooldown.toFixed(2)} seconds` });
+            interaction.channel.send({ content: `Flux LoRA load is broken in Forge backend, switching to ComfyUI backend, some options will be ignore. You can create another image in ${cooldown.toFixed(2)} seconds ${teacache_check.teacache_config ? "(Teacache activated: -" + (100 * (1 - Math.pow(1 - teacache_check.teacache_config?.threshold || 0.1, 2))).toFixed(0) + "%)" : ""}` });
             if (ComfyClient.promptListener.length == 0 && ComfyClient.comfyStat.gpu_vram_used > 6) {
                 await interaction.editReply({ content: 'Not enough resource can be allocated to finish this command, please try again later' });
                 return;
@@ -365,7 +366,8 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                 sampling_step,
                 model: cached_model[0],
                 sampler: sampler_to_comfy_name_mapping[sampler] ?? "euler",
-                scheduler: scheduler_to_comfy_name_mapping[scheduler] ?? "normal"
+                scheduler: scheduler_to_comfy_name_mapping[scheduler] ?? "normal",
+                teacache_strength: teacache_check.teacache_config ? teacache_check.teacache_config.threshold : 0
             })
 
             client.cooldowns.set(interaction.user.id, true);
