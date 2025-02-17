@@ -74,6 +74,7 @@ module.exports = {
         if (no_optimize) {
             delete workflow["51"]
             workflow["8"]["inputs"]["model"] = ["45", 0]
+            workflow["8"]["inputs"]["steps"] = 30
         }
 
         if (!do_upscale) {
