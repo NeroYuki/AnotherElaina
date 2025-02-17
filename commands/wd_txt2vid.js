@@ -120,6 +120,10 @@ module.exports = {
             ComfyClient.freeMemory(true)
         }, (data) => {
             console.log('received progress')
+
+            // skip video combine node update progress (too spammy)
+            if (workflow[data.node]["_meta"]["title"] === "Video Combine 🎥🅥🅗🅢") return
+
             interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] + ` (${data.value}/${data.max})` });
         });
 
