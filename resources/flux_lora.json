@@ -14,8 +14,8 @@
     "inputs": {
       "text": "VibrantlySharp style. A breathtaking fantasy seascape of an endless ocean where towering rock formations give way to cascading waterfalls that glow with an ethereal blue light. The foamy torrents crash into the abyss below, their luminous mist rising like enchanted spirits. Above, a crescent moon and intricately swirling nebulae fill the VibrantlySharp sky, their reflections interwoven with the turbulent currents below. The clouds, painted in soft pastels of violet and pink, hover over the horizon, illuminated by the last remnants of sunset. The ocean's surface glistens with an almost supernatural radiance, tiny flecks of starlight shimmering within the waves. The painting fuses fantasy illustration with dynamic motion, immersing the viewer in a dreamlike world where the laws of nature dissolve into celestial wonder.",
       "clip": [
-        "26",
-        1
+        "11",
+        0
       ]
     },
     "class_type": "CLIPTextEncode",
@@ -149,25 +149,6 @@
       "title": "RandomNoise"
     }
   },
-  "26": {
-    "inputs": {
-      "lora_name": "flux_lora\\Vibrantly_sharp_style_v.3.safetensors",
-      "strength_model": 0.8,
-      "strength_clip": 1,
-      "model": [
-        "27",
-        0
-      ],
-      "clip": [
-        "11",
-        0
-      ]
-    },
-    "class_type": "LoraLoader",
-    "_meta": {
-      "title": "Load LoRA"
-    }
-  },
   "27": {
     "inputs": {
       "unet_name": "sd\\flux1-dev-Q8_0.gguf"
@@ -182,7 +163,7 @@
       "model_type": "flux",
       "rel_l1_thresh": 0,
       "model": [
-        "26",
+        "27",
         0
       ]
     },

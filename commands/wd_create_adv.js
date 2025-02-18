@@ -20,7 +20,7 @@ const { full_prompt_analyze, preview_coupler_setting, fetch_user_defined_wildcar
 const { fallback_to_resource_saving } = require('../utils/ollama_request.js');
 const { load_profile } = require('../utils/profile_helper.js');
 const { clamp } = require('../utils/common_helper');
-const workflow = require('../resources/flux_lora.json')
+const workflow_og = require('../resources/flux_lora.json')
 const ComfyClient = require('../utils/comfy_client');
 
 module.exports = {
@@ -130,6 +130,8 @@ module.exports = {
     },
 
     async execute_comfy(interaction, client, data) {
+        const workflow = JSON.parse(JSON.stringify(workflow_og))
+
         workflow["5"]["inputs"]["width"] = data.width
         workflow["5"]["inputs"]["height"] = data.height
         workflow["17"]["inputs"]["steps"] = data.sampling_step
@@ -140,12 +142,39 @@ module.exports = {
         workflow["25"]["inputs"]["noise_seed"] = Math.floor(Math.random() * 2_000_000_000)
         workflow["28"]["inputs"]["rel_l1_thresh"] = data.teacache_strength
 
-        // extract lora name and strength from syntax <lora:<name>:<strength>>
+        // extract lora name and strength from syntax <lora:<name>:<strength>>, adjust node 6 clip to last node being created, 28 model to last node being created
         const lora_regex = /<lora:([^:]+):([^>]+)>/g
-        const lora_match = lora_regex.exec(data.prompt)
-        if (lora_match) {
-            workflow["26"]["inputs"]["lora_name"] = "flux_lora\\" + lora_match[1] + ".safetensors"
-            workflow["26"]["inputs"]["strength_model"] = parseFloat(lora_match[2])
+        let previous_model_node = "27", previous_clip_node = "11", lora_count = 0
+        while ((lora_match = lora_regex.exec(data.prompt)) !== null) {
+            lora_count++
+            const lora_node = {
+                "inputs": {
+                    "lora_name": "flux_lora\\" + lora_match[1] + ".safetensors",
+                    "strength_model": parseFloat(lora_match[2]),
+                    "strength_clip": 1,
+                    "model": [
+                        previous_model_node,
+                        0
+                    ],
+                    "clip": [
+                        previous_clip_node,
+                        previous_clip_node === "11" ? 0 : 1
+                    ]
+                },
+                "class_type": "LoraLoader",
+                "_meta": {
+                    "title": "Load LoRA"
+                }
+            }
+
+            workflow[(999 + lora_count).toString()] = lora_node
+            previous_model_node = previous_clip_node = (999 + lora_count).toString()
+        }
+
+        if (lora_count > 0) {
+            // adjust the input to point to the last lora model and clip node
+            workflow["6"]["inputs"]["clip"] = [previous_clip_node, 1]
+            workflow["28"]["inputs"]["model"] = [previous_model_node, 0]
         }
 
         ComfyClient.sendPrompt(workflow, (data) => {
@@ -351,10 +380,12 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         // calculate compute (change model)
         const cooldown = compute / 1_700_000
 
+        const force_legacy_flux = prompt.includes('[FLUX_FORGE]')
+        prompt = prompt.replace('[FLUX_FORGE]', '')
         // search for lora load call <lora:...:...>
-        if (is_flux && prompt.includes('<lora:')) {
+        if (is_flux && !force_legacy_flux) {
             // flux lora is broken in forge backend, switch to comfyUI backend
-            interaction.channel.send({ content: `Flux LoRA load is broken in Forge backend, switching to ComfyUI backend, some options will be ignore. You can create another image in ${cooldown.toFixed(2)} seconds ${teacache_check.teacache_config ? "(Teacache activated: -" + (100 * (1 - Math.pow(1 - teacache_check.teacache_config?.threshold || 0.1, 2))).toFixed(0) + "%)" : ""}` });
+            interaction.channel.send({ content: `Detected Flux, switching to ComfyUI backend, some options will be ignore. You can create another image in ${cooldown.toFixed(2)} seconds ${teacache_check.teacache_config ? "(Teacache activated: -" + (100 * (1 - Math.pow(1 - teacache_check.teacache_config?.threshold || 0.1, 2))).toFixed(0) + "%)" : ""}` });
             if (ComfyClient.promptListener.length == 0 && ComfyClient.comfyStat.gpu_vram_used > 6) {
                 await interaction.editReply({ content: 'Not enough resource can be allocated to finish this command, please try again later' });
                 return;

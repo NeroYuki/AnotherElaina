@@ -1499,6 +1499,7 @@ const model_selection_legacy = [
     { name: 'PonyRealism v2.2', value: 'ponyrealism_v22.safetensors'},
     { name: 'IllusionBreed v3', value: 'illusionbreed_vpred_v30.safetensors'},
     { name: 'AnimagineXL v3', value: 'animaginexl_v3.safetensors'},
+    { name: 'NekorayXL v0.6', value: 'nekorayxl.safetensors' },
     { name: 'Flux.dev Q4_K_S', value: 'flux1-dev-Q4_K_S.gguf' },
 ]
 
@@ -1524,7 +1525,8 @@ const model_selection_xl = [
     { name: 'ZukiCuteIL v5', value: 'zukicuteil_v50.safetensors'},
     { name: 'ArtiWaifu v2', value: 'artiwaifu_v2.safetensors'},
     { name: 'IllustriousXL v1', value: 'Illustriousxl_v10.safetensors'},
-    { name: 'WAI-NSFW-IllustriousXL v10', value: 'wai_nsfw_illustrious_v100.safetensors'}
+    { name: 'WAI-NSFW-IllustriousXL v10', value: 'wai_nsfw_illustrious_v100.safetensors'},
+    { name: 'CatTower NoobAIXL V-pred v1.5' , value: 'cattowernoobaixl_vpred_v15.safetensors'},
 ]
 
 const model_selection_inpaint = [
