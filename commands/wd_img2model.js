@@ -74,7 +74,7 @@ module.exports = {
 
         }, (data) => {
             console.log('received error')
-            interaction.editReply(data.error);
+            interaction.editReply({ content: data.error });
             ComfyClient.freeMemory(true)
         })
 

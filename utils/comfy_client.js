@@ -61,12 +61,12 @@ const comfyClient = {
             body: JSON.stringify(data),
             headers: { 'Content-Type': 'application/json' }
         })
-            .then(res => {
+            .then(async res => {
                 if (res.status !== 200) {
-                    console.log('Failed to send prompt');
+                    let err_data = await res.json();
+                    throw (err_data?.error) ? (err_data.error?.message || "Unknown server error") : "Unknown connection error";
                 }
                 return res.json();
-
             })
             .then(data => {
                 console.log('Prompt sent:', data);
@@ -90,6 +90,7 @@ const comfyClient = {
             })
             .catch(err => {
                 console.log('Error:', err);
+                error_cb({ error: err});
             });
     },
 
