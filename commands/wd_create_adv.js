@@ -169,6 +169,9 @@ module.exports = {
 
             workflow[(999 + lora_count).toString()] = lora_node
             previous_model_node = previous_clip_node = (999 + lora_count).toString()
+
+            // remove the lora syntax from the prompt
+            data.prompt = data.prompt.replace(lora_match[0], '')
         }
 
         if (lora_count > 0) {
