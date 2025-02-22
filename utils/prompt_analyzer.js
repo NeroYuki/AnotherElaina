@@ -313,11 +313,12 @@ function get_dynamic_threshold_config_from_prompt(prompt) {
 }
 
 function get_pag_config_from_prompt(prompt) {
-    // check for following pattern in prompt |pag: <pag scale>,<adaptive scale>|
+    // check for following pattern in prompt |pag: <pag scale>,<adaptive scale>| or |pag: <pag scale>|
     // if found, return the value {pag_scale: <value>, adaptive_scale: <value>}
     // else return null
 
-    const pag_pattern = /\|pag: ([0-9.]+),([0-9.]+).*\|/i
+    const pag_pattern = /\|pag:\s*([0-9.]+),([0-9.]+).*\|/i
+    const pag_pattern_simple = /\|pag:\s*([0-9.]+).*\|/i
 
     const pag_match = prompt.match(pag_pattern)
 
@@ -330,6 +331,21 @@ function get_pag_config_from_prompt(prompt) {
             pag_config: {
                 pag_scale: parseFloat(values_match[0]) || 3,
                 adaptive_scale: parseFloat(values_match[1]) || 0
+            }
+        }
+    }
+
+    const pag_match_simple = prompt.match(pag_pattern_simple)
+
+    if (pag_match_simple && pag_match_simple[0]) {
+        const values_pattern = /([0-9.]+)/gi
+        const values_match = pag_match_simple[0].match(values_pattern)
+
+        return {
+            prompt: prompt.replace(pag_pattern_simple, ''),
+            pag_config: {
+                pag_scale: parseFloat(values_match[0]) || 3,
+                adaptive_scale: 0
             }
         }
     }
@@ -447,12 +463,12 @@ function full_prompt_analyze(prompt, is_xl) {
     let dynamic_threshold_config = get_dynamic_threshold_config_from_prompt(freeu_config.prompt)
     let pag_config = get_pag_config_from_prompt(dynamic_threshold_config.prompt)
     let mahiro_config = get_mahiro_config_from_prompt(pag_config.prompt)
-    let prompt_enhancer = get_prompt_enhancer_call(pag_config.prompt)
+    let prompt_enhancer = get_prompt_enhancer_call(mahiro_config.prompt)
     let detail_daemon_config = get_detail_daemon_config_from_prompt(prompt_enhancer.prompt)
     let teacache_config = get_teacache_config_from_prompt(detail_daemon_config.prompt)
 
     return {
-        prompt: detail_daemon_config.prompt,
+        prompt: teacache_config.prompt,
         coupler_config: coupler_config.coupler_config,
         color_grading_config: color_grading_config.color_grading_config,
         freeu_config: freeu_config.freeu_config,
