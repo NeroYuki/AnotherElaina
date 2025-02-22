@@ -318,11 +318,11 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             cfg_scale = 5.5
             sampling_step = 30
         }
-        else if (cached_model[0] === 'animaginexl_v40.safetensors') {
-            sampler = 'Euler a'
-            scheduler = 'Automatic'
-            cfg_scale = 6
-            sampling_step = 30
+        else if (cached_model[0] === 'animaginexl_v40_opt.safetensors') {
+            sampler = 'Euler a CFG++'
+            scheduler = 'SGM Uniform'
+            cfg_scale = 1.5
+            sampling_step = 28
         }
         else if (model_selection_flux.find(x => x.value === cached_model[0])) {
             sampler = 'Euler'
@@ -338,7 +338,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         }
         else {
             sampler = profile?.sampler ?? 'DPM++ 2M'
-            scheduler = profile?.scheduler ?? 'Align Your Step'
+            scheduler = profile?.scheduler ?? 'Align Your Steps'
             cfg_scale = profile?.cfg_scale ?? 7
             sampling_step = profile?.sampling_step ?? 12
         }
