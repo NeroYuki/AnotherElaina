@@ -46,8 +46,8 @@
   },
   "10": {
     "inputs": {
-      "clip_name1": "clip-vit-large-patch14\\model.safetensors",
-      "clip_name2": "llava_llama3_fp8_scaled.safetensors",
+      "clip_name1": "forge\\clip-vit-large-patch14\\model.safetensors",
+      "clip_name2": "forge\\llava_llama3_fp8_scaled.safetensors",
       "type": "hunyuan_video"
     },
     "class_type": "DualCLIPLoader",
@@ -198,7 +198,7 @@
   },
   "51": {
     "inputs": {
-      "lora_name": "hyvid\\hyvideo_FastVideo_LoRA-fp8.safetensors",
+      "lora_name": "sd\\hyvid\\hyvideo_FastVideo_LoRA-fp8.safetensors",
       "strength_model": 1,
       "model": [
         "45",
@@ -212,7 +212,7 @@
   },
   "55": {
     "inputs": {
-      "model_name": "ESRGAN_4x.pth"
+      "model_name": "forge\\ESRGAN_4x.pth"
     },
     "class_type": "UpscaleModelLoader",
     "_meta": {

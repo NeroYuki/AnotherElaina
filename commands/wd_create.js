@@ -92,7 +92,7 @@ module.exports = {
             lora_count++
             const lora_node = {
                 "inputs": {
-                    "lora_name": "flux_lora\\" + lora_match[1] + ".safetensors",
+                    "lora_name": "sd\\flux_lora\\" + lora_match[1] + ".safetensors",
                     "strength_model": parseFloat(lora_match[2]),
                     "strength_clip": 1,
                     "model": [
