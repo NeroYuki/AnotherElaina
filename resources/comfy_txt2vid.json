@@ -6,10 +6,10 @@
         "42",
         0
       ],
-      "steps": 7,
+      "steps": 10,
       "cfg": 1,
       "sampler_name": "euler",
-      "scheduler": "beta",
+      "scheduler": "normal",
       "start_at_step": 0,
       "end_at_step": 30,
       "return_with_leftover_noise": "disable",
@@ -46,7 +46,7 @@
   },
   "10": {
     "inputs": {
-      "clip_name1": "forge\\clip-vit-large-patch14\\model.safetensors",
+      "clip_name1": "clip-vit-large-patch14\\model.safetensors",
       "clip_name2": "forge\\llava_llama3_fp8_scaled.safetensors",
       "type": "hunyuan_video"
     },

@@ -448,58 +448,6 @@
       "title": "Float to Integer"
     }
   },
-  "147": {
-    "inputs": {
-      "text": [
-        "150",
-        0
-      ],
-      "text2": "399"
-    },
-    "class_type": "ShowText|pysssss",
-    "_meta": {
-      "title": "Show Text 🐍"
-    }
-  },
-  "148": {
-    "inputs": {
-      "text": [
-        "149",
-        0
-      ],
-      "text2": "612"
-    },
-    "class_type": "ShowText|pysssss",
-    "_meta": {
-      "title": "Show Text 🐍"
-    }
-  },
-  "149": {
-    "inputs": {
-      "value": [
-        "146",
-        0
-      ],
-      "format_string": "{:d}"
-    },
-    "class_type": "JWIntegerToString",
-    "_meta": {
-      "title": "Integer to String"
-    }
-  },
-  "150": {
-    "inputs": {
-      "value": [
-        "145",
-        0
-      ],
-      "format_string": "{:d}"
-    },
-    "class_type": "JWIntegerToString",
-    "_meta": {
-      "title": "Integer to String"
-    }
-  },
   "151": {
     "inputs": {
       "image": "RDT_20220902_1133158847032977485917795.jpg",

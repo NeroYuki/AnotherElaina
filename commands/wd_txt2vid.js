@@ -3,6 +3,7 @@ const og_workflow = require('../resources/comfy_txt2vid.json')
 const ComfyClient = require('../utils/comfy_client');
 const { get_teacache_config_from_prompt } = require('../utils/prompt_analyzer');
 const { clamp } = require('../utils/common_helper');
+const { sampler_selection, scheduler_selection, sampler_to_comfy_name_mapping, scheduler_to_comfy_name_mapping } = require('../utils/ai_server_config');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -53,6 +54,17 @@ module.exports = {
                 option.setName('do_frame_interpolation')
                     .setDescription('Use frame interpolation to double the frame rate')
                     .setRequired(false))
+            .addStringOption(option => 
+                option.setName('sampler')
+                    .setDescription('The sampling method for the AI to generate art from (default is "Euler")')
+                    .addChoices(...sampler_selection))
+            .addStringOption(option => 
+                option.setName('scheduler')
+                    .setDescription('The scheduling method for the AI to generate art from (default is "Automatic")')
+                    .addChoices(...scheduler_selection))
+            .addNumberOption(option => 
+                option.setName('cfg_scale')
+                    .setDescription('Lower value = more creative freedom (default is 1)'))
 
     ,
 
@@ -67,6 +79,9 @@ module.exports = {
         const no_optimize = interaction.options.getBoolean('no_optimize') || false;
         const do_upscale = interaction.options.getBoolean('do_upscale') || false;
         const do_frame_interpolation = interaction.options.getBoolean('do_frame_interpolation') || false;
+        const sampler = interaction.options.getString('sampler') || 'Euler';
+        const scheduler = interaction.options.getString('scheduler') || 'Automatic'
+        const cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || 1, 1, 10);
 
         let workflow = JSON.parse(JSON.stringify(og_workflow))
 
@@ -142,6 +157,10 @@ module.exports = {
         prompt = teacache_check.prompt
 
         workflow["15"]["inputs"]["text"] = prompt
+
+        workflow["8"]["inputs"]["sampler_name"] = sampler_to_comfy_name_mapping[sampler] ?? "euler"
+        workflow["8"]["inputs"]["scheduler"] = scheduler_to_comfy_name_mapping[scheduler] ?? "normal"
+        workflow["8"]["inputs"]["cfg"] = cfg_scale
 
         ComfyClient.sendPrompt(workflow, (data) => {
             if (data.node !== null) interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] });

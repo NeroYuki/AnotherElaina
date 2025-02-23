@@ -3,6 +3,7 @@ const og_workflow = require('../resources/skyreel_img2vid.json')
 const ComfyClient = require('../utils/comfy_client');
 const { get_teacache_config_from_prompt } = require('../utils/prompt_analyzer');
 const { clamp } = require('../utils/common_helper');
+const { loadImage } = require('../utils/load_discord_img');
 
 const preset_to_budget_allocation = {
     'fast': 10_000_000,
@@ -70,18 +71,12 @@ module.exports = {
             workflow["120"]["inputs"]["unet_name"] = "skyreels-hunyuan-I2V-Q6_K.gguf"
         }
 
-        if (image_info == null) {
-            interaction.editReply({ content: "Failed to receive input image" });
-            return
-        }
-
         //download the image from attachment.proxyURL
         let attachment = await loadImage(attachment_option.proxyURL,
             /*getBuffer:*/ true).catch((err) => {
             console.log("Failed to retrieve image from discord", err)
             return
         })
-        
         //set the image buffer to the workflow
         const image_info = await ComfyClient.uploadImage(attachment, Date.now() + "_" + attachment_option.name, attachment_option.contentType).catch((err) => {
             console.log("Failed to upload image", err)
@@ -89,6 +84,11 @@ module.exports = {
         })
 
         console.log(image_info)
+
+        if (image_info == null) {
+            interaction.editReply({ content: "Failed to receive input image" });
+            return
+        }
 
         // calculate the allocated bugdet to frame count and resolution
         const frame_count = length * fps
@@ -108,11 +108,15 @@ module.exports = {
         if (neg_prompt !== '') {
             workflow["45"]["inputs"]["neg_text"] = "FPS-24, " + neg_prompt
         }
-        
+
         ComfyClient.sendPrompt(workflow, (data) => {
             if (data.node !== null) interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] });
         }, (data) => {
             console.log('received success')
+            if ((!data.output?.gifs) || data.output.gifs.length === 0) {
+                console.log('Output is not video')
+                return
+            }
             const filename = data.output.gifs[0].filename
 
             // fetch video from comfyUI
