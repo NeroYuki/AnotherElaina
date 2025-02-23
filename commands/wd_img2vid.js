@@ -105,8 +105,10 @@ module.exports = {
         workflow["50"]["inputs"]["frame_rate"] = fps
 
         workflow["45"]["inputs"]["text"] = "FPS-24, " + prompt
-        workflow["85"]["inputs"]["text"] = "FPS-24, " + neg_prompt
-
+        if (neg_prompt !== '') {
+            workflow["45"]["inputs"]["neg_text"] = "FPS-24, " + neg_prompt
+        }
+        
         ComfyClient.sendPrompt(workflow, (data) => {
             if (data.node !== null) interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] });
         }, (data) => {
