@@ -37,7 +37,7 @@
   },
   "9": {
     "inputs": {
-      "vae_name": "hunyuan_video_vae_bf16.safetensors"
+      "vae_name": "sd\\hunyuan_video_vae_bf16.safetensors"
     },
     "class_type": "VAELoader",
     "_meta": {
@@ -57,7 +57,7 @@
   },
   "11": {
     "inputs": {
-      "unet_name": "hunyuan-video-t2v-720p-Q6_K.gguf"
+      "unet_name": "hunyuan-video-t2v-720p-Q5_K_M.gguf"
     },
     "class_type": "UnetLoaderGGUF",
     "_meta": {
@@ -189,7 +189,7 @@
   },
   "47": {
     "inputs": {
-      "Value": 2
+      "Value": 1
     },
     "class_type": "DF_Integer",
     "_meta": {

@@ -1,0 +1,576 @@
+{
+  "42": {
+    "inputs": {
+      "add_noise": true,
+      "noise_seed": 15,
+      "cfg": 7,
+      "model": [
+        "54",
+        0
+      ],
+      "positive": [
+        "62",
+        0
+      ],
+      "negative": [
+        "102",
+        0
+      ],
+      "sampler": [
+        "51",
+        0
+      ],
+      "sigmas": [
+        "98",
+        0
+      ],
+      "latent_image": [
+        "53",
+        0
+      ]
+    },
+    "class_type": "SamplerCustom",
+    "_meta": {
+      "title": "SamplerCustom"
+    }
+  },
+  "45": {
+    "inputs": {
+      "text": "FPS-24, a continuos shot of an anime girl looking at the camera with some subtle movement, her eyes are blinking to the camera",
+      "clip": [
+        "47",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "47": {
+    "inputs": {
+      "clip_name1": "forge\\clip_l.safetensors",
+      "clip_name2": "forge\\llava_llama3_fp8_scaled.safetensors",
+      "type": "hunyuan_video",
+      "device": "default"
+    },
+    "class_type": "DualCLIPLoader",
+    "_meta": {
+      "title": "DualCLIPLoader"
+    }
+  },
+  "49": {
+    "inputs": {
+      "vae_name": "sd\\hunyuan_video_vae_bf16.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "50": {
+    "inputs": {
+      "frame_rate": 18,
+      "loop_count": 0,
+      "filename_prefix": "skyreel",
+      "format": "video/h264-mp4",
+      "pix_fmt": "yuv420p",
+      "crf": 19,
+      "save_metadata": true,
+      "trim_to_audio": false,
+      "pingpong": false,
+      "save_output": true,
+      "images": [
+        "108",
+        0
+      ]
+    },
+    "class_type": "VHS_VideoCombine",
+    "_meta": {
+      "title": "Video Combine 🎥🅥🅗🅢"
+    }
+  },
+  "51": {
+    "inputs": {
+      "sampler_name": "dpmpp_2m"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "KSamplerSelect"
+    }
+  },
+  "52": {
+    "inputs": {
+      "scheduler": "beta",
+      "steps": 25,
+      "denoise": 1,
+      "model": [
+        "54",
+        0
+      ]
+    },
+    "class_type": "BasicScheduler",
+    "_meta": {
+      "title": "BasicScheduler"
+    }
+  },
+  "53": {
+    "inputs": {
+      "width": [
+        "106",
+        1
+      ],
+      "height": [
+        "106",
+        2
+      ],
+      "length": [
+        "153",
+        0
+      ],
+      "batch_size": 1
+    },
+    "class_type": "EmptyHunyuanLatentVideo",
+    "_meta": {
+      "title": "EmptyHunyuanLatentVideo"
+    }
+  },
+  "54": {
+    "inputs": {
+      "shift": 9,
+      "model": [
+        "124",
+        0
+      ]
+    },
+    "class_type": "ModelSamplingSD3",
+    "_meta": {
+      "title": "ModelSamplingSD3"
+    }
+  },
+  "57": {
+    "inputs": {
+      "tile_size": 192,
+      "overlap": 64,
+      "temporal_size": 64,
+      "temporal_overlap": 8,
+      "samples": [
+        "99",
+        1
+      ],
+      "vae": [
+        "49",
+        0
+      ]
+    },
+    "class_type": "VAEDecodeTiled",
+    "_meta": {
+      "title": "VAE Decode (Tiled)"
+    }
+  },
+  "62": {
+    "inputs": {
+      "guidance": 1,
+      "conditioning": [
+        "107",
+        0
+      ]
+    },
+    "class_type": "FluxGuidance",
+    "_meta": {
+      "title": "FluxGuidance"
+    }
+  },
+  "85": {
+    "inputs": {
+      "text": "FPS-24, blurry bad quality video with bad composition, multiple cuts, fast and chaotic movement, multiple jump cut",
+      "clip": [
+        "47",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "98": {
+    "inputs": {
+      "step": 15,
+      "sigmas": [
+        "52",
+        0
+      ]
+    },
+    "class_type": "SplitSigmas",
+    "_meta": {
+      "title": "SplitSigmas"
+    }
+  },
+  "99": {
+    "inputs": {
+      "add_noise": false,
+      "noise_seed": 0,
+      "cfg": 1,
+      "model": [
+        "54",
+        0
+      ],
+      "positive": [
+        "62",
+        0
+      ],
+      "negative": [
+        "102",
+        0
+      ],
+      "sampler": [
+        "51",
+        0
+      ],
+      "sigmas": [
+        "98",
+        1
+      ],
+      "latent_image": [
+        "42",
+        0
+      ]
+    },
+    "class_type": "SamplerCustom",
+    "_meta": {
+      "title": "SamplerCustom"
+    }
+  },
+  "102": {
+    "inputs": {
+      "guidance": 1,
+      "conditioning": [
+        "107",
+        1
+      ]
+    },
+    "class_type": "FluxGuidance",
+    "_meta": {
+      "title": "FluxGuidance"
+    }
+  },
+  "106": {
+    "inputs": {
+      "width": [
+        "145",
+        0
+      ],
+      "height": [
+        "146",
+        0
+      ],
+      "interpolation": "lanczos",
+      "method": "fill / crop",
+      "condition": "always",
+      "multiple_of": 16,
+      "image": [
+        "151",
+        0
+      ]
+    },
+    "class_type": "ImageResize+",
+    "_meta": {
+      "title": "🔧 Image Resize"
+    }
+  },
+  "107": {
+    "inputs": {
+      "positive": [
+        "45",
+        0
+      ],
+      "negative": [
+        "85",
+        0
+      ],
+      "vae": [
+        "49",
+        0
+      ],
+      "pixels": [
+        "110",
+        0
+      ]
+    },
+    "class_type": "InstructPixToPixConditioning",
+    "_meta": {
+      "title": "InstructPixToPixConditioning"
+    }
+  },
+  "108": {
+    "inputs": {
+      "method": "mkl",
+      "strength": 1,
+      "image_ref": [
+        "106",
+        0
+      ],
+      "image_target": [
+        "57",
+        0
+      ]
+    },
+    "class_type": "ColorMatch",
+    "_meta": {
+      "title": "Color Match"
+    }
+  },
+  "110": {
+    "inputs": {
+      "noise_aug_strength": 0.02,
+      "seed": 303681065450532,
+      "image": [
+        "106",
+        0
+      ]
+    },
+    "class_type": "ImageNoiseAugmentation",
+    "_meta": {
+      "title": "Image Noise Augmentation"
+    }
+  },
+  "120": {
+    "inputs": {
+      "unet_name": "skyreels-hunyuan-I2V-Q5_K_M.gguf"
+    },
+    "class_type": "UnetLoaderGGUF",
+    "_meta": {
+      "title": "Unet Loader (GGUF)"
+    }
+  },
+  "124": {
+    "inputs": {
+      "sage_attention": "auto",
+      "model": [
+        "120",
+        0
+      ]
+    },
+    "class_type": "PathchSageAttentionKJ",
+    "_meta": {
+      "title": "Patch Sage Attention KJ"
+    }
+  },
+  "140": {
+    "inputs": {
+      "float": 12000000
+    },
+    "class_type": "Primitive float [Crystools]",
+    "_meta": {
+      "title": "🪛 Primitive float"
+    }
+  },
+  "141": {
+    "inputs": {
+      "a": [
+        "152",
+        0
+      ],
+      "b": [
+        "142",
+        1
+      ]
+    },
+    "class_type": "JWFloatDiv",
+    "_meta": {
+      "title": "width^2 = budget/aspect"
+    }
+  },
+  "142": {
+    "inputs": {
+      "image": [
+        "151",
+        0
+      ]
+    },
+    "class_type": "Image Aspect Ratio",
+    "_meta": {
+      "title": "Image Aspect Ratio"
+    }
+  },
+  "143": {
+    "inputs": {
+      "Value": [
+        "141",
+        0
+      ]
+    },
+    "class_type": "DF_Square_root",
+    "_meta": {
+      "title": "calc width"
+    }
+  },
+  "144": {
+    "inputs": {
+      "a": [
+        "143",
+        0
+      ],
+      "b": [
+        "142",
+        1
+      ]
+    },
+    "class_type": "JWFloatMul",
+    "_meta": {
+      "title": "calc height"
+    }
+  },
+  "145": {
+    "inputs": {
+      "value": [
+        "155",
+        0
+      ],
+      "mode": "floor"
+    },
+    "class_type": "JWFloatToInteger",
+    "_meta": {
+      "title": "Float to Integer"
+    }
+  },
+  "146": {
+    "inputs": {
+      "value": [
+        "156",
+        0
+      ],
+      "mode": "floor"
+    },
+    "class_type": "JWFloatToInteger",
+    "_meta": {
+      "title": "Float to Integer"
+    }
+  },
+  "147": {
+    "inputs": {
+      "text": [
+        "150",
+        0
+      ],
+      "text2": "399"
+    },
+    "class_type": "ShowText|pysssss",
+    "_meta": {
+      "title": "Show Text 🐍"
+    }
+  },
+  "148": {
+    "inputs": {
+      "text": [
+        "149",
+        0
+      ],
+      "text2": "612"
+    },
+    "class_type": "ShowText|pysssss",
+    "_meta": {
+      "title": "Show Text 🐍"
+    }
+  },
+  "149": {
+    "inputs": {
+      "value": [
+        "146",
+        0
+      ],
+      "format_string": "{:d}"
+    },
+    "class_type": "JWIntegerToString",
+    "_meta": {
+      "title": "Integer to String"
+    }
+  },
+  "150": {
+    "inputs": {
+      "value": [
+        "145",
+        0
+      ],
+      "format_string": "{:d}"
+    },
+    "class_type": "JWIntegerToString",
+    "_meta": {
+      "title": "Integer to String"
+    }
+  },
+  "151": {
+    "inputs": {
+      "image": "RDT_20220902_1133158847032977485917795.jpg",
+      "upload": "image"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "152": {
+    "inputs": {
+      "a": [
+        "140",
+        0
+      ],
+      "b": [
+        "154",
+        0
+      ]
+    },
+    "class_type": "JWFloatDiv",
+    "_meta": {
+      "title": "Float Divide"
+    }
+  },
+  "153": {
+    "inputs": {
+      "int": 49
+    },
+    "class_type": "Primitive integer [Crystools]",
+    "_meta": {
+      "title": "🪛 Primitive integer"
+    }
+  },
+  "154": {
+    "inputs": {
+      "value": [
+        "153",
+        0
+      ]
+    },
+    "class_type": "JWIntegerToFloat",
+    "_meta": {
+      "title": "Integer to Float"
+    }
+  },
+  "155": {
+    "inputs": {
+      "a": [
+        "144",
+        0
+      ],
+      "b": 960
+    },
+    "class_type": "JWFloatMin",
+    "_meta": {
+      "title": "Float Minimum"
+    }
+  },
+  "156": {
+    "inputs": {
+      "a": [
+        "143",
+        0
+      ],
+      "b": 960
+    },
+    "class_type": "JWFloatMin",
+    "_meta": {
+      "title": "Float Minimum"
+    }
+  }
+}
