@@ -1500,6 +1500,7 @@ const model_selection_legacy = [
     { name: 'IllusionBreed v3', value: 'illusionbreed_vpred_v30.safetensors'},
     { name: 'AnimagineXL v3', value: 'animaginexl_v3.safetensors'},
     { name: 'NekorayXL v0.6', value: 'nekorayxl.safetensors' },
+    { name: 'SilenceMix v1', value: 'silencemix_v10.safetensors'},
     { name: 'Flux.dev Q4_K_S', value: 'flux1-dev-Q4_K_S.gguf' },
 ]
 
@@ -1522,6 +1523,7 @@ const model_selection_xl = [
     { name: 'SilverMoonMix3 v2', value: 'silvermoonmix03_v20.safetensors'},
     { name: 'IllusionBreed v3', value: 'illusionbreed_vpred_v30.safetensors'},
     { name: 'SilenceMix v1', value: 'silencemix_v10.safetensors'},
+    { name: 'SilenceMix v3', value: 'silencemix_v30.safetensors'},
     { name: 'ZukiCuteIL v5', value: 'zukicuteil_v50.safetensors'},
     { name: 'ArtiWaifu v2', value: 'artiwaifu_v2.safetensors'},
     { name: 'IllustriousXL v1', value: 'Illustriousxl_v10.safetensors'},
