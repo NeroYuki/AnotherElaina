@@ -8,9 +8,9 @@ const { server_pool, model_selection_flux } = require('./ai_server_config');
 // const sharp = require('sharp');
 
 const cached_model = [
-    "animaginexl_v31.safetensors",
-    "dreamshaperxl_lightning.safetensors",
-    "anythingv5.safetensors",
+    "noobaixl_v1_1.safetensors",
+    "animaginexl_v40_opt.safetensors",
+    "wai_nsfw_illustrious_v100.safetensors",
 ]
 
 const flux_support_models = [
