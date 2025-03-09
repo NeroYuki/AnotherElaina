@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const ComfyClient = require('../utils/comfy_client');
-const workflow = require('../resources/comfy_img2model.json');
+const workflow_og = require('../resources/comfy_img2model.json');
 const { loadImage } = require('../utils/load_discord_img');
 
 module.exports = {
@@ -24,6 +24,8 @@ module.exports = {
 
 	async execute(interaction, client) {
         await interaction.deferReply();
+
+        const workflow = JSON.parse(JSON.stringify(workflow_og))
 
         const attachment_option = interaction.options.getAttachment('image');
         const remove_background = interaction.options.getBoolean('remove_background') || false;

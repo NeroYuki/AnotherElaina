@@ -1,0 +1,72 @@
+{
+  "1": {
+    "inputs": {
+      "text_input": "",
+      "task": "caption",
+      "fill_mask": true,
+      "keep_model_loaded": false,
+      "max_new_tokens": 1024,
+      "num_beams": 3,
+      "do_sample": true,
+      "output_mask_select": "",
+      "seed": 748865866811054,
+      "image": [
+        "3",
+        0
+      ],
+      "florence2_model": [
+        "2",
+        0
+      ]
+    },
+    "class_type": "Florence2Run",
+    "_meta": {
+      "title": "Florence2Run"
+    }
+  },
+  "2": {
+    "inputs": {
+      "model": "microsoft/Florence-2-large",
+      "precision": "bf16",
+      "attention": "sdpa"
+    },
+    "class_type": "DownloadAndLoadFlorence2Model",
+    "_meta": {
+      "title": "DownloadAndLoadFlorence2Model"
+    }
+  },
+  "3": {
+    "inputs": {
+      "image": "Resize_20240522_040411_1815.jpg"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "4": {
+    "inputs": {
+      "text": [
+        "1",
+        2
+      ],
+      "text2": "She is wearing a bra and underwear."
+    },
+    "class_type": "ShowText|pysssss",
+    "_meta": {
+      "title": "Show Text 🐍"
+    }
+  },
+  "8": {
+    "inputs": {
+      "images": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "Preview Image"
+    }
+  }
+}

@@ -136,6 +136,14 @@ const comfyClient = {
             for (let i = 0; i < this.promptListener.length; i++) {
                 if (this.promptListener[i].prompt_id === parsed.data.prompt_id) {
                     this.promptListener[i].success_cb(parsed.data);
+                }
+            }
+        }
+
+        if (parsed.type === 'execution_success') {
+            for (let i = 0; i < this.promptListener.length; i++) {
+                if (this.promptListener[i].prompt_id === parsed.data.prompt_id) {
+                    // since we already taking all the data we need in executed event, we can just remove the listener here
                     this.promptListener.splice(i, 1);
                 }
             }
