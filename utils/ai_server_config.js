@@ -1502,6 +1502,7 @@ const model_selection_legacy = [
     { name: 'NekorayXL v0.6', value: 'nekorayxl.safetensors' },
     { name: 'IllustriousXL v1', value: 'Illustriousxl_v10.safetensors'},
     { name: 'WAI-NSFW-IllustriousXL v10', value: 'wai_nsfw_illustrious_v100.safetensors'},
+    { name: 'RealVisXL v5', value: 'realvisxl_v5.safetensors'},
     { name: 'SilenceMix v1', value: 'silencemix_v10.safetensors'},
     { name: 'Flux.dev Q4_K_S', value: 'flux1-dev-Q4_K_S.gguf' },
 ]
@@ -1521,6 +1522,7 @@ const model_selection_xl = [
     { name: 'PonyRealism v2.2', value: 'ponyrealism_v22.safetensors'},
     { name: 'Dreamshaper XL Lightning', value: 'dreamshaperxl_lightning.safetensors'},
     { name: 'RealVisXL v5', value: 'realvisxl_v5.safetensors'},
+    { name: 'StableYogis Realism v4', value: 'stableyogi_realism_v40.safetensors'},
     { name: 'PonyDiffusionXL v6', value: 'ponydiffusionxl_v6.safetensors'},
     { name: 'SilverMoonMix3 v2', value: 'silvermoonmix03_v20.safetensors'},
     { name: 'IllusionBreed v3', value: 'illusionbreed_vpred_v30.safetensors'},
