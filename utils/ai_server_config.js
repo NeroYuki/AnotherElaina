@@ -1733,6 +1733,11 @@ function escape_for_regex(s) {
 
 // attempt to find trigger word and add the respective lora model
 function load_lora_from_prompt(prompt, lora_default_strength = null) {
+
+    if (!lora_default_strength) {
+        return prompt
+    }
+
     // create temp prompt holder
     let temp_prompt = prompt
     // lower case all temp_prompt
