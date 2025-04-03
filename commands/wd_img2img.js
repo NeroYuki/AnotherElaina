@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { byPassUser, censorGuildIds, optOutGuildIds } = require('../config.json');
 const crypt = require('crypto');
-const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, load_lora_from_prompt, model_name_hash_mapping, check_model_filename, model_selection, model_selection_xl, upscaler_selection, model_selection_curated, model_selection_inpaint, model_selection_flux } = require('../utils/ai_server_config.js');
+const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, model_name_hash_mapping, check_model_filename, model_selection, model_selection_xl, upscaler_selection, model_selection_curated, model_selection_inpaint, model_selection_flux } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const { loadImage } = require('../utils/load_discord_img.js');
@@ -95,8 +95,6 @@ module.exports = {
         let sampling_step = clamp(profile?.sampling_step || 25, 1, 100)
 
         const default_neg_prompt = interaction.options.getString('default_neg_prompt') || 'q_sfw'
-        let no_dynamic_lora_load = interaction.options.getBoolean('no_dynamic_lora_load') || false
-        let default_lora_strength = 0.85
 
         const denoising_strength = clamp(interaction.options.getNumber('denoising_strength') || 0.7, 0, 1)
         const force_server_selection = -1
@@ -373,10 +371,6 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
 
         if (extra_config.coupler_config && extra_config.coupler_config.mode === 'Advanced') {
             preview_coupler_setting(interaction, width, height, extra_config, server_pool[server_index].fn_index_coupler_region_preview[1], session_hash)
-        }
-        
-        if (!no_dynamic_lora_load && !is_flux) {
-            prompt = load_lora_from_prompt(prompt, default_lora_strength)
         }
 
         if (extra_config.use_booru_gen) {

@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { byPassUser, censorGuildIds, optOutGuildIds } = require('../config.json');
 const crypt = require('crypto');
-const { server_pool, get_data_body, get_negative_prompt, initiate_server_heartbeat, get_worker_server, get_prompt, load_lora_from_prompt, 
+const { server_pool, get_data_body, get_negative_prompt, initiate_server_heartbeat, get_worker_server, get_prompt, 
     model_name_hash_mapping, get_data_controlnet, get_data_controlnet_annotation, check_model_filename, model_selection, upscaler_selection, model_selection_xl, model_selection_legacy,
     sampler_selection, model_selection_inpaint, model_selection_flux, scheduler_selection, 
     sampler_to_comfy_name_mapping,
@@ -65,9 +65,6 @@ module.exports = {
                     { name: 'None - SFW', value: 'n_sfw' },
                     { name: 'No Default', value: 'n_nsfw' },
                 ))
-        .addNumberOption(option =>
-            option.setName('default_lora_strength')
-                .setDescription('The strength of lora if loaded dynamically (default is "0.85", 0 to disable)'))
         .addNumberOption(option =>
             option.setName('upscale_multiplier')
                 .setDescription('The rate to upscale the generated image (default is 1). EXTREMELY SLOW. Use wd_upscale instead'))
@@ -236,8 +233,6 @@ module.exports = {
         const cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || profile?.cfg_scale || 7, 0, 30)
         const sampling_step = clamp(interaction.options.getInteger('sampling_step') || profile?.sampling_step || 20, 1, 100)
         const default_neg_prompt = interaction.options.getString('default_neg_prompt') || 'n_sfw'
-        const default_lora_strength = clamp(interaction.options.getNumber('default_lora_strength') || 0.85, 0, 3)
-        const no_dynamic_lora_load = default_lora_strength === 0
         const upscale_multiplier = clamp(interaction.options.getNumber('upscale_multiplier') || profile?.upscale_multiplier || 1, 1, 4)
         const upscaler = interaction.options.getString('upscaler') || profile?.upscaler || 'Lanczos'
         const upscale_denoise_strength = clamp(interaction.options.getNumber('upscale_denoise_strength') || profile?.upscale_denoise_strength || 0.7, 0, 1)
@@ -496,10 +491,6 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                 });
         }
         
-        if (!no_dynamic_lora_load && !is_flux) {
-            prompt = load_lora_from_prompt(prompt, default_lora_strength)
-        }
-
         if (extra_config.use_foocus) {
             interaction.channel.send('Enhancing image with Foocus prompt expansion engine.')
         }

@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { byPassUser, censorGuildIds, optOutGuildIds } = require('../config.json');
 const crypt = require('crypto');
-const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, load_lora_from_prompt, model_name_hash_mapping, model_selection_legacy, check_model_filename, model_selection, sampler_selection, model_selection_xl, model_selection_inpaint, model_selection_flux, scheduler_selection } = require('../utils/ai_server_config.js');
+const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, model_name_hash_mapping, model_selection_legacy, check_model_filename, model_selection, sampler_selection, model_selection_xl, model_selection_inpaint, model_selection_flux, scheduler_selection } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const sharp = require('sharp');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
@@ -100,9 +100,6 @@ module.exports = {
                     { name: 'Whole picture - Masked control', value: 'Whole picture_M' },
                     { name: 'Only masked', value: 'Only masked' },
                 ))
-        .addNumberOption(option =>
-            option.setName('default_lora_strength')
-                .setDescription('The strength of lora if loaded dynamically (default is "0.85", 0 to disable)'))
         .addStringOption(option =>
             option.setName('segment_anything_prompt')
                 .setDescription('Prompt for segment anything'))
@@ -165,8 +162,6 @@ module.exports = {
             inpaint_area = 'Whole picture'
             should_mask_control = true
         }
-        const default_lora_strength = clamp(interaction.options.getNumber('default_lora_strength') || 0.85, 0, 3)
-        const no_dynamic_lora_load = default_lora_strength === 0
         const force_server_selection = 0
         const mask_increase_padding = clamp(interaction.options.getInteger('mask_increase_padding') || 24, 0, 64)
         let segment_anything_prompt = interaction.options.getString('segment_anything_prompt') || null
@@ -762,10 +757,6 @@ module.exports = {
             }
     
             const is_censor = ((interaction.guildId && censorGuildIds.includes(interaction.guildId)) || (interaction.channel && !interaction.channel.nsfw && !optOutGuildIds.includes(interaction.guildId))) ? true : false
-            
-            if (!no_dynamic_lora_load && !is_flux) {
-                prompt = load_lora_from_prompt(prompt, default_lora_strength)
-            }
 
             let mask_padding = 32
             if (mask_increase_padding && !segment_anything_prompt && inpaint_area === 'Only masked') {

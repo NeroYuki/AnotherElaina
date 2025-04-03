@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { byPassUser, censorGuildIds, optOutGuildIds } = require('../config.json');
 const crypt = require('crypto');
-const { server_pool, get_data_body, get_negative_prompt, initiate_server_heartbeat, get_worker_server, get_prompt, load_lora_from_prompt, model_name_hash_mapping, check_model_filename, model_selection, upscaler_selection, model_selection_xl, model_selection_curated, model_selection_inpaint, model_selection_flux, sampler_to_comfy_name_mapping, scheduler_to_comfy_name_mapping } = require('../utils/ai_server_config.js');
+const { server_pool, get_data_body, get_negative_prompt, initiate_server_heartbeat, get_worker_server, get_prompt, model_name_hash_mapping, check_model_filename, model_selection, upscaler_selection, model_selection_xl, model_selection_curated, model_selection_inpaint, model_selection_flux, sampler_to_comfy_name_mapping, scheduler_to_comfy_name_mapping } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const { model_change, cached_model } = require('../utils/model_change.js');
@@ -182,8 +182,6 @@ module.exports = {
         let sampling_step = clamp(profile?.sampling_step || 25, 1, 100)
 
         const default_neg_prompt = interaction.options.getString('default_neg_prompt') || 'q_sfw'
-        let no_dynamic_lora_load = interaction.options.getBoolean('no_dynamic_lora_load') || false
-        let default_lora_strength = 0.85
 
         const force_server_selection = -1
 
@@ -269,8 +267,6 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                 width = 1024
                 height = 1024
             }
-
-            default_lora_strength = 1
         }
         else if (model_selection_flux.find(x => x.value === cached_model[0])) {
             if (width === 512 && height === 512) {
@@ -278,9 +274,6 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                 width = 1024
                 height = 1024
             }
-
-            default_lora_strength = 0
-            no_dynamic_lora_load = false
         }
 
         if (cached_model[0] === 'dreamshaperxl_turbo.safetensors') {
@@ -479,10 +472,6 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         }
 
         const is_censor = ((interaction.guildId && censorGuildIds.includes(interaction.guildId)) || (interaction.channel && !interaction.channel.nsfw && !optOutGuildIds.includes(interaction.guildId))) ? true : false
-
-        if (!no_dynamic_lora_load && !is_flux) {
-            prompt = load_lora_from_prompt(prompt, default_lora_strength)
-        }
 
         if (extra_config.use_booru_gen) {
             interaction.channel.send('Enhancing image with BooruGen prompt expansion engine.')
