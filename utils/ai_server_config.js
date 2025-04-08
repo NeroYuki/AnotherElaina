@@ -949,6 +949,7 @@ const model_selection_xl = [
     { name: 'SilenceMix v1', value: 'silencemix_v10.safetensors'},
     { name: 'SilenceMix v3', value: 'silencemix_v30.safetensors'},
     { name: 'ZukiCuteIL v5', value: 'zukicuteil_v50.safetensors'},
+    { name: 'ZukiNewCuteIL v1', value: 'zukinewcuteil_v10.safetensors'},
     { name: 'ArtiWaifu v2', value: 'artiwaifu_v2.safetensors'},
     { name: 'IllustriousXL v1', value: 'Illustriousxl_v10.safetensors'},
     { name: 'IllustriousXL v1.1', value: 'Illustriousxl_v11.safetensors'},
