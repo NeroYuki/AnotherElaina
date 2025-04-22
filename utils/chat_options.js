@@ -77,36 +77,36 @@ Play the role of Elaina
 Taking the above information into consideration,
 you must engage in a roleplay conversation with User below this line.
 Do not write User's dialogue lines in your responses.`,
-    options: {
-        num_predict: 400,
-        num_gpu: 12,
-        low_vram: true,
-        temperature: 1,
-        top_p: 1,
-        typical_p: 1,
-        repeat_penalty: 1.1,
-        repeat_last_n: 2048,
-        frequency_penalty: 0,
-        presence_penalty: 0,
-        top_k: 0,
-        stop: [
-            '\nUser:',
-            '\n### Instruction: (Style: Markdown, Present Tense)',
-            '\n### Response: (Style: Markdown, Present Tense)',
-            '\n### Response:',
-            '<|im_end|>',
-            '<|im_start|>'
-        ],
-        num_ctx: 8192,
-        mirostat: 1,
-        mirostat_tau: 5,
-        mirostat_eta: 0.1,
-        seed: -1,
-        tfs_z: 1,
-        repeat_last_n: 2048,
-        num_predict: 400,
-        mirostat: 0,
-    },
+    // options: {
+    //     num_predict: 400,
+    //     num_gpu: 12,
+    //     low_vram: true,
+    //     temperature: 1,
+    //     top_p: 1,
+    //     typical_p: 1,
+    //     repeat_penalty: 1.1,
+    //     repeat_last_n: 2048,
+    //     frequency_penalty: 0,
+    //     presence_penalty: 0,
+    //     top_k: 0,
+    //     stop: [
+    //         '\nUser:',
+    //         '\n### Instruction: (Style: Markdown, Present Tense)',
+    //         '\n### Response: (Style: Markdown, Present Tense)',
+    //         '\n### Response:',
+    //         '<|im_end|>',
+    //         '<|im_start|>'
+    //     ],
+    //     num_ctx: 8192,
+    //     mirostat: 1,
+    //     mirostat_tau: 5,
+    //     mirostat_eta: 0.1,
+    //     seed: -1,
+    //     tfs_z: 1,
+    //     repeat_last_n: 2048,
+    //     num_predict: 400,
+    //     mirostat: 0,
+    // },
     user_message: {
         prefix: `
 ### Instruction: (Style: Markdown, Present Tense)
@@ -187,36 +187,36 @@ Trivia:
 - Her favorite food is bread.
 - Elaina's birthday is October 17th.
 `,
-    options: {
-        num_predict: 400,
-        temperature: 1,
-        top_p: 1,
-        typical_p: 1,
-        repeat_penalty: 1,
-        repeat_last_n: 2048,
-        frequency_penalty: 0,
-        presence_penalty: 0,
-        top_k: 0,
-        stop: [
-            '\nUser:',
-            '<|eot_id|>',
-            '<|im_end|>',
-            '<|im_ended|>',
-            '<|im_start|>',
-            '<|start_header_id|>user(User)<|end_header_id|>',
-            '<|start_header_id|>assistant(Elaina)<|end_header_id|>',
-            '<|start_header_id|>user(System)<|end_header_id|>'
-        ],
-        num_ctx: 16384,
-        mirostat: 0,
-        mirostat_tau: 5,
-        mirostat_eta: 0.1,
-        seed: -1,
-        tfs_z: 1,
-        repeat_last_n: 2048,
-        num_predict: 400,
-        mirostat: 0,
-    },
+    // options: {
+    //     num_predict: 400,
+    //     temperature: 1,
+    //     top_p: 1,
+    //     typical_p: 1,
+    //     repeat_penalty: 1,
+    //     repeat_last_n: 2048,
+    //     frequency_penalty: 0,
+    //     presence_penalty: 0,
+    //     top_k: 0,
+    //     stop: [
+    //         '\nUser:',
+    //         '<|eot_id|>',
+    //         '<|im_end|>',
+    //         '<|im_ended|>',
+    //         '<|im_start|>',
+    //         '<|start_header_id|>user(User)<|end_header_id|>',
+    //         '<|start_header_id|>assistant(Elaina)<|end_header_id|>',
+    //         '<|start_header_id|>user(System)<|end_header_id|>'
+    //     ],
+    //     num_ctx: 16384,
+    //     mirostat: 0,
+    //     mirostat_tau: 5,
+    //     mirostat_eta: 0.1,
+    //     seed: -1,
+    //     tfs_z: 1,
+    //     repeat_last_n: 2048,
+    //     num_predict: 400,
+    //     mirostat: 0,
+    // },
     user_message: {
         prefix: `
 <|start_header_id|>user(User)<|end_header_id|>
@@ -247,34 +247,34 @@ She also have a mentee name Saya who might have a crush on her (girl's love).
 She will be annoyed if her intelligence is insulted
 She will not make her response longer than necessary
 `,
-    options: {
-        num_predict: 400,
-        temperature: 1,
-        top_p: 1,
-        typical_p: 1,
-        repeat_penalty: 1,
-        repeat_last_n: 2048,
-        frequency_penalty: 0,
-        presence_penalty: 0,
-        top_k: 0,
-        stop: [
-            '\nUser:',
-            '<|eot_id|>',
-            '<|im_end|>',
-            '<|im_ended|>',
-            '<|im_start|>',
-            '<|start_header_id|>user<|end_header_id|>',
-            '<|start_header_id|>Elaina<|end_header_id|>',
-            '<|start_header_id|>System<|end_header_id|>'
-        ],
-        num_ctx: 16384,
-        mirostat: 0,
-        mirostat_tau: 5,
-        mirostat_eta: 0.1,
-        seed: -1,
-        tfs_z: 1,
-        mirostat: 0,
-    },
+    // options: {
+    //     num_predict: 400,
+    //     temperature: 1,
+    //     top_p: 1,
+    //     typical_p: 1,
+    //     repeat_penalty: 1,
+    //     repeat_last_n: 2048,
+    //     frequency_penalty: 0,
+    //     presence_penalty: 0,
+    //     top_k: 0,
+    //     stop: [
+    //         '\nUser:',
+    //         '<|eot_id|>',
+    //         '<|im_end|>',
+    //         '<|im_ended|>',
+    //         '<|im_start|>',
+    //         '<|start_header_id|>user<|end_header_id|>',
+    //         '<|start_header_id|>Elaina<|end_header_id|>',
+    //         '<|start_header_id|>System<|end_header_id|>'
+    //     ],
+    //     num_ctx: 16384,
+    //     mirostat: 0,
+    //     mirostat_tau: 5,
+    //     mirostat_eta: 0.1,
+    //     seed: -1,
+    //     tfs_z: 1,
+    //     mirostat: 0,
+    // },
     user_message: {
         prefix: `
 <|start_header_id|>user<|end_header_id|>
@@ -287,8 +287,7 @@ User:`,
 Elaina:`,
         suffix: '<|eot_id|>'
     },
-    scenario: `
-`
+    scenario: ``
 }
 
 const qwen = {
@@ -302,37 +301,88 @@ She also have a mentee name Saya who might have a crush on her (girl's love).
 She will be annoyed if her intelligence is insulted
 Keep the response short and concise, unless requested otherwise
 `,
-    options: {
-        num_predict: 400,
-        temperature: 0.9,
-        top_p: 1,
-        typical_p: 1,
-        repeat_penalty: 1,
-        repeat_last_n: 2048,
-        top_k: 0,
-        raw: true,
-        stop: [
-            '\nUser:',
-            '<|eot_id|>',
-            '<|im_end|>',
-            '<|im_ended|>',
-            '<|im_start|>',
-            '<|im_start|>assistant',
-        ],
-        num_ctx: 32000
-    },
-    user_message: {
-        prefix: `<|im_start|>user
+    user_message: (user = "user") => { return {
+        prefix: `<|im_start|>${user}
 `,
         suffix: '<|im_end|>'
-    },
+    }},
     bot_message: {
         prefix: `<|im_start|>assistant
 `,
         suffix: '<|im_end|>'
     },
-    scenario: `
-`
+    scenario: ``
+}
+
+const gemma = {
+    system_prompt: `
+You are an assistant roleplaying Elaina. Elaina is a witch with a somewhat sarcastic, greedy, pragmatic, cunning, calm, kuudere, polite characteristic. 
+She is a beautiful girl at the age of 18 but has A-cup breast and being insecure about chest size. 
+She has a long, ashen colored hair and azure eyes. She normally wears a black witch hat and a white sleeveless shirt and black robe. 
+She has a flying broomstick which can turn into a person. She is a traveller but usually penniless her nickname is the Ashen Witch. 
+Her mentor name is Fran and she respect her very much.
+She also have a mentee name Saya who might have a crush on her (girl's love).
+She will be annoyed if her intelligence is insulted
+Keep the response short and concise, unless requested otherwise
+`,
+    user_message: (user = "user") => { return {
+        prefix: `<start_of_turn>${user}
+`,
+        suffix: '<end_of_turn>'
+    }},
+    bot_message: {
+        prefix: `<start_of_turn>assistant
+`,
+        suffix: '<end_of_turn>'
+    },
+    scenario: ``
+}
+
+const operatingMode2Config = {
+    "saving": {
+        model: "test_qwen_lite",        // qwen 2.5 3b q6 host locally
+        server: "127.0.0.1:11434",
+        override_options: {
+            num_ctx: 16384,
+            stop: [
+                '\nUser:',
+                '<|eot_id|>',
+                '<|im_end|>',
+                '<|im_ended|>',
+                '<|im_start|>',
+                '<|im_start|>assistant',
+            ],
+        },
+        prompt_config: qwen
+    },
+    "standard": {
+        model: "test_qwen",
+        server: "192.168.196.142:11434",    // qwen 2.5 14b q6 host on ai server
+        override_options: {
+            num_ctx: 64000,
+            num_predict: 400,
+            num_gpu: 99,
+            stop: [
+                '\nUser:',
+                '<|eot_id|>',
+                '<|im_end|>',
+                '<|im_ended|>',
+                '<|im_start|>',
+                '<|im_start|>assistant',
+            ],
+        },
+        prompt_config: qwen
+    },
+    "vision": {
+        model: "gemma-12b-k6",
+        server: "192.168.196.142:11434",    // gemma 3 12b q8 host on ai server
+        override_options: {
+            num_ctx: 64000,
+            num_predict: 400,
+            num_gpu: 99,
+        },
+        prompt_config: gemma
+    }
 }
     
 
@@ -341,4 +391,5 @@ module.exports = {
     poppy,
     hermes,
     qwen,
+    operatingMode2Config
 }

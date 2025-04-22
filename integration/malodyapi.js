@@ -53,7 +53,6 @@ function malodyWebCall(param) {
     return new Promise((resolve, reject) => {
         let url = WEBSITE_ENDPOINT + param.toString()
 
-
         // rewrite the above code with axios
         axios.get(url, {
             headers: {
@@ -76,7 +75,7 @@ function malodyWebCall(param) {
             })
 
 
-    }).catch()
+    })
 }
 
 // TODO: FIX THIS
@@ -120,7 +119,7 @@ module.exports.searchUser = (option) => {
             reject()
         }
         resolve(userResult)
-    }).catch()
+    })
 }
 
 module.exports.getUserInfo = (option) => {
@@ -136,7 +135,11 @@ module.exports.getUserInfo = (option) => {
         }
         let final_uid = ""
         if (option.uid === undefined) {
-            let userSearchResult = await this.searchUser({username: option.username})
+            let userSearchResult = await this.searchUser({username: option.username}).catch(() => {
+                log.errConsole("User not found")
+                reject()
+            })
+            if (!userSearchResult) return
             final_uid = userSearchResult.uid
         }
         else final_uid = option.uid
@@ -282,7 +285,7 @@ module.exports.getUserInfo = (option) => {
         if (IS_EVALUATING_SPEED) log.TimertoConsole.prototype.end()
         console.log(userInfoResult)
         resolve(userInfoResult)
-    }).catch()
+    })
 }
 
 module.exports.getChartInfo = (option) => {
@@ -321,6 +324,7 @@ module.exports.getChartInfo = (option) => {
             }
         }
         let data = await malodyWebCall(param)
+        console.log(data)
         let lines = data.split('\n')
         //more scrapping mayhem
         for (var x = 0; x < lines.length; x++) {
@@ -381,6 +385,5 @@ module.exports.getChartInfo = (option) => {
         if (IS_EVALUATING_SPEED) log.TimertoConsole.prototype.end()
 
         resolve(chartInfo)
-
-    }).catch()
+    })
 }

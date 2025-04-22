@@ -12,7 +12,6 @@ const { cached_model, model_change } = require('../utils/model_change.js');
 const { queryRecordLimit } = require('../database/database_interaction.js');
 const { load_adetailer } = require('../utils/adetailer_execute.js');
 const { full_prompt_analyze, preview_coupler_setting, fetch_user_defined_wildcard, get_teacache_config_from_prompt } = require('../utils/prompt_analyzer.js');
-const { fallback_to_resource_saving } = require('../utils/ollama_request.js');
 const { load_profile } = require('../utils/profile_helper.js');
 const { clamp } = require('../utils/common_helper');
 
@@ -524,9 +523,6 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         }
 
         console.log(`requesting: ${WORKER_ENDPOINT}/run/predict/`)
-        fallback_to_resource_saving().catch(err => {
-            console.log("failed to fallback to resource saving chatbot profile")
-        })
 
         function updateInteractionReply(data, state = 'queued') {
             return new Promise(async (resolve, reject) => {

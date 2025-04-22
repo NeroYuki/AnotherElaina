@@ -1,97 +1,85 @@
 const { context_storage } = require('../utils/text_gen_store');
 var { is_generating } = require('../utils/text_gen_store');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
-const { chat_completion, text_completion_stream, text_completion } = require('../utils/ollama_request');
+const { text_completion_stream, text_completion } = require('../utils/ollama_request');
 const { loadImage } = require('../utils/load_discord_img');
-const { maid, poppy, hermes, qwen } = require('../utils/chat_options');
-
-const USE_NATIVE_EMBEDDING = false
-const persona = qwen
+const { operatingMode2Config } = require('../utils/chat_options');
+const comfyClient = require('../utils/comfy_client');
 
 async function responseToMessage(client, message, content, is_continue = false, is_regen = false, ctx_enc_len = 0) {
-    // let prompt = content
 
-    if (globalThis.operating_mode === "disabled") {
+    let operating_mode = globalThis.operating_mode
+    let attachment_option = message.attachments.find(attachment => attachment.contentType.startsWith('image')) || message.embeds[0]?.image
+
+    if (globalThis.operating_mode === "auto") {
+        if (comfyClient.comfyStat.gpu_vram_used < 3 && !globalThis.llm_load_timer) {
+            if (attachment_option) {
+                operating_mode = "vision"
+            }
+            else {
+                operating_mode = "standard"
+            }
+        }
+        else {
+            operating_mode = "saving"
+        }
+    }
+
+    if (globalThis.operating_mode === "disabled" || !operatingMode2Config[operating_mode]) {
         message.channel.send("Elaina is sleeping right now. Please try again later.")
         return
     }
 
+    const prompt_config = operatingMode2Config[operating_mode].prompt_config
+
     // get the context from the context storage
     let context = context_storage.get(message.author.id)
-    let old_ctx = []
-    if (USE_NATIVE_EMBEDDING) {
-        if (!context) {
-            context = []
-        }
-        old_ctx = [...context]
-        if (is_regen) {
-            // remove all element out of context since ctx_enc length
-            context = context.slice(0, ctx_enc_len.length)
-        }
-    }
-    else {
-        if (content) {
-            if (context === undefined) {
-                context = [{ role: "user", content: content}]
-            }
-            else {
-                context.push({ role: "user", content: content})
-            }
+    if (content) {
+        if (context === undefined) {
+            context = [{ role: message.author.username, content: content}]
         }
         else {
-            if (is_regen) {
-                context.pop()
-            }
-            else if (is_continue) {
-                // this is intentionally left blank
-            }
-            else {
-                message.channel.send("SYSTEM: You somehow sent an invalid chat. Please try again")
-                return
-            }
+            context.push({ role: message.author.username, content: content })
         }
-    }
-
-    let system_prompt = persona.system_prompt
-
-    let options = persona.options
-
-    if (globalThis.operating_mode === "6bit") {
-        options.num_ctx = 16_384
-    }
-
-    let prompt = ''
-    let scenario = persona.scenario
-
-    if (USE_NATIVE_EMBEDDING) {
-        if (context.length === 0) {
-            prompt = `${scenario}`
-        }
-
-        if (!is_continue) {
-            prompt += `${persona.user_message.prefix} ${content} ${persona.user_message.suffix}` + "\n"
-        }
-
     }
     else {
-        // build back prompt
-        prompt = `${scenario}` + "\n"
-    
-        for (let i = 0; i < context.length; i++) {
-            if (context[i].role === 'user') {
-                prompt += `${persona.user_message.prefix} ${context[i].content} ${persona.user_message.suffix}` + "\n"
-            }
-            else {
-                prompt += `${persona.bot_message.prefix} ${context[i].content} ${persona.bot_message.suffix}` + "\n"
-            }
+        if (is_regen) {
+            context.pop()
         }
+        else if (is_continue) {
+            // this is intentionally left blank
+        }
+        else {
+            message.channel.send("SYSTEM: You somehow sent an invalid chat. Please try again")
+            return
+        }
+    }
 
-        // if the total length of content in the context is more than 80000 characters, remove the oldest content
-        let total_length = context.reduce((acc, val) => acc + val.content.length, 0)
-        while (total_length > 100_000) {
-            context.shift()
-            total_length = context.reduce((acc, val) => acc + val.content.length, 0)
+    let system_prompt = prompt_config.system_prompt
+
+    let options = operatingMode2Config[operating_mode].override_options
+
+    let prompt = ''
+    let scenario = prompt_config.scenario
+
+    // build back prompt
+    prompt = `${scenario}`
+
+    console.log(context)
+    for (let i = 0; i < context.length; i++) {
+        if (context[i].role !== 'bot') {
+            prompt += `${prompt_config.user_message(context[i].role).prefix}${context[i].content}${prompt_config.user_message(context[i].role).suffix}` + "\n"
         }
+        else {
+            prompt += `${prompt_config.bot_message.prefix}${context[i].content}${prompt_config.bot_message.suffix}` + "\n"
+        }
+    }
+
+    // if the total length of content in the context is more than 80000 characters, remove the oldest content
+    let total_length = context.reduce((acc, val) => acc + val.content.length, 0)
+    while (total_length > options.num_ctx * 4) {
+        context.shift()
+        total_length = context.reduce((acc, val) => acc + val.content.length, 0)
     }
 
     const row = new MessageActionRow()
@@ -119,39 +107,46 @@ async function responseToMessage(client, message, content, is_continue = false, 
                 .setCustomId('debugResponse_' + message.id)
                 .setLabel('🔎 Debug')
                 .setStyle('SECONDARY'),
+        )        
+        .addComponents(
+            new MessageButton()
+                .setCustomId('switchContext_' + message.id)
+                .setLabel('🌐 Switch conversation scope')
+                .setStyle('SECONDARY'),
         );
+        
 
     const filter = i => i.user.id === message.author.id;
     
     const collector = message.channel.createMessageComponentCollector({ filter, time: 180000 });
 
-    // build prompt from context
-    
-    if (USE_NATIVE_EMBEDDING) {
-        console.log(context)
-        console.log(prompt)
-    }
-    else {
-        // console.log(prompt)
-        // if is_continue, strip the <|eot_id|> from the end of the prompt
-        if (is_continue) {
-            prompt = prompt.trimEnd().replace(/<\|eot_id\|>$/, "")
+    // console.log(prompt)
+    // if is_continue, strip the bot_message.suffix at the end of the prompt if found
+    if (is_continue) {
+        const suffix = prompt_config.bot_message.suffix
+        if (prompt.endsWith(suffix)) {
+            prompt = prompt.slice(0, -suffix.length)
         }
     }
+    else {
+        prompt += prompt_config.bot_message.prefix
+    }
+
+    console.log(prompt)
 
     try {
         let res_gen_elaina = ''
         let is_done = false
         let debug_info = {}
         if (globalThis.stream_response !== true) {
-            text_completion(globalThis.operating_mode === '4bit' ? 'test_poppy' : 'test_poppy_gpu', prompt, options, system_prompt, (value) => {
+            text_completion(operatingMode2Config[operating_mode], prompt, (value) => {
                 res_gen_elaina += value.response
                 debug_info = value
                 is_done = true
             })
         }
         else {
-            text_completion_stream(globalThis.operating_mode === '4bit' ? 'test_poppy' : 'test_poppy_gpu', prompt, options, system_prompt, (value, done) => {
+            text_completion_stream(operatingMode2Config[operating_mode], prompt, (value, done) => {
                 if (!value || done) {
                     is_done = true
                     if (!value) return
@@ -170,18 +165,18 @@ async function responseToMessage(client, message, content, is_continue = false, 
             if (is_done) {
                 clearInterval(intervalId)
                 console.log("done")
+                if (["vision", "standard"].includes(operating_mode)) {
+                    globalThis.llm_load_timer = setTimeout(() => {
+                        globalThis.llm_load_timer = null
+                    }, 1000 * (60 * 5 + 15))
+                }
 
-                if (USE_NATIVE_EMBEDDING) {
-                    context = debug_info.context
+                if (context[context.length - 1].role === "bot") {
+                    const previous_response = context.pop().content
+                    context.push({ role: "bot", content: previous_response + res_gen_elaina })
                 }
                 else {
-                    if (context[context.length - 1].role === "bot") {
-                        const previous_response = context.pop().content
-                        context.push({ role: "bot", content: previous_response + res_gen_elaina })
-                    }
-                    else {
-                        context.push({ role: "bot", content: res_gen_elaina })
-                    }
+                    context.push({ role: "bot", content: res_gen_elaina })
                 }
 
                 context_storage.set(message.author.id, context)
@@ -201,14 +196,14 @@ async function responseToMessage(client, message, content, is_continue = false, 
                     }
                     else if (i.customId === 'debugResponse_' + message.id) {
                         i.deferUpdate();
-                        const actual_operating_mode = debug_info.model === "test" ? "6bit" : debug_info.model === "test4b" ? "4bit" : debug_info.model === "test_vision" ? "vision" : "uncensored"
+                        const model_used = debug_info.model
                         const context_limit = options.num_ctx
                         const embed = new MessageEmbed()
                             .setColor('#8888ff')
                             .setTitle('Debug Info')
                             .setDescription('Debug information for the response')
                             .addFields(
-                                { name: 'Operating mode', value: actual_operating_mode },
+                                { name: 'Operating mode', value: model_used },
                                 { name: 'Duration', value: `${(debug_info.total_duration / 1_000_000_000).toFixed(4)}s (Load: ${(debug_info.load_duration / 1_000_000_000).toFixed(4)}s, Evalulate: ${(debug_info.prompt_eval_duration / 1_000_000_000).toFixed(4)}s, Generate: ${(debug_info.eval_duration / 1_000_000_000).toFixed(4)}s)` },
                                 { name: 'Context Length', value: `${debug_info.prompt_eval_count + debug_info.eval_count}/${context_limit} tokens (${((debug_info.prompt_eval_count + debug_info.eval_count)/context_limit*100).toFixed(2)}%, +${debug_info.eval_count} tokens)` },
                             )
@@ -218,9 +213,13 @@ async function responseToMessage(client, message, content, is_continue = false, 
                     else if (i.customId === 'regenerateResponse_' + message.id) {
                         i.deferUpdate();
                         collector.stop()
-                        responseToMessage(client, message, USE_NATIVE_EMBEDDING ? content : "", false, true, USE_NATIVE_EMBEDDING ? old_ctx.length : 0)
+                        responseToMessage(client, message, "", false, true, 0)
                     }
-
+                    else if (i.customId === 'switchContext_' + message.id) {
+                        i.deferUpdate();
+                        collector.stop()
+                        
+                    }
                 })
             }
         }, 1000)

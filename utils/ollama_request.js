@@ -1,11 +1,15 @@
+const { server_pool } = require("./ai_server_config")
+const { operatingMode2Config } = require("./chat_options")
+
 const endpoint = 'http://127.0.0.1:11434'
 
+/// <deprecated>
 function chat_completion(model, context) {
     return new Promise((resolve, reject) => {
         fetch(endpoint + '/api/chat', {
             method: 'POST',
             body: JSON.stringify({
-                model: 'test_qwen_lite',
+                model: model,
                 stream: false,
                 messages: context
             }),
@@ -27,15 +31,16 @@ function chat_completion(model, context) {
     })
 }
 
-function text_completion(model, prompt, options, system_prompt, callback) {
-    fetch(endpoint + '/api/generate', {
+function text_completion(config, prompt, callback, images = [] /* list of base64 encoded images */) {
+    fetch('http://' + config.server + '/api/generate', {
         method: 'POST',
         body: JSON.stringify({
-            model: 'test_qwen_lite',
+            model: config.model,
             stream: false,
             prompt: prompt,
-            options: options,
-            system: system_prompt
+            options: config.override_options,
+            system: config.prompt_config.system_prompt,
+            images: images
         }),
         headers: {
             'Content-Type': 'application/json'
@@ -54,15 +59,16 @@ function text_completion(model, prompt, options, system_prompt, callback) {
     })
 }
 
-function text_completion_stream(model, prompt, options, system_prompt, callback) {
-    fetch(endpoint + '/api/generate', {
+function text_completion_stream(config, prompt, callback, images = [] /* list of base64 encoded images */) {
+    fetch('http://' + config.server +  '/api/generate', {
         method: 'POST',
         body: JSON.stringify({
-            model: 'test_qwen_lite',
+            model: model,
             stream: true,
             prompt: prompt,
             options: options,
-            system: system_prompt
+            system: system_prompt,
+            images: images
         }),
         headers: {
             'Content-Type': 'application/json'
@@ -111,14 +117,12 @@ function text_completion_stream(model, prompt, options, system_prompt, callback)
     })
 }
 
-function unload_model(model) {
+function unload_model(config) {
     return new Promise((resolve, reject) => {
-        fetch(endpoint + '/api/generate', {
-            method: 'POST',
-            body: JSON.stringify({
-                model: 'test_qwen_lite',
-                keep_alive: 0
-            }),
+        // use /api/ps to get a list of running models and unload all of them with /api/generate no prompt and keep_alive = 0
+
+        fetch('http://' + config.server + '/api/ps', {   
+            method: 'GET',
             headers: {
                 'Content-Type': 'application/json'
             }
@@ -130,58 +134,75 @@ function unload_model(model) {
                 reject(new Error('Request failed'))
             }
         }).then(res => {
-            resolve("Model unloaded")
+            // unload all models wait until all models are unloaded before resolving
+            let unload_promises = []
+
+            for (let i = 0; i < res.models.length; i++) {
+                let model = res.models[i]
+                console.log('unloading model: ' + model.name)
+                unload_promises.push(fetch('http://' + config.server + '/api/generate', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        model: model.name,
+                        stream: false,
+                        keep_alive: 0,
+                    }),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }))
+            }
+
+            Promise.all(unload_promises).then(res => {
+                // check if all models are unloaded
+                let all_unloaded = true
+                for (let i = 0; i < res.length; i++) {
+                    if (!res[i].ok) {
+                        all_unloaded = false
+                        break
+                    }
+                }
+
+                if (all_unloaded) {
+                    resolve(true)
+                }
+                else {
+                    reject(new Error('Failed to unload all models'))
+                }
+            })
+
         }).catch(err => {
             reject(err)
         })
     })
 }
 
-function fallback_to_resource_saving() {
+function free_up_llm_resource(server_url = server_pool[0].url) {
     return new Promise(async (resolve, reject) => {
-        // unload the test model
-        // if (globalThis.operating_mode === "6bit") {
-        //     await unload_model('test')
-        // }
-
-        // if (globalThis.operating_mode === "uncensored") {
-        //     await unload_model('test_uncen')
-        // }
-
-        // if (globalThis.operating_mode === "vision") {
-        //     await unload_model('test_vision')
-        // }
-        if (globalThis.operating_mode === "disabled" || globalThis.operating_mode === "4bit") {
+        const ip_address_pattern = /(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/;
+        const server_address = ip_address_pattern.exec(server_url)
+        //console.log(server_address)
+        if (!server_address) {
+            reject(new Error('Invalid server address'))
             return
         }
-
-        if (globalThis.operating_mode === "6bit") {
-            await unload_model('test_poppy_gpu').catch(err => {
-                console.log(err)
+        else {
+            server_url = server_address[0]
+            unload_model({
+                server: server_url + ':11434'
+            }).then(() => {
+                resolve(true)
+            }).catch(err => {
+                reject(err)
             })
         }
-
-        let previous_mode = globalThis.operating_mode
-        globalThis.operating_mode = "4bit"
-
-        // setup the timeout to load back the 6bit model
-        setTimeout(async () => {
-            if (globalThis.operating_mode === "disabled" || globalThis.operating_mode === "4bit") {
-                return
-            }
-
-            await unload_model('test').catch(err => {
-                console.log(err)
-            })
-            globalThis.operating_mode = previous_mode
-        }, 1000 * 60 * 10)
     })
 }
 
 module.exports = {
     chat_completion,
     unload_model,
-    fallback_to_resource_saving,
+    free_up_llm_resource,
     text_completion_stream,
     text_completion
 }

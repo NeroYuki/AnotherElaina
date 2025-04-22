@@ -9,7 +9,6 @@ const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch
 const { loadImage, uploadDiscordImageToGradio, uploadPngBufferToGradio } = require('../utils/load_discord_img');
 const { load_controlnet } = require('../utils/controlnet_execute');
 const { cached_model, model_change } = require('../utils/model_change');
-const { fallback_to_resource_saving } = require('../utils/ollama_request.js');
 const { segmentAnything_execute, groundingDino_execute, expandMask, unloadAllModel } = require('../utils/segment_execute.js');
 const { full_prompt_analyze, fetch_user_defined_wildcard, preview_coupler_setting } = require('../utils/prompt_analyzer.js');
 const { queryRecordLimit } = require('../database/database_interaction.js');
@@ -841,9 +840,6 @@ module.exports = {
             }
     
             console.log(`requesting: ${WORKER_ENDPOINT}/run/predict/`)
-            fallback_to_resource_saving().catch(err => {
-                console.log("failed to fallback to resource saving chatbot profile")
-            })
     
             function updateInteractionReply(data, state = 'queued') {
                 return new Promise(async (resolve, reject) => {

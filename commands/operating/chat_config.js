@@ -2,6 +2,7 @@ var { operating_mode } = require('../../utils/text_gen_store');
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { byPassUser } = require('../../config.json');
 const { unload_model } = require('../../utils/ollama_request');
+const { operatingMode2Config } = require('../../utils/chat_options');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -13,10 +14,10 @@ module.exports = {
                 .setRequired(true)
                 .addChoices(
                     { name: 'Disabled', value: 'disabled' },
-                    { name: 'Saving', value: '4bit' },
-                    { name: 'Standard', value: '6bit' },
-                    { name: 'Uncensored', value: 'uncensored'},
-                    { name: 'Standard Vision', value: 'vision'}
+                    { name: 'Auto', value: 'auto' },
+                    { name: 'Saving', value: 'saving' },
+                    { name: 'Standard', value: 'standard' },
+                    { name: 'Vision', value: 'vision' }
                 ))
         .addBooleanOption(option =>
             option.setName('stream')
@@ -37,19 +38,9 @@ module.exports = {
             return;
         }
 
-        if (mode == "disabled" || mode == "4bit" || mode == "6bit" || mode == "uncensored" || mode == "vision") {
-
-            if (globalThis.operating_mode === "4bit") {
-                unload_model("test");
-            }
-            if (globalThis.operating_mode === "6bit") {
-                unload_model("test_poppy_gpu");
-            }
-            if (globalThis.operating_mode === "uncensored") {
-                unload_model("test_uncen")
-            }
-            if (globalThis.operating_mode === "vision") {
-                unload_model("test_vision")
+        if (mode == "disabled" || mode == "auto" || mode == "saving" || mode == "standard" || mode == "vision") {
+            if (operatingMode2Config[globalThis.operating_mode]) {
+                unload_model(operatingMode2Config[globalThis.operating_mode].model);
             }
             globalThis.operating_mode = mode;
             globalThis.stream_response = is_stream;

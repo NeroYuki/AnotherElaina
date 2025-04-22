@@ -6,11 +6,13 @@ const { responseToMessage } = require('./event/on_message');
 const databaseConnection = require('./database/database_connection');
 const { listAllFiles } = require('./utils/common_helper');
 const ComfyClient = require('./utils/comfy_client');
+const { free_up_llm_resource } = require('./utils/ollama_request');
 
 require('dotenv').config()
 
 const token = process.env.DISCORD_BOT_TOKEN
-globalThis.operating_mode = "6bit" // disabled, 4bit, vision, uncensored or 6bit
+globalThis.operating_mode = "auto" // disabled, 
+globalThis.llm_load_timer = null
 globalThis.sd_available = true
 globalThis.can_change_model = true
 
@@ -60,7 +62,7 @@ client.once('ready', () => {
 	setInterval(() => {
 		client.user.setPresence({
 			activities: [{
-				name: `Drawing: ${sd_available ? '✔' : '✖'} | Chatting: ${operating_mode === '6bit' ? '✔' : operating_mode !== 'disabled' ? '✖' : '△'}`,
+				name: `Drawing: ${sd_available ? '✔' : '✖'} | Chatting: ${operating_mode !== 'disabled' ? '✔' : '✖'}`,
 				type: 'PLAYING'
 			}],
 		});
@@ -140,6 +142,13 @@ client.on('interactionCreate', async interaction => {
 	]
 
 	try {
+		if ([
+			...forge_backend_require,
+			...comfy_backend_require,
+		].includes(interaction.commandName)) {
+			await free_up_llm_resource()
+		}
+		
 		if ([
 			...forge_backend_require,
 			...comfy_backend_require,
