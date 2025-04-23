@@ -7,6 +7,7 @@ const databaseConnection = require('./database/database_connection');
 const { listAllFiles } = require('./utils/common_helper');
 const ComfyClient = require('./utils/comfy_client');
 const { free_up_llm_resource } = require('./utils/ollama_request');
+const { context_storage } = require('./utils/text_gen_store');
 
 require('dotenv').config()
 
@@ -71,25 +72,38 @@ client.once('ready', () => {
 });
 
 client.on('messageCreate', async message => {
-	// if message doesnt mention the bot, return
-	if (!message.mentions.has(client.user)) return;
-
 	// ignore if it is in direct message
 	if (!message.guild) return;
 
-	// ignore if that mention is from a reply
-	if (message.reference) return;
+	// if message doesnt mention the bot or if that mention is from a reply or message is from a bot, add to existing channel context
+	if (!message.mentions.has(client.user) || message.reference || message.author.bot) {
+		if (context_storage.has(message.channel.id)) {
+			if (!message.author.bot || message.author.id === client.user.id && (message.content !== '...')) {
+				// if the message is not from a bot, or from this bot itself, add it to the context storage
+				if (context_storage.get(message.channel.id).messages) {
+					context_storage.get(message.channel.id).messages.push({
+						role: message.author.id === client.user.id ? 'assistant' : message.author.username,
+						content: message.content.replace(/<@!?\d+>/g, '').trim(),
+					})
+				}
+				else {
+					context_storage.get(message.channel.id).messages = [{
+						role: message.author.id === client.user.id ? 'assistant' : message.author.username,
+						content: message.content.replace(/<@!?\d+>/g, '').trim(),
+					}]
+				}
+			}
+		}
+	}
+	else {
+		// remove the mention to the bot
+		let content = message.content.replace(/<@!?\d+>/, '').trim();
 
-	// if message is from a bot, return
-	if (message.author.bot) return;
+		// if message is empty, return
+		if (content.trim().length === 0) return;
 
-	// remove the mention to the bot
-	let content = message.content.replace(/<@!?\d+>/, '').trim();
-
-	// if message is empty, return
-	if (content.trim().length === 0) return;
-
-	responseToMessage(client, message, content)
+		responseToMessage(client, message, content)
+	}
 
 });
 

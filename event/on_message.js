@@ -9,20 +9,24 @@ const comfyClient = require('../utils/comfy_client');
 async function responseToMessage(client, message, content, is_continue = false, is_regen = false, ctx_enc_len = 0) {
 
     let operating_mode = globalThis.operating_mode
-    let attachment_option = message.attachments.find(attachment => attachment.contentType.startsWith('image')) || message.embeds[0]?.image
-    let attachment = null
+    // let attachment_option = message.attachments.find(attachment => attachment.contentType.startsWith('image')) || message.embeds[0]?.image
+    let attachment_options = message.attachments.filter(attachment => attachment.contentType.startsWith('image')) || message.embeds[0]?.image
+    //let attachment = null
+    let attachments = []
 
     if (globalThis.operating_mode === "auto") {
         console.log(globalThis.llm_load_timer)
         if (comfyClient.comfyStat.gpu_vram_used < 3 || globalThis.llm_load_timer) {
-            if (attachment_option) {
+            if (attachment_options && attachment_options.length > 0) {
                 operating_mode = "vision"
                 //download the image from attachment.proxyURL
-                attachment = await loadImage(attachment_option.proxyURL, false, true).catch((err) => {
-                    console.log(err)
-                    interaction.reply({ content: "Failed to retrieve image", ephemeral: true });
-                    return
-                })
+                for (let i = 0; i < attachment_options.length; i++) {
+                    attachments.push(await loadImage(attachment_options[i].proxyURL, false, true).catch((err) => {
+                        console.log(err)
+                        message.channel.send("SYSTEM: I cannot load the image. Please try again with another image.")
+                        return
+                    }))
+                }
             }
             else {
                 operating_mode = "standard"
@@ -41,9 +45,28 @@ async function responseToMessage(client, message, content, is_continue = false, 
     const prompt_config = operatingMode2Config[operating_mode].prompt_config
 
     // get the context from the context storage
-    let context = context_storage.get(message.author.id)
+    const context_meta = context_storage.get(message.author.id)
+    let context = []
+    let is_using_channel_context = false    
+    if (context_meta?.use_channel_context ?? false) {
+        if (context_storage.has(message.channel.id) && (context_storage.get(message.channel.id)?.is_channel_context ?? false)) {
+            context = context_storage.get(message.channel.id).messages
+        }
+        else {
+            context_storage.set(message.channel.id, {
+                is_channel_context: true,
+                messages: [],
+            })
+            context = context_storage.get(message.channel.id).messages
+        }
+        is_using_channel_context = true
+    }
+    else {
+        context = context_storage.get(message.author.id)?.messages ?? []
+    }
+
     if (content) {
-        if (context === undefined) {
+        if (!context) {
             context = [{ role: message.author.username, content: content}]
         }
         else {
@@ -52,7 +75,13 @@ async function responseToMessage(client, message, content, is_continue = false, 
     }
     else {
         if (is_regen) {
-            context.pop()
+            // find the last bot message and remove it
+            let last_bot_message = context.findLastIndex((msg) => msg.role === "bot")
+            if (last_bot_message === -1) {
+                message.channel.send("SYSTEM: I cannot regenerate the response. Please try again.")
+                return
+            }
+            context.splice(last_bot_message, 1)
         }
         else if (is_continue) {
             // this is intentionally left blank
@@ -119,7 +148,7 @@ async function responseToMessage(client, message, content, is_continue = false, 
         .addComponents(
             new MessageButton()
                 .setCustomId('switchContext_' + message.id)
-                .setLabel('🌐 Switch conversation scope')
+                .setLabel(is_using_channel_context ? '👥 User conversation' : '🌐 Channel conversation')
                 .setStyle('SECONDARY'),
         );
         
@@ -151,7 +180,7 @@ async function responseToMessage(client, message, content, is_continue = false, 
                 res_gen_elaina += value.response
                 debug_info = value
                 is_done = true
-            }, attachment ? [attachment] : [])
+            }, attachments)
         }
         else {
             text_completion_stream(operatingMode2Config[operating_mode], prompt, (value, done) => {
@@ -161,7 +190,7 @@ async function responseToMessage(client, message, content, is_continue = false, 
                     debug_info = value
                 }
                 res_gen_elaina += value.response
-            }, attachment ? [attachment] : [])
+            }, attachments)
         }
 
         const msgRef = await message.channel.send("...");
@@ -193,19 +222,21 @@ async function responseToMessage(client, message, content, is_continue = false, 
                     context.push({ role: "bot", content: res_gen_elaina })
                 }
 
-                context_storage.set(message.author.id, context)
+                context_storage.set(message.author.id, {
+                    use_channel_context: is_using_channel_context,
+                    messages: context,
+                })
+
                 msgRef.edit({ content: `<@${message.author.id}> ${res_gen_elaina}`, components: [row] })
 
                 collector.on('collect', async i => {
                     if (i.customId === 'deleteContext_' + message.id) {
                         i.deferUpdate();
-                        collector.stop()
                         context_storage.delete(message.author.id)
                         message.channel.send(`<@${message.author.id}> Let's start over shall we?`)
                     }
                     else if (i.customId === 'continueResponse_' + message.id) {
                         i.deferUpdate();
-                        collector.stop()
                         responseToMessage(client, message, "", true)
                     }
                     else if (i.customId === 'debugResponse_' + message.id) {
@@ -220,19 +251,56 @@ async function responseToMessage(client, message, content, is_continue = false, 
                                 { name: 'Operating mode', value: model_used },
                                 { name: 'Duration', value: `${(debug_info.total_duration / 1_000_000_000).toFixed(4)}s (Load: ${(debug_info.load_duration / 1_000_000_000).toFixed(4)}s, Evalulate: ${(debug_info.prompt_eval_duration / 1_000_000_000).toFixed(4)}s, Generate: ${(debug_info.eval_duration / 1_000_000_000).toFixed(4)}s)` },
                                 { name: 'Context Length', value: `${debug_info.prompt_eval_count + debug_info.eval_count}/${context_limit} tokens (${((debug_info.prompt_eval_count + debug_info.eval_count)/context_limit*100).toFixed(2)}%, +${debug_info.eval_count} tokens)` },
+                                { name: 'Context ID', value: `${is_using_channel_context ? "Channel" : "User"} ${is_using_channel_context ? message.channel.id : message.author.id}` },
                             )
 
                         message.channel.send({ embeds: [embed] })
                     }
                     else if (i.customId === 'regenerateResponse_' + message.id) {
                         i.deferUpdate();
-                        collector.stop()
                         responseToMessage(client, message, "", false, true, 0)
                     }
                     else if (i.customId === 'switchContext_' + message.id) {
                         i.deferUpdate();
-                        collector.stop()
-                        
+                        // update message.author.id context_storage to have use_channel_context reversed
+                        if (context_storage.has(message.author.id)) {
+                            const is_cur_channel_context = context_storage.get(message.author.id)?.use_channel_context ?? false
+                            context_storage.set(message.author.id, {
+                                ...context_storage.get(message.author.id),
+                                use_channel_context: !is_cur_channel_context,
+                            })
+                            message.channel.send(`<@${message.author.id}> Switched to ${!is_cur_channel_context ? "channel" : "user"} context`)
+                        }
+                        else {
+                            context_storage.set(message.author.id, {
+                                use_channel_context: true,
+                                messages: context,
+                            })
+                        }
+                        if (context_storage.get(message.author.id).use_channel_context) {
+                            // if channel context is used but not message.channel.id entry is not found, create it and copy the context from message.author.id
+                            if (context_storage.has(message.channel.id)) {
+                                // if entry is found, append the context to it and avoid duplicate messages
+                                let channel_context = context_storage.get(message.channel.id).messages
+                                for (let i = 0; i < context.length; i++) {
+                                    if (!channel_context.find((msg) => msg.role === context[i].role && msg.content === context[i].content)) {
+                                        channel_context.push(context[i])
+                                    }
+                                }
+
+                                context_storage.set(message.channel.id, {
+                                    is_channel_context: true,
+                                    messages: channel_context,
+                                })
+                            }
+                            else {
+                                context_storage.set(message.channel.id, {
+                                    is_channel_context: true,
+                                    // clone context to avoid reference issue
+                                    messages: [...context]
+                                })
+                            }
+                        }
                     }
                 })
             }
