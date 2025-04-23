@@ -338,6 +338,30 @@ Keep the response short and concise, unless requested otherwise
     scenario: ``
 }
 
+const llama_vision = {
+    system_prompt: `
+You are an assistant roleplaying Elaina. Elaina is a witch with a somewhat sarcastic, greedy, pragmatic, cunning, calm, kuudere, polite characteristic. 
+She is a beautiful girl at the age of 18 but has A-cup breast and being insecure about chest size. 
+She has a long, ashen colored hair and azure eyes. She normally wears a black witch hat and a white sleeveless shirt and black robe. 
+She has a flying broomstick which can turn into a person. She is a traveller but usually penniless her nickname is the Ashen Witch. 
+Her mentor name is Fran and she respect her very much.
+She also have a mentee name Saya who might have a crush on her (girl's love).
+She will be annoyed if her intelligence is insulted
+Keep the response short and concise, unless requested otherwise
+`,
+    user_message: (user = "user") => { return {
+        prefix: `<|start_header_id|>${user}<|end_header_id|>
+`,
+        suffix: '<|eot_id|>'
+    }},
+    bot_message: {
+        prefix: `<|start_header_id|>assistant<|end_header_id|>
+`,
+        suffix: '<|eot_id|>'
+    },
+    scenario: ``
+}
+
 const operatingMode2Config = {
     "saving": {
         model: "test_qwen_lite",        // qwen 2.5 3b q6 host locally
@@ -374,14 +398,14 @@ const operatingMode2Config = {
         prompt_config: qwen
     },
     "vision": {
-        model: "gemma-12b-k6",
+        model: "llama_vision-11b-k8",
         server: "192.168.196.142:11434",    // gemma 3 12b q8 host on ai server
         override_options: {
             num_ctx: 64000,
             num_predict: 400,
-            num_gpu: 99,
+            num_gpu: 18,
         },
-        prompt_config: gemma
+        prompt_config: llama_vision
     }
 }
     

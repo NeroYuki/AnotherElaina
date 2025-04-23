@@ -10,11 +10,19 @@ async function responseToMessage(client, message, content, is_continue = false, 
 
     let operating_mode = globalThis.operating_mode
     let attachment_option = message.attachments.find(attachment => attachment.contentType.startsWith('image')) || message.embeds[0]?.image
+    let attachment = null
 
     if (globalThis.operating_mode === "auto") {
-        if (comfyClient.comfyStat.gpu_vram_used < 3 && !globalThis.llm_load_timer) {
+        console.log(globalThis.llm_load_timer)
+        if (comfyClient.comfyStat.gpu_vram_used < 3 || globalThis.llm_load_timer) {
             if (attachment_option) {
                 operating_mode = "vision"
+                //download the image from attachment.proxyURL
+                attachment = await loadImage(attachment_option.proxyURL, false, true).catch((err) => {
+                    console.log(err)
+                    interaction.reply({ content: "Failed to retrieve image", ephemeral: true });
+                    return
+                })
             }
             else {
                 operating_mode = "standard"
@@ -143,7 +151,7 @@ async function responseToMessage(client, message, content, is_continue = false, 
                 res_gen_elaina += value.response
                 debug_info = value
                 is_done = true
-            })
+            }, attachment ? [attachment] : [])
         }
         else {
             text_completion_stream(operatingMode2Config[operating_mode], prompt, (value, done) => {
@@ -153,7 +161,7 @@ async function responseToMessage(client, message, content, is_continue = false, 
                     debug_info = value
                 }
                 res_gen_elaina += value.response
-            })
+            }, attachment ? [attachment] : [])
         }
 
         const msgRef = await message.channel.send("...");
@@ -166,9 +174,15 @@ async function responseToMessage(client, message, content, is_continue = false, 
                 clearInterval(intervalId)
                 console.log("done")
                 if (["vision", "standard"].includes(operating_mode)) {
+                    if (globalThis.llm_load_timer) {
+                        console.log("LLM load timer resetted")
+                        clearTimeout(globalThis.llm_load_timer)
+                    }
+                    console.log("LLM load timer started")
                     globalThis.llm_load_timer = setTimeout(() => {
                         globalThis.llm_load_timer = null
-                    }, 1000 * (60 * 5 + 15))
+                        console.log("LLM load timer expired")
+                    }, 1000 * (60 * 5 + 5))
                 }
 
                 if (context[context.length - 1].role === "bot") {
