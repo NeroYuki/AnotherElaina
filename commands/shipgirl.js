@@ -130,7 +130,7 @@ module.exports = {
 							}
 						}
 					}).concat([
-						{nation: {$exists: false}}
+						{nation: {$exists: true}}
 					])
 				})
 			}
