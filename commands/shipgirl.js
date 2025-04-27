@@ -120,14 +120,12 @@ module.exports = {
 		if (nation) {
 			if (nation === 'Minor Power') {
 				db_query.$and.push({
-					$or: non_minor_power_nation.map(val => {
+					$and: non_minor_power_nation.map(val => {
 						return {
-							$not: {
-								$or: [
-									{nation: val},
-									{nation: "? " + val}
-								]
-							}
+							$nor: [
+								{nation: val},
+								{nation: "? " + val}
+							]
 						}
 					}).concat([
 						{nation: {$exists: true}}
@@ -161,7 +159,7 @@ module.exports = {
 			delete db_query.$and
 		}
 	
-		// console.dir(db_query, {depth: null})
+		console.dir(db_query, {depth: null})
 
 		// make aggregate pipeline to get the random ship with the query
 		const db_agg = [
