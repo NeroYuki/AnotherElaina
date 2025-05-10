@@ -915,11 +915,13 @@ const model_selection_legacy = [
     { name: 'IrisMix v5b', value: 'irismix_v5b.safetensors'},
     { name: 'RefSlave v1', value: 'refslave.safetensors' },
     { name: 'KohakuXL Zeta', value: 'kohakuxl_zeta.safetensors'},
+    { name: 'Dreamshaper XL Lightning', value: 'dreamshaperxl_lightning.safetensors'},
     { name: 'PonyDiffusionXL v6', value: 'ponydiffusionxl_v6.safetensors'},
     { name: 'PonyRealism v2.2', value: 'ponyrealism_v22.safetensors'},
     { name: 'IllusionBreed v3', value: 'illusionbreed_vpred_v30.safetensors'},
     { name: 'AnimagineXL v3', value: 'animaginexl_v3.safetensors'},
     { name: 'NekorayXL v0.6', value: 'nekorayxl.safetensors' },
+    { name: 'ArtiWaifu v2', value: 'artiwaifu_v2.safetensors'},
     { name: 'IllustriousXL v1', value: 'Illustriousxl_v10.safetensors'},
     { name: 'IllustriousXL v1.1', value: 'Illustriousxl_v11.safetensors'},
     { name: 'WAI-NSFW-IllustriousXL v10', value: 'wai_nsfw_illustrious_v100.safetensors'},
@@ -958,6 +960,8 @@ const model_selection_xl = [
     { name: 'WAI-NSFW-IllustriousXL v10', value: 'wai_nsfw_illustrious_v100.safetensors'},
     { name: 'WAI-NSFW-IllustriousXL v12', value: 'wai_nsfw_illustrious_v120.safetensors'},
     { name: 'CatTower NoobAIXL V-pred v1.5' , value: 'cattowernoobaixl_vpred_v15.safetensors'},
+    { name: 'IllumiyumeXL V-pred v3.1' , value: 'illumiyumexl_vpred_v31.safetensors'},
+    { name: 'NoobAIXL MDNT V-pred v1.0' , value: 'noobaixl_mdnt_vpred_v1.safetensors'},
 ]
 
 const model_selection_inpaint = [
