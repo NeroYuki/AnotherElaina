@@ -53,6 +53,9 @@ module.exports = {
         .addStringOption(option =>
             option.setName('title')
                 .setDescription('Override the title for the beatmap, default is detected from the audio'))
+        .addAttachmentOption(option =>
+            option.setName('background')
+                .setDescription('The image file to use for the beatmap background (discord limit is applied)'))
         .addNumberOption(option =>
             option.setName('cfg_scale')
                 .setDescription('[ADVANCE] The CFG scale for the beatmap, default is 1.0'))
@@ -70,7 +73,7 @@ module.exports = {
 
     ,
 
-    async sendFinishBeatmap(msgRef, audio_file, audio_filename, beatmap_path, beatmap_info, user_id) {
+    async sendFinishBeatmap(msgRef, audio_file, audio_filename, beatmap_path, beatmap_info, user_id, image_file = null, image_filename = null) {
         // get the beatmap file name from the beatmap_path
         const resultMsgRef = await msgRef.channel.send({ content: `<@${user_id}> Beatmap generation finished, finalizing beatmap...` });
 
@@ -105,6 +108,10 @@ module.exports = {
         beatmap_content = beatmap_content.replace(/^OverallDifficulty:.*$/m, `OverallDifficulty:${beatmap_info.od}`);
         beatmap_content = beatmap_content.replace(/^ApproachRate:.*$/m, `ApproachRate:${beatmap_info.ar}`);
         beatmap_content = beatmap_content.replace(/^HPDrainRate:.*$/m, `HPDrainRate:${beatmap_info.hp}`);
+        if (image_file) {
+            beatmap_content = beatmap_content.replace(/^\/\/Background and Video events.*$/m, `//Background and Video events
+0,0,"${image_filename}",0,0`);
+        }
 
         //console.log(beatmap_content)
 
@@ -114,7 +121,7 @@ module.exports = {
         });
 
         const beatmap_filename = 'diff1.osu';
-        const zip_filename = 'result.osz';
+        const zip_filename = beatmap_info.artist.replace(/[^a-zA-Z0-9]/g, '_') + ' - ' + beatmap_info.title.replace(/[^a-zA-Z0-9]/g, '_') + '.osz';
 
         // create a write stream into a buffer to be attached to the message
         const output = fs.createWriteStream(`./temp/${zip_filename}`);
@@ -130,6 +137,10 @@ module.exports = {
         zip.append(Buffer.from(beatmap_content), { name: beatmap_filename });
         // append the audio file to the zip
         zip.append(audio_file, { name: audio_filename });
+        // append the image file to the zip if it exists
+        if (image_file) {
+            zip.append(image_file, { name: image_filename });
+        }
         // finalize the zip file
         zip.finalize().then(async () => {
             console.log('Zip file created');
@@ -155,7 +166,9 @@ module.exports = {
         await interaction.deferReply();
 
         let audio_file_attachment = interaction.options.getAttachment('audio_file')
+        let image_file_attachment = interaction.options.getAttachment('background') || null
         let user_id = interaction.user.id
+        let image_file = null
 
         //download the image from attachment.proxyURL
         let audio_file = await loadImage(audio_file_attachment.proxyURL,
@@ -164,6 +177,15 @@ module.exports = {
             interaction.editReply({ content: "Failed to retrieve audio", ephemeral: true });
             return
         })
+
+        if (image_file_attachment) {
+            image_file = await loadImage(image_file_attachment.proxyURL,
+                /*getBuffer:*/ true, /*noDataURIHeader*/ false, /*safeMode*/ false).catch((err) => {
+                console.log(err)
+                interaction.editReply({ content: "Failed to retrieve image", ephemeral: true });
+                return
+            })
+        }
 
         const options = {
             include: ['TIT2', 'TPE1'],    // only read the specified tags (default: all)
@@ -186,6 +208,7 @@ module.exports = {
 
         const randomId = crypto.randomBytes(16).toString('hex');
         const audio_filename = `audio_${randomId}.${audio_file_attachment.name.split('.').pop()}`;
+        const image_filename = image_file_attachment ? `image_${randomId}.${image_file_attachment.name.split('.').pop()}` : null;
         console.log("Audio filename: " + audio_filename)
         
         const audio_path_res = await uploadAudio(server_address, audio_file, audio_filename).catch((err) => {
@@ -217,7 +240,12 @@ module.exports = {
             super_timing: super_timing,
         }).catch((err) => {
             console.log(err)
-            interaction.editReply({ content: "Failed to start inference", ephemeral: true });
+            if (err.response && err.response.status === 409) {
+                interaction.editReply({ content: "A beatmap generation is already in progress, please wait..." });
+            }
+            else {
+                interaction.editReply({ content: "Failed to start inference: " + err.message});
+            }
             return
         })
 
@@ -240,7 +268,7 @@ module.exports = {
                     od: od,
                     ar: ar,
                     hp: hp,
-                }, user_id).catch((err) => {
+                }, user_id, image_file, image_filename).catch((err) => {
                     console.log(err)
                     return
                 });
