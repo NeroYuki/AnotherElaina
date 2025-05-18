@@ -36,6 +36,7 @@ client.img2img_outpaint_config = new Map();
 client.latentmod_config = new Map();
 client.shipgirl_quiz_config = new Map();	
 client.shipgirl_quiz_multi = new Map();
+client.mapperatorinator_queue = []
 client.COOLDOWN_SECONDS = 30; // replace with desired cooldown time in seconds
 
 for (const file of commandFiles) {
@@ -141,6 +142,10 @@ client.on('interactionCreate', async interaction => {
 		'wd_txt2vid',
 	]
 
+	const mapperatorinator_backend_require = [
+		'osu_mapperinator',
+	]
+
 	const no_backend_require = [
 		'wd_controlnet', 
 		'wd_adetailer', 
@@ -159,14 +164,18 @@ client.on('interactionCreate', async interaction => {
 		if ([
 			...forge_backend_require,
 			...comfy_backend_require,
+			...mapperatorinator_backend_require,
 		].includes(interaction.commandName)) {
-			await free_up_llm_resource()
+			await free_up_llm_resource().catch(err => {
+				console.log("free up llm resource error: ", err)
+			});
 		}
 		
 		if ([
 			...forge_backend_require,
 			...comfy_backend_require,
-			...no_backend_require
+			...no_backend_require,
+			...mapperatorinator_backend_require,
 		].includes(interaction.commandName)) {
 
 			const isEstimatedNotEnoughResource = (forge_backend_require.includes(interaction.commandName) && ComfyClient.promptListener.length > 0) ||

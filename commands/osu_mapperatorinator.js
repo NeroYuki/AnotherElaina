@@ -73,95 +73,160 @@ module.exports = {
 
     ,
 
-    async sendFinishBeatmap(msgRef, audio_file, audio_filename, beatmap_path, beatmap_info, user_id, image_file = null, image_filename = null) {
+    sendFinishBeatmap(msgRef, audio_file, audio_filename, beatmap_path, beatmap_info, user_id, image_file = null, image_filename = null) {
         // get the beatmap file name from the beatmap_path
-        const resultMsgRef = await msgRef.channel.send({ content: `<@${user_id}> Beatmap generation finished, finalizing beatmap...` });
+        return new Promise(async (resolve, reject) => {
+            const resultMsgRef = await msgRef.channel.send({ content: `<@${user_id}> Beatmap generation finished, finalizing beatmap...` });
 
-        const beatmap_file = await getBeatmap(server_address, beatmap_path).catch((err) => {
+            const beatmap_file = await getBeatmap(server_address, beatmap_path).catch((err) => {
+                console.log(err)
+                resultMsgRef.edit({ content: "Failed to retrieve beatmap file", ephemeral: true });
+                return
+            })
+
+            if (!beatmap_file) {
+                reject("Failed to retrieve beatmap file")
+            }
+
+            // check if artist and title have non-latin characters
+            const artist_regex = /[^\x00-\x7F]/;
+            const title_regex = /[^\x00-\x7F]/;
+
+            if (artist_regex.test(beatmap_info.artist)) {
+                beatmap_info.artist = transliterate(beatmap_info.artist);
+            }
+            if (title_regex.test(beatmap_info.title)) {
+                beatmap_info.title = transliterate(beatmap_info.title);
+            }
+
+            // manually edit the beatmap content
+            let beatmap_content = beatmap_file
+            beatmap_content = beatmap_content.replace(/^Title:.*$/m, `Title:${beatmap_info.title}`);
+            beatmap_content = beatmap_content.replace(/^TitleUnicode:.*$/m, `TitleUnicode:${beatmap_info.title}`);
+            beatmap_content = beatmap_content.replace(/^Artist:.*$/m, `Artist:${beatmap_info.artist}`);
+            beatmap_content = beatmap_content.replace(/^ArtistUnicode:.*$/m, `ArtistUnicode:${beatmap_info.artist}`);
+            beatmap_content = beatmap_content.replace(/^Mode: None$/m, `Mode: 0`);
+            beatmap_content = beatmap_content.replace(/^OverallDifficulty:.*$/m, `OverallDifficulty:${beatmap_info.od}`);
+            beatmap_content = beatmap_content.replace(/^ApproachRate:.*$/m, `ApproachRate:${beatmap_info.ar}`);
+            beatmap_content = beatmap_content.replace(/^HPDrainRate:.*$/m, `HPDrainRate:${beatmap_info.hp}`);
+            if (image_file) {
+                beatmap_content = beatmap_content.replace(/^\/\/Background and Video events.*$/m, `//Background and Video events
+    0,0,"${image_filename}",0,0`);
+            }
+
+            //console.log(beatmap_content)
+
+            // create a zip file containing the beatmap and the audio file
+            const zip = archiver('zip', {
+                zlib: { level: 9 } // Sets the compression level.
+            });
+
+            const beatmap_filename = 'diff1.osu';
+            const zip_filename = beatmap_info.artist.replace(/[^a-zA-Z0-9]/g, '_') + ' - ' + beatmap_info.title.replace(/[^a-zA-Z0-9]/g, '_') + '.osz';
+
+            // create a write stream into a buffer to be attached to the message
+            const output = fs.createWriteStream(`./temp/${zip_filename}`);
+
+            zip.pipe(output);
+            zip.on('error', (err) => {
+                console.log(err);
+                resultMsgRef.edit({ content: "Failed to create zip file", ephemeral: true });
+                reject(err);
+                return
+            });
+
+            // append the beatmap file to the zip
+            zip.append(Buffer.from(beatmap_content), { name: beatmap_filename });
+            // append the audio file to the zip
+            zip.append(audio_file, { name: audio_filename });
+            // append the image file to the zip if it exists
+            if (image_file) {
+                zip.append(image_file, { name: image_filename });
+            }
+            // finalize the zip file
+            zip.finalize().then(async () => {
+                console.log('Zip file created');
+                // send the zip file to the channel
+                await resultMsgRef.edit({ content: `<@${user_id}> Beatmap finalization finished, sending beatmap...`, files: [`./temp/${zip_filename}`] });
+                // delete the zip file after sending
+                fs.unlink(`./temp/${zip_filename}`, (err) => {
+                    if (err) {
+                        console.log(err);
+                    }
+                    console.log('Zip file deleted');
+                });
+
+                resolve();
+            }).catch((err) => {
+                console.log(err);
+                resultMsgRef.edit({ content: "Failed to create zip file", ephemeral: true });
+                reject(err);
+                return
+            });
+        })
+    },
+
+    async execute_inference(interaction, params, client) {
+        console.log("Starting task, Current queue length: " + client.mapperatorinator_queue.length)
+        const request_res = await startInference(server_address, {
+            audio_path: './temp/' + params.audio_path_res.path.split('\\').pop(),
+            output_path: './output',
+            model: params.model,
+            difficulty: params.difficulty,
+            slider_multiplier: params.sv,
+            circle_size: params.cs,
+            seed: params.seed,
+            mapper_id: params.mapper_id,
+            cfg_scale: params.cfg_scale,
+            temperature: params.temperature,
+            top_p: params.top_p,
+            super_timing: params.super_timing,
+        }).catch((err) => {
             console.log(err)
-            resultMsgRef.edit({ content: "Failed to retrieve beatmap file", ephemeral: true });
+            if (err.response && err.response.status === 409) {
+                interaction.channel.send({ content: "A beatmap generation is already in progress, please wait..." });
+            }
+            else {
+                interaction.channel.send({ content: `<@${params.user_id}> Failed to start inference: ` + err.message});
+            }
             return
         })
 
-        if (!beatmap_file) {
+        if (!request_res) {
             return
         }
 
-        // check if artist and title have non-latin characters
-        const artist_regex = /[^\x00-\x7F]/;
-        const title_regex = /[^\x00-\x7F]/;
+        const process_msg = await interaction.channel.send({ content: "Beatmap generation started, please wait..." });
 
-        if (artist_regex.test(beatmap_info.artist)) {
-            beatmap_info.artist = transliterate(beatmap_info.artist);
-        }
-        if (title_regex.test(beatmap_info.title)) {
-            beatmap_info.title = transliterate(beatmap_info.title);
-        }
+        streamOutput(server_address, async (data) => {
+            //console.log(data)
+            process_msg.edit({ content: data ? `\`\`\`${data}\`\`\`` : "Beatmap is in progress, please wait..." });
 
-        // manually edit the beatmap content
-        let beatmap_content = beatmap_file
-        beatmap_content = beatmap_content.replace(/^Title:.*$/m, `Title:${beatmap_info.title}`);
-        beatmap_content = beatmap_content.replace(/^TitleUnicode:.*$/m, `TitleUnicode:${beatmap_info.title}`);
-        beatmap_content = beatmap_content.replace(/^Artist:.*$/m, `Artist:${beatmap_info.artist}`);
-        beatmap_content = beatmap_content.replace(/^ArtistUnicode:.*$/m, `ArtistUnicode:${beatmap_info.artist}`);
-        beatmap_content = beatmap_content.replace(/^Mode: None$/m, `Mode: 0`);
-        beatmap_content = beatmap_content.replace(/^OverallDifficulty:.*$/m, `OverallDifficulty:${beatmap_info.od}`);
-        beatmap_content = beatmap_content.replace(/^ApproachRate:.*$/m, `ApproachRate:${beatmap_info.ar}`);
-        beatmap_content = beatmap_content.replace(/^HPDrainRate:.*$/m, `HPDrainRate:${beatmap_info.hp}`);
-        if (image_file) {
-            beatmap_content = beatmap_content.replace(/^\/\/Background and Video events.*$/m, `//Background and Video events
-0,0,"${image_filename}",0,0`);
-        }
+            if (data.includes("Generated beatmap saved")) {
+                const beatmap_path = data.split("Generated beatmap saved to ").pop().split("\n")[0].trim();
+                await this.sendFinishBeatmap(process_msg, params.audio_file, params.audio_filename, beatmap_path, {
+                    artist: params.artist || params.tags['artist'] || 'Unknown Artist ' + Math.floor(Math.random() * 1000000),
+                    title: params.title || params.tags['title'] || 'Unknown Title ' + Math.floor(Math.random() * 1000000),
+                    od: params.od,
+                    ar: params.ar,
+                    hp: params.hp,
+                }, params.user_id, params.image_file, params.image_filename).catch((err) => {
+                    console.log(err)
+                    return
+                })
 
-        //console.log(beatmap_content)
-
-        // create a zip file containing the beatmap and the audio file
-        const zip = archiver('zip', {
-            zlib: { level: 9 } // Sets the compression level.
-        });
-
-        const beatmap_filename = 'diff1.osu';
-        const zip_filename = beatmap_info.artist.replace(/[^a-zA-Z0-9]/g, '_') + ' - ' + beatmap_info.title.replace(/[^a-zA-Z0-9]/g, '_') + '.osz';
-
-        // create a write stream into a buffer to be attached to the message
-        const output = fs.createWriteStream(`./temp/${zip_filename}`);
-
-        zip.pipe(output);
-        zip.on('error', (err) => {
-            console.log(err);
-            resultMsgRef.edit({ content: "Failed to create zip file", ephemeral: true });
-            return
-        });
-
-        // append the beatmap file to the zip
-        zip.append(Buffer.from(beatmap_content), { name: beatmap_filename });
-        // append the audio file to the zip
-        zip.append(audio_file, { name: audio_filename });
-        // append the image file to the zip if it exists
-        if (image_file) {
-            zip.append(image_file, { name: image_filename });
-        }
-        // finalize the zip file
-        zip.finalize().then(async () => {
-            console.log('Zip file created');
-            // send the zip file to the channel
-            await resultMsgRef.edit({ content: `<@${user_id}> Beatmap finalizing finished, sending beatmap...`, files: [`./temp/${zip_filename}`] });
-            // delete the zip file after sending
-            fs.unlink(`./temp/${zip_filename}`, (err) => {
-                if (err) {
-                    console.log(err);
+                // dequeue the current task
+                client.mapperatorinator_queue.shift();
+                // check if there is another task in the queue
+                console.log("Finished task, Current queue length: " + client.mapperatorinator_queue.length)
+                if (client.mapperatorinator_queue.length > 0) {
+                    this.execute_inference(client.mapperatorinator_queue[0].interaction, client.mapperatorinator_queue[0].params, client);
                 }
-                console.log('Zip file deleted');
-            });
-        }).catch((err) => {
-            console.log(err);
-            resultMsgRef.edit({ content: "Failed to create zip file", ephemeral: true });
-            return
-        });
-
+            }
+        })
     },
 
-	async execute(interaction) {
+	async execute(interaction, client) {
         //make a temporary reply to not get timeout'd
         await interaction.deferReply();
 
@@ -205,11 +270,13 @@ module.exports = {
         const temperature = interaction.options.getNumber('temperature') || 1.0;
         const top_p = interaction.options.getNumber('top_p') || 0.95;
         const super_timing = interaction.options.getBoolean('super_timing') !== undefined ? interaction.options.getBoolean('super_timing') : true;
+        const artist = interaction.options.getString('artist') || null;
+        const title = interaction.options.getString('title') || null;
 
         const randomId = crypto.randomBytes(16).toString('hex');
         const audio_filename = `audio_${randomId}.${audio_file_attachment.name.split('.').pop()}`;
         const image_filename = image_file_attachment ? `image_${randomId}.${image_file_attachment.name.split('.').pop()}` : null;
-        console.log("Audio filename: " + audio_filename)
+        //console.log("Audio filename: " + audio_filename)
         
         const audio_path_res = await uploadAudio(server_address, audio_file, audio_filename).catch((err) => {
             console.log(err)
@@ -222,57 +289,58 @@ module.exports = {
         }
 
         console.log("Audio uploaded: " + audio_path_res.path)
-        console.log(tags)
-        interaction.editReply({ content: "Audio uploaded: " + audio_path_res.path });
+        //console.log(tags)
+        //interaction.editReply({ content: "Audio uploaded: " + audio_path_res.path });
 
-        const request_res = await startInference(server_address, {
-            audio_path: './temp/' + audio_path_res.path.split('\\').pop(),
-            output_path: './output',
+        const params = {
+            audio_file: audio_file,
+            audio_filename: audio_filename,
+            audio_path_res: audio_path_res,
             model: model,
             difficulty: difficulty,
-            slider_multiplier: sv,
-            circle_size: cs,
+            sv: sv,
+            cs: cs,
+            od: od,
+            ar: ar,
+            hp: hp,
             seed: seed,
             mapper_id: mapper_id,
             cfg_scale: cfg_scale,
             temperature: temperature,
             top_p: top_p,
             super_timing: super_timing,
-        }).catch((err) => {
-            console.log(err)
-            if (err.response && err.response.status === 409) {
-                interaction.editReply({ content: "A beatmap generation is already in progress, please wait..." });
-            }
-            else {
-                interaction.editReply({ content: "Failed to start inference: " + err.message});
-            }
-            return
-        })
-
-        if (!request_res) {
-            return
+            artist: artist,
+            title: title,
+            tags: tags,
+            image_file: image_file,
+            image_filename: image_filename,
+            user_id: user_id,
         }
-        interaction.editReply({ content: "Beatmap generation request success." });
 
-        const process_msg = await interaction.channel.send({ content: "Beatmap generation started, please wait..." });
+        if (client.mapperatorinator_queue.length == 0) {
+            // if the queue is empty, add to queue and immediately start the inference
+            interaction.editReply({ content: "Beatmap generation request success. Beatmap will start generate immediately" });
 
-        streamOutput(server_address, (data) => {
-            //console.log(data)
-            process_msg.edit({ content: data ? `\`\`\`${data}\`\`\`` : "Beatmap is in progress, please wait..." });
-
-            if (data.includes("Generated beatmap saved")) {
-                const beatmap_path = data.split("Generated beatmap saved to ").pop().split("\n")[0].trim();
-                this.sendFinishBeatmap(process_msg, audio_file, audio_filename, beatmap_path, {
-                    artist: interaction.options.getString('artist') || tags['artist'] || 'Unknown Artist ' + Math.floor(Math.random() * 1000000),
-                    title: interaction.options.getString('title') || tags['title'] || 'Unknown Title ' + Math.floor(Math.random() * 1000000),
-                    od: od,
-                    ar: ar,
-                    hp: hp,
-                }, user_id, image_file, image_filename).catch((err) => {
-                    console.log(err)
+            client.mapperatorinator_queue.push({
+                interaction: interaction,
+                params: params,
+            })
+            this.execute_inference(interaction, params, client)
+        }
+        else {
+            // if the queue is not empty, check if interaction author user_id exists in the queue before add to queue and wait for the next turn
+            for (let i = 0; i < client.mapperatorinator_queue.length; i++) {
+                if (client.mapperatorinator_queue[i].params.user_id == user_id) {
+                    interaction.editReply({ content: "You already have a beatmap generation in progress, please wait..." });
                     return
-                });
+                }
             }
-        })
+            interaction.editReply({ content: "Beatmap generation request success. You are in queue position: " + (client.mapperatorinator_queue.length + 1) });
+
+            client.mapperatorinator_queue.push({
+                interaction: interaction,
+                params: params,
+            })
+        }
 	},
 };
