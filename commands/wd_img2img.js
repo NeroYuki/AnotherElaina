@@ -249,6 +249,18 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             cfg_scale = 6
             sampling_step = 30
         }
+        else if (cached_model[0] === 'illumiyumexl_vpred_v31.safetensors') {
+            sampler = 'Euler a'
+            scheduler = 'SGM Uniform'
+            cfg_scale = 5.5
+            sampling_step = 28
+        }
+        else if (cached_model[0] === 'wai_nsfw_illustrious_v120.safetensors') {
+            sampler = 'Euler a CFG++'
+            scheduler = 'SGM Uniform'
+            cfg_scale = 1.5
+            sampling_step = 28
+        }
         else if (model_selection_flux.find(x => x.value === cached_model[0])) {
             sampler = 'Euler'
             scheduler = 'SGM Uniform'
