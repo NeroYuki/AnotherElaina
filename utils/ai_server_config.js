@@ -979,9 +979,10 @@ const model_selection_flux = [
 
 const model_selection_curated = [
     { name: 'NoobAIXL v1.1', value: 'noobaixl_v1_1.safetensors'},
-    { name: 'AnimagineXL v3.1', value: 'animaginexl_v40.safetensors'},
-    { name: 'Juggernaut Lightning', value: 'juggernautxl_lightning.safetensors'},
-    { name: 'Dreamshaper XL Lightning', value: 'dreamshaperxl_lightning.safetensors'},
+    { name: 'WAI-NSFW-IllustriousXL v12', value: 'wai_nsfw_illustrious_v120.safetensors'},
+    { name: 'IllumiyumeXL V-pred v3.1' , value: 'illumiyumexl_vpred_v31.safetensors'},
+    { name: 'StableYogis Realism v4', value: 'stableyogi_realism_v40.safetensors'},
+    { name: 'Flux.dev Q6_K', value: 'flux1-dev-Q6_K.gguf' },
     { name: 'Pastel Mix v2.1', value: 'pastelmix.safetensors' },
 ]
 
