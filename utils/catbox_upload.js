@@ -31,8 +31,8 @@ function catboxUpload(image) {
 
 function catboxFileUpload(filename) {
     return new Promise(async (resolve, reject) => {
-        if (!filebuffer) {
-            reject('No image provided')
+        if (!filename) {
+            reject('No filename provided')
         }
 
         // update the file with said filename to catbox
