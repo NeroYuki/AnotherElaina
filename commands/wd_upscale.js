@@ -126,10 +126,6 @@ module.exports = {
             10,
             0.5,
             1,
-            null,
-            [
-                "Draw mask"
-            ]
         ]
 
         // make option_init but for axios

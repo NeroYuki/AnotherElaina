@@ -20,7 +20,7 @@ const server_pool = [
         fn_index_interrogate: 1224,
         fn_index_interrogate_deepbooru: 1225,
         // fn_index_use_script: 1138,
-        fn_index_upscale: 1343,
+        fn_index_upscale: 1341,
         fn_index_change_model: 8,
         fn_index_change_support_model: 9,
         fn_index_coupler_region_preview: [290, 887],
@@ -34,7 +34,7 @@ const server_pool = [
         // fn_index_execute_grounding_dino_preview: 877,            // -3
         // fn_index_execute_expand_mask: 881,                       // +1
         // fn_index_unload_segmentation_model: 897,                 // +17
-        fn_index_rembg: 1357,
+        fn_index_rembg: 1355,
         is_online: true,
         queue: [],
     },
