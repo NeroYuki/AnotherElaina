@@ -1,4 +1,4 @@
-const Catbox = require('catbox.moe');
+const Catbox = require('node-catbox');
 const fs = require('fs');
 require('dotenv').config()
 
@@ -15,7 +15,9 @@ function catboxUpload(image) {
         // save the image buffer to a temporary file and upload the file to catbox
         fs.writeFileSync(filename, image, {encoding: 'binary'})
     
-        await catboxClient.upload(filename)
+        await catboxClient.uploadFile({
+            path: filename,
+        })
             .then((res) => {
                 console.log(res)
                 fs.rmSync(filename, {force: true})
@@ -35,8 +37,10 @@ function catboxFileUpload(filename) {
             reject('No filename provided')
         }
 
-        // update the file with said filename to catbox
-        await catboxClient.upload(filename)
+        // upload the file with said filename to catbox
+        await catboxClient.uploadFile({
+            path: filename,
+        })
             .then((res) => {
                 console.log(res)
                 resolve(res)
