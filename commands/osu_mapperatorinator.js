@@ -132,7 +132,7 @@ BeatmapSetID:-1`);
 
             // only filter out invalid characters for the filename
             const beatmap_filename = beatmap_info.artist.replace(/[\\/\\\:\*\?\"\<\>\|]/g, '') + ' - ' + beatmap_info.title.replace(/[\//\\\:\*\?\"\<\>\|]/g, '') + '_' + Date.now() + '.osu';
-            const zip_filename = beatmap_info.artist.replace(/[\\/\\\:\*\?\"\<\>\|]/g, '') + ' - ' + beatmap_info.title.replace(/[\//\\\:\*\?\"\<\>\|]/g, '') + '_' + Date.now() + '.zip';
+            const zip_filename = beatmap_info.artist.replace(/[\\/\\\:\*\?\"\<\>\|]/g, '') + ' - ' + beatmap_info.title.replace(/[\//\\\:\*\?\"\<\>\|]/g, '') + '_' + Date.now() + '.osz';
 
             // create a write stream into a buffer to be attached to the message
             const output = fs.createWriteStream(`./temp/${zip_filename}`);
