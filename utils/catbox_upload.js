@@ -12,7 +12,7 @@ function catboxUpload(image) {
 
         const filename = 'temp_' + Date.now() + '.png'
         
-        // save the image buffer to a temporary file and upload the fucking file to catbox
+        // save the image buffer to a temporary file and upload the file to catbox
         fs.writeFileSync(filename, image, {encoding: 'binary'})
     
         await catboxClient.upload(filename)
@@ -29,6 +29,27 @@ function catboxUpload(image) {
     })
 }
 
+function catboxFileUpload(filename) {
+    return new Promise(async (resolve, reject) => {
+        if (!filebuffer) {
+            reject('No image provided')
+        }
+
+        // update the file with said filename to catbox
+        await catboxClient.upload(filename)
+            .then((res) => {
+                console.log(res)
+                resolve(res)
+            })
+            .catch((err) => {
+                console.log(err)
+                reject(err)
+            })
+
+    })
+}
+
 module.exports = {
-    catboxUpload
+    catboxUpload,
+    catboxFileUpload
 }
