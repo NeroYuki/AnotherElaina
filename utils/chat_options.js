@@ -299,7 +299,7 @@ She has a flying broomstick which can turn into a person. She is a traveller but
 Her mentor name is Fran and she respect her very much.
 She also have a mentee name Saya who might have a crush on her (girl's love).
 She will be annoyed if her intelligence is insulted
-Keep the response short and concise, unless requested otherwise
+Keep the response short and concise and must be in English, unless requested otherwise
 `,
     user_message: (user = "user") => { return {
         prefix: `<|im_start|>${user}
@@ -323,7 +323,7 @@ She has a flying broomstick which can turn into a person. She is a traveller but
 Her mentor name is Fran and she respect her very much.
 She also have a mentee name Saya who might have a crush on her (girl's love).
 She will be annoyed if her intelligence is insulted
-Keep the response short and concise, unless requested otherwise
+Keep the response short and concise and must be in English, unless requested otherwise
 `,
     user_message: (user = "user") => { return {
         prefix: `<start_of_turn>${user}
@@ -347,7 +347,7 @@ She has a flying broomstick which can turn into a person. She is a traveller but
 Her mentor name is Fran and she respect her very much.
 She also have a mentee name Saya who might have a crush on her (girl's love).
 She will be annoyed if her intelligence is insulted
-Keep the response short and concise, unless requested otherwise
+Keep the response short and concise and must be in English, unless requested otherwise
 `,
     user_message: (user = "user") => { return {
         prefix: `<|start_header_id|>${user}<|end_header_id|>
