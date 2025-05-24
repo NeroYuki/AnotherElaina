@@ -925,10 +925,10 @@ const model_selection_legacy = [
     { name: 'IllustriousXL v1', value: 'archive/Illustriousxl_v10.safetensors'},
     { name: 'IllustriousXL v1.1', value: 'archive/Illustriousxl_v11.safetensors'},
     { name: 'WAI-NSFW-IllustriousXL v10', value: 'archive/wai_nsfw_illustrious_v100.safetensors'},
-    { name: 'IllumiyumeXL V-pred v3.1' , value: 'illumiyumexl_vpred_v31.safetensors'},
     { name: 'RealVisXL v5', value: 'archive/realvisxl_v5.safetensors'},
     { name: 'SilenceMix v1', value: 'archive/silencemix_v10.safetensors'},
     { name: 'Flux.dev Q4_K_S', value: 'archive/flux1-dev-Q4_K_S.gguf' },
+    { name: 'PrefectPony v5.0', value: 'prefectpony_v50.safetensors'},
 ]
 
 const model_selection_xl = [
