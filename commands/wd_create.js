@@ -10,7 +10,7 @@ const { queryRecordLimit } = require('../database/database_interaction.js');
 const { full_prompt_analyze, preview_coupler_setting, fetch_user_defined_wildcard, get_teacache_config_from_prompt } = require('../utils/prompt_analyzer.js');
 const { load_profile } = require('../utils/profile_helper.js');
 const { load_adetailer } = require('../utils/adetailer_execute.js');
-const { clamp } = require('../utils/common_helper');
+const { clamp, calculateOptimalGrid, parseImageCount } = require('../utils/common_helper');
 const workflow_og = require('../resources/flux_lora.json')
 const ComfyClient = require('../utils/comfy_client');
 
@@ -63,6 +63,9 @@ module.exports = {
         .addStringOption(option =>
             option.setName('profile')
                 .setDescription('Specify the profile to use (default is No Profile)'))
+        .addStringOption(option =>
+            option.setName('bulk_size')
+                .setDescription('Generate multiple images at once (default is 1, max is 6 for user, forge backend only)'))
 
     ,
 
@@ -199,7 +202,10 @@ module.exports = {
         const latentmod_config = profile?.latentmod_config || (client.latentmod_config.has(interaction.user.id) ? client.latentmod_config.get(interaction.user.id) : null)
         const colorbalance_config = profile?.colorbalance_config ||
             (client.colorbalance_config.has(interaction.user.id) ? client.colorbalance_config.get(interaction.user.id) : null)
-        
+        const bulk_size_input = interaction.options.getString('bulk_size') || '1'
+
+        // calculate batch count and size
+        let { bulk_size, batch_count, batch_size } = parseImageCount(bulk_size_input, height, width, upscale_multiplier, byPassUser.includes(interaction.user.id) ? 16 : 6)
         // // parse the user setting config
         // const usersetting_config = client.usersetting_config.has(interaction.user.id) ? client.usersetting_config.get(interaction.user.id) : null
         let do_preview = false
@@ -328,6 +334,12 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             cfg_scale = 1.5
             sampling_step = 28
         }
+        else if (cached_model[0].includes('vpred')) {
+            sampler = 'Euler a'
+            scheduler = 'SGM Uniform'
+            cfg_scale = 4
+            sampling_step = 28
+        }
         else if (model_selection_flux.find(x => x.value === cached_model[0])) {
             sampler = 'Euler'
             scheduler = 'SGM Uniform'
@@ -439,7 +451,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         // calculate compute (change model)
         compute += checkpoint ? 2_000_000 : 0
 
-        const cooldown = compute / 1_700_000
+        const cooldown = compute * bulk_size / (bulk_size > 1 ? 1_850_000 : 1_700_000)
 
         const force_legacy_flux = prompt.includes('[FLUX_FORGE]')
         prompt = prompt.replace('[FLUX_FORGE]', '')
@@ -543,7 +555,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             upscale_denoise_strength, upscale_step, false, use_adetailer, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
             extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, override_neg_prompt ? false : true, extra_config.use_booru_gen, 
             booru_gen_config_obj, is_flux, colorbalance_config_obj, do_preview, extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config_obj,
-            extra_config.mahiro_config, extra_config.teacache_config)
+            extra_config.mahiro_config, extra_config.teacache_config, batch_count, batch_size)
 
         // make option_init but for axios
         const option_init_axios = {
@@ -685,58 +697,104 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                     if (isCancelled) return
                     if (final_res_obj.data) {
                         // if server index == 0, get local image directory, else initiate request to get image from server
-                        let img_buffer = null
                         let catbox_url = null
-                        const file_dir = final_res_obj.data[0][0]?.image.path
-                        console.log(final_res_obj.data)
-                        if (!file_dir) {
+                        // Extract all image paths from the response
+                        const imagePaths = final_res_obj.data[0].map(item => item?.image?.path).filter(Boolean);
+                        //console.dir(final_res_obj.data, {depth: null});
+
+                        if (imagePaths.length === 0) {
                             // error from python server side, we bail
-                            throw 'Request return no image'
+                            throw 'Request return no images';
                         }
-                        // all server is now remote
-                        // retry fetch before throwing
-                        let fetch_final_retry_count = 0
-                        let img_res = null
-                        while (fetch_final_retry_count < 3 && !img_res) {
-                            img_res = await fetch(`${WORKER_ENDPOINT}/file=${file_dir}`).catch(err => {
-                                console.log('Error while fetching image on remote server, retrying...')
-                            })
-                            fetch_final_retry_count++
-                            // wait for 2 seconds before retry
-                            await new Promise(resolve => setTimeout(resolve, 2000))
-                        }
-                        if (!img_res) {
-                            throw 'Error while fetching image on remote server'
+                        // if imagePath.length > 1, it mean the first image will be the grid, check if the gird w/h exceed 2000 pixel, if yes we will use jpg file of the same name
+                        if (imagePaths.length > 1) {
+                            // calculate most efficient grid size, consider initial width and height as well
+                            const gridInfo = calculateOptimalGrid(width, height, imagePaths.length - 1);
+                            console.log(`Creating grid with ${gridInfo.columns}x${gridInfo.rows} layout for ${imagePaths.length - 1} images`);
+                            
+                            // Check if the grid dimensions exceed 2000 pixels
+                            if (gridInfo.gridWidth > 2000 || gridInfo.gridHeight > 2000) {
+                                console.log(`Grid dimensions (${gridInfo.gridWidth}x${gridInfo.gridHeight}) exceed 2000 pixels, will use JPG format`);
+                                // Here you could add code to change the file extension to jpg if needed
+                                imagePaths[0] = imagePaths[0].replace(/\.png$/, '.jpg');
+                            }
                         }
 
-                        if (img_res && img_res.status === 200) {
-                            img_buffer = Buffer.from(await img_res.arrayBuffer())
+                        // Process metadata from response
+                        const metadataObj = JSON.parse(final_res_obj.data[1] || JSON.stringify({
+                            seed: -1,
+                            sd_model_hash: "-",
+                            sd_model_name: "-"
+                        }));
+                        const seed = metadataObj.seed.toString();
+                        const model_hash = metadataObj.sd_model_hash;
+                        const model_name = metadataObj.sd_model_name;
+                        console.log(final_res_obj.duration);
+
+                        // Fetch all images and prepare result
+                        const imageResults = [];
+
+                        for (let i = 0; i < imagePaths.length; i++) {
+                            // all server is now remote
+                            // retry fetch before throwing
+                            let fetch_final_retry_count = 0;
+                            let img_res = null;
+                            while (fetch_final_retry_count < 3 && !img_res) {
+                                img_res = await fetch(`${WORKER_ENDPOINT}/file=${imagePaths[i]}`).catch(err => {
+                                    console.log(`Error while fetching image ${i+1} on remote server, retrying...`);
+                                });
+                                fetch_final_retry_count++;
+                                // wait for 1 second before retry
+                                await new Promise(resolve => setTimeout(resolve, 1000));
+                            }
+                            
+                            if (!img_res) {
+                                console.log(`Warning: Could not fetch image ${i+1} at path ${imagePaths[i]}`);
+                                continue;
+                            }
+                            
+                            if (img_res.status === 200) {
+                                const img_buffer = Buffer.from(await img_res.arrayBuffer());
+                                imageResults.push({
+                                    buffer: img_buffer,
+                                    path: imagePaths[i]
+                                });
+                                
+                                if (i === 0) {
+                                    // wait for 2 seconds before updating the interaction reply to avoid race condition
+                                    await new Promise(resolve => setTimeout(resolve, 2000));
+
+                                    if (imageResults.length === 0) {
+                                        throw 'Failed to fetch any images from remote server';
+                                    }
+
+                                    // Update the interaction reply with the first image and info about total count
+                                    await updateInteractionReply({
+                                        img: imageResults[0].buffer || imageResults[0].path,
+                                        img_name: 'img_combined.png',
+                                        seed: seed,
+                                        model: model_hash,
+                                        model_name: model_name,
+                                        duration: final_res_obj.duration,
+                                        catbox_url: catbox_url,
+                                    }, 'completed').catch(err => {
+                                        console.log(err);
+                                    });
+                                }
+                                else {
+                                    // send additional images as file in the channel the interaction was created
+                                    await interaction.channel.send({
+                                        content: `Additional image ${i} of ${imagePaths.length - 1}`,
+                                        files: [{
+                                            attachment: img_buffer,
+                                            name: `img_${i}.png`
+                                        }]
+                                    });
+                                }
+                            }
                         }
 
-                        // attempt to get the image seed (-1 if failed to do so)
-                        const seed = JSON.parse(final_res_obj.data[1] || JSON.stringify({seed: -1})).seed.toString()
-                        const model_hash = JSON.parse(final_res_obj.data[1] || JSON.stringify({sd_model_hash: "-"})).sd_model_hash
-                        const model_name = JSON.parse(final_res_obj.data[1] || JSON.stringify({sd_model_name: "-"})).sd_model_name
-                        console.log(final_res_obj.duration)
-                        //console.log(img_buffer, seed)
-
-                        // wait for 2 seconds before updating the interaction reply to avoid race condition
-                        await new Promise(resolve => setTimeout(resolve, 2000))
-
-                        // update the interaction reply
-                        await updateInteractionReply({
-                            img: img_buffer ? img_buffer : file_dir,
-                            img_name: 'img.png',
-                            seed: seed,
-                            model: model_hash,
-                            model_name: model_name,
-                            duration: final_res_obj.duration,
-                            catbox_url: catbox_url
-                        }, 'completed').catch(err => {
-                            console.log(err)
-                        })
-
-                        isDone = true
+                        isDone = true;
                     }
                     else {
                         isCancelled = true

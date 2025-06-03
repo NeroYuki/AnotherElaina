@@ -225,7 +225,7 @@ module.exports = {
 
         let server_index = get_worker_server(-1)
 
-		    if (server_index === -1) {
+		if (server_index === -1) {
             await interaction.editReply({ content: "No server is available, please try again later"});
             return
         }

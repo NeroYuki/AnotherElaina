@@ -35,6 +35,7 @@ const server_pool = [
         // fn_index_execute_expand_mask: 881,                       // +1
         // fn_index_unload_segmentation_model: 897,                 // +17
         fn_index_rembg: 1355,
+        fn_fetch_wildcards: 1356,
         is_online: true,
         queue: [],
     },
@@ -566,7 +567,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
     coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, 
     freeu_config = null, dynamic_threshold_config = null, pag_config = null, use_foocus = false, use_booru_gen = false, booru_gen_config = null, 
     is_flux = false, colorbalance_config = null, do_preview = false, detail_daemon_config = null, tipo_input = null, latentmod_config = null,
-    mahiro_config = null, teacache_config = null) => {
+    mahiro_config = null, teacache_config = null, batch_count = 1, batch_size = 1) => {
 
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 1600000) ? true : false
@@ -577,8 +578,8 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             prompt,
             neg_prompt,
             [],
-            1,
-            1,
+            batch_count,
+            batch_size,
             is_flux ? 1 : cfg_scale,
             is_flux ? cfg_scale : 3.5,
             height,
