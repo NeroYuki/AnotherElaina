@@ -303,7 +303,7 @@ BeatmapSetID:-1`);
         const hp = interaction.options.getNumber('hp') || 5;
         const seed = interaction.options.getString('seed') || '';
         const mapper_id = interaction.options.getString('mapper_id') || '';
-        const cfg_scale = interaction.options.getNumber('cfg_scale') || 1.0;
+        let cfg_scale = interaction.options.getNumber('cfg_scale') || 1.0;
         const temperature = interaction.options.getNumber('temperature') || 1.0;
         const top_p = interaction.options.getNumber('top_p') || 0.95;
         const super_timing = interaction.options.getBoolean('super_timing') !== undefined ? interaction.options.getBoolean('super_timing') : true;
@@ -314,6 +314,14 @@ BeatmapSetID:-1`);
         const audio_filename = `audio_${randomId}.${audio_file_attachment.name.split('.').pop()}`;
         const image_filename = image_file_attachment ? `image_${randomId}.${image_file_attachment.name.split('.').pop()}` : null;
         //console.log("Audio filename: " + audio_filename)
+
+        if (mapper_id) {
+            // if cfg_scale is 1.0, set it to 2
+            if (cfg_scale == 1.0) {
+                cfg_scale = 2.0;
+                interaction.channel.send({ content: "Mapper ID is set, setting CFG scale to 2.0 for better results" });
+            }
+        }
         
         const audio_path_res = await uploadAudio(server_address, audio_file, audio_filename).catch((err) => {
             console.log(err)
