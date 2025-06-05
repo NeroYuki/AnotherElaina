@@ -152,11 +152,14 @@ function parseImageCount(imgCountInput, height, width, upscale_multiplier = 1, m
     // Cap total image count at MAX_IMAGES
     if (img_count > MAX_IMAGES) {
         img_count = MAX_IMAGES;
-        // attempt to adhere to custom batching by reducing batch count first
+        // attempt to adhere to custom batching by reducing batch count first until batch_count x batch_size <= MAX_IMAGES, if batch_count == 1, then reduce batch_size
         if (useCustomBatching && batch_count > 1) {
-            batch_count = Math.floor(img_count / batch_size);
-        } else {
-            batch_count = 1; // Reset to single batch if exceeding max
+            while (batch_count * batch_size > MAX_IMAGES && batch_count > 1) {
+                batch_count--;
+            }
+            if (batch_count * batch_size > MAX_IMAGES) {
+                batch_size = Math.floor(MAX_IMAGES / batch_count);
+            }
         }
     }
     
