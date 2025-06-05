@@ -152,7 +152,12 @@ function parseImageCount(imgCountInput, height, width, upscale_multiplier = 1, m
     // Cap total image count at MAX_IMAGES
     if (img_count > MAX_IMAGES) {
         img_count = MAX_IMAGES;
-        useCustomBatching = false; // Reset custom batching if we exceed max images
+        // attempt to adhere to custom batching by reducing batch count first
+        if (useCustomBatching && batch_count > 1) {
+            batch_count = Math.floor(img_count / batch_size);
+        } else {
+            batch_count = 1; // Reset to single batch if exceeding max
+        }
     }
     
     // If custom batching was specified and we're under the cap, use it
