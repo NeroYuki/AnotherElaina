@@ -15,17 +15,18 @@ async function startInference(url, params) {
     formData.append('model', params.model || 'v30');
     formData.append('audio_path', params.audio_path || '');
     formData.append('output_path', params.output_path || '');
-    // formData.append('beatmap_path', params.beatmap_path || '');
+    formData.append('beatmap_path', params.beatmap_path || '');
 
     // Add basic settings
-    //formData.append('gamemode', params.gamemode || '');
-    formData.append('difficulty', params.difficulty || '');
-    //formData.append('year', params.year || '');
+    formData.append('gamemode', parseInt(params.gamemode) || 0);
+    formData.append('difficulty', params.difficulty || 5);
+    formData.append('year', params.year || 2023);
 
     // Add numeric settings
     const numericParams = [
-        'slider_multiplier', 'circle_size', 'keycount', 'hold_note_ratio',
-        'scroll_speed_ratio', 'cfg_scale', 'temperature', 'top_p', 'seed'
+        'hp_drain_rate', 'circle_size', 'overall_difficulty', 'approach_rate', 'slider_multiplier',
+        'slider_tick_rate', 'keycount', 'hold_note_ratio', 'scroll_speed_ratio',
+        'cfg_scale', 'temperature', 'top_p', 'seed'
     ];
     numericParams.forEach(param => {
         if (params[param] !== undefined) {
@@ -41,24 +42,24 @@ async function startInference(url, params) {
     // formData.append('end_time', params.end_time || '');
 
     // Add checkboxes
-    //if (params.hitsounded) formData.append('hitsounded', 'true');
+    if (params.hitsounded) formData.append('hitsounded', 'true');
     //if (params.add_to_beatmap) formData.append('add_to_beatmap', 'true');
     if (params.super_timing) formData.append('super_timing', 'true');
 
     // Add descriptors
-    // if (Array.isArray(params.descriptors)) {
-    //     params.descriptors.forEach(descriptor => formData.append('descriptors', descriptor));
-    // }
+    if (Array.isArray(params.descriptors) && params.descriptors.length > 0) {
+        params.descriptors.forEach(descriptor => formData.append('descriptors', descriptor));
+    }
 
     // Add negative descriptors
-    // if (Array.isArray(params.negative_descriptors)) {
-    //     params.negative_descriptors.forEach(negative => formData.append('negative_descriptors', negative));
-    // }
+    if (Array.isArray(params.negative_descriptors) && params.negative_descriptors.length > 0) {
+        params.negative_descriptors.forEach(negative => formData.append('negative_descriptors', negative));
+    }
 
     // Add in-context options
-    // if (Array.isArray(params.in_context_options) && params.beatmap_path) {
-    //     params.in_context_options.forEach(option => formData.append('in_context_options', option));
-    // }
+    if (Array.isArray(params.in_context_options) && params.beatmap_path && params.in_context_options.length > 0) {
+        params.in_context_options.forEach(option => formData.append('in_context_options', option));
+    }
 
     try {
         const response = await axios.post(endpoint, formData, {
@@ -115,6 +116,20 @@ async function uploadAudio(url, audioBuffer, filename) {
     }
 }
 
+async function uploadBeatmap(url, beatmapData, filename) {
+    const endpoint = `${url}/upload_beatmap`;
+    const formData = new FormData();
+    formData.append('beatmap_file', beatmapData, { filename: filename });
+
+    try {
+        const response = await axios.post(endpoint, formData);
+        return response.data;
+    } catch (error) {
+        console.log('Error uploading beatmap:', error.message);
+        throw error;
+    }
+}
+
 // sending a POST request to the `localhost:7050/upload_osu_file_content` endpoint, input audio is a buffer, param is formdata with beatmap_path being the only field
 async function getBeatmap(url, beatmapPath) {
     const endpoint = `${url}/upload_osu_file_content`;
@@ -135,5 +150,6 @@ module.exports = {
     startInference,
     streamOutput,
     uploadAudio,
+    uploadBeatmap,
     getBeatmap,
 };
