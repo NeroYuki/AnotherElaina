@@ -8,34 +8,34 @@ const server_pool = [
     {
         index: 0,
         url: 'http://192.168.196.142:7860',
-        fn_index_create: 553,
+        fn_index_create: 555,
         fn_index_abort: 62,
-        fn_index_img2img: 1220,
-        fn_index_controlnet: [394, 993],        //[txt2img, img2img, 792]  
-        fn_index_controlnet_annotation: [1125, 1149],   // 1121 - 1059 = 62
+        fn_index_img2img: 1224,
+        fn_index_controlnet: [396, 997],        //[txt2img, img2img, 792]  
+        fn_index_controlnet_annotation: [1129, 1153],   // 1121 - 1059 = 62
         // fn_index_controlnet_2: [440, 976], 
         // fn_index_controlnet_annotation_2: [1129, 1091],
         // fn_index_controlnet_3: [487, 1025],
         // fn_index_controlnet_annotation_3: [1137, 1099],
-        fn_index_interrogate: 1224,
-        fn_index_interrogate_deepbooru: 1225,
+        fn_index_interrogate: 1228,
+        fn_index_interrogate_deepbooru: 1229,
         // fn_index_use_script: 1138,
-        fn_index_upscale: 1341,
+        fn_index_upscale: 1345,
         fn_index_change_model: 8,
         fn_index_change_support_model: 9,
-        fn_index_coupler_region_preview: [290, 887],
-        fn_index_change_adetailer_model1: [88, 685],
+        fn_index_coupler_region_preview: [290, 889],
+        fn_index_change_adetailer_model1: [88, 687],
         // fn_index_change_adetailer_prompt1: [99, 644],       //+3
         // fn_index_change_adetailer_neg_prompt1: [100, 645],  //+4
         // fn_index_change_adetailer_model2: [146, 691],       //+51
         // fn_index_change_adetailer_prompt2: [148, 693],      //+54
         // fn_index_change_adetailer_neg_prompt2: [149, 694],  //+55
-        fn_index_execute_segment_anything: 932,
+        fn_index_execute_segment_anything: 936,
         // fn_index_execute_grounding_dino_preview: 877,            // -3
         // fn_index_execute_expand_mask: 881,                       // +1
         // fn_index_unload_segmentation_model: 897,                 // +17
-        fn_index_rembg: 1355,
-        fn_fetch_wildcards: 1356,
+        fn_index_rembg: 1359,
+        fn_fetch_wildcards: 1360,
         is_online: true,
         queue: [],
     },
@@ -209,6 +209,8 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
     const shouldUseTiledVAE = ((width * height) > 3000000 && upscaler == "None") ? true : false
     const inpaint_img = convert_upload_path_to_file_data(inpaint_img_upload_path, server_pool[0].url)
     const inpaint_mask = convert_upload_path_to_file_data(inpaint_mask_upload_path, server_pool[0].url)
+    // check if prompt contain "(<word>:-<decimal number>)" format
+    const shouldUseNegPip = (prompt && prompt.match(/\([\w\s]+:-?\d+(\.\d+)?\)/g)) ? true : false
 
     if (true) {
         return [
@@ -336,6 +338,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             detail_daemon_config?.end_offset || 0,
             detail_daemon_config?.fade || 0,
             true,           // DD smooth schedule
+            shouldUseNegPip,
             false,
             false,
             "0",
@@ -571,6 +574,8 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
 
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 1600000) ? true : false
+    // check if prompt contain "(<word>:-<decimal number>)" format
+    const shouldUseNegPip = (prompt && prompt.match(/\([\w\s]+:-?\d+(\.\d+)?\)/g)) ? true : false
 
     if (true) {
         return [
@@ -674,6 +679,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             detail_daemon_config?.end_offset || 0,
             detail_daemon_config?.fade || 0,
             true,           // DD smooth schedule
+            shouldUseNegPip,       // use NegPip
             false,      // segment anything?
             false,
             "0",
@@ -1002,7 +1008,7 @@ const controlnet_preprocessor_selection = [
     { name: 'OpenPose (Full)', value: 'dw_openpose_full' },
     { name: 'Segmentation', value: 'seg_ufade20k' },
     { name: 'Tile Resample', value: 'tile_resample' },
-    { name: 'IPAdapter', value: 'CLIP-ViT-bigG (IPAdapter)' },
+    { name: 'CLIP H (IPAdapter)', value: 'CLIP-ViT-H (IPAdapter)' },
     { name: 'CLIP Vision', value: 't2ia_style_clipvision' },
     { name: 'Color', value: 't2ia_color_grid' },
     { name: 'Sketch', value: 't2ia_sketch_pidi' },
@@ -1010,7 +1016,7 @@ const controlnet_preprocessor_selection = [
     { name: 'Shuffle', value: 'shuffle' },
     { name: 'Blur (Gaussian)', value: 'blur_gaussian' },
     { name: 'Fill', value: 'fill'},
-    { name: 'CLIP Vision (IPAdapter)', value:'CLIP-ViT-bigG (IPAdapter)'}
+    { name: 'CLIP G (IPAdapter)', value:'CLIP-ViT-bigG (IPAdapter)'}
 ]
 
 const controlnet_model_selection = [
@@ -1063,7 +1069,8 @@ const controlnet_model_selection_xl = [
     { name: 'controlnet_softedge', value: 'bdsqlsz_controlllite_xl_softedge [c28ff1c4]'},
     { name: 'controlnet_lineart_anime', value: 't2i-adapter_diffusers_xl_lineart [bae0efef]'},
     { name: 'controlnet_tile', value: 'controlnetxlCNXL_xinsirTile [4d6257d3]'},
-    { name: 'ipadapter', value: 'ip-adapter_xl [4209e9f7]'},
+    //{ name: 'ipadapter', value: 'ip-adapter_xl [4209e9f7]'},
+    { name: 'ipadapter', value: 'noobIPAMARK1_mark1 [13579d81]'},
     { name: 'instantid_keypoint', value: 'control_instant_id_sdxl [c5c25a50]'},
     { name: 'instantid_ipadapter', value: 'ip-adapter_instant_id_sdxl [eb2d3ec0]'},
     { name: 'controlnet_union', value: 'controlnetxlCNXL_xinsirUnion_promax [9460e4db]'},
