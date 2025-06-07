@@ -707,7 +707,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                             throw 'Request return no images';
                         }
                         // if imagePath.length > 1, it mean the first image will be the grid, check if the gird w/h exceed 2000 pixel, if yes we will use jpg file of the same name
-                        if (imagePaths.length > 1) {
+                        if (imagePaths.length > 1 && bulk_size > 1) {
                             // calculate most efficient grid size, consider initial width and height as well
                             const gridInfo = calculateOptimalGrid(width, height, imagePaths.length - 1);
                             console.log(`Creating grid with ${gridInfo.columns}x${gridInfo.rows} layout for ${imagePaths.length - 1} images`);
@@ -781,7 +781,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                                         console.log(err);
                                     });
                                 }
-                                else {
+                                else if (bulk_size > 1) {
                                     // send additional images as file in the channel the interaction was created
                                     await interaction.channel.send({
                                         content: `Additional image ${i} of ${imagePaths.length - 1}`,
