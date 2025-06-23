@@ -1,0 +1,209 @@
+{
+  "1": {
+    "inputs": {
+      "ckpt_name": "sd\\noobaixl_mdnt_vpred_v1.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Load Checkpoint"
+    }
+  },
+  "4": {
+    "inputs": {
+      "samples": [
+        "20",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "7": {
+    "inputs": {
+      "attentions": "ceres fauna,apple,abstract background,uma raclette",
+      "caption": true,
+      "alpha": 0.5000000000000001,
+      "clip": [
+        "1",
+        1
+      ],
+      "tokens": [
+        "28",
+        1
+      ],
+      "heatmaps": [
+        "20",
+        1
+      ],
+      "images": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "DAAMAnalyzer",
+    "_meta": {
+      "title": "DAAM Analyzer Positive"
+    }
+  },
+  "8": {
+    "inputs": {
+      "images": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "Preview Image"
+    }
+  },
+  "9": {
+    "inputs": {
+      "images": [
+        "22",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "Heatmap Negative"
+    }
+  },
+  "10": {
+    "inputs": {
+      "width": 1024,
+      "height": 1280,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "Empty Latent Image"
+    }
+  },
+  "11": {
+    "inputs": {
+      "text": "nsfw, worst quality, bad quality",
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncodeWithTokens",
+    "_meta": {
+      "title": "Negative Prompt"
+    }
+  },
+  "20": {
+    "inputs": {
+      "seed": 256303333898742,
+      "steps": 25,
+      "cfg": 4,
+      "sampler_name": "euler_ancestral",
+      "scheduler": "sgm_uniform",
+      "denoise": 1,
+      "model": [
+        "25",
+        0
+      ],
+      "positive": [
+        "28",
+        0
+      ],
+      "negative": [
+        "11",
+        0
+      ],
+      "latent_image": [
+        "10",
+        0
+      ]
+    },
+    "class_type": "KSamplerDAAM",
+    "_meta": {
+      "title": "KSampler for DAAM"
+    }
+  },
+  "22": {
+    "inputs": {
+      "attentions": "nsfw",
+      "caption": true,
+      "alpha": 0.5,
+      "clip": [
+        "1",
+        1
+      ],
+      "tokens": [
+        "11",
+        1
+      ],
+      "heatmaps": [
+        "20",
+        2
+      ],
+      "images": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "DAAMAnalyzer",
+    "_meta": {
+      "title": "DAAM Analyzer Negative"
+    }
+  },
+  "23": {
+    "inputs": {
+      "images": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "Heatmap Positive"
+    }
+  },
+  "25": {
+    "inputs": {
+      "wildcard_text": "1girl, ceres fauna, hololive, apple, holding, abstract background, artist: uma raclette, best quality, masterpiece <lora:na_uma_raclette_r64:1.0>",
+      "populated_text": "1girl, ceres fauna, hololive, apple, holding, abstract background, artist: uma raclette, best quality, masterpiece <lora:na_uma_raclette_r64:1.0>",
+      "mode": "populate",
+      "Select to add LoRA": "Select the LoRA to add to the text",
+      "Select to add Wildcard": "Select the Wildcard to add to the text",
+      "seed": 486066246482631,
+      "model": [
+        "1",
+        0
+      ],
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "ImpactWildcardEncode",
+    "_meta": {
+      "title": "ImpactWildcardEncode"
+    }
+  },
+  "28": {
+    "inputs": {
+      "text": [
+        "25",
+        3
+      ],
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncodeWithTokens",
+    "_meta": {
+      "title": "Positive Prompt"
+    }
+  }
+}
