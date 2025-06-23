@@ -448,17 +448,27 @@ BeatmapSetID:-1`);
                 }, params.user_id, params.image_file, params.image_filename).catch((err) => {
                     console.log(err)
                     return
+                }).finally(() => {
+                    // dequeue the current task
+                    client.mapperatorinator_queue.shift();
+                    // check if there is another task in the queue
+                    console.log("Finished task, Current queue length: " + client.mapperatorinator_queue.length)
+                    if (client.mapperatorinator_queue.length > 0) {
+                        this.execute_inference(client.mapperatorinator_queue[0].interaction, client.mapperatorinator_queue[0].params, client);
+                    }
                 })
-
-                // dequeue the current task
-                client.mapperatorinator_queue.shift();
-                // check if there is another task in the queue
-                console.log("Finished task, Current queue length: " + client.mapperatorinator_queue.length)
-                if (client.mapperatorinator_queue.length > 0) {
-                    this.execute_inference(client.mapperatorinator_queue[0].interaction, client.mapperatorinator_queue[0].params, client);
-                }
             }
-        })
+        }).catch((err) => {
+            console.log(err)
+            process_msg.edit({ content: `<@${params.user_id}> Connection to server dropped, terminating generation, please try again: ` + err.message });
+            // dequeue the current task
+            client.mapperatorinator_queue.shift();
+            // check if there is another task in the queue
+            console.log("Finished task, Current queue length: " + client.mapperatorinator_queue.length)
+            if (client.mapperatorinator_queue.length > 0) {
+                this.execute_inference(client.mapperatorinator_queue[0].interaction, client.mapperatorinator_queue[0].params, client);
+            }
+        });
     },
 
     getDescriptor(interaction) {
