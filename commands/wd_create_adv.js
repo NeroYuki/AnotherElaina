@@ -834,7 +834,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                             console.log(`Creating grid with ${gridInfo.columns}x${gridInfo.rows} layout for ${imagePaths.length - 1} images`);
                             
                             // Check if the grid dimensions exceed 2000 pixels
-                            if (gridInfo.gridWidth > 2000 || gridInfo.gridHeight > 2000) {
+                            if (gridInfo.gridWidth > 3000 || gridInfo.gridHeight > 3000) {
                                 console.log(`Grid dimensions (${gridInfo.gridWidth}x${gridInfo.gridHeight}) exceed 2000 pixels, will use JPG format`);
                                 // Here you could add code to change the file extension to jpg if needed
                                 imagePaths[0] = imagePaths[0].replace(/\.png$/, '.jpg');
