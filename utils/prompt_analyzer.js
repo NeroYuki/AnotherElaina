@@ -456,6 +456,49 @@ function get_teacache_config_from_prompt(prompt, dry_check = false) {
     }
 }
 
+function get_debug_prompt_analyze(prompt, neg_prompt) {
+    // given a prompt, if prompt start with [DEBUG], construct a debug prompt following this rule:
+    // - if any section of the prompt is wrapped by # (e.g. #shirt#), filter out special characters and add it to the debug prompt element array and remove the wrapping # from the prompt
+    // - contruct the full debug prompt by joining the array separated by comma (make sure element does not have comma in it)
+    // similar work for neg_prompt
+    const debug_pattern = /^\[DEBUG\]/i
+    const debug_prompt = []
+    const debug_neg_prompt = []
+    const debug_match = prompt.match(debug_pattern)
+    const debug_neg_match = neg_prompt.match(debug_pattern)
+    const debug_element_pattern = /#([^#]+)#/g
+    if (debug_match) {
+        let match;
+        while ((match = debug_element_pattern.exec(prompt)) !== null) {
+            // match[1] is the element without the wrapping #
+            const element = match[1].replace(/[^a-zA-Z0-9_ ]/g, '').trim()
+            if (element) {
+                debug_prompt.push(element)
+            }
+        }
+        prompt = prompt.replace(/#/g, '').trim()
+    }
+    prompt = prompt.replace(debug_pattern, '').trim()
+    if (debug_neg_match) {
+        let match;
+        while ((match = debug_element_pattern.exec(neg_prompt)) !== null) {
+            // match[1] is the element without the wrapping #
+            const element = match[1].replace(/[^a-zA-Z0-9_ ]/g, '').trim()
+            if (element) {
+                debug_neg_prompt.push(element)
+            }
+        }
+        neg_prompt = neg_prompt.replace(/#/g, '').trim()
+    }
+    neg_prompt = neg_prompt.replace(debug_pattern, '').trim()
+    return {
+        debug_prompt: debug_prompt.length > 0 ? debug_prompt.join(',') : '',
+        debug_neg_prompt: debug_neg_prompt.length > 0 ? debug_neg_prompt.join(',') : '',
+        prompt: prompt,
+        neg_prompt: neg_prompt
+    }
+}
+
 function full_prompt_analyze(prompt, is_xl) {
     let coupler_config = get_coupler_config_from_prompt(prompt)
     let color_grading_config = get_color_grading_config_from_prompt(coupler_config.prompt, is_xl)
@@ -494,4 +537,5 @@ module.exports = {
     preview_coupler_setting,
     fetch_user_defined_wildcard,
     get_teacache_config_from_prompt,
+    get_debug_prompt_analyze,
 }
