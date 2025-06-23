@@ -4,7 +4,7 @@ const { on } = require('events');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const { default: axios } = require('axios');
 
-const SERVER_ENDPOINT = '192.168.196.142:8188'
+const SERVER_ENDPOINT = process.env.BOT_ENV === 'lan' ? '192.168.1.7:8188' : '192.168.196.142:8188'
 
 // singleton comfy client
 const comfyClient = {

@@ -12,7 +12,7 @@ const { MessageEmbed } = require('discord.js');
 const { all } = require('axios');
 const { clamp } = require('../utils/common_helper');
 
-const server_address = 'http://192.168.196.142:7050'
+const server_address = process.env.BOT_ENV === 'lan' ? 'http://192.168.1.7:7050' : 'http://192.168.196.142:7050'
 
 const all_descriptors = {
     "General": [

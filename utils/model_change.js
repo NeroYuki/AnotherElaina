@@ -19,6 +19,8 @@ const flux_support_models = [
     "t5-v1_1-xxl-encoder-Q8_0.gguf"
 ]
 
+const server_address = server_pool[0].server_address;
+
 async function support_model_change(models, session_hash) {
     return new Promise(async (resolve, reject) => {
         const option_init_axios = {
@@ -34,7 +36,7 @@ async function support_model_change(models, session_hash) {
             }
         }  
 
-        await axios.post(`http://192.168.196.142:7860/run/predict/`, option_init_axios.data, option_init_axios.config)
+        await axios.post(`${server_address}/run/predict/`, option_init_axios.data, option_init_axios.config)
             .then(async (res) => {
                 if(res.data) {
                     console.log('Support model change success', models)
@@ -71,9 +73,9 @@ function model_change(modelname, forced = false) {
                 config: {
                     timeout: 900000
                 }
-            }  
-    
-            await axios.post(`http://192.168.196.142:7860/run/predict/`, option_init_axios.data, option_init_axios.config)
+            }
+
+            await axios.post(`${server_address}/run/predict/`, option_init_axios.data, option_init_axios.config)
                 .then(async (res) => {
                     if(res.data) {
                         // if model name is in the cache, remove it and unshift the new model name

@@ -1,6 +1,8 @@
 const { queryRecordLimit } = require("../database/database_interaction")
 const { server_pool } = require("./ai_server_config")
 
+const default_server_address = server_pool[0].server_address
+
 function get_coupler_config_from_prompt(prompt) {
     // check if if prompt contain <=> or ||
     // if found, return the value {direction: <Horizontal if <=>, Vertical if ||>, global: <"First Line" if first subject start with [GLOBAL], "Last Line" if last subject start with [GLOBAL], "None" otherwise>}
@@ -131,7 +133,7 @@ async function fetch_user_defined_wildcard(prompt, user_id) {
     })
 }
 
-async function preview_coupler_setting(interaction, width, height, extra_config, index_preview_coupler, session_hash, endpoint = 'http://192.168.196.142:7860') {
+async function preview_coupler_setting(interaction, width, height, extra_config, index_preview_coupler, session_hash, endpoint = default_server_address) {
     // ask for preview image
     const coupler_preview_data = ["Advanced", `${width}x${height}`, extra_config.coupler_config.adv_regions]
     const option_coupler_preview = {

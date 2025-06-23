@@ -4,7 +4,9 @@
 	"description": "",
 	"main": "Bot.js",
 	"scripts": {
-		"do-start": "pm2 start Bot.js"
+		"do-start": "pm2 start Bot.js",
+		"start-lan": "set BOT_ENV=lan && node Bot.js",
+		"start-vpn": "set BOT_ENV=vpn && node Bot.js"
 	},
 	"keywords": [],
 	"author": "",

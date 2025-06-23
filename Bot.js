@@ -39,6 +39,8 @@ client.shipgirl_quiz_multi = new Map();
 client.mapperatorinator_queue = []
 client.COOLDOWN_SECONDS = 30; // replace with desired cooldown time in seconds
 
+console.log('current env', process.env.BOT_ENV)
+
 for (const file of commandFiles) {
 	const filePath = path.join(commandsPath, file);
 	const command = require(filePath);

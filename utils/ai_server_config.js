@@ -7,7 +7,7 @@ const { convert_upload_path_to_file_data } = require('./common_helper');
 const server_pool = [
     {
         index: 0,
-        url: 'http://192.168.196.142:7860',
+        url: process.env.BOT_ENV === 'lan' ? 'http://192.168.1.7:7860' : 'http://192.168.196.142:7860',
         fn_index_create: 566,
         fn_index_abort: 62,
         fn_index_img2img: 1246,
