@@ -8,34 +8,34 @@ const server_pool = [
     {
         index: 0,
         url: 'http://192.168.196.142:7860',
-        fn_index_create: 555,
+        fn_index_create: 566,
         fn_index_abort: 62,
-        fn_index_img2img: 1224,
-        fn_index_controlnet: [396, 997],        //[txt2img, img2img, 792]  
-        fn_index_controlnet_annotation: [1129, 1153],   // 1121 - 1059 = 62
+        fn_index_img2img: 1246,
+        fn_index_controlnet: [407, 1019],        //[txt2img, img2img, 792]  
+        fn_index_controlnet_annotation: [1151, 1175],   // 1121 - 1059 = 62
         // fn_index_controlnet_2: [440, 976], 
         // fn_index_controlnet_annotation_2: [1129, 1091],
         // fn_index_controlnet_3: [487, 1025],
         // fn_index_controlnet_annotation_3: [1137, 1099],
-        fn_index_interrogate: 1228,
-        fn_index_interrogate_deepbooru: 1229,
+        fn_index_interrogate: 1250,
+        fn_index_interrogate_deepbooru: 1251,
         // fn_index_use_script: 1138,
-        fn_index_upscale: 1345,
+        fn_index_upscale: 1367,
         fn_index_change_model: 8,
         fn_index_change_support_model: 9,
-        fn_index_coupler_region_preview: [290, 889],
-        fn_index_change_adetailer_model1: [88, 687],
+        fn_index_coupler_region_preview: [290, 900],
+        fn_index_change_adetailer_model1: [88, 698],
         // fn_index_change_adetailer_prompt1: [99, 644],       //+3
         // fn_index_change_adetailer_neg_prompt1: [100, 645],  //+4
         // fn_index_change_adetailer_model2: [146, 691],       //+51
         // fn_index_change_adetailer_prompt2: [148, 693],      //+54
         // fn_index_change_adetailer_neg_prompt2: [149, 694],  //+55
-        fn_index_execute_segment_anything: 936,
+        fn_index_execute_segment_anything: 958,
         // fn_index_execute_grounding_dino_preview: 877,            // -3
         // fn_index_execute_expand_mask: 881,                       // +1
         // fn_index_unload_segmentation_model: 897,                 // +17
-        fn_index_rembg: 1359,
-        fn_fetch_wildcards: 1360,
+        fn_index_rembg: 1381,
+        fn_fetch_wildcards: 1382,
         is_online: true,
         queue: [],
     },
@@ -327,6 +327,17 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
                     1
                 ]
             ],
+            0.35,           // extra samplers setting, adaptive progressive
+            0.75,
+            0.4,
+            1.5,            // langevin euler
+            0.1,            // extended reverse sde
+            3,
+            false,          // gradient estimation
+            false,
+            2,
+            0,
+            false,
             detail_daemon_config ? true : false,           // enable detail daemon
             "both",
             detail_daemon_config?.start || 0.2,
@@ -577,6 +588,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
     // check if prompt contain "(<word>:-<decimal number>)" format
     const shouldUseNegPip = (prompt && prompt.match(/\([\w\s]+:-?\d+(\.\d+)?\)/g)) ? true : false
 
+    console.log(upscale_multiplier, upscaler, upscale_denoise_strength, upscale_step)
     if (true) {
         return [
             `task(${session_hash})`,
@@ -668,6 +680,17 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
                     1
                 ]
             ],
+            0.35,           // extra samplers setting, adaptive progressive
+            0.75,
+            0.4,
+            1.5,            // langevin euler
+            0.1,            // extended reverse sde
+            3,
+            false,          // gradient estimation
+            false,
+            2,
+            0,
+            false,
             detail_daemon_config ? true : false,           // enable detail daemon
             "both",
             detail_daemon_config?.start || 0.2,
@@ -922,24 +945,25 @@ const model_selection_legacy = [
     { name: 'IrisMix v5b', value: 'archive/irismix_v5b.safetensors'},
     { name: 'RefSlave v1', value: 'refslave.safetensors' },
     { name: 'KohakuXL Zeta', value: 'archive/kohakuxl_zeta.safetensors'},
-    { name: 'Dreamshaper XL Lightning', value: 'dreamshaperxl_lightning.safetensors'},
+    { name: 'Dreamshaper XL Lightning', value: 'archive/dreamshaperxl_lightning.safetensors'},
     { name: 'PonyDiffusionXL v6', value: 'archive/ponydiffusionxl_v6.safetensors'},
     { name: 'PonyRealism v2.2', value: 'archive/ponyrealism_v22.safetensors'},
     { name: 'IllusionBreed v3', value: 'illusionbreed_vpred_v30.safetensors'},
     { name: 'AnimagineXL v3', value: 'archive/animaginexl_v3.safetensors'},
     { name: 'NekorayXL v0.6', value: 'archive/nekorayxl.safetensors' },
-    { name: 'ArtiWaifu v2', value: 'artiwaifu_v2.safetensors'},
+    { name: 'ArtiWaifu v2', value: 'archive/artiwaifu_v2.safetensors'},
     { name: 'IllustriousXL v1', value: 'archive/Illustriousxl_v10.safetensors'},
     { name: 'IllustriousXL v1.1', value: 'archive/Illustriousxl_v11.safetensors'},
     { name: 'WAI-NSFW-IllustriousXL v10', value: 'archive/wai_nsfw_illustrious_v100.safetensors'},
     { name: 'RealVisXL v5', value: 'archive/realvisxl_v5.safetensors'},
     { name: 'SilenceMix v1', value: 'archive/silencemix_v10.safetensors'},
     { name: 'Flux.dev Q4_K_S', value: 'archive/flux1-dev-Q4_K_S.gguf' },
-    { name: 'PrefectPony v5.0', value: 'prefectpony_v50.safetensors'},
+    { name: 'PrefectPony v5.0', value: 'archive/prefectpony_v50.safetensors'},
+    { name: 'IllumiyumeXL V-pred v3.2' , value: 'illumiyumexl_vpred_v32.safetensors'},
 ]
 
 const model_selection_xl = [
-    { name: 'PrefectPony v5.0', value: 'prefectpony_v50.safetensors'},
+    { name: 'PrefectPony v5.0', value: 'archive/prefectpony_v50.safetensors'},
     { name: 'AutismMix PonyXL', value: 'autismmix_ponyxl.safetensors'},
     { name: 'NoobAIXL v1.1', value: 'noobaixl_v1_1.safetensors'},
     { name: 'NoobAIXL V-pred v1.0', value: 'noobaixl_vpred_v1.safetensors'},
@@ -951,7 +975,7 @@ const model_selection_xl = [
     { name: 'KohakuXL Zeta', value: 'archive/kohakuxl_zeta.safetensors'},
     { name: 'Juggernaut XL', value: 'juggernautxl_turbo.safetensors'},
     { name: 'PonyRealism v2.2', value: 'archive/ponyrealism_v22.safetensors'},
-    { name: 'Dreamshaper XL Lightning', value: 'dreamshaperxl_lightning.safetensors'},
+    { name: 'Dreamshaper XL Lightning', value: 'archive/dreamshaperxl_lightning.safetensors'},
     { name: 'RealVisXL v5', value: 'archive/realvisxl_v5.safetensors'},
     { name: 'StableYogis Realism v4', value: 'stableyogi_realism_v40.safetensors'},
     { name: 'PonyDiffusionXL v6', value: 'archive/ponydiffusionxl_v6.safetensors'},
@@ -961,7 +985,7 @@ const model_selection_xl = [
     { name: 'SilenceMix v3', value: 'silencemix_v30.safetensors'},
     { name: 'ZukiCuteIL v5', value: 'zukicuteil_v50.safetensors'},
     { name: 'ZukiNewCuteIL v1', value: 'zukinewcuteil_v10.safetensors'},
-    { name: 'ArtiWaifu v2', value: 'artiwaifu_v2.safetensors'},
+    { name: 'ArtiWaifu v2', value: 'archive/artiwaifu_v2.safetensors'},
     { name: 'IllustriousXL v1', value: 'archive/Illustriousxl_v10.safetensors'},
     { name: 'IllustriousXL v1.1', value: 'archive/Illustriousxl_v11.safetensors'},
     { name: 'IllustriousXL v2.0', value: 'Illustriousxl_v20.safetensors'},
@@ -971,6 +995,7 @@ const model_selection_xl = [
     { name: 'IllumiyumeXL V-pred v3.1' , value: 'illumiyumexl_vpred_v31.safetensors'},
     { name: 'IllumiyumeXL V-pred v3.2' , value: 'illumiyumexl_vpred_v32.safetensors'},
     { name: 'NoobAIXL MDNT V-pred v1.0' , value: 'noobaixl_mdnt_vpred_v1.safetensors'},
+    { name: 'Rouwei V-pred v0.8' , value: 'rouwei_vpred_v0_8.safetensors'},
 ]
 
 const model_selection_inpaint = [
@@ -1096,20 +1121,31 @@ const sampler_selection = [
     { name: 'Euler a', value: 'Euler a' },
     { name: 'Euler a CFG++', value: 'Euler a CFG++' },
     { name: 'Euler', value: 'Euler' },
-    { name: 'Euler Dy CFG++', value: 'Euler Dy CFG++' },
+    //{ name: 'Euler Dy CFG++', value: 'Euler Dy CFG++' },
     { name: 'Euler SMEA Dy CFG++', value: 'Euler Dy SMEA CFG++' },
     { name: 'DPM++ SDE', value: 'DPM++ SDE' },
-    { name: 'LMS', value: 'LMS' },
+    //{ name: 'LMS', value: 'LMS' },
     { name: 'DPM++ 2S a', value: 'DPM++ 2S a' },
     { name: 'DPM2 a', value: 'DPM2 a' },
     { name: 'DPM++ 2M', value: 'DPM++ 2M' },
     { name: 'LCM', value: 'LCM' },
     { name: 'UniPC', value: 'UniPC' },
     { name: 'Restart', value: 'Restart' },
-    { name: 'DPM fast', value: 'DPM fast' },
+    //{ name: 'DPM fast', value: 'DPM fast' },
+    { name: 'DPM adaptive', value: 'DPM adaptive' },
     { name: 'DPM++ 2M SDE', value: 'DPM++ 2M SDE' },
     { name: 'DPM++ 2M SDE Heun', value: 'DPM++ 2M SDE Heun' },
     { name: 'DEIS', value: 'DEIS' }, 
+    { name: 'DPM++ 4M SDE', value: 'DPM++ 4M SDE' },
+    { name: 'Refined Exponential Solver', value: 'Refined Exponential Solver' },
+    { name: 'Res Multistep Ancestral', value: 'Res Multistep Ancestral' },
+    { name: 'Euler a Multipass', value: 'Euler a Multipass' },
+    //{ name: 'Extended Reverse-Time SDE', value: 'Extended Reverse-Time SDE' },
+    { name: 'Gradient Estimation', value: 'Gradient Estimation' },
+    { name: 'Heun Ancestral', value: 'Heun Ancestral' },
+    { name: 'Kohaku LoNyu Yog', value: 'Kohaku LoNyu Yog' },
+    { name: 'Langevin Euler', value: 'Langevin Euler' },
+    { name: 'Euler Max', value: 'Euler Max' }
 ]
 
 const scheduler_selection = [
@@ -1117,6 +1153,7 @@ const scheduler_selection = [
     { name: 'Uniform', value: 'Uniform'},
     { name: 'Karras', value: 'Karras'},
     { name: 'Exponential', value: 'Exponential'},
+    { name: 'Polyexponential', value: 'Polyexponential'},
     { name: 'SGM Uniform', value: 'SGM Uniform'},
     { name: 'Align Your Steps', value: 'Align Your Steps'},
     { name: 'Normal', value: 'Normal'},
