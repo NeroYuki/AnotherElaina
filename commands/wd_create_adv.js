@@ -16,10 +16,11 @@ const { load_adetailer } = require('../utils/adetailer_execute.js');
 const { model_change, cached_model } = require('../utils/model_change.js');
 const { catboxUpload } = require('../utils/catbox_upload.js');
 const { queryRecordLimit } = require('../database/database_interaction.js');
-const { full_prompt_analyze, preview_coupler_setting, fetch_user_defined_wildcard, get_teacache_config_from_prompt } = require('../utils/prompt_analyzer.js');
+const { full_prompt_analyze, preview_coupler_setting, fetch_user_defined_wildcard, get_teacache_config_from_prompt, get_debug_prompt_analyze } = require('../utils/prompt_analyzer.js');
 const { load_profile } = require('../utils/profile_helper.js');
 const { clamp, calculateOptimalGrid, parseImageCount } = require('../utils/common_helper');
 const workflow_og = require('../resources/flux_lora.json')
+const workflow_daam = require('../resources/daam_test.json')
 const ComfyClient = require('../utils/comfy_client');
 
 module.exports = {
@@ -197,6 +198,107 @@ module.exports = {
             }).finally(() => {
                 ComfyClient.freeMemory(true)
             })
+
+        }, (data) => {
+            console.log('received error')
+            interaction.editReply({ content: data.error });
+            ComfyClient.freeMemory(true)
+        }, (data) => {
+            console.log('received progress')
+            interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] + ` (${data.value}/${data.max})` });
+        });
+    },
+
+    async execute_comfy_debug(interaction, client, data) {
+        const workflow = JSON.parse(JSON.stringify(workflow_daam))
+
+        const debug_res = get_debug_prompt_analyze(data.prompt, data.neg_prompt)
+
+        data.prompt = debug_res.prompt
+        data.neg_prompt = debug_res.neg_prompt
+
+        workflow["10"]["inputs"]["width"] = data.width
+        workflow["10"]["inputs"]["height"] = data.height
+        workflow["20"]["inputs"]["steps"] = data.sampling_step
+        workflow["25"]["inputs"]["wildcard_text"] = data.prompt
+        workflow["11"]["inputs"]["text"] = data.neg_prompt
+        workflow["1"]["inputs"]["ckpt_name"] = "sd\\" + data.model
+        workflow["20"]["inputs"]["sampler_name"] = data.sampler
+        workflow["20"]["inputs"]["scheduler"] = data.scheduler
+        workflow["20"]["inputs"]["seed"] = Math.floor(Math.random() * 2_000_000_000)
+
+        if (debug_res.debug_prompt) {
+            workflow["7"]["inputs"]["attentions"] = debug_res.debug_prompt
+        }
+        else {
+            // remove node 7 and 23
+            delete workflow["7"]
+            delete workflow["23"]
+        }
+
+        if (debug_res.debug_neg_prompt) {
+            workflow["22"]["inputs"]["attentions"] = debug_res.debug_neg_prompt
+        }
+        else {
+            // remove node 22 and 9
+            delete workflow["22"]
+            delete workflow["9"]
+        }
+
+        console.log('about to send prompt', debug_res)
+
+        ComfyClient.sendPrompt(workflow, (data) => {
+            //console.log(data)
+            if (data.node !== null) interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] });
+        }, (data) => {
+            console.log('received success')
+            const filenames = data.output.images.map(x => x.filename)
+
+
+            // fetch images from comfyUI
+            let pendingImages = [];
+            let pendingSize = 0;
+            const MAX_SIZE = 10 * 1024 * 1024; // 10MB in bytes
+            let i = 0
+            
+            for (const filename of filenames) {
+                ComfyClient.getImage(filename, '', 'temp', /*only_filename*/ false).then(async (arraybuffer) => {
+                    // convert arraybuffer to buffer
+                    const buffer = Buffer.from(arraybuffer);
+                    const fileSize = buffer.length;
+                    
+                    // If adding this image would exceed the limit, send the current batch
+                    if (pendingSize + fileSize > MAX_SIZE && pendingImages.length > 0) {
+                        await interaction.channel.send({ 
+                            content: `Returned images (${pendingImages.length})`, 
+                            files: pendingImages 
+                        });
+                        pendingImages = [];
+                        pendingSize = 0;
+                    }
+                    
+                    // Add image to current batch
+                    pendingImages.push({ attachment: buffer, name: filename });
+                    pendingSize += fileSize;
+                    
+                    // If this was the last image, send any remaining batch
+                    if (pendingImages.length > 0 && i === filenames.length - 1) {
+                        await interaction.channel.send({ 
+                            content: `Returned images (${pendingImages.length})`, 
+                            files: pendingImages 
+                        });
+                    }
+
+                    if (i >= filenames.length - 1) {
+                        ComfyClient.freeMemory(true)
+                    }
+
+                    i += 1;
+                }).catch((err) => {
+                    console.log("Failed to retrieve image", err)
+                    interaction.editReply({ content: "Failed to retrieve image" });
+                });
+            }
 
         }, (data) => {
             console.log('received error')
@@ -386,11 +488,12 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
 
         const force_legacy_flux = prompt.includes('[FLUX_FORGE]')
         prompt = prompt.replace('[FLUX_FORGE]', '')
+        const is_debugging = prompt.includes('[DEBUG]') || neg_prompt.includes('[DEBUG]')
         // search for lora load call <lora:...:...>
         if (is_flux && !force_legacy_flux) {
             // flux lora is broken in forge backend, switch to comfyUI backend
             interaction.channel.send({ content: `Detected Flux, switching to ComfyUI backend, some options will be ignore. You can create another image in ${cooldown.toFixed(2)} seconds ${teacache_check.teacache_config ? "(Teacache activated: -" + (100 * (1 - Math.pow(1 - teacache_check.teacache_config?.threshold || 0.1, 2))).toFixed(0) + "%)" : ""}` });
-            if (ComfyClient.promptListener.length == 0 && ComfyClient.comfyStat.gpu_vram_used > 6) {
+            if (ComfyClient.promptListener.length == 0 && ComfyClient.comfyStat.gpu_vram_used > 5) {
                 await interaction.editReply({ content: 'Not enough resource can be allocated to finish this command, please try again later' });
                 return;
             }
@@ -405,6 +508,31 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                 teacache_strength: teacache_check.teacache_config ? teacache_check.teacache_config.threshold : 0
             })
 
+            client.cooldowns.set(interaction.user.id, true);
+
+            setTimeout(() => {
+                client.cooldowns.delete(interaction.user.id);
+            }, cooldown * 1000);
+            return
+        }
+
+        if (is_debugging) {
+            // debug mode, use comfyUI backend
+            interaction.channel.send({ content: `Detected Debug Mode, switching to ComfyUI backend, some options will be ignore. You can create another image in ${cooldown.toFixed(2)} seconds`});
+            if (ComfyClient.promptListener.length == 0 && ComfyClient.comfyStat.gpu_vram_used > 8) {
+                await interaction.editReply({ content: 'Not enough resource can be allocated to finish this command, please try again later' });
+                return;
+            }
+            this.execute_comfy_debug(interaction, client, {
+                prompt,
+                neg_prompt,
+                width,
+                height,
+                sampling_step,
+                model: cached_model[0],
+                sampler: sampler_to_comfy_name_mapping[sampler] ?? "euler",
+                scheduler: scheduler_to_comfy_name_mapping[scheduler] ?? "normal",
+            })
             client.cooldowns.set(interaction.user.id, true);
 
             setTimeout(() => {
@@ -789,6 +917,8 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                                             attachment: img_buffer,
                                             name: `img_${i}.png`
                                         }]
+                                    }).catch(err => {
+                                        console.log('Error sending additional image:', err);
                                     });
                                 }
                             }
