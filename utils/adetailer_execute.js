@@ -2,6 +2,39 @@ const { server_pool } = require('../utils/ai_server_config.js');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const { cached_model } = require('./model_change.js');
 
+// const config = [
+//     {
+//         "model": adetailer_model,
+//         "object_to_detect": object_to_detect,
+//         "prompt": adetailer_prompt,
+//         "neg_prompt": adetailer_neg_prompt,
+//         "detection_threshold": adetailer_detection_threshold,
+//         "mask_blur": adetailer_mask_blur,
+//         "mask_padding": adetailer_mask_padding,
+//         "denoise_strength": adetailer_denoise_strength
+//     },
+//     {
+//         "model": adetailer_model_2,
+//         "prompt": adetailer_prompt_2,
+//         "neg_prompt": adetailer_neg_prompt_2,
+//         "object_to_detect": object_to_detect_2,
+//         "detection_threshold": adetailer_detection_threshold_2,
+//         "mask_blur": adetailer_mask_blur_2,
+//         "mask_padding": adetailer_mask_padding_2,
+//         "denoise_strength": adetailer_denoise_strength_2
+//     },
+//     {
+//         "model": adetailer_model_3,
+//         "prompt": adetailer_prompt_3,
+//         "neg_prompt": adetailer_neg_prompt_3,
+//         "object_to_detect": object_to_detect_3,
+//         "detection_threshold": adetailer_detection_threshold_3,
+//         "mask_blur": adetailer_mask_blur_3,
+//         "mask_padding": adetailer_mask_padding_3,
+//         "denoise_strength": adetailer_denoise_strength_3
+//     }
+// ]
+
 function change_option_adetailer(value, fn_index, session_hash, server_url) {
     return new Promise(async (resolve, reject) => {
         const option_adetailer = {
@@ -22,7 +55,7 @@ function change_option_adetailer(value, fn_index, session_hash, server_url) {
         try {
             await fetch(`${server_url}/run/predict/`, option_adetailer)
                 .then(res => {
-                    console.log(res.status)
+                    // console.log(res.status)
                     if (res.status !== 200) {
                         throw 'Failed to change adetailer'
                     }
@@ -42,7 +75,7 @@ function load_adetailer(session_hash, server_index, adetailer_config, interactio
     return new Promise(async (resolve, reject) => {
         // parse config string here
         const WORKER_ENDPOINT = server_pool[server_index].url
-        let adetailer_config_obj = {}
+        let adetailer_config_obj = []
 
         try {
             adetailer_config_obj = JSON.parse(adetailer_config)
@@ -52,36 +85,53 @@ function load_adetailer(session_hash, server_index, adetailer_config, interactio
             return 
         }
 
-        const adetailer_model = adetailer_config_obj[0].model
-        let adetailer_prompt = adetailer_config_obj[0].prompt
-        const adetailer_neg_prompt = adetailer_config_obj[0].neg_prompt
-        const adetailer_model_2 = adetailer_config_obj[1].model
-        let adetailer_prompt_2 = adetailer_config_obj[1].prompt
-        const adetailer_neg_prompt_2 = adetailer_config_obj[1].neg_prompt
+        let adetailer_prompt = adetailer_config_obj[0]?.prompt || "";
+        let adetailer_prompt_2 = adetailer_config_obj[1]?.prompt || "";
+        let adetailer_prompt_3 = adetailer_config_obj[2]?.prompt || "";
 
         if (coupler_config) {
             const comp = prompt.split("\n")
             if (coupler_config.global === "First Line") {
                 adetailer_prompt = adetailer_prompt === "" ? comp[0] : adetailer_prompt
                 adetailer_prompt_2 = adetailer_prompt_2 === "" ? comp[0] : adetailer_prompt_2
+                adetailer_prompt_3 = adetailer_prompt_3 === "" ? comp[0] : adetailer_prompt_3
             }
             else if (coupler_config.global === "Last Line") {
                 adetailer_prompt = adetailer_prompt === "" ? comp[comp.length - 1] : adetailer_prompt
                 adetailer_prompt_2 = adetailer_prompt_2 === "" ? comp[comp.length - 1] : adetailer_prompt_2
+                adetailer_prompt_3 = adetailer_prompt_3 === "" ? comp[comp.length - 1] : adetailer_prompt_3
             }
         }
-        console.log(adetailer_model, adetailer_prompt, adetailer_model_2, adetailer_prompt_2)
+        //console.log(adetailer_model, adetailer_prompt, adetailer_model_2, adetailer_prompt_2)
 
         const base_index = server_pool[server_index].fn_index_change_adetailer_model1[mode]
 
         Promise.all(
             [
-                change_option_adetailer(adetailer_model, base_index, session_hash,  WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_config_obj[0]?.model || 'face_yolov8s.pt', base_index, session_hash,  WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_config_obj[0]?.object_to_detect || "face", base_index + 1, session_hash, WORKER_ENDPOINT),
                 change_option_adetailer(adetailer_prompt, base_index + 3, session_hash, WORKER_ENDPOINT),
-                change_option_adetailer(adetailer_neg_prompt, base_index + 4, session_hash, WORKER_ENDPOINT),
-                change_option_adetailer(adetailer_model_2, base_index + 51, session_hash, WORKER_ENDPOINT),
-                change_option_adetailer(adetailer_prompt_2, base_index + 54, session_hash, WORKER_ENDPOINT),
-                change_option_adetailer(adetailer_neg_prompt_2, base_index + 55, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_config_obj[0]?.neg_prompt || "", base_index + 4, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_config_obj[0]?.detection_threshold || 0.3, base_index + 5, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_config_obj[0]?.mask_blur || 4, base_index + 13, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_config_obj[0]?.denoise_strength || 0.5, base_index + 14, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_config_obj[0]?.mask_padding || 32, base_index + 16, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_config_obj[1]?.model || "None", base_index + 51, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_config_obj[1]?.object_to_detect || "face", base_index + 51 + 1, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_prompt_2, base_index + 51 + 3, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_config_obj[1]?.neg_prompt || "", base_index + 51 + 4, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_config_obj[1]?.detection_threshold || 0.3, base_index + 51 + 5, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_config_obj[1]?.mask_blur || 4, base_index + 51 + 13, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_config_obj[1]?.denoise_strength || 0.5, base_index + 51 + 14, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_config_obj[1]?.mask_padding || 32, base_index + 51 + 16, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_config_obj[2]?.model || "None", base_index + 102, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_config_obj[2]?.object_to_detect || "face", base_index + 102 + 1, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_prompt_3, base_index + 102 + 3, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_config_obj[2]?.neg_prompt || "", base_index + 102 + 4, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_config_obj[2]?.detection_threshold || 0.3, base_index + 102 + 5, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_config_obj[2]?.mask_blur || 4, base_index + 102 + 13, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_config_obj[2]?.denoise_strength || 0.5, base_index + 102 + 14, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(adetailer_config_obj[2]?.mask_padding || 32, base_index + 102 + 16, session_hash, WORKER_ENDPOINT),
             ]
         ).then(() => {
             interaction.channel.send("ADetailer config loaded")
