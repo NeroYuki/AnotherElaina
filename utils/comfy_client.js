@@ -4,8 +4,6 @@ const { on } = require('events');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const { default: axios } = require('axios');
 
-const SERVER_ENDPOINT = process.env.BOT_ENV === 'lan' ? '192.168.1.7:8188' : '192.168.196.142:8188'
-
 // singleton comfy client
 const comfyClient = {
     client: null,
@@ -22,8 +20,9 @@ const comfyClient = {
     },
     clientId: crypto.randomUUID(),
     promptListener: [],
+    SERVER_ENDPOINT: process.env.BOT_ENV === 'lan' ? '192.168.1.7:8188' : '192.168.196.142:8188',
     init: function() {
-        const client = new ws(`ws://${SERVER_ENDPOINT}/ws?clientId=${this.clientId}`)
+        const client = new ws(`ws://${this.SERVER_ENDPOINT}/ws?clientId=${this.clientId}`)
         client.on('open', () => {
             console.log('Connected to ComfyUI server');
         });
@@ -56,7 +55,7 @@ const comfyClient = {
             client_id: this.clientId
         }
 
-        fetch(`http://${SERVER_ENDPOINT}/prompt`, {
+        fetch(`http://${this.SERVER_ENDPOINT}/prompt`, {
             method: 'POST',
             body: JSON.stringify(data),
             headers: { 'Content-Type': 'application/json' }
@@ -170,7 +169,7 @@ const comfyClient = {
     },
 
     getImage: function(filename, subfolder, filetype = "output", only_filename = false) {
-        const url = only_filename ? `http://${SERVER_ENDPOINT}/view?filename=${filename}` : `http://${SERVER_ENDPOINT}/view?filename=${filename}&subfolder=${subfolder}&type=${filetype}`;
+        const url = only_filename ? `http://${this.SERVER_ENDPOINT}/view?filename=${filename}` : `http://${this.SERVER_ENDPOINT}/view?filename=${filename}&subfolder=${subfolder}&type=${filetype}`;
 
         console.log('Fetching files:', url);
 
@@ -192,7 +191,7 @@ const comfyClient = {
     },
 
     uploadImage: function(buffer, filename, mimetype) {
-        const url = `http://${SERVER_ENDPOINT}/api/upload/image`;
+        const url = `http://${this.SERVER_ENDPOINT}/api/upload/image`;
 
         // with follow form data format
         // -----------------------------45417822730903170364248702972
@@ -219,7 +218,7 @@ const comfyClient = {
     },
 
     freeMemory: function(shouldFreeCache) {
-        const url = `http://${SERVER_ENDPOINT}/api/free`;
+        const url = `http://${this.SERVER_ENDPOINT}/api/free`;
         const body = {
             unload_models: true, 
             free_memory: shouldFreeCache

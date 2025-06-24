@@ -19,9 +19,8 @@ const flux_support_models = [
     "t5-v1_1-xxl-encoder-Q8_0.gguf"
 ]
 
-const server_address = server_pool[0].server_address;
-
 async function support_model_change(models, session_hash) {
+    const server_address = server_pool[0].server_address;
     return new Promise(async (resolve, reject) => {
         const option_init_axios = {
             data: {
@@ -56,6 +55,8 @@ async function support_model_change(models, session_hash) {
 }
 
 function model_change(modelname, forced = false) {
+    const server_address = server_pool[0].server_address;
+    
     return new Promise(async (resolve, reject) => {
         // change model then send the notification to discord channel where the action is executed
         // if modelname is in the cached_model or forced, return true

@@ -12,8 +12,6 @@ const { MessageEmbed } = require('discord.js');
 const { all } = require('axios');
 const { clamp } = require('../utils/common_helper');
 
-const server_address = process.env.BOT_ENV === 'lan' ? 'http://192.168.1.7:7050' : 'http://192.168.196.142:7050'
-
 const all_descriptors = {
     "General": [
         { "value": "gimmick", "title": "Focused on a single unique design or gameplay idea." },
@@ -157,6 +155,7 @@ const flatMap = (obj) => {
 const valid_descriptor_values = flatMap(all_descriptors).map(item => item.value);
 
 module.exports = {
+    server_address: process.env.BOT_ENV === 'lan' ? 'http://192.168.1.7:7050' : 'http://192.168.196.142:7050',
 	data: new SlashCommandBuilder()
 		.setName('osu_mapperinator')
 		.setDescription('Auto generate beatmaps for osu! using the osu!Mapperatorinator')
