@@ -1,7 +1,7 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageActionRow, MessageSelectMenu } = require('discord.js');
 const { loadImage } = require('../utils/load_discord_img');
-const { uploadAudio, startInference, streamOutput, getBeatmap, uploadBeatmap } = require('../utils/mapperinator_execute');
+const { uploadAudio, startInference, streamOutput, getBeatmap, uploadBeatmap, getServerHealth } = require('../utils/mapperinator_execute');
 const NodeID3 = require('node-id3')
 const crypto = require('crypto');
 const fs = require('fs');
@@ -11,6 +11,8 @@ const { catboxFileUpload } = require('../utils/catbox_upload');
 const { MessageEmbed } = require('discord.js');
 const { all } = require('axios');
 const { clamp } = require('../utils/common_helper');
+
+const server_address = process.env.BOT_ENV === 'lan' ? 'http://192.168.1.7:7050' : 'http://192.168.196.142:7050'
 
 const all_descriptors = {
     "General": [
@@ -155,7 +157,6 @@ const flatMap = (obj) => {
 const valid_descriptor_values = flatMap(all_descriptors).map(item => item.value);
 
 module.exports = {
-    server_address: process.env.BOT_ENV === 'lan' ? 'http://192.168.1.7:7050' : 'http://192.168.196.142:7050',
 	data: new SlashCommandBuilder()
 		.setName('osu_mapperinator')
 		.setDescription('Auto generate beatmaps for osu! using the osu!Mapperatorinator')
@@ -258,12 +259,12 @@ module.exports = {
 
     ,
 
-    sendFinishBeatmap(msgRef, audio_file, audio_filename, beatmap_path, beatmap_info, user_id, image_file = null, image_filename = null) {
+    sendFinishBeatmap(msgRef, audio_file, audio_filename, beatmap_path, beatmap_info, user_id, image_file = null, image_filename = null, request_server_address = server_address) {
         // get the beatmap file name from the beatmap_path
         return new Promise(async (resolve, reject) => {
             const resultMsgRef = await msgRef.channel.send({ content: `<@${user_id}> Beatmap generation finished, finalizing beatmap...` });
 
-            const beatmap_file = await getBeatmap(server_address, beatmap_path).catch((err) => {
+            const beatmap_file = await getBeatmap(request_server_address, beatmap_path).catch((err) => {
                 console.log(err)
                 resultMsgRef.edit({ content: "Failed to retrieve beatmap file", ephemeral: true });
                 return
@@ -388,9 +389,9 @@ BeatmapSetID:-1`);
 
     async execute_inference(interaction, params, client) {
         console.log("Starting task, Current queue length: " + client.mapperatorinator_queue.length)
-        const request_res = await startInference(server_address, {
-            audio_path: './temp/' + params.audio_path_res.path.split('\\').pop(),
-            beatmap_path: params.beatmap_path ? './temp/' + params.beatmap_path_res.path.split('\\').pop() : '',
+        const request_res = await startInference(params.server_address, {
+            audio_path: './temp/' + params.audio_path_res.path.split('\\').pop().split('/').pop(),
+            beatmap_path: params.beatmap_path ? './temp/' + params.beatmap_path_res.path.ssplit('\\').pop().split('/').pop() : '',
             output_path: './output',
             model: params.model,
             difficulty: params.difficulty,
@@ -432,7 +433,7 @@ BeatmapSetID:-1`);
 
         const process_msg = await interaction.channel.send({ content: "Beatmap generation started, please wait..." });
 
-        streamOutput(server_address, async (data) => {
+        streamOutput(params.server_address, async (data) => {
             //console.log(data)
             process_msg.edit({ content: data ? `\`\`\`${data}\`\`\`` : "Beatmap is in progress, please wait..." });
 
@@ -444,7 +445,7 @@ BeatmapSetID:-1`);
                     od: params.od,
                     ar: params.ar,
                     hp: params.hp,
-                }, params.user_id, params.image_file, params.image_filename).catch((err) => {
+                }, params.user_id, params.image_file, params.image_filename, params.server_address).catch((err) => {
                     console.log(err)
                     return
                 }).finally(() => {
@@ -704,6 +705,7 @@ BeatmapSetID:-1`);
         let descriptor = []
         let negative_descriptor = []
         let in_context_option = []
+        let request_server_address = server_address;
 
         console.log(super_timing, add_hitsounds)
 
@@ -757,14 +759,37 @@ BeatmapSetID:-1`);
             }
         }
         cfg_scale = clamp(cfg_scale, 0, 20);
-        
-        const audio_path_res = await uploadAudio(server_address, audio_file, audio_filename).catch((err) => {
+
+        let health_check_res = await getServerHealth(request_server_address).catch((err) => {
             console.log(err)
-            interaction.editReply({ content: "Failed to upload audio to AI server", ephemeral: true });
+            interaction.editReply({ content: "Failed to connect to AI server"})
+            return
+        })
+
+        if (!health_check_res) {
+            /// if the upload failed, try to upload to local server
+            interaction.channel.send({ content: "⚠️ Fail to reach AI server, falling back to CPU, speed will be 6 times slower!" });
+            request_server_address = 'http://127.0.0.1:7050';
+            health_check_res = await getServerHealth(request_server_address).catch((err) => {
+                console.log(err)
+                interaction.editReply({ content: "Failed to connect to local server" });
+                return
+            })
+        }
+
+        if (!health_check_res) {
+            interaction.editReply({ content: "Failed to upload audio to all server, request aborted"});
+            return 
+        };
+        
+        let audio_path_res = await uploadAudio(request_server_address, audio_file, audio_filename).catch((err) => {
+            console.log(err)
+            interaction.editReply({ content: "Failed to upload audio to server"});
             return
         })
 
         if (!audio_path_res) {
+            interaction.editReply({ content: "Failed to upload audio to server, request aborted"});
             return
         }
 
@@ -772,7 +797,7 @@ BeatmapSetID:-1`);
         //console.log(tags)
         //interaction.editReply({ content: "Audio uploaded: " + audio_path_res.path });
 
-        const beatmap_path_res = beatmap_file ? await uploadBeatmap(server_address, beatmap_file, beatmap_filename).catch((err) => {
+        const beatmap_path_res = beatmap_file ? await uploadBeatmap(request_server_address, beatmap_file, beatmap_filename).catch((err) => {
             console.log(err)
             interaction.editReply({ content: "Failed to upload beatmap file to AI server", ephemeral: true });
             return
@@ -814,6 +839,7 @@ BeatmapSetID:-1`);
             beatmap_file: beatmap_file,
             beatmap_filename: beatmap_filename,
             beatmap_path_res: beatmap_path_res,
+            server_address: request_server_address,
         }
 
         if (client.mapperatorinator_queue.length == 0) {

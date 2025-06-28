@@ -364,24 +364,21 @@ Keep the response short and concise and must be in English, unless requested oth
 
 const operatingMode2Config = {
     "saving": {
-        model: "test_qwen_lite",        // qwen 2.5 3b q6 host locally
+        model: "gemma_lite",        // gemma 3 12b q4 host locally
         server: "127.0.0.1:11434",
         override_options: {
             num_ctx: 16384,
             stop: [
-                '\nUser:',
-                '<|eot_id|>',
-                '<|im_end|>',
-                '<|im_ended|>',
-                '<|im_start|>',
-                '<|im_start|>assistant',
+                '<end_of_turn>',
+                '<start_of_turn>',
             ],
+            num_gpu: 0,
         },
-        prompt_config: qwen
+        prompt_config: gemma
     },
     "standard": {
         model: "test_qwen",
-        server: process.env.BOT_ENV === 'lan' ? 'http://192.168.1.7:11434' : 'http://192.168.196.142:11434',    // qwen 2.5 14b q6 host on ai server
+        server: process.env.BOT_ENV === 'lan' ? '192.168.1.7:11434' : '192.168.196.142:11434',    // qwen 2.5 14b q6 host on ai server
         override_options: {
             num_ctx: 64000,
             num_predict: 400,
@@ -399,7 +396,7 @@ const operatingMode2Config = {
     },
     "vision": {
         model: "llama_vision-11b-k8",
-        server: process.env.BOT_ENV === 'lan' ? 'http://192.168.1.7:11434' : 'http://192.168.196.142:11434',    // gemma 3 12b q8 host on ai server
+        server: process.env.BOT_ENV === 'lan' ? '192.168.1.7:11434' : '192.168.196.142:11434',    // gemma 3 12b q8 host on ai server
         override_options: {
             num_ctx: 64000,
             num_predict: 400,
