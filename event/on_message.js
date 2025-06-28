@@ -34,6 +34,16 @@ async function responseToMessage(client, message, content, is_continue = false, 
         }
         else {
             operating_mode = "saving"
+            // if (attachment_options && attachment_options.length > 0) {
+            //     //download the image from attachment.proxyURL
+            //     for (let i = 0; i < attachment_options.length; i++) {
+            //         attachments.push(await loadImage(attachment_options[i].proxyURL, false, true).catch((err) => {
+            //             console.log(err)
+            //             message.channel.send("SYSTEM: I cannot load the image. Please try again with another image.")
+            //             return
+            //         }))
+            //     }
+            // }
         }
     }
 
@@ -170,6 +180,13 @@ async function responseToMessage(client, message, content, is_continue = false, 
     }
 
     console.log(prompt)
+    const msgRef = await message.channel.send("...").catch((err) => {
+        console.log(err)
+    })
+
+    if (!msgRef) {
+        return
+    }
 
     try {
         let res_gen_elaina = ''
@@ -192,8 +209,6 @@ async function responseToMessage(client, message, content, is_continue = false, 
                 res_gen_elaina += value.response
             }, attachments)
         }
-
-        const msgRef = await message.channel.send("...");
 
         const intervalId = setInterval(() => {
             if (!res_gen_elaina) return
