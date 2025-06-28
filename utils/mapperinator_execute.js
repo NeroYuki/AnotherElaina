@@ -145,6 +145,19 @@ async function getBeatmap(url, beatmapPath) {
     }
 }
 
+async function getServerHealth(url) {
+    const endpoint = `${url}/health_check`;
+    try {
+        const response = await axios.get(endpoint, {
+            timeout: 3000, // Set a timeout for the request
+        })
+        return response.data;
+    } catch (error) {
+        console.log('Error getting server health:', error.message);
+        throw error;
+    }
+}   
+
 
 module.exports = {
     startInference,
@@ -152,4 +165,5 @@ module.exports = {
     uploadAudio,
     uploadBeatmap,
     getBeatmap,
+    getServerHealth,
 };
