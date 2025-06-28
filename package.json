@@ -6,7 +6,9 @@
 	"scripts": {
 		"do-start": "pm2 start Bot.js",
 		"start-lan": "set BOT_ENV=lan && node Bot.js",
-		"start-vpn": "set BOT_ENV=vpn && node Bot.js"
+		"start-vpn": "set BOT_ENV=vpn && node Bot.js",
+		"start-lan-linux": "export BOT_ENV=lan && node Bot.js",
+		"start-vpn-linux": "export BOT_ENV=vpn && node Bot.js"
 	},
 	"keywords": [],
 	"author": "",
