@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { byPassUser, censorGuildIds, optOutGuildIds } = require('../config.json');
 const crypt = require('crypto');
-const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, model_name_hash_mapping, model_selection_legacy, check_model_filename, model_selection, sampler_selection, model_selection_xl, model_selection_inpaint, model_selection_flux, scheduler_selection } = require('../utils/ai_server_config.js');
+const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, model_name_hash_mapping, model_selection_legacy, check_model_filename, model_selection, sampler_selection, model_selection_xl, model_selection_inpaint, model_selection_flux, scheduler_selection, sampler_to_comfy_name_mapping, scheduler_to_comfy_name_mapping } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const sharp = require('sharp');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
@@ -10,10 +10,12 @@ const { loadImage, uploadDiscordImageToGradio, uploadPngBufferToGradio } = requi
 const { load_controlnet } = require('../utils/controlnet_execute');
 const { cached_model, model_change } = require('../utils/model_change');
 const { segmentAnything_execute, groundingDino_execute, expandMask, unloadAllModel } = require('../utils/segment_execute.js');
-const { full_prompt_analyze, fetch_user_defined_wildcard, preview_coupler_setting } = require('../utils/prompt_analyzer.js');
+const { full_prompt_analyze, fetch_user_defined_wildcard, preview_coupler_setting, get_teacache_config_from_prompt } = require('../utils/prompt_analyzer.js');
 const { queryRecordLimit } = require('../database/database_interaction.js');
 const { load_profile } = require('../utils/profile_helper.js');
 const { clamp } = require('../utils/common_helper');
+const workflow_inpaint = require('../resources/flux_fill_inpaint.json')
+const ComfyClient = require('../utils/comfy_client');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -123,6 +125,77 @@ module.exports = {
                 .setDescription('Specify the profile to use (default is No Profile)'))
     ,
 
+    async execute_comfy_flux_inpaint(interaction, client, data) {
+        const workflow = JSON.parse(JSON.stringify(workflow_inpaint))
+
+        workflow["3"]["inputs"]["steps"] = data.sampling_step
+        workflow["23"]["inputs"]["text"] = data.prompt
+
+        workflow["3"]["inputs"]["sampler_name"] = data.sampler
+        workflow["3"]["inputs"]["scheduler"] = data.scheduler
+        workflow["3"]["inputs"]["seed"] = Math.floor(Math.random() * 2_000_000_000)
+        workflow["3"]["inputs"]["denoise"] = data.denoising_strength
+        workflow["50"]["inputs"]["rel_l1_thresh"] = data.teacache_strength
+        workflow["38"]["inputs"]["noise_mask"] = data.inpaint_area === 'Whole picture' ? false : true
+
+        // extract outpaint config
+        
+
+        //set the image buffer to the workflow
+        const image_info = await ComfyClient.uploadImage(data.attachment, Date.now() + "_" + data.attachment_option.name, data.attachment_option.contentType).catch((err) => {
+            console.log("Failed to upload image", err)
+            return
+        })
+
+        console.log(image_info)
+
+        if (image_info == null) {
+            interaction.editReply({ content: "Failed to receive input image" });
+            return
+        }
+
+        const mask_info = await ComfyClient.uploadImage(data.mask, Date.now() + "_" + data.mask_option.name, data.mask_option.contentType).catch((err) => {
+            console.log("Failed to upload mask", err)
+            return
+        })
+
+        if (mask_info == null) {
+            interaction.editReply({ content: "Failed to receive input mask" });
+            return
+        }
+
+        workflow["17"]["inputs"]["image"] = image_info.name
+        workflow["48"]["inputs"]["image"] = mask_info.name
+
+        ComfyClient.sendPrompt(workflow, (data) => {
+            if (data.node !== null) interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] });
+        }, (data) => {
+            console.log('received success')
+            const filename = data.output.images[0].filename
+
+            // fetch video from comfyUI
+            ComfyClient.getImage(filename, '', '', /*only_filename*/ true).then(async (arraybuffer) => {
+                // convert arraybuffer to buffer
+                const buffer = Buffer.from(arraybuffer)
+
+                await interaction.editReply({ content: "Generation Success", files: [{ attachment: buffer, name: filename }] });
+            }).catch((err) => {
+                console.log("Failed to retrieve image", err)
+                interaction.editReply({ content: "Failed to retrieve image" });
+            }).finally(() => {
+                ComfyClient.freeMemory(true)
+            })
+
+        }, (data) => {
+            console.log('received error')
+            interaction.editReply({ content: data.error });
+            ComfyClient.freeMemory(true)
+        }, (data) => {
+            console.log('received progress')
+            interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] + ` (${data.value}/${data.max})` });
+        });
+    },
+
 	async execute(interaction, client) {
         if (client.cooldowns.has(interaction.user.id) && !byPassUser.includes(interaction.user.id)) {
             // cooldown not ended
@@ -176,6 +249,7 @@ module.exports = {
             (client.colorbalance_config.has(interaction.user.id) ? client.colorbalance_config.get(interaction.user.id) : null)
 
         const should_override_1st_controlnet = (interaction.options.getString('controlnet_config') || profile?.controlnet_config)? true : false
+        const self = this;
         // parse the user setting config
         // const usersetting_config = client.usersetting_config.has(interaction.user.id) ? client.usersetting_config.get(interaction.user.id) : null
         let do_preview = false
@@ -239,6 +313,7 @@ module.exports = {
 
         const session_hash = crypt.randomBytes(16).toString('base64');
         const WORKER_ENDPOINT = server_pool[0].url
+        let mask_data = null
         let mask_data_uri = ""
         let mask_upload_path = ""
 
@@ -431,6 +506,7 @@ module.exports = {
                             }
 
                             interaction.channel.send({files: [{attachment: final_mask_buffer, name: `final_mask.png`}]})
+                            mask_data = final_mask_buffer
                             mask_data_uri = "data:image/png;base64," + final_mask_buffer.toString('base64')
                             //console.log(mask_data_uri)
 
@@ -458,6 +534,7 @@ module.exports = {
                     .toBuffer()
                     .then(async data => {
                         mask_data_uri = "data:image/png;base64," + data.toString('base64')
+                        mask_data = data
                         mask_upload_path = await uploadPngBufferToGradio(data, session_hash, WORKER_ENDPOINT).catch((err) => {
                             console.log(err)
                             interaction.editReply({ content: "Failed to upload mask image to server", ephemeral: true });
@@ -493,6 +570,7 @@ module.exports = {
                     .toBuffer()
                     .then(async data => {
                         mask_data_uri = "data:image/png;base64," + data.toString('base64')
+                        mask_data = data
                         mask_upload_path = await uploadPngBufferToGradio(data, session_hash, WORKER_ENDPOINT).catch((err) => {
                             console.log(err)
                             interaction.editReply({ content: "Failed to upload mask image to server", ephemeral: true });
@@ -511,6 +589,7 @@ module.exports = {
                     .toBuffer()
                     .then(async data => {
                         mask_data_uri = "data:image/png;base64," + data.toString('base64')
+                        mask_data = data
                         mask_upload_path = await uploadPngBufferToGradio(data, session_hash, WORKER_ENDPOINT).catch((err) => {
                             console.log(err)
                             interaction.editReply({ content: "Failed to upload mask image to server", ephemeral: true });
@@ -532,6 +611,7 @@ module.exports = {
                     .toFormat('png')
                     .toBuffer()
                     .then(data => {
+                        mask_data = data
                         mask_data_uri = "data:image/png;base64," + data.toString('base64')
                     })
                     .catch(err => {
@@ -550,6 +630,43 @@ module.exports = {
 
         async function execute_inpaint() {
             interaction.editReply({ content: "Starting inpaint process, please wait..." });
+
+            // if prompt start with [FLUX], use flux inpaint workflow
+            if (prompt.startsWith('[FLUX]')) {
+                prompt = prompt.replace('[FLUX]', '').trim()
+                // remove the teacache config from the prompt
+                const teacache_check = get_teacache_config_from_prompt(prompt, false)
+
+                attachment_buffer = await loadImage(attachment_option.proxyURL,
+                    /*getBuffer:*/ true).catch((err) => {
+                    console.log("Failed to retrieve image from discord", err)
+                    return
+                })
+
+                interaction.channel.send('Flux Inpaint Mode is selected, switching to comfy backend, not all features are supported')
+                self.execute_comfy_flux_inpaint(interaction, client, {
+                    prompt: prompt,
+                    neg_prompt: neg_prompt,
+                    sampling_step: sampling_step,
+                    cfg_scale: cfg_scale,
+                    seed: seed,
+                    sampler: sampler_to_comfy_name_mapping[sampler] ?? "euler",
+                    scheduler: scheduler_to_comfy_name_mapping[scheduler] ?? "normal",
+                    teacache_strength: teacache_check.teacache_config ? teacache_check.teacache_config.threshold : 0,
+                    session_hash: session_hash,
+                    attachment: attachment_buffer,
+                    attachment_option: attachment_option,
+                    mask: mask_data,
+                    mask_option: attachment_mask_option ?? {
+                        name: 'generated_mask.png',
+                        contentType: 'image/png',
+                    },
+                    inpaint_area: inpaint_area,
+                    denoising_strength: denoising_strength,
+                })
+
+                return
+            }
     
             let controlnet_input_2 = controlnet_input_option_2 ? await loadImage(controlnet_input_option_2.proxyURL,
                 /*getBuffer:*/ false, /*noDataURIHeader*/ false, /*safeMode*/ true).catch((err) => {

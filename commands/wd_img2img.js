@@ -11,6 +11,9 @@ const { queryRecordLimit } = require('../database/database_interaction.js');
 const { full_prompt_analyze, preview_coupler_setting, fetch_user_defined_wildcard, get_teacache_config_from_prompt } = require('../utils/prompt_analyzer.js');
 const { load_profile } = require('../utils/profile_helper.js');
 const { clamp } = require('../utils/common_helper');
+const workflow_outpaint = require('../resources/flux_fill_outpaint.json')
+const workflow_kontext = require('../resources/flux_kontext.json')
+const ComfyClient = require('../utils/comfy_client');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -47,9 +50,6 @@ module.exports = {
                     { name: 'None - SFW', value: 'n_sfw' },
                     { name: 'No Default', value: 'n_nsfw' },
                 ))
-        .addBooleanOption(option => 
-            option.setName('no_dynamic_lora_load')
-                .setDescription('Do not use the bot\'s dynamic LoRA loading (default is "false")'))
         .addStringOption(option => 
             option.setName('checkpoint')
                 .setDescription('Force a cached checkpoint to be used (not all option is cached)')
@@ -61,8 +61,145 @@ module.exports = {
         .addStringOption(option =>
             option.setName('profile')
                 .setDescription('Specify the profile to use (default is No Profile)'))
-                
+        .addStringOption(option =>
+            option.setName('extra_script')
+                .setDescription('Specify an extra script to be used during the process')
+                .addChoices(
+                    { name: 'None', value: 'None' },
+                    { name: 'Img2Img Upscale', value: 'Ultimate SD upscale' },
+                    { name: 'Outpainting', value: 'Outpainting mk2' },
+                    { name: 'Flux Outpaint', value: 'Flux Outpaint' },
+                    { name: 'Flux Kontext', value: 'Flux Kontext' },
+                ))
     ,
+
+    async execute_comfy_flux_kontext(interaction, client, data) {
+        const workflow = JSON.parse(JSON.stringify(workflow_kontext))
+
+        workflow["27"]["inputs"]["width"] = workflow["30"]["inputs"]["width"] = data.width
+        workflow["30"]["inputs"]["height"] = workflow["30"]["inputs"]["width"] = data.height
+        workflow["6"]["inputs"]["text"] = data.prompt
+
+        workflow["16"]["inputs"]["sampler_name"] = data.sampler
+        workflow["17"]["inputs"]["steps"] = data.sampling_step
+        workflow["17"]["inputs"]["scheduler"] = data.scheduler
+        workflow["26"]["inputs"]["guidance"] = data.cfg_scale
+        workflow["25"]["inputs"]["noise_seed"] = Math.floor(Math.random() * 2_000_000_000)
+        workflow["60"]["inputs"]["rel_l1_thresh"] = data.teacache_strength
+
+        //set the image buffer to the workflow
+        const image_info = await ComfyClient.uploadImage(data.attachment, Date.now() + "_" + data.attachment_option.name, data.attachment_option.contentType).catch((err) => {
+            console.log("Failed to upload image", err)
+            return
+        })
+
+        console.log(image_info)
+
+        if (image_info == null) {
+            interaction.editReply({ content: "Failed to receive input image" });
+            return
+        }
+
+        workflow["41"]["inputs"]["image"] = image_info.name
+
+        ComfyClient.sendPrompt(workflow, (data) => {
+            if (data.node !== null) interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] });
+        }, (data) => {
+            console.log('received success')
+            const filename = data.output.images[0].filename
+
+            // fetch video from comfyUI
+            ComfyClient.getImage(filename, '', '', /*only_filename*/ true).then(async (arraybuffer) => {
+                // convert arraybuffer to buffer
+                const buffer = Buffer.from(arraybuffer)
+
+                await interaction.editReply({ content: "Generation Success", files: [{ attachment: buffer, name: filename }] });
+            }).catch((err) => {
+                console.log("Failed to retrieve image", err)
+                interaction.editReply({ content: "Failed to retrieve image" });
+            }).finally(() => {
+                ComfyClient.freeMemory(true)
+            })
+
+        }, (data) => {
+            console.log('received error')
+            interaction.editReply({ content: data.error });
+            ComfyClient.freeMemory(true)
+        }, (data) => {
+            console.log('received progress')
+            interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] + ` (${data.value}/${data.max})` });
+        });
+    },
+
+    async execute_comfy_flux_outpaint(interaction, client, data) {
+        const workflow = JSON.parse(JSON.stringify(workflow_outpaint))
+
+        workflow["3"]["inputs"]["steps"] = data.sampling_step
+        workflow["23"]["inputs"]["text"] = data.prompt
+
+        workflow["3"]["inputs"]["sampler_name"] = data.sampler
+        workflow["3"]["inputs"]["scheduler"] = data.scheduler
+        workflow["3"]["inputs"]["seed"] = Math.floor(Math.random() * 2_000_000_000)
+        workflow["46"]["inputs"]["rel_l1_thresh"] = data.teacache_strength
+
+        // extract outpaint config
+        const outpaint_config = {
+            top: (data.outpaint_config_obj?.direction.includes('up') ? data.outpaint_config_obj.top || data.outpaint_config_obj.size : 0),
+            bottom: (data.outpaint_config_obj?.direction.includes('down') ? data.outpaint_config_obj.bottom || data.outpaint_config_obj.size : 0),
+            left: (data.outpaint_config_obj?.direction.includes('left') ? data.outpaint_config_obj.left || data.outpaint_config_obj.size : 0),
+            right: (data.outpaint_config_obj?.direction.includes('right') ? data.outpaint_config_obj.right || data.outpaint_config_obj.size : 0),
+            feathering: data.outpaint_config_obj?.mask_blur || 24,
+        }
+
+        workflow["44"]["inputs"]["top"] = outpaint_config.top
+        workflow["44"]["inputs"]["bottom"] = outpaint_config.bottom
+        workflow["44"]["inputs"]["left"] = outpaint_config.left
+        workflow["44"]["inputs"]["right"] = outpaint_config.right
+        workflow["44"]["inputs"]["feathering"] = outpaint_config.feathering
+
+        //set the image buffer to the workflow
+        const image_info = await ComfyClient.uploadImage(data.attachment, Date.now() + "_" + data.attachment_option.name, data.attachment_option.contentType).catch((err) => {
+            console.log("Failed to upload image", err)
+            return
+        })
+
+        console.log(image_info)
+
+        if (image_info == null) {
+            interaction.editReply({ content: "Failed to receive input image" });
+            return
+        }
+
+        workflow["17"]["inputs"]["image"] = image_info.name
+
+        ComfyClient.sendPrompt(workflow, (data) => {
+            if (data.node !== null) interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] });
+        }, (data) => {
+            console.log('received success')
+            const filename = data.output.images[0].filename
+
+            // fetch video from comfyUI
+            ComfyClient.getImage(filename, '', '', /*only_filename*/ true).then(async (arraybuffer) => {
+                // convert arraybuffer to buffer
+                const buffer = Buffer.from(arraybuffer)
+
+                await interaction.editReply({ content: "Generation Success", files: [{ attachment: buffer, name: filename }] });
+            }).catch((err) => {
+                console.log("Failed to retrieve image", err)
+                interaction.editReply({ content: "Failed to retrieve image" });
+            }).finally(() => {
+                ComfyClient.freeMemory(true)
+            })
+
+        }, (data) => {
+            console.log('received error')
+            interaction.editReply({ content: data.error });
+            ComfyClient.freeMemory(true)
+        }, (data) => {
+            console.log('received progress')
+            interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] + ` (${data.value}/${data.max})` });
+        });
+    },
 
 	async execute(interaction, client) {
         if (client.cooldowns.has(interaction.user.id) && !byPassUser.includes(interaction.user.id)) {
@@ -106,6 +243,11 @@ module.exports = {
         const latentmod_config = profile?.latentmod_config || (client.latentmod_config.has(interaction.user.id) ? client.latentmod_config.get(interaction.user.id) : null)
         const colorbalance_config = profile?.colorbalance_config ||
             (client.colorbalance_config.has(interaction.user.id) ? client.colorbalance_config.get(interaction.user.id) : null)
+        const extra_script = interaction.options.getString('extra_script') || 'None'
+        const outpaint_config = profile?.script_outpaint_config || 
+            (client.img2img_outpaint_config.has(interaction.user.id) ? client.img2img_outpaint_config.get(interaction.user.id) : null)
+        const upscale_config = profile?.script_upscale_config ||
+            (client.img2img_upscale_config.has(interaction.user.id) ? client.img2img_upscale_config.get(interaction.user.id) : null)
 
         // parse the user setting config
         // const usersetting_config = client.usersetting_config.has(interaction.user.id) ? client.usersetting_config.get(interaction.user.id) : null
@@ -130,12 +272,28 @@ module.exports = {
         let attachment_option = interaction.options.getAttachment('image')
 
         //download the image from attachment.proxyURL
-        let attachment = await loadImage(attachment_option.proxyURL,
-            /*getBuffer:*/ false, /*noDataURIHeader*/ false, /*safeMode*/ true).catch((err) => {
-            console.log(err)
+        let attachment = null
+        if (extra_script === 'Flux Kontext' || extra_script === 'Flux Outpaint') {
+            // if the extra script is flux kontext or flux outpaint, use comfyUI
+            attachment = await loadImage(attachment_option.proxyURL,
+                /*getBuffer:*/ true).catch((err) => {
+                console.log("Failed to retrieve image from discord", err)
+                return
+            })
+        }
+        else {
+            attachment = await loadImage(attachment_option.proxyURL,
+                /*getBuffer:*/ false, /*noDataURIHeader*/ false, /*safeMode*/ true).catch((err) => {
+                console.log(err)
+                interaction.editReply({ content: "Failed to retrieve image", ephemeral: true });
+                return
+            })
+        }
+
+        if (!attachment) {
             interaction.editReply({ content: "Failed to retrieve image", ephemeral: true });
             return
-        })
+        }
 
         if (checkpoint) {
             const change_result = await model_change(checkpoint, false).catch(err => {
@@ -261,6 +419,18 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             cfg_scale = 1.5
             sampling_step = 28
         }
+        else if (extra_script === 'Flux Outpaint') {
+            sampler = 'Euler'
+            scheduler = 'Normal'
+            cfg_scale = 2.5
+            sampling_step = 20
+        }
+        else if (extra_script === 'Flux Kontext') {
+            sampler = 'Euler'
+            scheduler = 'Normal'
+            cfg_scale = 1
+            sampling_step = 20
+        }
         else if (model_selection_flux.find(x => x.value === cached_model[0])) {
             sampler = 'Euler'
             scheduler = 'SGM Uniform'
@@ -372,6 +542,101 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
 
         await interaction.editReply({ content: `Generating image, you can create another image in ${cooldown.toFixed(2)} seconds ${teacache_check.teacache_config ? "(Teacache activated: -" + (100 * (1 - Math.pow(1 - teacache_check.teacache_config?.threshold || 0.1, 2))).toFixed(0) + "%)" : ""}` });
 
+        // load extra script
+        let outpaint_config_obj = null
+        let upscale_config_obj = null
+        if (extra_script === 'Outpainting mk2') {
+            if (!outpaint_config) {
+                interaction.editReply({ content: "Outpainting config is not set, please set it first using /wd_script_outpaint"});
+                return
+            }
+
+            // parse the config string
+            try {
+                outpaint_config_obj = JSON.parse(outpaint_config)
+            }
+            catch (err) {
+                interaction.editReply({ content: "Failed to parse Outpainting config"});
+                return
+            }
+
+            interaction.channel.send('Outpainting mk2 script loaded')
+        }
+        else if (extra_script === 'Ultimate SD upscale') {
+            if (!upscale_config) {
+                interaction.editReply({ content: "Upscale config is not set, please set it first using /wd_script_upscale"});
+                return
+            }
+            //console.log(upscale_config)
+            // parse the config string
+            try {
+                upscale_config_obj = JSON.parse(upscale_config)
+            }
+            catch (err) {
+                //console.log(err)
+                interaction.editReply({ content: "Failed to parse Upscale config"});
+                return
+            }
+
+            interaction.channel.send('Ultimate SD upscale script loaded')
+        }
+        else if (extra_script === 'Flux Outpaint') {
+            if (!outpaint_config) {
+                interaction.editReply({ content: "Flux Outpaint config is not set, please set it first using /wd_script_outpaint"});
+                return
+            }
+            // parse the config string
+            try {
+                outpaint_config_obj = JSON.parse(outpaint_config)
+            }
+            catch (err) {
+                interaction.editReply({ content: "Failed to parse Flux Outpaint config"});
+                return
+            }
+            // remove the teacache config from the prompt
+            get_teacache_config_from_prompt(prompt, false)
+
+            interaction.channel.send('Flux Outpaint is selected, switching to comfy backend, not all features are supported')
+            this.execute_comfy_flux_outpaint(interaction, client, {
+                prompt: prompt,
+                neg_prompt: neg_prompt,
+                sampling_step: sampling_step,
+                cfg_scale: cfg_scale,
+                seed: seed,
+                sampler: sampler_to_comfy_name_mapping[sampler] ?? "euler",
+                scheduler: scheduler_to_comfy_name_mapping[scheduler] ?? "normal",
+                teacache_strength: teacache_check.teacache_config ? teacache_check.teacache_config.threshold : 0,
+                session_hash: session_hash,
+                height: height,
+                width: width,
+                attachment: attachment,
+                attachment_option: attachment_option,
+                outpaint_config_obj: outpaint_config_obj,
+            })
+            return
+        }
+        else if (extra_script === 'Flux Kontext') {
+            interaction.channel.send('Flux Kontext is selected, switching to comfy backend, not all features are supported')
+            // remove the teacache config from the prompt
+            get_teacache_config_from_prompt(prompt, false)
+            this.execute_comfy_flux_kontext(interaction, client, {
+                prompt: prompt,
+                neg_prompt: neg_prompt,
+                sampling_step: sampling_step,
+                cfg_scale: cfg_scale,
+                seed: seed,
+                sampler: sampler_to_comfy_name_mapping[sampler] ?? "euler",
+                scheduler: scheduler_to_comfy_name_mapping[scheduler] ?? "normal",
+                teacache_strength: teacache_check.teacache_config ? teacache_check.teacache_config.threshold : 0,
+                session_hash: session_hash,
+                height: height,
+                width: width,
+                attachment: attachment,
+                attachment_option: attachment_option,
+            })
+            return
+        }
+
         if (extra_config.coupler_config && (height % 64 !== 0 || width % 64 !== 0)) {
             interaction.channel.send('Coupler detected, changing resolution to multiple of 64')
             height = Math.ceil(height / 64) * 64
@@ -432,7 +697,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             false, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
             extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, "Whole picture", 32, 
             override_neg_prompt ? false : true, extra_config.use_booru_gen, booru_gen_config_obj, is_flux, null, null, colorbalance_config_obj, do_preview, 
-            null, null, "None", extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config,
+            outpaint_config, upscale_config, extra_script, extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config,
             extra_config.mahiro_config, extra_config.teacache_config)
 
         // make option_init but for axios

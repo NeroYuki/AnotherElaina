@@ -45,6 +45,22 @@ module.exports = {
                     option.setName('color_var')
                         .setDescription('Color variance (0-1, default is 0.05)')
                         .setRequired(false))
+                .addIntegerOption(option =>
+                    option.setName('top')
+                        .setDescription('[Flux only] Override top size (0-512, default is 0 -> use size)')
+                        .setRequired(false))
+                .addIntegerOption(option =>
+                    option.setName('bottom')
+                        .setDescription('[Flux only] Override bottom size (0-512, default is 0 -> use size)')
+                        .setRequired(false))
+                .addIntegerOption(option =>
+                    option.setName('left')
+                        .setDescription('[Flux only] Override left size (0-512, default is 0 -> use size)')
+                        .setRequired(false))
+                .addIntegerOption(option =>
+                    option.setName('right')
+                        .setDescription('[Flux only] Override right size (0-512, default is 0 -> use size)')
+                        .setRequired(false))
                 )
 
     ,
@@ -73,6 +89,10 @@ module.exports = {
         const direction = interaction.options.getString('direction') || "LRUD"
         const falloff_exp = clamp(interaction.options.getNumber('falloff_exp') || 1, 0, 4)
         const color_var = clamp(interaction.options.getNumber('color_var') || 0.05, 0, 1)
+        const top = clamp(interaction.options.getInteger('top') || 0, 0, 512)
+        const bottom = clamp(interaction.options.getInteger('bottom') || 0, 0, 512)
+        const left = clamp(interaction.options.getInteger('left') || 0, 0, 512)
+        const right = clamp(interaction.options.getInteger('right') || 0, 0, 512)
 
         // check if direction is valid (contains any of "LRUD" in any order, any case)
         if (!/^[LRUDlrud]+$/.test(direction)) {
@@ -92,7 +112,11 @@ module.exports = {
                 return null
             }).filter((c) => c !== null),
             falloff_exp: falloff_exp,
-            color_var: color_var
+            color_var: color_var,
+            top: top,
+            bottom: bottom,
+            left: left,
+            right: right,
         }
 
         const config_string = JSON.stringify(config)
