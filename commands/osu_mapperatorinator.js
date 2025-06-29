@@ -768,6 +768,10 @@ BeatmapSetID:-1`);
 
         if (!health_check_res) {
             /// if the upload failed, try to upload to local server
+            if (model !== 'v30') {
+                await interaction.editReply({ content: "Local server cannot run non-v30 model, request aborted" });
+                return
+            }
             interaction.channel.send({ content: "⚠️ Fail to reach AI server, falling back to CPU, speed will be 6 times slower!" });
             request_server_address = 'http://127.0.0.1:7050';
             health_check_res = await getServerHealth(request_server_address).catch((err) => {
