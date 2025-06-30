@@ -20,7 +20,7 @@ const flux_support_models = [
 ]
 
 async function support_model_change(models, session_hash) {
-    const server_address = server_pool[0].server_address;
+    const server_address = server_pool[0].url;
     return new Promise(async (resolve, reject) => {
         const option_init_axios = {
             data: {
@@ -55,7 +55,7 @@ async function support_model_change(models, session_hash) {
 }
 
 function model_change(modelname, forced = false) {
-    const server_address = server_pool[0].server_address;
+    const server_address = server_pool[0].url;
     
     return new Promise(async (resolve, reject) => {
         // change model then send the notification to discord channel where the action is executed

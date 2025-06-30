@@ -973,7 +973,7 @@ const model_selection_xl = [
     { name: 'AnimagineXL v3.1', value: 'animaginexl_v31.safetensors'},
     { name: 'ChimeraXL v2', value: 'chimera2_xl.safetensors'},
     { name: 'KohakuXL Zeta', value: 'archive/kohakuxl_zeta.safetensors'},
-    { name: 'Juggernaut XL', value: 'juggernautxl_turbo.safetensors'},
+    { name: 'Juggernaut XL', value: 'archive/juggernautxl_turbo.safetensors'},
     { name: 'PonyRealism v2.2', value: 'archive/ponyrealism_v22.safetensors'},
     { name: 'Dreamshaper XL Lightning', value: 'archive/dreamshaperxl_lightning.safetensors'},
     { name: 'RealVisXL v5', value: 'archive/realvisxl_v5.safetensors'},
@@ -995,13 +995,13 @@ const model_selection_xl = [
     { name: 'IllumiyumeXL V-pred v3.1' , value: 'illumiyumexl_vpred_v31.safetensors'},
     { name: 'IllumiyumeXL V-pred v3.2' , value: 'illumiyumexl_vpred_v32.safetensors'},
     { name: 'NoobAIXL MDNT V-pred v1.0' , value: 'noobaixl_mdnt_vpred_v1.safetensors'},
-    { name: 'Rouwei V-pred v0.8' , value: 'rouwei_vpred_v0_8.safetensors'},
+    { name: 'Rouwei V-pred v0.8' , value: 'archive/rouwei_vpred_v0_8.safetensors'},
 ]
 
 const model_selection_inpaint = [
     { value: 'animaginexl_v31.safetensors', inpaint: 'animaginexl_v31_inpaint.safetensors'},
-    { value: 'juggernautxl_turbo.safetensors', inpaint: 'juggernautxl_inpaint.safetensors'},
-    { value: 'realvisxl_v5.safetensors', inpaint: 'archive/realvisxl_v3_inpaint.safetensors'}
+    { value: 'archive/juggernautxl_turbo.safetensors', inpaint: 'juggernautxl_inpaint.safetensors'},
+    { value: 'archive/realvisxl_v5.safetensors', inpaint: 'archive/realvisxl_v3_inpaint.safetensors'}
 ]
 
 const model_selection_flux = [
