@@ -201,6 +201,10 @@ module.exports = {
             workflow["8"]["inputs"]["sampler_name"] = sampler_to_comfy_name_mapping[sampler] ?? "euler"
             workflow["8"]["inputs"]["scheduler"] = scheduler_to_comfy_name_mapping[scheduler] ?? "normal"
             workflow["8"]["inputs"]["cfg"] = cfg_scale
+
+            if (dimensions.length > 81) {
+                interaction.editReply({ content: "Warning: Frame count is greater than 81 on legacy workflow, generated result can be looped unexpectedly" });
+            }
         }
         else if (model === 'self_forcing_dmd.pt') {
             // self-forcing workflow
@@ -223,6 +227,10 @@ module.exports = {
             workflow["48"]["inputs"]["shift"] = shift;
             workflow["3"]["inputs"]["seed"] = seed > 0 ? seed : Math.floor(Math.random() * 2_000_000_000);
             workflow["6"]["inputs"]["text"] = prompt;
+
+            if (dimensions.length > 81) {
+                interaction.editReply({ content: "Warning: Frame count is greater than 81 on fast workflow, generated result can be looped unexpectedly" });
+            }
         }
         else {
             // wan workflow
@@ -254,6 +262,35 @@ module.exports = {
             // sampler
             workflow["295"]["inputs"]["seed"] = seed > 0 ? seed : Math.floor(Math.random() * 2_000_000_000);
             workflow["295"]["inputs"]["nag_scale"] = neg_prompt !== '' ? 8.0 : 1.0;
+
+            if (dimensions.length > 81) {
+                if (dimensions.length > 128) {
+                    interaction.editReply({ content: "Warning: Frame count is greater than 128, generated result can be looped unexpectedly" });
+                }
+                else {
+                    interaction.channel.send({ content: "Frame count is greater than 81, use RifleXRoPE" });
+                }
+                workflow["900"] = {
+                    "inputs": {
+                        "k": 6,
+                        "model": [
+                            "292",
+                            0
+                        ],
+                        "latent": [
+                            "40",
+                            2
+                        ]
+                    },
+                    "class_type": "ApplyRifleXRoPE_WanVideo",
+                    "_meta": {
+                        "title": "Apply RifleXRoPE WanVideo"
+                    }
+                }
+
+                // connect RifleXRoPE output to shift node
+                workflow["48"]["inputs"]["model"] = ["900", 0];
+            }
         }
 
         ComfyClient.sendPrompt(workflow, (data) => {
