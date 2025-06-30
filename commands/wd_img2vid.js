@@ -102,7 +102,7 @@ module.exports = {
 
         // calculate the allocated bugdet to frame count and resolution
         const frame_count = length * fps
-        const budget = preset_to_budget_allocation[preset] 
+        let budget = preset_to_budget_allocation[preset] 
         if (preset === 'custom') {
             budget = custom_budget
         }
