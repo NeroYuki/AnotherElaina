@@ -112,12 +112,17 @@ module.exports = {
             interaction.editReply({ content: "Using less optimized workflow, dividing budget by 2" });
             budget /= 2
 
+            if (frame_count > 81) {
+                interaction.editReply({ content: "Warning: Frame count is greater than 81 on legacy workflow, generated result can be looped unexpectedly" });
+            }
+
             workflow["42"]["inputs"]["noise_seed"] = Math.floor(Math.random() * 2_000_000_000)
             workflow["110"]["inputs"]["seed"] = Math.floor(Math.random() * 2_000_000_000)
             workflow["151"]["inputs"]["image"] = image_info.name
             workflow["140"]["inputs"]["float"] = budget
             workflow["153"]["inputs"]["int"] = frame_count
             workflow["50"]["inputs"]["frame_rate"] = fps
+            workflow["54"]["inputs"]["shift"] = shift
 
             workflow["45"]["inputs"]["text"] = "FPS-24, " + prompt
             if (neg_prompt !== '') {
@@ -148,6 +153,35 @@ module.exports = {
                         "title": "Load Diffusion Model"
                     }
                 }
+            }
+
+            if (frame_count > 81) {
+                if (frame_count > 129) {
+                    interaction.editReply({ content: "Warning: Frame count is greater than 128, generated result can be looped unexpectedly" });
+                }
+                else {
+                    interaction.channel.send({ content: "Frame count is greater than 81, use RifleXRoPE" });
+                }
+                workflow["900"] = {
+                    "inputs": {
+                        "k": 6,
+                        "model": [
+                            "12",
+                            0
+                        ],
+                        "latent": [
+                            "15",
+                            2
+                        ]
+                    },
+                    "class_type": "ApplyRifleXRoPE_WanVideo",
+                    "_meta": {
+                        "title": "Apply RifleXRoPE WanVideo"
+                    }
+                }
+
+                // connect RifleXRoPE output to shift node
+                workflow["14"]["inputs"]["model"] = ["900", 0];
             }
 
             workflow["81"]["inputs"]["text"] = neg_prompt
