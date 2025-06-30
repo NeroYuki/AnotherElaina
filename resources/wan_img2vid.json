@@ -1,0 +1,410 @@
+{
+  "1": {
+    "inputs": {
+      "text": "色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走",
+      "clip": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Negative Prompt)"
+    }
+  },
+  "2": {
+    "inputs": {
+      "samples": [
+        "83",
+        0
+      ],
+      "vae": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "5": {
+    "inputs": {
+      "frame_rate": 16,
+      "loop_count": 0,
+      "filename_prefix": "Video",
+      "format": "video/h264-mp4",
+      "pix_fmt": "yuv420p",
+      "crf": 19,
+      "save_metadata": true,
+      "trim_to_audio": false,
+      "pingpong": false,
+      "save_output": true,
+      "images": [
+        "2",
+        0
+      ]
+    },
+    "class_type": "VHS_VideoCombine",
+    "_meta": {
+      "title": "Video Combine 🎥🅥🅗🅢"
+    }
+  },
+  "6": {
+    "inputs": {
+      "vae_name": "wan_2.1_vae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "7": {
+    "inputs": {
+      "sage_attention": "auto",
+      "model": [
+        "10",
+        0
+      ]
+    },
+    "class_type": "PathchSageAttentionKJ",
+    "_meta": {
+      "title": "Patch Sage Attention KJ"
+    }
+  },
+  "8": {
+    "inputs": {
+      "clip_name": "forge\\umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+      "type": "wan",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP"
+    }
+  },
+  "10": {
+    "inputs": {
+      "unet_name": "Skywork-SkyReels-V2-I2V-14B-720P-Q6_K.gguf"
+    },
+    "class_type": "UnetLoaderGGUF",
+    "_meta": {
+      "title": "Unet Loader (GGUF)"
+    }
+  },
+  "12": {
+    "inputs": {
+      "lora_name": "Wan21_T2V_14B_lightx2v_cfg_step_distill_lora_rank32.safetensors",
+      "strength_model": 1.0000000000000002,
+      "model": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "LoraLoaderModelOnly"
+    }
+  },
+  "13": {
+    "inputs": {
+      "text": "",
+      "clip": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Positive Prompt)"
+    }
+  },
+  "14": {
+    "inputs": {
+      "shift": 5.000000000000001,
+      "model": [
+        "12",
+        0
+      ]
+    },
+    "class_type": "ModelSamplingSD3",
+    "_meta": {
+      "title": "Shift"
+    }
+  },
+  "15": {
+    "inputs": {
+      "width": [
+        "32",
+        1
+      ],
+      "height": [
+        "32",
+        2
+      ],
+      "length": [
+        "23",
+        0
+      ],
+      "batch_size": 1,
+      "positive": [
+        "13",
+        0
+      ],
+      "negative": [
+        "81",
+        0
+      ],
+      "vae": [
+        "6",
+        0
+      ],
+      "start_image": [
+        "32",
+        0
+      ]
+    },
+    "class_type": "WanImageToVideo",
+    "_meta": {
+      "title": "WanImageToVideo"
+    }
+  },
+  "16": {
+    "inputs": {
+      "a": [
+        "18",
+        0
+      ],
+      "b": [
+        "17",
+        0
+      ]
+    },
+    "class_type": "JWFloatDiv",
+    "_meta": {
+      "title": "Float Divide"
+    }
+  },
+  "17": {
+    "inputs": {
+      "value": [
+        "23",
+        0
+      ]
+    },
+    "class_type": "JWIntegerToFloat",
+    "_meta": {
+      "title": "Integer to Float"
+    }
+  },
+  "18": {
+    "inputs": {
+      "float": 22000000.000000004
+    },
+    "class_type": "Primitive float [Crystools]",
+    "_meta": {
+      "title": "🪛 Primitive float"
+    }
+  },
+  "19": {
+    "inputs": {
+      "a": [
+        "20",
+        0
+      ],
+      "b": [
+        "31",
+        1
+      ]
+    },
+    "class_type": "JWFloatMul",
+    "_meta": {
+      "title": "calc height"
+    }
+  },
+  "20": {
+    "inputs": {
+      "Value": [
+        "30",
+        0
+      ]
+    },
+    "class_type": "DF_Square_root",
+    "_meta": {
+      "title": "calc width"
+    }
+  },
+  "21": {
+    "inputs": {
+      "a": [
+        "19",
+        0
+      ],
+      "b": 1280
+    },
+    "class_type": "JWFloatMin",
+    "_meta": {
+      "title": "Float Minimum"
+    }
+  },
+  "22": {
+    "inputs": {
+      "a": [
+        "20",
+        0
+      ],
+      "b": 1280
+    },
+    "class_type": "JWFloatMin",
+    "_meta": {
+      "title": "Float Minimum"
+    }
+  },
+  "23": {
+    "inputs": {
+      "int": 81
+    },
+    "class_type": "Primitive integer [Crystools]",
+    "_meta": {
+      "title": "🪛 Primitive integer"
+    }
+  },
+  "28": {
+    "inputs": {
+      "value": [
+        "22",
+        0
+      ],
+      "mode": "floor"
+    },
+    "class_type": "JWFloatToInteger",
+    "_meta": {
+      "title": "Float to Integer"
+    }
+  },
+  "29": {
+    "inputs": {
+      "value": [
+        "21",
+        0
+      ],
+      "mode": "floor"
+    },
+    "class_type": "JWFloatToInteger",
+    "_meta": {
+      "title": "Float to Integer"
+    }
+  },
+  "30": {
+    "inputs": {
+      "a": [
+        "16",
+        0
+      ],
+      "b": [
+        "31",
+        1
+      ]
+    },
+    "class_type": "JWFloatDiv",
+    "_meta": {
+      "title": "width^2 = budget/aspect"
+    }
+  },
+  "31": {
+    "inputs": {
+      "image": [
+        "33",
+        0
+      ]
+    },
+    "class_type": "Image Aspect Ratio",
+    "_meta": {
+      "title": "Image Aspect Ratio"
+    }
+  },
+  "32": {
+    "inputs": {
+      "width": [
+        "29",
+        0
+      ],
+      "height": [
+        "28",
+        0
+      ],
+      "interpolation": "lanczos",
+      "method": "fill / crop",
+      "condition": "always",
+      "multiple_of": 16,
+      "image": [
+        "33",
+        0
+      ]
+    },
+    "class_type": "ImageResize+",
+    "_meta": {
+      "title": "🔧 Image Resize"
+    }
+  },
+  "33": {
+    "inputs": {
+      "image": "Resize_20240522_040411_1815.jpg"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "81": {
+    "inputs": {
+      "text": "low quality, blurry, ugly, poorly drawn hands, deformed face, extra limbs, bad anatomy, low resolution, disfigured, unrealistic, cartoonish, watermark, text, signature, distorted proportions, creepy, glitch, jpeg artifacts",
+      "clip": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "83": {
+    "inputs": {
+      "seed": 542196735885738,
+      "steps": 5,
+      "cfg": 1,
+      "nag_scale": 1,
+      "nag_tau": 2.5,
+      "nag_alpha": 0.25,
+      "nag_sigma_end": 0,
+      "sampler_name": "euler",
+      "scheduler": "beta",
+      "denoise": 1,
+      "model": [
+        "14",
+        0
+      ],
+      "positive": [
+        "15",
+        0
+      ],
+      "negative": [
+        "15",
+        1
+      ],
+      "nag_negative": [
+        "15",
+        1
+      ],
+      "latent_image": [
+        "15",
+        2
+      ]
+    },
+    "class_type": "KSamplerWithNAG",
+    "_meta": {
+      "title": "KSamplerWithNAG"
+    }
+  }
+}
