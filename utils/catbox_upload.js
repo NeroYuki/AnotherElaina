@@ -53,7 +53,33 @@ function catboxFileUpload(filename) {
     })
 }
 
+function catboxFileUploadBuffer(buffer, filename) {
+    return new Promise(async (resolve, reject) => {
+        if (!buffer || !filename) {
+            reject('No buffer or filename provided')
+        }
+
+        // save the buffer to a temporary file and upload the file to catbox
+        fs.writeFileSync('./temp/' + filename, buffer, {encoding: 'binary'})
+
+        await catboxClient.uploadFile({
+            path: './temp/' + filename,
+        })
+            .then((res) => {
+                console.log(res)
+                fs.rmSync('./temp/' + filename, {force: true})
+                resolve(res)
+            })
+            .catch((err) => {
+                console.log(err)
+                fs.rmSync('./temp/' + filename, {force: true})
+                reject(err)
+            })
+    })
+}
+
 module.exports = {
     catboxUpload,
-    catboxFileUpload
+    catboxFileUpload,
+    catboxFileUploadBuffer
 }
