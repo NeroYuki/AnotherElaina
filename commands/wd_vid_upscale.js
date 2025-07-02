@@ -206,7 +206,7 @@ module.exports = {
             console.log('received progress')
 
             // skip video combine node update progress (too spammy)
-            if (workflow[data.node]["_meta"]["title"].include("🎥🅥🅗🅢")) return
+            if (workflow[data.node]["_meta"]["title"].includes("🎥🅥🅗🅢")) return
 
             interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] + ` (${data.value}/${data.max})` });
         });
