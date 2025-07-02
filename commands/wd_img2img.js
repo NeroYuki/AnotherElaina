@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { byPassUser, censorGuildIds, optOutGuildIds } = require('../config.json');
 const crypt = require('crypto');
-const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, model_name_hash_mapping, check_model_filename, model_selection, model_selection_xl, upscaler_selection, model_selection_curated, model_selection_inpaint, model_selection_flux } = require('../utils/ai_server_config.js');
+const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, model_name_hash_mapping, check_model_filename, model_selection, model_selection_xl, upscaler_selection, model_selection_curated, model_selection_inpaint, model_selection_flux, sampler_to_comfy_name_mapping, scheduler_to_comfy_name_mapping } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const { loadImage } = require('../utils/load_discord_img.js');
@@ -419,18 +419,6 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             cfg_scale = 1.5
             sampling_step = 28
         }
-        else if (extra_script === 'Flux Outpaint') {
-            sampler = 'Euler'
-            scheduler = 'Normal'
-            cfg_scale = 2.5
-            sampling_step = 20
-        }
-        else if (extra_script === 'Flux Kontext') {
-            sampler = 'Euler'
-            scheduler = 'Normal'
-            cfg_scale = 1
-            sampling_step = 20
-        }
         else if (model_selection_flux.find(x => x.value === cached_model[0])) {
             sampler = 'Euler'
             scheduler = 'SGM Uniform'
@@ -448,6 +436,19 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             scheduler = profile?.scheduler ?? 'Align Your Step'
             cfg_scale = profile?.cfg_scale ?? 7
             sampling_step = profile?.sampling_step ?? 12
+        }
+
+        if (extra_script === 'Flux Outpaint') {
+            sampler = 'Euler'
+            scheduler = 'Normal'
+            cfg_scale = 2.5
+            sampling_step = 20
+        }
+        else if (extra_script === 'Flux Kontext') {
+            sampler = 'Euler'
+            scheduler = 'Normal'
+            cfg_scale = 1
+            sampling_step = 20
         }
 
         // end forced config
