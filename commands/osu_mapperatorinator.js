@@ -11,6 +11,7 @@ const { catboxFileUpload } = require('../utils/catbox_upload');
 const { MessageEmbed } = require('discord.js');
 const { all } = require('axios');
 const { clamp } = require('../utils/common_helper');
+const comfyClient = require('../utils/comfy_client');
 
 const server_address = process.env.BOT_ENV === 'lan' ? 'http://192.168.1.7:7050' : 'http://192.168.196.142:7050'
 
@@ -387,8 +388,110 @@ BeatmapSetID:-1`);
         })
     },
 
-    async execute_inference(interaction, params, client) {
+    async execute_inference(interaction, params, client, msgRef = null) {
         console.log("Starting task, Current queue length: " + client.mapperatorinator_queue.length)
+
+        // check vram usage before starting the inference
+        const health = await getServerHealth(params.server_address).catch((err) => {
+            console.log(err)
+            return
+        })
+
+        const is_gpu_having_enough_vram = health && ['http://192.168.1.7:7050','http://192.168.196.142:7050'].includes(params.server_address)
+         && ((params.model !== 'v30' && comfyClient.comfyStat.gpu_vram_used < 4) || (params.model === 'v30' && comfyClient.comfyStat.gpu_vram_used < 10))
+
+        if (!health || !is_gpu_having_enough_vram) {
+            const row = new MessageActionRow()
+
+            if (params.model === 'v30') {
+                row.addComponents(new MessageButton()
+                    .setCustomId('switchtocpu_' + message.id)
+                    .setLabel('🚶‍♂️ Switch to CPU Generation')
+                    .setStyle('PRIMARY')
+                )
+            }
+
+            row.addComponents(new MessageButton()
+                .setCustomId('cancelmapper_' + message.id)
+                .setEmoji("<:nuke:338322910018142208>")
+                .setLabel('Cancel')
+                .setStyle('DANGER')
+            );
+
+            const filter = i => {
+                i.deferUpdate();
+                return i.user.id === interaction.user.id;
+            };
+
+            const message_content = { content: `<@${params.user_id}> The server is currently under heavy load, generation will be retried after 5 minutes`, components: [row]}
+
+            if (msgRef) {
+                msgRef.edit(message_content);
+            }
+            else {
+                msgRef = interaction.channel.send(message_content);
+            }
+
+            // setTimeout(() => {
+            //     this.execute_inference(interaction, params, client, msgRef);
+            // }, 5 * 60 * 1000); // retry after 5 minutes
+
+            msgRef.channel.awaitMessageComponent({ filter, time: 300000 })
+                .then(async i => {
+                    if (i.customId.startsWith('switchtocpu_')) {
+                        const local_server_address = 'http://127.0.0.1:7050'
+
+                        let audio_path_res = await uploadAudio(local_server_address, params.audio_file, params.audio_filename).catch((err) => {
+                            console.log(err)
+                            msgRef.edit({ content: "Failed to upload audio to local server"});
+                            return
+                        })
+
+                        if (!audio_path_res) {
+                            msgRef.edit({ content: "Failed to upload audio to local server, request aborted"});
+                            return
+                        }
+
+                        console.log("Audio re-uploaded: " + audio_path_res.path)
+                        params.audio_path_res = audio_path_res;
+
+                        const beatmap_path_res = params.beatmap_file ? await uploadBeatmap(local_server_address, params.beatmap_file, params.beatmap_filename).catch((err) => {
+                            console.log(err)
+                            msgRef.edit({ content: "Failed to upload beatmap file to local server"});
+                            return
+                        }) : null
+
+                        if (beatmap_file && !beatmap_path_res) {
+                            msgRef.edit({ content: "Failed to upload beatmap file to local server, request aborted"});
+                            return;
+                        }
+
+                        params.beatmap_path_res = beatmap_path_res;
+                        params.server_address = local_server_address;
+                        this.execute_inference(interaction, params, client, msgRef)
+                        return;
+                    }
+
+                    else if (i.customId.startsWith('cancelmapper_')) {
+                        msgRef.edit({ content: `<@${params.user_id}> Beatmap generation cancelled by user` });
+                        // dequeue the current task
+                        client.mapperatorinator_queue.shift();
+                        // check if there is another task in the queue
+                        console.log("Cancelled task, Current queue length: " + client.mapperatorinator_queue.length)
+                        if (client.mapperatorinator_queue.length > 0) {
+                            this.execute_inference(client.mapperatorinator_queue[0].interaction, client.mapperatorinator_queue[0].params, client);
+                        }
+                        return;
+                    }
+                })
+                .catch(err => {
+                    // in case timeout, retry the inference on gpu
+                    console.log("Message component interaction timed out, retrying inference on same device");
+                    this.execute_inference(interaction, params, client, msgRef);
+                });
+            return;
+        }
+
         const request_res = await startInference(params.server_address, {
             audio_path: './temp/' + params.audio_path_res.path.split('\\').pop().split('/').pop(),
             beatmap_path: params.beatmap_path ? './temp/' + params.beatmap_path_res.path.ssplit('\\').pop().split('/').pop() : '',
