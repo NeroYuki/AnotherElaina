@@ -142,6 +142,7 @@ module.exports = {
             images_location = [color_matching_node, 0];
             workflow[color_matching_node]["inputs"]["method"] = color_correction;
             workflow[color_matching_node]["inputs"]["strength"] = color_correction_strength;
+            workflow[input_ref_image_node]["inputs"]["image"] = ref_image_info.name;
         }
 
         // change the input of upscale node to input video node, assign value, not reference
