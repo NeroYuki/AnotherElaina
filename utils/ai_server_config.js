@@ -925,25 +925,24 @@ const model_name_hash_mapping = new Map([
 const model_selection = [
     { name: 'Pastel Mix v2.1', value: 'pastelmix.safetensors' },
     { name: 'Counterfeit v2.5', value: 'counterfeit.safetensors' },
-    { name: 'MeinaMix v11', value: 'meinamix_v11.safetensors' },
+    { name: 'MeinaMix v11', value: 'archive/meinamix_v11.safetensors' },
     { name: 'HimawariMix v8', value: 'himawarimix.safetensors' },
     { name: 'Anything v5', value: 'anythingv5.safetensors' },
-    { name: 'CetusMix (Coda v2)', value: 'cetusmix_coda2.safetensors' },
-    { name: 'RichyRichMix v2', value: 'richyrichmix_v2.safetensors' },
-    { name: 'CuteYukiMix', value: 'cuteyukimix.safetensors' },
+    { name: 'CetusMix (Coda v2)', value: 'archive/cetusmix_coda2.safetensors' },
+    { name: 'RichyRichMix v2', value: 'archive/richyrichmix_v2.safetensors' },
+    { name: 'CuteYukiMix', value: 'archive/cuteyukimix.safetensors' },
     { name: 'IrisMix v5b', value: 'archive/irismix_v5b.safetensors'},
-    { name: 'RefSlave v1', value: 'refslave.safetensors' },
 ]
 
 // if model is in this list, remove it when construct the model selection
 const model_selection_legacy = [
     { name: 'Counterfeit v2.5', value: 'counterfeit.safetensors' },
     { name: 'Anything v5', value: 'anythingv5.safetensors' },
-    { name: 'CetusMix (Coda v2)', value: 'cetusmix_coda2.safetensors' },
-    { name: 'RichyRichMix v2', value: 'richyrichmix_v2.safetensors' },
-    { name: 'CuteYukiMix', value: 'cuteyukimix.safetensors' },
+    { name: 'CetusMix (Coda v2)', value: 'archive/cetusmix_coda2.safetensors' },
+    { name: 'MeinaMix v11', value: 'archive/meinamix_v11.safetensors' },
+    { name: 'RichyRichMix v2', value: 'archive/richyrichmix_v2.safetensors' },
+    { name: 'CuteYukiMix', value: 'archive/cuteyukimix.safetensors' },
     { name: 'IrisMix v5b', value: 'archive/irismix_v5b.safetensors'},
-    { name: 'RefSlave v1', value: 'refslave.safetensors' },
     { name: 'KohakuXL Zeta', value: 'archive/kohakuxl_zeta.safetensors'},
     { name: 'Dreamshaper XL Lightning', value: 'archive/dreamshaperxl_lightning.safetensors'},
     { name: 'PonyDiffusionXL v6', value: 'archive/ponydiffusionxl_v6.safetensors'},
@@ -959,12 +958,13 @@ const model_selection_legacy = [
     { name: 'SilenceMix v1', value: 'archive/silencemix_v10.safetensors'},
     { name: 'Flux.dev Q4_K_S', value: 'archive/flux1-dev-Q4_K_S.gguf' },
     { name: 'PrefectPony v5.0', value: 'archive/prefectpony_v50.safetensors'},
+    { name: 'AutismMix PonyXL', value: 'archive/autismmix_ponyxl.safetensors'},
     { name: 'IllumiyumeXL V-pred v3.2' , value: 'illumiyumexl_vpred_v32.safetensors'},
 ]
 
 const model_selection_xl = [
     { name: 'PrefectPony v5.0', value: 'archive/prefectpony_v50.safetensors'},
-    { name: 'AutismMix PonyXL', value: 'autismmix_ponyxl.safetensors'},
+    { name: 'AutismMix PonyXL', value: 'archive/autismmix_ponyxl.safetensors'},
     { name: 'NoobAIXL v1.1', value: 'noobaixl_v1_1.safetensors'},
     { name: 'NoobAIXL V-pred v1.0', value: 'noobaixl_vpred_v1.safetensors'},
     { name: 'NekorayXL v0.6', value: 'archive/nekorayxl.safetensors' },
