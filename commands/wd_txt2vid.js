@@ -85,8 +85,8 @@ module.exports = {
                     .addChoices(
                         { name: 'Hunyuan T2V Q5_K_M - Legacy', value: 'hunyuan-video-t2v-720p-Q5_K_M.gguf' },
                         { name: 'Wan v2.1 T2V Q8', value: 'wan2.1-t2v-14b-Q8_0.gguf' },
-                        { name: 'Wan v2.1 T2V Q4_K_S', value: 'wan2.1-t2v-14b-Q4_K_S.gguf' },
-                        { name: 'AniWan v2.1 T2V Q4_K_S', value: 'aniWan2114BFp8E4m3fn_t2v14BGGUFQ4KS.gguf' },
+                        { name: 'Skyreels v2 T2V Q8', value: 'Skywork-SkyReels-V2-T2V-14B-720P-Q8_0.gguf' },
+                        { name: 'AniWan v2.1 T2V fp8', value: 'aniWan2114BFp8E4m3fn_t2v.safetensors' },
                         { name: 'Wan v2.1 T2V Self-forcing - Fast', value: 'self_forcing_dmd.pt' }
                     ))
 
@@ -146,7 +146,7 @@ module.exports = {
         const sampler = interaction.options.getString('sampler') || 'Euler';
         const scheduler = interaction.options.getString('scheduler') || 'Normal'
         const cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || 1, 1, 10);
-        const model = interaction.options.getString('model') || 'wan2.1-t2v-14b-Q4_K_S.gguf';
+        const model = interaction.options.getString('model') || 'wan2.1-t2v-14b-Q8_0.gguf';
         const shift = clamp(interaction.options.getInteger('shift') || 5, 1, 10);
 
         let workflow = JSON.parse(JSON.stringify(og_workflow))
@@ -258,6 +258,18 @@ module.exports = {
 
             // model selection
             workflow["291"]["inputs"]["unet_name"] = model;
+            if (model === 'aniWan2114BFp8E4m3fn_t2v.safetensors') {
+                workflow["291"] = {
+                    "inputs": {
+                        "unet_name": 'aniWan2114BFp8E4m3fn_t2v.safetensors',
+                        "weight_dtype": "default"
+                    },
+                    "class_type": "UNETLoader",
+                    "_meta": {
+                        "title": "Load Diffusion Model"
+                    }
+                }
+            }
 
             // sampler
             workflow["295"]["inputs"]["seed"] = seed > 0 ? seed : Math.floor(Math.random() * 2_000_000_000);

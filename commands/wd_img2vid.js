@@ -60,8 +60,8 @@ module.exports = {
                     .setDescription('The model to use for the generation')
                     .addChoices(
                         { name: 'Skyreels Hunyuan I2V Q5 - Legacy', value: 'skyreels-hunyuan-I2V-Q5_K_M.gguf' },
-                        { name: 'Skyreels Wan v2 I2V Q6', value: 'Skywork-SkyReels-V2-I2V-14B-720P-Q6_K.gguf' },
-                        { name: 'Wan v2.1 I2V Q4_K_M', value: 'wan2.1-i2v-14b-720p-Q4_K_M.gguf' },
+                        { name: 'Skyreels v2 I2V Q8', value: 'Skywork-SkyReels-V2-I2V-14B-720P-Q8_0.gguf' },
+                        { name: 'Wan v2.1 I2V Q8', value: 'wan2.1-i2v-14b-720p-Q8_0.gguf' },
                         { name: 'AniWan v2.1 I2V fp8', value: 'aniWan2114BFp8E4m3fn_i2v720p.safetensors' }
                     ))
     ,
