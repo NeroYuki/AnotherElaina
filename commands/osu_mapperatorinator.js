@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { MessageActionRow, MessageSelectMenu } = require('discord.js');
+const { MessageActionRow, MessageSelectMenu, MessageButton } = require('discord.js');
 const { loadImage } = require('../utils/load_discord_img');
 const { uploadAudio, startInference, streamOutput, getBeatmap, uploadBeatmap, getServerHealth } = require('../utils/mapperinator_execute');
 const NodeID3 = require('node-id3')
@@ -397,22 +397,22 @@ BeatmapSetID:-1`);
             return
         })
 
-        const is_gpu_having_enough_vram = health && ['http://192.168.1.7:7050','http://192.168.196.142:7050'].includes(params.server_address)
-         && ((params.model !== 'v30' && comfyClient.comfyStat.gpu_vram_used < 4) || (params.model === 'v30' && comfyClient.comfyStat.gpu_vram_used < 10))
+        const is_using_gpu = ['http://192.168.1.7:7050','http://192.168.196.142:7050'].includes(params.server_address)
+        const is_gpu_having_enough_vram = (params.model !== 'v30' && comfyClient.comfyStat.gpu_vram_used < 4) || (params.model === 'v30' && comfyClient.comfyStat.gpu_vram_used < 10)
 
-        if (!health || !is_gpu_having_enough_vram) {
+        if (!health || (health && is_using_gpu && !is_gpu_having_enough_vram)) {
             const row = new MessageActionRow()
 
             if (params.model === 'v30') {
                 row.addComponents(new MessageButton()
-                    .setCustomId('switchtocpu_' + message.id)
+                    .setCustomId('switchtocpu_' + interaction.id)
                     .setLabel('🚶‍♂️ Switch to CPU Generation')
                     .setStyle('PRIMARY')
                 )
             }
 
             row.addComponents(new MessageButton()
-                .setCustomId('cancelmapper_' + message.id)
+                .setCustomId('cancelmapper_' + interaction.id)
                 .setEmoji("<:nuke:338322910018142208>")
                 .setLabel('Cancel')
                 .setStyle('DANGER')
@@ -426,10 +426,10 @@ BeatmapSetID:-1`);
             const message_content = { content: `<@${params.user_id}> The server is currently under heavy load, generation will be retried after 5 minutes`, components: [row]}
 
             if (msgRef) {
-                msgRef.edit(message_content);
+                await msgRef.edit(message_content);
             }
             else {
-                msgRef = interaction.channel.send(message_content);
+                msgRef = await interaction.channel.send(message_content);
             }
 
             // setTimeout(() => {
@@ -461,7 +461,7 @@ BeatmapSetID:-1`);
                             return
                         }) : null
 
-                        if (beatmap_file && !beatmap_path_res) {
+                        if (params.beatmap_file && !beatmap_path_res) {
                             msgRef.edit({ content: "Failed to upload beatmap file to local server, request aborted"});
                             return;
                         }
@@ -486,6 +486,7 @@ BeatmapSetID:-1`);
                 })
                 .catch(err => {
                     // in case timeout, retry the inference on gpu
+                    console.log(err)
                     console.log("Message component interaction timed out, retrying inference on same device");
                     this.execute_inference(interaction, params, client, msgRef);
                 });
