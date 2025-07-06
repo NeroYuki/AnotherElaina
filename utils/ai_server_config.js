@@ -996,6 +996,7 @@ const model_selection_xl = [
     { name: 'IllumiyumeXL V-pred v3.2' , value: 'illumiyumexl_vpred_v32.safetensors'},
     { name: 'NoobAIXL MDNT V-pred v1.0' , value: 'noobaixl_mdnt_vpred_v1.safetensors'},
     { name: 'Rouwei V-pred v0.8' , value: 'archive/rouwei_vpred_v0_8.safetensors'},
+    { name: 'ColorPalette v1' , value: 'colorpalette_v10.safetensors'},
 ]
 
 const model_selection_inpaint = [
