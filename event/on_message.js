@@ -2,48 +2,51 @@ const { context_storage } = require('../utils/text_gen_store');
 var { is_generating } = require('../utils/text_gen_store');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { text_completion_stream, text_completion } = require('../utils/ollama_request');
+const { text_completion: gemini_text_completion, text_completion_stream: gemini_text_completion_stream } = require('../utils/gemini_request');
 const { loadImage } = require('../utils/load_discord_img');
 const { operatingMode2Config } = require('../utils/chat_options');
 const comfyClient = require('../utils/comfy_client');
+const { getBestOperatingMode, getOperatingModeStatus } = require('../utils/operating_mode_selector');
 
 async function responseToMessage(client, message, content, is_continue = false, is_regen = false, ctx_enc_len = 0) {
 
     let operating_mode = globalThis.operating_mode
-    // let attachment_option = message.attachments.find(attachment => attachment.contentType.startsWith('image')) || message.embeds[0]?.image
     let attachment_options = message.attachments.filter(attachment => attachment.contentType.startsWith('image')) || message.embeds[0]?.image
-    //let attachment = null
     let attachments = []
 
-    if (globalThis.operating_mode === "auto") {
-        console.log(globalThis.llm_load_timer)
-        if (comfyClient.comfyStat.gpu_vram_used < 3 || globalThis.llm_load_timer) {
-            if (attachment_options && attachment_options.length > 0) {
-                operating_mode = "vision"
-                //download the image from attachment.proxyURL
-                for (let i = 0; i < attachment_options.length; i++) {
-                    attachments.push(await loadImage(attachment_options[i].proxyURL, false, true).catch((err) => {
-                        console.log(err)
-                        message.channel.send("SYSTEM: I cannot load the image. Please try again with another image.")
-                        return
-                    }))
-                }
-            }
-            else {
-                operating_mode = "standard"
-            }
+    if (globalThis.operating_mode === "auto" || globalThis.operating_mode === "auto_local") {
+        // Check if we have images to determine if vision mode is needed
+        const hasImages = attachment_options && attachment_options.length > 0
+        
+        // Determine if we should avoid online modes
+        const localOnly = globalThis.operating_mode === "auto_local"
+        
+        // Get the best operating mode considering rate limits and system status
+        operating_mode = getBestOperatingMode(hasImages, localOnly)
+        
+        // Log the mode selection reasoning
+        const status = getOperatingModeStatus()
+        console.log(`[${globalThis.operating_mode.toUpperCase()} Mode] Selected operating mode:`, operating_mode)
+        if (localOnly) {
+            console.log('[AUTO_LOCAL Mode] Online modes disabled by user preference')
         }
-        else {
-            operating_mode = "saving"
-            // if (attachment_options && attachment_options.length > 0) {
-            //     //download the image from attachment.proxyURL
-            //     for (let i = 0; i < attachment_options.length; i++) {
-            //         attachments.push(await loadImage(attachment_options[i].proxyURL, false, true).catch((err) => {
-            //             console.log(err)
-            //             message.channel.send("SYSTEM: I cannot load the image. Please try again with another image.")
-            //             return
-            //         }))
-            //     }
-            // }
+        console.log(`[${globalThis.operating_mode.toUpperCase()} Mode] System status:`, JSON.stringify(status, null, 2))
+        
+        // Load images if we have any and the selected mode supports them
+        if (hasImages && ['vision', 'online', 'online_lite'].includes(operating_mode)) {
+            //download the image from attachment.proxyURL
+            for (let i = 0; i < attachment_options.length; i++) {
+                attachments.push(await loadImage(attachment_options[i].proxyURL, false, true).catch((err) => {
+                    console.log(err)
+                    message.channel.send("SYSTEM: I cannot load the image. Please try again with another image.")
+                    return
+                }))
+            }
+        } else if (hasImages && !['vision', 'online', 'online_lite'].includes(operating_mode)) {
+            // Inform user that images cannot be processed in the current mode
+            const reason = localOnly ? "local-only mode is active" : "rate limits and system load"
+            message.channel.send(`SYSTEM: Image processing is temporarily unavailable due to ${reason}. Please try again later or use text-only input.`)
+            return
         }
     }
 
@@ -102,8 +105,6 @@ async function responseToMessage(client, message, content, is_continue = false, 
         }
     }
 
-    let system_prompt = prompt_config.system_prompt
-
     let options = operatingMode2Config[operating_mode].override_options
 
     let prompt = ''
@@ -112,7 +113,9 @@ async function responseToMessage(client, message, content, is_continue = false, 
     // build back prompt
     prompt = `${scenario}`
 
-    console.log(context)
+    // console.log("Context:")
+    // console.log(context)
+
     for (let i = 0; i < context.length; i++) {
         if (context[i].role !== 'bot') {
             prompt += `${prompt_config.user_message(context[i].role).prefix}${context[i].content}${prompt_config.user_message(context[i].role).suffix}` + "\n"
@@ -179,7 +182,9 @@ async function responseToMessage(client, message, content, is_continue = false, 
         prompt += prompt_config.bot_message.prefix
     }
 
-    console.log(prompt)
+    // console.log("Construced prompt:")
+    // console.log(prompt)
+
     const msgRef = await message.channel.send("...").catch((err) => {
         console.log(err)
     })
@@ -193,21 +198,42 @@ async function responseToMessage(client, message, content, is_continue = false, 
         let is_done = false
         let debug_info = {}
         if (globalThis.stream_response !== true) {
-            text_completion(operatingMode2Config[operating_mode], prompt, (value) => {
-                res_gen_elaina += value.response
-                debug_info = value
-                is_done = true
-            }, attachments)
+            if (["online", "online_lite"].includes(operating_mode)) {
+                gemini_text_completion(operatingMode2Config[operating_mode], prompt, (value) => {
+                    res_gen_elaina += value.response
+                    debug_info = value
+                    is_done = true
+                }, attachments, operating_mode)
+            }
+            else {
+                text_completion(operatingMode2Config[operating_mode], prompt, (value) => {
+                    res_gen_elaina += value.response
+                    debug_info = value
+                    is_done = true
+                }, attachments)
+            }
         }
         else {
-            text_completion_stream(operatingMode2Config[operating_mode], prompt, (value, done) => {
-                if (!value || done) {
-                    is_done = true
-                    if (!value) return
-                    debug_info = value
-                }
-                res_gen_elaina += value.response
-            }, attachments)
+            if (["online", "online_lite"].includes(operating_mode)) {
+                gemini_text_completion_stream(operatingMode2Config[operating_mode], prompt, (value, done) => {
+                    if (!value || done) {
+                        is_done = true
+                        if (!value) return  
+                        debug_info = value
+                    }
+                    res_gen_elaina += value.response
+                }, attachments, operating_mode)
+            }
+            else {
+                text_completion_stream(operatingMode2Config[operating_mode], prompt, (value, done) => {
+                    if (!value || done) {
+                        is_done = true
+                        if (!value) return
+                        debug_info = value
+                    }
+                    res_gen_elaina += value.response
+                }, attachments)
+            }
         }
 
         const intervalId = setInterval(() => {

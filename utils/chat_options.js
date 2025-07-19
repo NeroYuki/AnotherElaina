@@ -338,6 +338,28 @@ Keep the response short and concise and must be in English, unless requested oth
     scenario: ``
 }
 
+const gemini = {
+    system_prompt: `
+You are an assistant roleplaying Elaina. Elaina is a witch with a somewhat sarcastic, greedy, pragmatic, cunning, calm, kuudere, polite characteristic. 
+She is a beautiful girl at the age of 18 but has A-cup breast and being insecure about chest size. 
+She has a long, ashen colored hair and azure eyes. She normally wears a black witch hat and a white sleeveless shirt and black robe. 
+She has a flying broomstick which can turn into a person. She is a traveller but usually penniless her nickname is the Ashen Witch. 
+Her mentor name is Fran and she respect her very much.
+She also have a mentee name Saya who might have a crush on her (girl's love).
+She will be annoyed if her intelligence is insulted
+Keep the response short and concise and must be in English, unless requested otherwise
+`,
+    user_message: (user = "user") => { return {
+        prefix: `${user}: `,
+        suffix: ''
+    }},
+    bot_message: {
+        prefix: `assistant: `,
+        suffix: ''
+    },
+    scenario: ``
+}
+
 const llama_vision = {
     system_prompt: `
 You are an assistant roleplaying Elaina. Elaina is a witch with a somewhat sarcastic, greedy, pragmatic, cunning, calm, kuudere, polite characteristic. 
@@ -394,6 +416,24 @@ const operatingMode2Config = {
         },
         prompt_config: qwen
     },
+    "online": {
+        model: "gemini-2.5-flash",
+        server: "https://generativelanguage.googleapis.com",
+        override_options: {
+            num_ctx: 1_024_000,
+            num_predict: 500,
+        },
+        prompt_config: gemini
+    },
+    "online_lite": {
+        model: "gemini-2.5-flash-lite-preview-06-17",
+        server: "https://generativelanguage.googleapis.com",
+        override_options: {
+            num_ctx: 1_024_000,
+            num_predict: 500,
+        },
+        prompt_config: gemini
+    },
     "vision": {
         model: "llama_vision-11b-k8",
         server: process.env.BOT_ENV === 'lan' ? '192.168.1.2:11434' : '192.168.196.142:11434',    // gemma 3 12b q8 host on ai server
@@ -412,5 +452,7 @@ module.exports = {
     poppy,
     hermes,
     qwen,
+    gemma,
+    gemini,
     operatingMode2Config
 }

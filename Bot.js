@@ -8,6 +8,7 @@ const { listAllFiles } = require('./utils/common_helper');
 const ComfyClient = require('./utils/comfy_client');
 const { free_up_llm_resource } = require('./utils/ollama_request');
 const { context_storage } = require('./utils/text_gen_store');
+const { rateLimiter } = require('./utils/rate_limiter');
 
 require('dotenv').config()
 
@@ -211,3 +212,25 @@ client.login(token);
 databaseConnection.initConnection(() => {
 	console.log('database connection established');
 })
+
+// Graceful shutdown handling to save rate limit data
+process.on('SIGINT', () => {
+	console.log('\n[Bot] Received SIGINT, shutting down gracefully...');
+	rateLimiter.destroy();
+	process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+	console.log('\n[Bot] Received SIGTERM, shutting down gracefully...');
+	rateLimiter.destroy();
+	process.exit(0);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+	console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+	// Save rate limit data before potentially crashing
+	rateLimiter.saveData();
+});
+
+console.log('[Bot] Rate limiting system initialized with persistent storage');

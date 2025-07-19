@@ -63,11 +63,11 @@ function text_completion_stream(config, prompt, callback, images = [] /* list of
     fetch('http://' + config.server +  '/api/generate', {
         method: 'POST',
         body: JSON.stringify({
-            model: model,
+            model: config.model,
             stream: true,
             prompt: prompt,
-            options: options,
-            system: system_prompt,
+            options: config.override_options,
+            system: config.prompt_config.system_prompt,
             images: images
         }),
         headers: {

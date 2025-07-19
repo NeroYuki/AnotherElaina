@@ -15,8 +15,11 @@ module.exports = {
                 .addChoices(
                     { name: 'Disabled', value: 'disabled' },
                     { name: 'Auto', value: 'auto' },
+                    { name: 'Auto (Local Only)', value: 'auto_local' },
                     { name: 'Saving', value: 'saving' },
                     { name: 'Standard', value: 'standard' },
+                    { name: 'Online', value: 'online' },
+                    { name: 'Online Lite', value: 'online_lite' },
                     { name: 'Vision', value: 'vision' }
                 ))
         .addBooleanOption(option =>
@@ -38,13 +41,27 @@ module.exports = {
             return;
         }
 
-        if (mode == "disabled" || mode == "auto" || mode == "saving" || mode == "standard" || mode == "vision") {
+        if (mode == "disabled" || mode == "auto" || mode == "auto_local" || mode == "saving" || mode == "standard" || mode == "vision") {
             if (operatingMode2Config[globalThis.operating_mode]) {
                 unload_model(operatingMode2Config[globalThis.operating_mode].model);
             }
             globalThis.operating_mode = mode;
             globalThis.stream_response = is_stream;
-            await interaction.editReply(`Operation mode changed to ${mode}`);
+            
+            let modeDescription = mode;
+            if (mode == "auto_local") {
+                modeDescription = "auto (local only) - will avoid online modes";
+            }
+            
+            await interaction.editReply(`Operation mode changed to ${modeDescription}`);
+        }
+        else if (mode == "online" || mode == "online_lite") {
+            if (operatingMode2Config[globalThis.operating_mode]) {
+                unload_model(operatingMode2Config[globalThis.operating_mode].model);
+            }
+            await interaction.editReply(`Operating mode changed to ${mode}, please note that your request can be recorded by the online service.`);
+            globalThis.operating_mode = mode;
+            globalThis.stream_response = is_stream;
         }
         else {
             await interaction.editReply(`Invalid mode`);
