@@ -189,6 +189,25 @@ function parseImageCount(imgCountInput, height, width, upscale_multiplier = 1, m
     };
 }
 
+function parse_common_setting(setting_json) {
+    if (setting_json) {
+        try {
+            const usersetting_config_obj = JSON.parse(setting_json)
+            return {
+                do_preview: usersetting_config_obj?.do_preview ?? true
+            }
+        }
+        catch (err) {
+            console.log("Failed to parse user setting config", err)
+        }
+    }
+    else {
+        return {
+            do_preview: true
+        }
+    }
+}
+
 
 module.exports = {
     listAllFiles,
@@ -198,4 +217,5 @@ module.exports = {
     try_parse_json_and_return_formated_string,
     calculateOptimalGrid,
     parseImageCount,
+    parse_common_setting
 }

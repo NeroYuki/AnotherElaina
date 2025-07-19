@@ -10,7 +10,7 @@ const { queryRecordLimit } = require('../database/database_interaction.js');
 const { full_prompt_analyze, preview_coupler_setting, fetch_user_defined_wildcard, get_teacache_config_from_prompt } = require('../utils/prompt_analyzer.js');
 const { load_profile } = require('../utils/profile_helper.js');
 const { load_adetailer } = require('../utils/adetailer_execute.js');
-const { clamp, calculateOptimalGrid, parseImageCount } = require('../utils/common_helper');
+const { clamp, calculateOptimalGrid, parseImageCount, parse_common_setting } = require('../utils/common_helper');
 const workflow_og = require('../resources/flux_lora.json')
 const ComfyClient = require('../utils/comfy_client');
 
@@ -207,16 +207,8 @@ module.exports = {
         // calculate batch count and size
         let { bulk_size, batch_count, batch_size } = parseImageCount(bulk_size_input, height, width, upscale_multiplier, byPassUser.includes(interaction.user.id) ? 16 : 6)
         // // parse the user setting config
-        // const usersetting_config = client.usersetting_config.has(interaction.user.id) ? client.usersetting_config.get(interaction.user.id) : null
-        let do_preview = false
-
-        // try {
-        //     const usersetting_config_obj = JSON.parse(usersetting_config)
-        //     do_preview = usersetting_config_obj.do_preview
-        // }
-        // catch (err) {
-        //     console.log("Failed to parse usersetting config:", err)
-        // }
+        const usersetting_config = client.usersetting_config.has(interaction.user.id) ? client.usersetting_config.get(interaction.user.id) : null
+        const { do_preview } = parse_common_setting(usersetting_config)
         
         let seed = -1
         try {

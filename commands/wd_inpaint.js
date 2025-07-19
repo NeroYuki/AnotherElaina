@@ -13,7 +13,7 @@ const { segmentAnything_execute, groundingDino_execute, expandMask, unloadAllMod
 const { full_prompt_analyze, fetch_user_defined_wildcard, preview_coupler_setting, get_teacache_config_from_prompt } = require('../utils/prompt_analyzer.js');
 const { queryRecordLimit } = require('../database/database_interaction.js');
 const { load_profile } = require('../utils/profile_helper.js');
-const { clamp } = require('../utils/common_helper');
+const { clamp, parse_common_setting } = require('../utils/common_helper');
 const workflow_inpaint = require('../resources/flux_fill_inpaint.json')
 const ComfyClient = require('../utils/comfy_client');
 
@@ -250,17 +250,8 @@ module.exports = {
 
         const should_override_1st_controlnet = (interaction.options.getString('controlnet_config') || profile?.controlnet_config)? true : false
         const self = this;
-        // parse the user setting config
-        // const usersetting_config = client.usersetting_config.has(interaction.user.id) ? client.usersetting_config.get(interaction.user.id) : null
-        let do_preview = false
-
-        // try {
-        //     const usersetting_config_obj = JSON.parse(usersetting_config)
-        //     do_preview = usersetting_config_obj.do_preview
-        // }
-        // catch (err) {
-        //     console.log("Failed to parse usersetting config:", err)
-        // }
+        const usersetting_config = client.usersetting_config.has(interaction.user.id) ? client.usersetting_config.get(interaction.user.id) : null
+        const { do_preview } = parse_common_setting(usersetting_config)
 
         let seed = -1
         try {
