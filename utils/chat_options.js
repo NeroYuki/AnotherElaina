@@ -378,7 +378,7 @@ const operatingMode2Config = {
     },
     "standard": {
         model: "test_qwen",
-        server: process.env.BOT_ENV === 'lan' ? '192.168.1.7:11434' : '192.168.196.142:11434',    // qwen 2.5 14b q6 host on ai server
+        server: process.env.BOT_ENV === 'lan' ? '192.168.1.2:11434' : '192.168.196.142:11434',    // qwen 2.5 14b q6 host on ai server
         override_options: {
             num_ctx: 64000,
             num_predict: 400,
@@ -396,7 +396,7 @@ const operatingMode2Config = {
     },
     "vision": {
         model: "llama_vision-11b-k8",
-        server: process.env.BOT_ENV === 'lan' ? '192.168.1.7:11434' : '192.168.196.142:11434',    // gemma 3 12b q8 host on ai server
+        server: process.env.BOT_ENV === 'lan' ? '192.168.1.2:11434' : '192.168.196.142:11434',    // gemma 3 12b q8 host on ai server
         override_options: {
             num_ctx: 64000,
             num_predict: 400,

@@ -7,7 +7,7 @@ const { convert_upload_path_to_file_data } = require('./common_helper');
 const server_pool = [
     {
         index: 0,
-        url: process.env.BOT_ENV === 'lan' ? 'http://192.168.1.7:7860' : 'http://192.168.196.142:7860',
+        url: process.env.BOT_ENV === 'lan' ? 'http://192.168.1.2:7860' : 'http://192.168.196.142:7860',
         fn_index_create: 566,
         fn_index_abort: 62,
         fn_index_img2img: 1246,
@@ -201,7 +201,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
     is_using_adetailer = false, coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, 
     freeu_config = null, dynamic_threshold_config = null, pag_config = null, inpaint_area = "Whole picture", mask_padding = 32,
     use_foocus = false, use_booru_gen = false, booru_gen_config = null, is_flux = false,
-    inpaint_img_upload_path = null, inpaint_mask_upload_path = null, colorbalance_config = null, do_preview = false, outpaint_config = null, 
+    inpaint_img_upload_path = null, inpaint_mask_upload_path = null, colorbalance_config = null, do_preview = true, outpaint_config = null, 
     upscale_config = null, extra_script = "None", detail_daemon_config = null, tipo_input = null, latentmod_config = null,
     mahiro_config = null, teacache_config = null) => {
     // default mode 0 is img2img, 4 is inpainting
@@ -580,7 +580,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
     height, width, upscale_multiplier, upscaler, upscale_denoise_strength, upscale_step, face_restore = false, is_using_adetailer = false, 
     coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, 
     freeu_config = null, dynamic_threshold_config = null, pag_config = null, use_foocus = false, use_booru_gen = false, booru_gen_config = null, 
-    is_flux = false, colorbalance_config = null, do_preview = false, detail_daemon_config = null, tipo_input = null, latentmod_config = null,
+    is_flux = false, colorbalance_config = null, do_preview = true, detail_daemon_config = null, tipo_input = null, latentmod_config = null,
     mahiro_config = null, teacache_config = null, batch_count = 1, batch_size = 1) => {
 
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage

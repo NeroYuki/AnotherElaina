@@ -13,7 +13,7 @@ const { all } = require('axios');
 const { clamp } = require('../utils/common_helper');
 const comfyClient = require('../utils/comfy_client');
 
-const server_address = process.env.BOT_ENV === 'lan' ? 'http://192.168.1.7:7050' : 'http://192.168.196.142:7050'
+const server_address = process.env.BOT_ENV === 'lan' ? 'http://192.168.1.2:7050' : 'http://192.168.196.142:7050'
 
 const all_descriptors = {
     "General": [
@@ -397,7 +397,7 @@ BeatmapSetID:-1`);
             return
         })
 
-        const is_using_gpu = ['http://192.168.1.7:7050','http://192.168.196.142:7050'].includes(params.server_address)
+        const is_using_gpu = ['http://192.168.1.2:7050','http://192.168.196.142:7050'].includes(params.server_address)
         const is_gpu_having_enough_vram = (params.model !== 'v30' && comfyClient.comfyStat.gpu_vram_used < 4) || (params.model === 'v30' && comfyClient.comfyStat.gpu_vram_used < 10)
 
         if (!health || (health && is_using_gpu && !is_gpu_having_enough_vram)) {
@@ -869,6 +869,8 @@ BeatmapSetID:-1`);
             interaction.editReply({ content: "Failed to connect to AI server"})
             return
         })
+
+        // let health_check_res = null;
 
         if (!health_check_res) {
             /// if the upload failed, try to upload to local server
