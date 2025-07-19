@@ -97,7 +97,7 @@ function getOperatingModeStatus() {
             timeUntilNext: timeUntilNext.online
         },
         local_gpu: {
-            available: comfyClient.comfyStat.gpu_vram_used < 3 || globalThis.llm_load_timer,
+            available: comfyClient.comfyStat.gpu_vram_used < 4 || globalThis.llm_load_timer,
             vram_used: comfyClient.comfyStat.gpu_vram_used,
             llm_timer_active: !!globalThis.llm_load_timer
         }
