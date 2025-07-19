@@ -15,43 +15,43 @@ function getBestOperatingMode(hasImages = false, localOnly = false) {
         
         // First priority: online (if rate limits allow)
         if (canMakeGeminiRequest('online')) {
-            console.log('[Mode Selection] Using online mode - rate limits OK')
+            //console.log('[Mode Selection] Using online mode - rate limits OK')
             return 'online'
         }
         
         // Second priority: online_lite (if rate limits allow)
         if (canMakeGeminiRequest('online_lite')) {
-            console.log('[Mode Selection] Using online_lite mode - rate limits OK')
+            //console.log('[Mode Selection] Using online_lite mode - rate limits OK')
             return 'online_lite'
         }
         
         // If online modes are rate limited, check local GPU resources
-        console.log('[Mode Selection] Online modes rate limited, checking local resources...')
+        //console.log('[Mode Selection] Online modes rate limited, checking local resources...')
         
         // Log remaining requests for debugging
         const onlineLiteRemaining = rateLimiter.getRemainingRequests('online_lite')
         const onlineRemaining = rateLimiter.getRemainingRequests('online')
         
-        console.log(`[Rate Limit Status] online_lite: ${onlineLiteRemaining.per_minute}/min, ${onlineLiteRemaining.per_day}/day remaining`)
-        console.log(`[Rate Limit Status] online: ${onlineRemaining.per_minute}/min, ${onlineRemaining.per_day}/day remaining`)
+        //console.log(`[Rate Limit Status] online_lite: ${onlineLiteRemaining.per_minute}/min, ${onlineLiteRemaining.per_day}/day remaining`)
+        //console.log(`[Rate Limit Status] online: ${onlineRemaining.per_minute}/min, ${onlineRemaining.per_day}/day remaining`)
     } else {
-        console.log('[Mode Selection] Local only mode - skipping online options')
+        //console.log('[Mode Selection] Local only mode - skipping online options')
     }
     
     // Check if we can use local GPU
-    if (comfyClient.comfyStat.gpu_vram_used < 3 || globalThis.llm_load_timer) {
+    if (comfyClient.comfyStat.gpu_vram_used < 4 || globalThis.llm_load_timer) {
         if (hasImages) {
-            console.log('[Mode Selection] Using vision mode - local GPU available with images')
+            // console.log('[Mode Selection] Using vision mode - local GPU available with images')
             return 'vision'
         } else {
-            console.log('[Mode Selection] Using standard mode - local GPU available')
+            // console.log('[Mode Selection] Using standard mode - local GPU available')
             return 'standard'
         }
     } else {
         if (localOnly) {
-            console.log('[Mode Selection] Using saving mode - local GPU busy and local-only mode active')
+            // console.log('[Mode Selection] Using saving mode - local GPU busy and local-only mode active')
         } else {
-            console.log('[Mode Selection] Using saving mode - local GPU busy and online modes rate limited')
+            // console.log('[Mode Selection] Using saving mode - local GPU busy and online modes rate limited')
         }
         return 'saving'
     }
