@@ -168,7 +168,8 @@ client.on('interactionCreate', async interaction => {
 			...comfy_backend_require,
 			...mapperatorinator_backend_require,
 		].includes(interaction.commandName)) {
-			await free_up_llm_resource().catch(err => {
+
+			free_up_llm_resource().catch(err => {
 				console.log("free up llm resource error: ", err)
 			});
 		}
@@ -180,12 +181,14 @@ client.on('interactionCreate', async interaction => {
 			...mapperatorinator_backend_require,
 		].includes(interaction.commandName)) {
 
+			const isComfyRunning = ComfyClient.comfyStat.is_running
+
 			const isEstimatedNotEnoughResource = (forge_backend_require.includes(interaction.commandName) && ComfyClient.promptListener.length > 0) ||
 				(interaction.commandName === "wd_txt2vid" && ComfyClient.promptListener.length == 0 && ComfyClient.comfyStat.gpu_vram_used > 3.5) ||
 				(interaction.commandName === "wd_img2model" && ComfyClient.promptListener.length == 0 && ComfyClient.comfyStat.gpu_vram_used > 6)
 
-			if (isEstimatedNotEnoughResource) {
-				await interaction.reply({ content: 'Not enough resource can be allocated to finish this command, please try again later', ephemeral: true });
+			if (isComfyRunning && isEstimatedNotEnoughResource) {
+				await interaction.channel.send({ content: 'Not enough resource can be allocated to finish this command, please try again later', ephemeral: true });
 				return;
 			} 
 
