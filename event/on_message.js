@@ -11,7 +11,13 @@ const { getBestOperatingMode, getOperatingModeStatus } = require('../utils/opera
 async function responseToMessage(client, message, content, is_continue = false, is_regen = false, ctx_enc_len = 0) {
 
     let operating_mode = globalThis.operating_mode
-    let attachment_options = message.attachments.filter(attachment => attachment.contentType.startsWith('image')) || message.embeds[0]?.image
+    // Convert attachment_options from a map to an array if needed
+    let attachment_options = Array.isArray(message.attachments)
+        ? message.attachments.filter(attachment => attachment.contentType.startsWith('image'))
+        : Array.from(message.attachments.values()).filter(attachment => attachment.contentType.startsWith('image'));
+    if (attachment_options.length === 0 && message.embeds[0]?.image) {
+        attachment_options = [message.embeds[0].image];
+    }
     let attachments = []
 
     if (globalThis.operating_mode === "auto" || globalThis.operating_mode === "auto_local") {
@@ -203,7 +209,7 @@ async function responseToMessage(client, message, content, is_continue = false, 
                     res_gen_elaina += value.response
                     debug_info = value
                     is_done = true
-                }, attachments, operating_mode)
+                }, attachments, operating_mode, attachment_options)
             }
             else {
                 text_completion(operatingMode2Config[operating_mode], prompt, (value) => {
@@ -222,7 +228,7 @@ async function responseToMessage(client, message, content, is_continue = false, 
                         debug_info = value
                     }
                     res_gen_elaina += value.response
-                }, attachments, operating_mode)
+                }, attachments, operating_mode, attachment_options)
             }
             else {
                 text_completion_stream(operatingMode2Config[operating_mode], prompt, (value, done) => {

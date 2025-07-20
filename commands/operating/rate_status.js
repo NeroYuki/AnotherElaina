@@ -59,8 +59,8 @@ module.exports = {
             const recommendedModeLocalWithImages = getBestOperatingMode(true, true);
             
             statusMessage += `**Recommended Modes**\n`;
-            statusMessage += `• Text only (auto): **${recommendedMode}, with images: ${recommendedModeWithImages}**\n`;
-            statusMessage += `• Text only (auto_local): **${recommendedModeLocal}, with images: ${recommendedModeLocalWithImages}**\n\n`;
+            statusMessage += `• Text only (auto): **${recommendedMode}**, with images: **${recommendedModeWithImages}**\n`;
+            statusMessage += `• Text only (auto_local): **${recommendedModeLocal}**, with images: **${recommendedModeLocalWithImages}**\n\n`;
             
             // Show current global mode
             statusMessage += `**Current Global Mode**: \`${globalThis.operating_mode || 'unknown'}\`\n\n`;
