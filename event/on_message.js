@@ -68,6 +68,9 @@ async function responseToMessage(client, message, content, is_continue = false, 
             console.log('[Thinking Mode] Switching to uncensored mode for thinking capability in auto_local')
             operating_mode = 'uncensored'
         }
+        else if (localOnly && ['saving', 'vision', 'standard'].includes(operating_mode)) {
+            should_think = false // Reset thinking mode if not applicable
+        }
         
         // Log the mode selection reasoning
         console.log(`[${current_mode.toUpperCase()} Mode] Selected operating mode:`, operating_mode)
