@@ -73,7 +73,7 @@ function chat_completion(model, context) {
     })
 }
 
-function text_completion(config, prompt, callback, images = [] /* list of base64 encoded images */, operatingMode = 'online') {
+function text_completion(config, prompt, callback, images = [] /* list of base64 encoded images */, operatingMode = 'online', attachment_options = []) {
     // Record the request for rate limiting
     recordGeminiRequest(operatingMode)
     
@@ -91,10 +91,10 @@ function text_completion(config, prompt, callback, images = [] /* list of base64
     }
     
     // Add images if provided
-    images.forEach(imageBase64 => {
+    images.forEach((imageBase64, i) => {
         parts.push({
             inline_data: {
-                mime_type: 'image/jpeg', // Assuming JPEG, you might want to detect this
+                mime_type: attachment_options[i]?.contentType || 'image/jpeg', // Assuming JPEG, you might want to detect this
                 data: imageBase64
             }
         })
@@ -176,7 +176,7 @@ function text_completion(config, prompt, callback, images = [] /* list of base64
     })
 }
 
-function text_completion_stream(config, prompt, callback, images = [] /* list of base64 encoded images */, operatingMode = 'online') {
+function text_completion_stream(config, prompt, callback, images = [] /* list of base64 encoded images */, operatingMode = 'online', attachment_options = []) {
     // Record the request for rate limiting
     recordGeminiRequest(operatingMode)
     
@@ -194,10 +194,10 @@ function text_completion_stream(config, prompt, callback, images = [] /* list of
     }
     
     // Add images if provided
-    images.forEach(imageBase64 => {
+    images.forEach((imageBase64, i) => {
         parts.push({
             inline_data: {
-                mime_type: 'image/jpeg',
+                mime_type: attachment_options[i]?.contentType || 'image/jpeg', // Assuming JPEG, you might want to detect this
                 data: imageBase64
             }
         })
@@ -205,7 +205,15 @@ function text_completion_stream(config, prompt, callback, images = [] /* list of
 
     const requestBody = {
         contents: [{ parts: parts }],
+        tools: [
+            {
+                google_search: {}
+            }
+        ],
         generationConfig: {
+            thinkingConfig: {
+                thinkingBudget: 0
+            },
             temperature: config.override_options?.temperature || 0.7,
             maxOutputTokens: config.override_options?.max_tokens || 500,
             topP: config.override_options?.top_p || 0.9,
