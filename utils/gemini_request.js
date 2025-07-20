@@ -73,7 +73,8 @@ function chat_completion(model, context) {
     })
 }
 
-function text_completion(config, prompt, callback, images = [] /* list of base64 encoded images */, operatingMode = 'online', attachment_options = []) {
+function text_completion(config, prompt, callback, images = [] /* list of base64 encoded images */, 
+    operatingMode = 'online', attachment_options = [], should_think = false) {
     // Record the request for rate limiting
     recordGeminiRequest(operatingMode)
     
@@ -109,10 +110,10 @@ function text_completion(config, prompt, callback, images = [] /* list of base64
         ],
         generationConfig: {
             thinkingConfig: {
-                thinkingBudget: 0
+                thinkingBudget: should_think ? (config.override_options?.num_predict || 500) * 4 : 0
             },
             temperature: config.override_options?.temperature || 0.7,
-            maxOutputTokens: config.override_options?.max_tokens || 500,
+            maxOutputTokens: config.override_options?.num_predict || 500,
             topP: config.override_options?.top_p || 0.9,
             topK: config.override_options?.top_k || 40,
         }
@@ -176,7 +177,8 @@ function text_completion(config, prompt, callback, images = [] /* list of base64
     })
 }
 
-function text_completion_stream(config, prompt, callback, images = [] /* list of base64 encoded images */, operatingMode = 'online', attachment_options = []) {
+function text_completion_stream(config, prompt, callback, images = [] /* list of base64 encoded images */, 
+    operatingMode = 'online', attachment_options = [], should_think = false) {
     // Record the request for rate limiting
     recordGeminiRequest(operatingMode)
     
@@ -212,10 +214,10 @@ function text_completion_stream(config, prompt, callback, images = [] /* list of
         ],
         generationConfig: {
             thinkingConfig: {
-                thinkingBudget: 0
+                thinkingBudget: should_think ? (config.override_options?.num_predict || 500) * 4 : 0
             },
             temperature: config.override_options?.temperature || 0.7,
-            maxOutputTokens: config.override_options?.max_tokens || 500,
+            maxOutputTokens: config.override_options?.num_predict || 500,
             topP: config.override_options?.top_p || 0.9,
             topK: config.override_options?.top_k || 40,
         }

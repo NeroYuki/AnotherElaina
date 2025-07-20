@@ -31,7 +31,7 @@ function chat_completion(model, context) {
     })
 }
 
-function text_completion(config, prompt, callback, images = [] /* list of base64 encoded images */) {
+function text_completion(config, prompt, callback, images = [] /* list of base64 encoded images */, should_think = false) {
     fetch('http://' + config.server + '/api/generate', {
         method: 'POST',
         body: JSON.stringify({
@@ -39,6 +39,7 @@ function text_completion(config, prompt, callback, images = [] /* list of base64
             stream: false,
             prompt: prompt,
             options: config.override_options,
+            think: should_think,
             system: config.prompt_config.system_prompt,
             images: images
         }),
@@ -59,7 +60,7 @@ function text_completion(config, prompt, callback, images = [] /* list of base64
     })
 }
 
-function text_completion_stream(config, prompt, callback, images = [] /* list of base64 encoded images */) {
+function text_completion_stream(config, prompt, callback, images = [] /* list of base64 encoded images */, should_think = false) {
     fetch('http://' + config.server +  '/api/generate', {
         method: 'POST',
         body: JSON.stringify({
@@ -68,6 +69,7 @@ function text_completion_stream(config, prompt, callback, images = [] /* list of
             prompt: prompt,
             options: config.override_options,
             system: config.prompt_config.system_prompt,
+            think: should_think,
             images: images
         }),
         headers: {

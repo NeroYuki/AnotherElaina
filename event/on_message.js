@@ -12,6 +12,7 @@ async function responseToMessage(client, message, content, is_continue = false, 
 
     let operating_mode = globalThis.operating_mode
     let forced_mode = null // Track if mode is forced by tokens
+    let should_think = false // Track if thinking is enabled
 
     // Convert attachment_options from a map to an array if needed
     let attachment_options = Array.isArray(message.attachments)
@@ -24,6 +25,13 @@ async function responseToMessage(client, message, content, is_continue = false, 
     
     // Check for special tokens in the content and modify accordingly
     if (content) {
+        // Check for <think> token - enables thinking mode
+        if (content.includes('<think>')) {
+            should_think = true
+            content = content.replace(/<think>/g, '').trim()
+            console.log('[Token Override] <think> token detected - enabling thinking mode')
+        }
+        
         // Check for <local> token - forces auto_local mode for this message
         if (content.includes('<local>')) {
             forced_mode = 'auto_local'
@@ -54,6 +62,13 @@ async function responseToMessage(client, message, content, is_continue = false, 
         // Get the best operating mode considering rate limits and system status
         operating_mode = getBestOperatingMode(hasImages, localOnly)
         
+        // Special case: if thinking is enabled and we're in auto_local mode, 
+        // and we haven't fallen back to saving mode, switch to uncensored for thinking capability
+        if (should_think && localOnly && !hasImages && operating_mode !== 'saving') {
+            console.log('[Thinking Mode] Switching to uncensored mode for thinking capability in auto_local')
+            operating_mode = 'uncensored'
+        }
+        
         // Log the mode selection reasoning
         console.log(`[${current_mode.toUpperCase()} Mode] Selected operating mode:`, operating_mode)
         if (forced_mode) {
@@ -61,6 +76,9 @@ async function responseToMessage(client, message, content, is_continue = false, 
         }
         if (localOnly) {
             console.log('[AUTO_LOCAL Mode] Online modes disabled by user preference')
+        }
+        if (should_think) {
+            console.log('[Thinking Mode] Thinking enabled for this message')
         }
         
         // Load images if we have any and the selected mode supports them
@@ -83,6 +101,9 @@ async function responseToMessage(client, message, content, is_continue = false, 
         // If mode is forced by token, use it directly
         operating_mode = forced_mode
         console.log(`[Forced Mode] Using ${operating_mode} mode due to token override`)
+        if (should_think) {
+            console.log('[Thinking Mode] Thinking enabled for this message')
+        }
         
         // Load images if we have any and the mode supports them
         const hasImages = attachment_options && attachment_options.length > 0
@@ -255,14 +276,14 @@ async function responseToMessage(client, message, content, is_continue = false, 
                     res_gen_elaina += value.response
                     debug_info = value
                     is_done = true
-                }, attachments, operating_mode, attachment_options)
+                }, attachments, operating_mode, should_think)
             }
             else {
                 text_completion(operatingMode2Config[operating_mode], prompt, (value) => {
                     res_gen_elaina += value.response
                     debug_info = value
                     is_done = true
-                }, attachments)
+                }, attachments, should_think)
             }
         }
         else {
@@ -274,7 +295,7 @@ async function responseToMessage(client, message, content, is_continue = false, 
                         debug_info = value
                     }
                     res_gen_elaina += value.response
-                }, attachments, operating_mode, attachment_options)
+                }, attachments, operating_mode, should_think)
             }
             else {
                 text_completion_stream(operatingMode2Config[operating_mode], prompt, (value, done) => {
@@ -284,7 +305,7 @@ async function responseToMessage(client, message, content, is_continue = false, 
                         debug_info = value
                     }
                     res_gen_elaina += value.response
-                }, attachments)
+                }, attachments, should_think)
             }
         }
 
