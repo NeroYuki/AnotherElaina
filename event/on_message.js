@@ -25,12 +25,12 @@ async function responseToMessage(client, message, content, is_continue = false, 
         operating_mode = getBestOperatingMode(hasImages, localOnly)
         
         // Log the mode selection reasoning
-        const status = getOperatingModeStatus()
+        // const status = getOperatingModeStatus()
         console.log(`[${globalThis.operating_mode.toUpperCase()} Mode] Selected operating mode:`, operating_mode)
         if (localOnly) {
             console.log('[AUTO_LOCAL Mode] Online modes disabled by user preference')
         }
-        console.log(`[${globalThis.operating_mode.toUpperCase()} Mode] System status:`, JSON.stringify(status, null, 2))
+        //console.log(`[${globalThis.operating_mode.toUpperCase()} Mode] System status:`, JSON.stringify(status, null, 2))
         
         // Load images if we have any and the selected mode supports them
         if (hasImages && ['vision', 'online', 'online_lite'].includes(operating_mode)) {
