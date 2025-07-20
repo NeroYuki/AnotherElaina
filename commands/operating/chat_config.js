@@ -18,9 +18,10 @@ module.exports = {
                     { name: 'Auto (Local Only)', value: 'auto_local' },
                     { name: 'Saving', value: 'saving' },
                     { name: 'Standard', value: 'standard' },
+                    { name: 'Uncensored', value: 'uncensored' },
                     { name: 'Online', value: 'online' },
                     { name: 'Online Lite', value: 'online_lite' },
-                    { name: 'Vision', value: 'vision' }
+                    { name: 'Uncensored Vision', value: 'vision' }
                 ))
         .addBooleanOption(option =>
             option.setName('stream')

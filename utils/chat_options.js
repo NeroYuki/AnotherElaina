@@ -314,6 +314,30 @@ Keep the response short and concise and must be in English, unless requested oth
     scenario: ``
 }
 
+const deepseek = {
+    system_prompt: `
+You are an assistant roleplaying Elaina. Elaina is a witch with a somewhat sarcastic, greedy, pragmatic, cunning, calm, kuudere, polite characteristic. 
+She is a beautiful girl at the age of 18 but has A-cup breast and being insecure about chest size. 
+She has a long, ashen colored hair and azure eyes. She normally wears a black witch hat and a white sleeveless shirt and black robe. 
+She has a flying broomstick which can turn into a person. She is a traveller but usually penniless her nickname is the Ashen Witch. 
+Her mentor name is Fran and she respect her very much.
+She also have a mentee name Saya who might have a crush on her (girl's love).
+She will be annoyed if her intelligence is insulted
+Keep the response short and concise and must be in English, unless requested otherwise
+`,
+    user_message: (user = "user") => { return {
+        prefix: `<｜User｜>${user}:
+`,
+        suffix: ''
+    }},
+    bot_message: {
+        prefix: `<｜Assistant｜>assistant:
+`,
+        suffix: '<｜end▁of▁sentence｜>'
+    },
+    scenario: ``
+}
+
 const gemma = {
     system_prompt: `
 You are an assistant roleplaying Elaina. Elaina is a witch with a somewhat sarcastic, greedy, pragmatic, cunning, calm, kuudere, polite characteristic. 
@@ -399,22 +423,32 @@ const operatingMode2Config = {
         prompt_config: gemma
     },
     "standard": {
-        model: "test_qwen",
-        server: process.env.BOT_ENV === 'lan' ? '192.168.1.2:11434' : '192.168.196.142:11434',    // qwen 2.5 14b q6 host on ai server
+        model: "gemma_27b",
+        server: process.env.BOT_ENV === 'lan' ? '192.168.1.2:11434' : '192.168.196.142:11434',    // gemma 3 27b q4 host on ai server
         override_options: {
             num_ctx: 64000,
             num_predict: 400,
-            num_gpu: 99,
             stop: [
-                '\nUser:',
-                '<|eot_id|>',
-                '<|im_end|>',
-                '<|im_ended|>',
-                '<|im_start|>',
-                '<|im_start|>assistant',
+                '<end_of_turn>',
+                '<start_of_turn>',
             ],
         },
         prompt_config: qwen
+    },
+    "uncensored": {
+        model: "deepseek_32b",
+        server: process.env.BOT_ENV === 'lan' ? '192.168.1.2:11434' : '192.168.196.142:11434',    // deepseek qwen distill 32b q4 host on ai server
+        override_options: {
+            num_ctx: 32000,
+            num_predict: 400,
+            stop: [
+                "<｜begin▁of▁sentence｜>",
+                "<｜end▁of▁sentence｜>",
+                "<｜User｜>",
+                "<｜Assistant｜>"
+            ],
+        },
+        prompt_config: deepseek
     },
     "online": {
         model: "gemini-2.5-flash",
@@ -435,14 +469,13 @@ const operatingMode2Config = {
         prompt_config: gemini
     },
     "vision": {
-        model: "llama_vision-11b-k8",
-        server: process.env.BOT_ENV === 'lan' ? '192.168.1.2:11434' : '192.168.196.142:11434',    // gemma 3 12b q8 host on ai server
+        model: "qwen_vision_32b",
+        server: process.env.BOT_ENV === 'lan' ? '192.168.1.2:11434' : '192.168.196.142:11434',    // qwenvl 2.5 32b q4 host on ai server
         override_options: {
-            num_ctx: 64000,
+            num_ctx: 32000,
             num_predict: 400,
-            num_gpu: 18,
         },
-        prompt_config: llama_vision
+        prompt_config: qwen
     }
 }
     

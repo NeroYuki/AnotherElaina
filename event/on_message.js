@@ -11,6 +11,8 @@ const { getBestOperatingMode, getOperatingModeStatus } = require('../utils/opera
 async function responseToMessage(client, message, content, is_continue = false, is_regen = false, ctx_enc_len = 0) {
 
     let operating_mode = globalThis.operating_mode
+    let forced_mode = null // Track if mode is forced by tokens
+
     // Convert attachment_options from a map to an array if needed
     let attachment_options = Array.isArray(message.attachments)
         ? message.attachments.filter(attachment => attachment.contentType.startsWith('image'))
@@ -19,27 +21,50 @@ async function responseToMessage(client, message, content, is_continue = false, 
         attachment_options = [message.embeds[0].image];
     }
     let attachments = []
+    
+    // Check for special tokens in the content and modify accordingly
+    if (content) {
+        // Check for <local> token - forces auto_local mode for this message
+        if (content.includes('<local>')) {
+            forced_mode = 'auto_local'
+            content = content.replace(/<local>/g, '').trim()
+            console.log('[Token Override] <local> token detected - forcing auto_local mode for this message')
+        }
+        
+        // Check for <unsafe> token - forces vision (with images) or uncensored mode
+        if (content.includes('<unsafe>')) {
+            const hasImages = attachment_options && attachment_options.length > 0
+            
+            forced_mode = hasImages ? 'vision' : 'uncensored'
+            content = content.replace(/<unsafe>/g, '').trim()
+            console.log(`[Token Override] <unsafe> token detected - forcing ${forced_mode} mode for this message`)
+        }
+    }
 
-    if (globalThis.operating_mode === "auto" || globalThis.operating_mode === "auto_local") {
+    // Use forced mode if available, otherwise use global operating mode
+    const current_mode = forced_mode || globalThis.operating_mode
+
+    if (current_mode === "auto" || current_mode === "auto_local") {
         // Check if we have images to determine if vision mode is needed
         const hasImages = attachment_options && attachment_options.length > 0
         
         // Determine if we should avoid online modes
-        const localOnly = globalThis.operating_mode === "auto_local"
+        const localOnly = current_mode === "auto_local"
         
         // Get the best operating mode considering rate limits and system status
         operating_mode = getBestOperatingMode(hasImages, localOnly)
         
         // Log the mode selection reasoning
-        // const status = getOperatingModeStatus()
-        console.log(`[${globalThis.operating_mode.toUpperCase()} Mode] Selected operating mode:`, operating_mode)
+        console.log(`[${current_mode.toUpperCase()} Mode] Selected operating mode:`, operating_mode)
+        if (forced_mode) {
+            console.log(`[Token Override] Mode forced by token: ${forced_mode}`)
+        }
         if (localOnly) {
             console.log('[AUTO_LOCAL Mode] Online modes disabled by user preference')
         }
-        //console.log(`[${globalThis.operating_mode.toUpperCase()} Mode] System status:`, JSON.stringify(status, null, 2))
         
         // Load images if we have any and the selected mode supports them
-        if (hasImages && ['vision', 'online', 'online_lite'].includes(operating_mode)) {
+        if (hasImages && ['vision', 'online', 'online_lite', 'standard', 'saving'].includes(operating_mode)) {
             //download the image from attachment.proxyURL
             for (let i = 0; i < attachment_options.length; i++) {
                 attachments.push(await loadImage(attachment_options[i].proxyURL, false, true).catch((err) => {
@@ -48,16 +73,37 @@ async function responseToMessage(client, message, content, is_continue = false, 
                     return
                 }))
             }
-        } else if (hasImages && !['vision', 'online', 'online_lite'].includes(operating_mode)) {
+        } else if (hasImages && !['vision', 'online', 'online_lite', 'standard', 'saving'].includes(operating_mode)) {
             // Inform user that images cannot be processed in the current mode
             const reason = localOnly ? "local-only mode is active" : "rate limits and system load"
             message.channel.send(`SYSTEM: Image processing is temporarily unavailable due to ${reason}. Please try again later or use text-only input.`)
             return
         }
+    } else if (forced_mode) {
+        // If mode is forced by token, use it directly
+        operating_mode = forced_mode
+        console.log(`[Forced Mode] Using ${operating_mode} mode due to token override`)
+        
+        // Load images if we have any and the mode supports them
+        const hasImages = attachment_options && attachment_options.length > 0
+        if (hasImages && ['vision', 'online', 'online_lite', 'standard', 'saving'].includes(operating_mode)) {
+            //download the image from attachment.proxyURL
+            for (let i = 0; i < attachment_options.length; i++) {
+                attachments.push(await loadImage(attachment_options[i].proxyURL, false, true).catch((err) => {
+                    console.log(err)
+                    message.channel.send("SYSTEM: I cannot load the image. Please try again with another image.")
+                    return
+                }))
+            }
+        }
     }
 
-    if (globalThis.operating_mode === "disabled" || !operatingMode2Config[operating_mode]) {
-        message.channel.send("Elaina is sleeping right now. Please try again later.")
+    if ((globalThis.operating_mode === "disabled" && !forced_mode) || !operatingMode2Config[operating_mode]) {
+        if (!operatingMode2Config[operating_mode]) {
+            message.channel.send(`SYSTEM: Operating mode "${operating_mode}" is not configured. Please contact an administrator.`)
+        } else {
+            message.channel.send("Elaina is sleeping right now. Please try again later.")
+        }
         return
     }
 
