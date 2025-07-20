@@ -420,7 +420,7 @@ const operatingMode2Config = {
         model: "gemini-2.5-flash",
         server: "https://generativelanguage.googleapis.com",
         override_options: {
-            num_ctx: 1_024_000,
+            num_ctx: 128000,
             num_predict: 500,
         },
         prompt_config: gemini
@@ -429,7 +429,7 @@ const operatingMode2Config = {
         model: "gemini-2.5-flash-lite-preview-06-17",
         server: "https://generativelanguage.googleapis.com",
         override_options: {
-            num_ctx: 1_024_000,
+            num_ctx: 64000,
             num_predict: 500,
         },
         prompt_config: gemini
