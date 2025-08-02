@@ -355,7 +355,7 @@ BeatmapSetID:-1`);
                         return
                     })
 
-                    if (!catbox_url) return
+                    if (!catbox_url) throw new Error("Failed to upload zip file to catbox");
 
                     const embeded = new MessageEmbed()
                         .setColor('#00ff00')
@@ -381,7 +381,7 @@ BeatmapSetID:-1`);
                 resolve();
             }).catch((err) => {
                 console.log(err);
-                resultMsgRef.edit({ content: "Failed to create zip file", ephemeral: true });
+                resultMsgRef.edit({ content: "Failed to finalize/upload beatmap file", ephemeral: true });
                 reject(err);
                 return
             });
