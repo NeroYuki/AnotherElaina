@@ -433,22 +433,33 @@ const operatingMode2Config = {
                 '<start_of_turn>',
             ],
         },
-        prompt_config: qwen
+        prompt_config: gemma
     },
-    "uncensored": {
-        model: "deepseek_32b",
-        server: process.env.BOT_ENV === 'lan' ? '192.168.1.2:11434' : '192.168.196.142:11434',    // deepseek qwen distill 32b q4 host on ai server
+    "uncensored_thinking": {
+        model: "qwq_32b",
+        server: process.env.BOT_ENV === 'lan' ? '192.168.1.2:11434' : '192.168.196.142:11434',    // qwq 32b q4 host on ai server
         override_options: {
             num_ctx: 32000,
             num_predict: 400,
             stop: [
-                "<｜begin▁of▁sentence｜>",
-                "<｜end▁of▁sentence｜>",
-                "<｜User｜>",
-                "<｜Assistant｜>"
+                "<|im_start|>",
+                "<|im_end|>",
             ],
         },
-        prompt_config: deepseek
+        prompt_config: qwen
+    },
+    "uncensored": {
+        model: "qwen3_32b",
+        server: process.env.BOT_ENV === 'lan' ? '192.168.1.2:11434' : '192.168.196.142:11434',    // qwen3 32b q4 host on ai server
+        override_options: {
+            num_ctx: 32000,
+            num_predict: 400,
+            stop: [
+                "<|im_start|>",
+                "<|im_end|>",
+            ],
+        },
+        prompt_config: qwen
     },
     "online": {
         model: "gemini-2.5-flash",
