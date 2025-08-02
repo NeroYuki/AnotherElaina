@@ -956,7 +956,7 @@ const model_selection_legacy = [
     { name: 'WAI-NSFW-IllustriousXL v10', value: 'archive/wai_nsfw_illustrious_v100.safetensors'},
     { name: 'RealVisXL v5', value: 'archive/realvisxl_v5.safetensors'},
     { name: 'SilenceMix v1', value: 'archive/silencemix_v10.safetensors'},
-    { name: 'Flux.dev Q4_K_S', value: 'archive/flux1-dev-Q4_K_S.gguf' },
+    { name: 'Flux.dev Q6_K', value: 'archive/flux1-dev-Q6_K.gguf' },
     { name: 'PrefectPony v5.0', value: 'archive/prefectpony_v50.safetensors'},
     { name: 'AutismMix PonyXL', value: 'archive/autismmix_ponyxl.safetensors'},
     { name: 'IllumiyumeXL V-pred v3.2' , value: 'illumiyumexl_vpred_v32.safetensors'},
@@ -1006,9 +1006,9 @@ const model_selection_inpaint = [
 ]
 
 const model_selection_flux = [
-    { name: 'Flux.dev Q4_K_S', value: 'archive/flux1-dev-Q4_K_S.gguf' },
-    { name: 'Flux.dev Q6_K', value: 'flux1-dev-Q6_K.gguf' },
+    { name: 'Flux.dev Q6_K', value: 'archive/flux1-dev-Q6_K.gguf' },
     { name: 'Flux.dev Q8_0', value: 'flux1-dev-Q8_0.gguf'},
+    { name: 'Flux Krea.dev Q8_0', value: 'flux1-krea-dev-Q8_0.gguf'},
     { name: 'Pixelwave Flux v3 Q8_0', value: 'pixelwave-flux-Q8_0.gguf'}
 ]
 
@@ -1017,7 +1017,7 @@ const model_selection_curated = [
     { name: 'WAI-NSFW-IllustriousXL v12', value: 'wai_nsfw_illustrious_v120.safetensors'},
     { name: 'IllumiyumeXL V-pred v3.1' , value: 'illumiyumexl_vpred_v31.safetensors'},
     { name: 'StableYogis Realism v4', value: 'stableyogi_realism_v40.safetensors'},
-    { name: 'Flux.dev Q6_K', value: 'flux1-dev-Q6_K.gguf' },
+    { name: 'Flux Krea.dev Q8_0', value: 'flux1-krea-dev-Q8_0.gguf'},
     { name: 'Pastel Mix v2.1', value: 'pastelmix.safetensors' },
 ]
 
