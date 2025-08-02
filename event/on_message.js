@@ -63,10 +63,10 @@ async function responseToMessage(client, message, content, is_continue = false, 
         operating_mode = getBestOperatingMode(hasImages, localOnly)
         
         // Special case: if thinking is enabled and we're in auto_local mode, 
-        // and we haven't fallen back to saving mode, switch to uncensored for thinking capability
+        // and we haven't fallen back to saving mode, switch to uncensored_thinking for thinking capability
         if (should_think && localOnly && !hasImages && operating_mode !== 'saving') {
             console.log('[Thinking Mode] Switching to uncensored mode for thinking capability in auto_local')
-            operating_mode = 'uncensored'
+            operating_mode = 'uncensored_thinking'
         }
         else if (localOnly && ['saving', 'vision', 'standard'].includes(operating_mode)) {
             should_think = false // Reset thinking mode if not applicable
@@ -104,9 +104,6 @@ async function responseToMessage(client, message, content, is_continue = false, 
         // If mode is forced by token, use it directly
         operating_mode = forced_mode
         console.log(`[Forced Mode] Using ${operating_mode} mode due to token override`)
-        if (should_think) {
-            console.log('[Thinking Mode] Thinking enabled for this message')
-        }
         
         // Load images if we have any and the mode supports them
         const hasImages = attachment_options && attachment_options.length > 0
@@ -119,6 +116,10 @@ async function responseToMessage(client, message, content, is_continue = false, 
                     return
                 }))
             }
+        }
+        else if (should_think) {
+            console.log('[Thinking Mode] Thinking enabled for this message in forced mode')
+            operating_mode = operating_mode === 'uncensored' ? 'uncensored_thinking' : operating_mode
         }
     }
 
@@ -314,6 +315,14 @@ async function responseToMessage(client, message, content, is_continue = false, 
 
         const intervalId = setInterval(() => {
             if (!res_gen_elaina) return
+            // if operating mode is 'uncensored_thinking', we need to filter out the <think> to </think> portion (consider multi line text)
+            if (operating_mode === 'uncensored_thinking') {
+                const thinkRegex = /<think>[\s\S]*?<\/think>/g;
+                res_gen_elaina = res_gen_elaina.replace(thinkRegex, '').trim();
+                const thinkRegex2 = /^[\s\S]*?<\/think>/g;
+                res_gen_elaina = res_gen_elaina.replace(thinkRegex2, '').trim();
+            }
+            
             msgRef.edit(`<@${message.author.id}> ${res_gen_elaina}`)
 
             if (is_done) {
@@ -421,7 +430,7 @@ async function responseToMessage(client, message, content, is_continue = false, 
                     }
                 })
             }
-        }, 1000)
+        }, 2000)
     }
     catch (error) {
         console.log(error)
