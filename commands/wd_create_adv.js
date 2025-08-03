@@ -245,8 +245,6 @@ module.exports = {
             delete workflow["9"]
         }
 
-        console.log('about to send prompt', debug_res)
-
         ComfyClient.sendPrompt(workflow, (data) => {
             //console.log(data)
             if (data.node !== null) interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] });
@@ -478,7 +476,10 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
 
         const force_legacy_flux = prompt.includes('[FLUX_FORGE]')
         prompt = prompt.replace('[FLUX_FORGE]', '')
+        
         const is_debugging = prompt.includes('[DEBUG]') || neg_prompt.includes('[DEBUG]')
+        prompt = prompt.replace('[DEBUG]', '').trim()
+        neg_prompt = neg_prompt.replace('[DEBUG]', '').trim()
         // search for lora load call <lora:...:...>
         if (is_flux && !force_legacy_flux) {
             // flux lora is broken in forge backend, switch to comfyUI backend

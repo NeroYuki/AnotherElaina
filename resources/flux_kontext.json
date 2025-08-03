@@ -245,14 +245,17 @@
     "inputs": {
       "model_type": "flux",
       "rel_l1_thresh": 0,
+      "start_percent": 0,
+      "end_percent": 1,
+      "cache_device": "cpu",
       "model": [
         "61",
         0
       ]
     },
-    "class_type": "TeaCacheForImgGen",
+    "class_type": "TeaCache",
     "_meta": {
-      "title": "TeaCache For Img Gen"
+      "title": "TeaCache"
     }
   },
   "61": {

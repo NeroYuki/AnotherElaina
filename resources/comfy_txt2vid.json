@@ -156,14 +156,17 @@
     "inputs": {
       "model_type": "hunyuan_video",
       "rel_l1_thresh": 0,
+      "start_percent": 0,
+      "end_percent": 1,
+      "cache_device": "cpu",
       "model": [
         "11",
         0
       ]
     },
-    "class_type": "TeaCacheForVidGen",
+    "class_type": "TeaCache",
     "_meta": {
-      "title": "TeaCache For Vid Gen"
+      "title": "TeaCache"
     }
   },
   "46": {
