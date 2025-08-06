@@ -426,12 +426,13 @@ const operatingMode2Config = {
         model: "gemma_27b",
         server: process.env.BOT_ENV === 'lan' ? '192.168.1.2:11434' : '192.168.196.142:11434',    // gemma 3 27b q4 host on ai server
         override_options: {
-            num_ctx: 64000,
+            num_ctx: 32000,
             num_predict: 400,
             stop: [
                 '<end_of_turn>',
                 '<start_of_turn>',
             ],
+            num_gpu: 36,
         },
         prompt_config: gemma
     },
@@ -445,6 +446,7 @@ const operatingMode2Config = {
                 "<|im_start|>",
                 "<|im_end|>",
             ],
+            num_gpu: 36,
         },
         prompt_config: qwen
     },
@@ -458,6 +460,7 @@ const operatingMode2Config = {
                 "<|im_start|>",
                 "<|im_end|>",
             ],
+            num_gpu: 36,
         },
         prompt_config: qwen
     },
@@ -485,6 +488,7 @@ const operatingMode2Config = {
         override_options: {
             num_ctx: 32000,
             num_predict: 400,
+            num_gpu: 36,
         },
         prompt_config: qwen
     }

@@ -42,7 +42,7 @@ function getBestOperatingMode(hasImages = false, localOnly = false) {
     if (comfyClient.comfyStat.gpu_vram_used < 4 || globalThis.llm_load_timer) {
         if (hasImages) {
             // console.log('[Mode Selection] Using vision mode - local GPU available with images')
-            return 'vision'
+            return 'standard'
         } else {
             // console.log('[Mode Selection] Using standard mode - local GPU available')
             return 'standard'
