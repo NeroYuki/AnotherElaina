@@ -678,7 +678,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                 data: create_data
             },
             config: {
-                timeout: 900000
+                timeout: 3_600_000, // 1 hour timeout
             }
         }
 

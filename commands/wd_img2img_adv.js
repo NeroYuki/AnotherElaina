@@ -109,8 +109,8 @@ module.exports = {
                 .setDescription('Specify an extra script to be used during the process')
                 .addChoices(
                     { name: 'None', value: 'None' },
-                    { name: 'Img2Img Upscale', value: 'Ultimate SD upscale' },
-                    { name: 'Outpainting', value: 'Outpainting mk2' },
+                    // { name: 'Img2Img Upscale', value: 'Ultimate SD upscale' },
+                    // { name: 'Outpainting', value: 'Outpainting mk2' },
                     { name: 'Flux Outpaint', value: 'Flux Outpaint' },
                     { name: 'Flux Kontext', value: 'Flux Kontext' },
                 ))

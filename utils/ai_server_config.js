@@ -1045,6 +1045,7 @@ const upscaler_selection = [
     { name: 'SwinIR 4x', value: 'SwinIR_4x' },
     { name: 'AnimeSharp 4x', value: '4x_AnimeSharp' },
     { name: 'AnimeSharp v3 2x', value: '2x-AnimeSharpV3' },
+    { name: 'AnimeSharp v4 RCAN 2x', value: '2x-AnimeSharpV4_RCAN' },
     { name: 'UltraSharp 4x', value: '4x_UltraSharp' },
     { name: 'NMKD-Siax 4x', value: '4x_NMKD-Siax_200k' },
 ]
