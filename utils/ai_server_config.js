@@ -24,7 +24,7 @@ const server_pool = [
         fn_index_change_model: 7,
         fn_index_change_support_model: 8,
         fn_index_coupler_region_preview: [292, 912],
-        fn_index_change_adetailer_model1: [88, 698],
+        fn_index_change_adetailer_model1: [90, 710],
         // fn_index_change_adetailer_prompt1: [99, 644],       //+3
         // fn_index_change_adetailer_neg_prompt1: [100, 645],  //+4
         // fn_index_change_adetailer_model2: [146, 691],       //+51
