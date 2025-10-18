@@ -27,6 +27,9 @@ class RateLimiter {
             online_lite: []
         }
         
+        // determine whether to enable background persistence
+        this.autoPersistenceEnabled = process.env.RATE_LIMITER_DISABLE === 'true' ? false : true
+
         // Load existing data from disk
         this.loadData();
         
@@ -34,20 +37,24 @@ class RateLimiter {
         this.cleanupOldRequests();
         
         // Auto-save data periodically (every 30 seconds)
-        this.saveInterval = setInterval(() => {
-            this.saveData();
-        }, 30000);
-        
-        // Save data when process exits
-        process.on('SIGINT', () => {
-            this.saveData();
-            process.exit(0);
-        });
-        
-        process.on('SIGTERM', () => {
-            this.saveData();
-            process.exit(0);
-        });
+        if (this.autoPersistenceEnabled) {
+            this.saveInterval = setInterval(() => {
+                this.saveData();
+            }, 30000);
+
+            // Save data when process exits
+            process.on('SIGINT', () => {
+                this.saveData();
+                process.exit(0);
+            });
+
+            process.on('SIGTERM', () => {
+                this.saveData();
+                process.exit(0);
+            });
+        } else {
+            this.saveInterval = null;
+        }
     }
     
     /**
@@ -122,7 +129,9 @@ class RateLimiter {
         if (this.saveInterval) {
             clearInterval(this.saveInterval);
         }
-        this.saveData();
+        if (this.autoPersistenceEnabled) {
+            this.saveData();
+        }
     }
     
     /**

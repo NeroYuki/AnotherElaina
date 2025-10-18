@@ -15,6 +15,9 @@ let doClear = false
 if (args[0] === "--global") isGlobal = true
 if (args[0] === "--clean") doClear = true
 
+// prevent background timers (e.g. rate limiter auto-save) from keeping the process alive
+process.env.RATE_LIMITER_DISABLE = 'true'
+
 const token = process.env.DISCORD_BOT_TOKEN
 const commands = [];
 const commandsPath = path.join(__dirname, 'commands');
