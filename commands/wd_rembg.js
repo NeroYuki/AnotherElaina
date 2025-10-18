@@ -141,8 +141,8 @@ module.exports = {
                 .then(async (final_res_obj) => {
                     // if server index == 0, get local image directory, else initiate request to get image from server
                     let img_buffer = null
-                    const file_dir = final_res_obj.data[0]?.url
-                    console.log(final_res_obj.data)
+                    const file_dir = final_res_obj.data[0].value?.url
+                    //console.log(final_res_obj.data)
                     if (!file_dir) {
                         throw 'Request return no image'
                     }

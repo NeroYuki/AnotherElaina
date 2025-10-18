@@ -840,7 +840,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                     if (final_res_obj.data) {
                         // if server index == 0, get local image directory, else initiate request to get image from server
                         let img_buffer = null
-                        const file_dir = final_res_obj.data[0][0]?.image.path
+                        const file_dir = final_res_obj.data[0].value[0]?.image.path
                         console.log(final_res_obj.data)
                         if (!file_dir) {
                             // error from python server side, we bail
@@ -867,9 +867,9 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                         }
 
                         // attempt to get the image seed (-1 if failed to do so)
-                        const seed = JSON.parse(final_res_obj.data[1] || JSON.stringify({seed: -1})).seed.toString()
-                        const model_hash = JSON.parse(final_res_obj.data[1] || JSON.stringify({sd_model_hash: "-"})).sd_model_hash
-                        const model_name = JSON.parse(final_res_obj.data[1] || JSON.stringify({sd_model_name: "-"})).sd_model_name
+                        const seed = JSON.parse(final_res_obj.data[2] || JSON.stringify({seed: -1})).seed.toString()
+                        const model_hash = JSON.parse(final_res_obj.data[2] || JSON.stringify({sd_model_hash: "-"})).sd_model_hash
+                        const model_name = JSON.parse(final_res_obj.data[2] || JSON.stringify({sd_model_name: "-"})).sd_model_name
                         console.log(final_res_obj.duration)
                         //console.log(img_buffer, seed)
 

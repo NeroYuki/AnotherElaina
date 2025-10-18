@@ -9,10 +9,10 @@ const server_pool = [
         index: 0,
         url: process.env.BOT_ENV === 'lan' ? 'http://192.168.1.2:7860' : 'http://192.168.196.142:7860',
         fn_index_create: 566,
-        fn_index_abort: 62,
-        fn_index_img2img: 1246,
-        fn_index_controlnet: [407, 1019],        //[txt2img, img2img, 792]  
-        fn_index_controlnet_annotation: [1151, 1175],   // 1121 - 1059 = 62
+        fn_index_abort: 51,
+        fn_index_img2img: 1254,
+        fn_index_controlnet: [409, 1031],        //[txt2img, img2img, 792]  
+        fn_index_controlnet_annotation: [405, 1175],   // 1121 - 1059 = 62
         // fn_index_controlnet_2: [440, 976], 
         // fn_index_controlnet_annotation_2: [1129, 1091],
         // fn_index_controlnet_3: [487, 1025],
@@ -20,22 +20,22 @@ const server_pool = [
         fn_index_interrogate: 1250,
         fn_index_interrogate_deepbooru: 1251,
         // fn_index_use_script: 1138,
-        fn_index_upscale: 1367,
-        fn_index_change_model: 8,
-        fn_index_change_support_model: 9,
-        fn_index_coupler_region_preview: [290, 900],
+        fn_index_upscale: 1326,
+        fn_index_change_model: 7,
+        fn_index_change_support_model: 8,
+        fn_index_coupler_region_preview: [292, 912],
         fn_index_change_adetailer_model1: [88, 698],
         // fn_index_change_adetailer_prompt1: [99, 644],       //+3
         // fn_index_change_adetailer_neg_prompt1: [100, 645],  //+4
         // fn_index_change_adetailer_model2: [146, 691],       //+51
         // fn_index_change_adetailer_prompt2: [148, 693],      //+54
         // fn_index_change_adetailer_neg_prompt2: [149, 694],  //+55
-        fn_index_execute_segment_anything: 958,
+        fn_index_execute_segment_anything: 970,
         // fn_index_execute_grounding_dino_preview: 877,            // -3
         // fn_index_execute_expand_mask: 881,                       // +1
         // fn_index_unload_segmentation_model: 897,                 // +17
-        fn_index_rembg: 1381,
-        fn_fetch_wildcards: 1382,
+        fn_index_rembg: 1340,
+        fn_fetch_wildcards: 1341,
         is_online: true,
         queue: [],
     },
@@ -255,27 +255,30 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             "upload",
             null,
             extra_script,
-            sampling_step,
-            sampler,
-            scheduler,
-            false,
-            seed,
-            false,
-            -1,
-            0,
-            0,
-            0,
-            null,
-            enable_censor,
-            do_preview,
-            is_using_adetailer,
+            false,        // soft inpainting
             1,
             0.5,
             4,
             0,
             0.5,
             2,
-            false,
+            sampling_step,
+            sampler,
+            scheduler,
+            false,          // refiner
+            "None",
+            0.875,
+            0,
+            mahiro_config?.mahiro || false,			// mahiro guidance,
+            seed,      
+            false,         // variation seed
+            -1,
+            0,
+            0,
+            0,
+            enable_censor,
+            do_preview,
+            is_using_adetailer,
             false,
             null,
             null,
@@ -435,24 +438,8 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             freeu_config?.values[1] || 1.02,               // freeU B2 (clean -> detail)
             freeu_config?.values[2] || 0.99,               // freeU S1 (dark -> light)
             freeu_config?.values[3] || 0.95,               // freeU S2
-            false,
-            0.5,
-            2,
             pag_config ? true : false,                      // toggle PAG
             pag_config?.pag_scale || 3,                          // PAG scale
-            false,		// HyperTile
-            256,
-            2,
-            2,
-            false,
-            false,
-            3,
-            2,
-            0,
-            0.35,
-            true,
-            "bicubic",
-            "bicubic",
             latentmod_config ? true : false,      // latent modifier
             latentmod_config?.sharpness_multiplier || 0,
             latentmod_config?.sharpness_method || "anisotropic",
@@ -474,7 +461,6 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             latentmod_config?.spectral_mod_multiplier || 0,
             latentmod_config?.affect_uncond || "None",
             latentmod_config?.dyncfg_augment || "None",
-            mahiro_config?.mahiro || false,			// mahiro guidance
             false,
             "MultiDiffusion",
             768,
@@ -482,41 +468,12 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             64,
             4,
             false,
-            1,
-            false,
             false,
             "m + (M-m)*(1-x)**3",
-            "* `CFG Scale` should be 2 or lower.",
-            true,
-            true,
-            "",
-            "",
-            true,
-            50,
-            true,
-            1,
-            0,
-            false,
-            4,
+            null,
+            2,
             0.5,
             "Linear",
-            "None",
-            "<p style=\"margin-bottom:0.75em\">Recommended settings: Sampling Steps: 80-100, Sampler: Euler a, Denoising strength: 0.8</p>",
-            outpaint_config?.size || 128,       // outpainting mk2
-            outpaint_config?.mask_blur || 8,
-            // parse direction string "LRUD" (in any order, any case) to array ["left", "right", "up", "down"]
-            outpaint_config?.direction || ["left", "right", "up", "down"],
-            outpaint_config?.falloff_exp || 1,
-            outpaint_config?.color_var || 0.05,
-            128,                            // poor man's outpaint
-            4,
-            "fill",
-            [
-                "left",
-                "right",
-                "up",
-                "down"
-            ],
             false,
             false,
             "positive",
@@ -526,10 +483,10 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             false,
             "start",
             "",
-            "<p style=\"margin-bottom:0.75em\">Will upscale the image by the selected scale factor; use width and height sliders to set tile size</p>",
             64,
             "None",
             2,
+            false,
             "Seed",
             "",
             "",
@@ -553,25 +510,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             true,
             "16bpc",
             ".tiff",
-            1.2,
-            "<p style=\"margin-bottom:0.75em\">Will upscale the image depending on the selected target size type</p>",
-            upscale_config?.tile_width || 1024,       // upscale
-            upscale_config?.tile_height || 0,
-            upscale_config?.mask_blur || 16,
-            upscale_config?.padding || 32,
-            upscale_config?.seam_fix_width || 64,
-            upscale_config?.seam_fix_denoise || 0.35,
-            upscale_config?.seam_fix_padding || 32,
-            upscale_config?.upscaler || "R-ESRGAN 4x+",
-            true,
-            upscale_config?.tile_pattern || "Linear",
-            false,
-            upscale_config?.seam_fix_mask_blur || 8,
-            upscale_config?.seam_fix || "None", 
-            "Scale from image size",
-            2048,
-            2048,
-            upscale_config?.scale || 2,
+            1.2
         ]
     }
 }
@@ -609,23 +548,31 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             0,
             0,
             "Use same checkpoint",
+            [
+                "Use same choices"
+            ],
             "Use same sampler",
             "Use same scheduler",
             "",
             "",
+            4,  // sd cfg
+            3,  // flux distilled cfg
             null,
             "None",
             sampling_step,
             sampler,
             scheduler,
-            false,  // refiner?
+            false,           // refiner
+            "None",
+            0.8,
+            0,
+            mahiro_config?.mahiro || false,	    // mahiro guidance,
             seed,
             false,
             -1,     // variation seed
             0,
             0,
             0,
-            null, // no idea (maybe clip skip?)
             enable_censor,
             do_preview,
             is_using_adetailer,
@@ -788,24 +735,8 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             freeu_config?.values[1] || 1.02,               // freeU B2 (clean -> detail)
             freeu_config?.values[2] || 0.99,               // freeU S1 (dark -> light)
             freeu_config?.values[3] || 0.95,               // freeU S2
-            false,
-            0.5,
-            2,
             pag_config ? true : false,                      // toggle PAG
             pag_config?.pag_scale || 3,                          // PAG scale
-            false,		// HyperTile
-            256,
-            2,
-            2,
-            false,
-            false,      // HR fix
-            3,          
-            2,
-            0,
-            0.35,
-            true,
-            "bicubic",
-            "bicubic",
             latentmod_config ? true : false,      // latent modifier
             latentmod_config?.sharpness_multiplier || 0,
             latentmod_config?.sharpness_method || "anisotropic",
@@ -827,18 +758,16 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             latentmod_config?.spectral_mod_multiplier || 0,
             latentmod_config?.affect_uncond || "None",
             latentmod_config?.dyncfg_augment || "None",
-            mahiro_config?.mahiro || false,			// mahiro guidance
             false,
             "MultiDiffusion",
             768,
             768,
             64,
             4,
-            false,      // style align
-            1,
             false,      // never OOM
             false,
             "m + (M-m)*(1-x)**3",
+            null,
             false,      // extra script (default)
             false,
             "positive",

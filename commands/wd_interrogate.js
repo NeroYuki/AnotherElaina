@@ -24,8 +24,8 @@ module.exports = {
                     { name: 'Florence 2', value: 'microsoft/Florence-2-large' },
                     { name: 'Florence 2 Finetuned', value: 'microsoft/Florence-2-large-ft' },
                     { name: 'Florence 2 PromptGen', value: 'MiaoshouAI/Florence-2-large-PromptGen-v2.0' },
-                    { name: '(Legacy) CLIP', value: 'CLIP' },
-                    { name: '(Legacy) Deepbooru', value: 'Deepbooru' },
+                    // { name: '(Legacy) CLIP', value: 'CLIP' },
+                    // { name: '(Legacy) Deepbooru', value: 'Deepbooru' },
                 )
                 .setRequired(false))
         .addStringOption(option =>
@@ -184,113 +184,10 @@ module.exports = {
 
             return;
         }
-
-        interaction.channel.send('Using legacy engine, only caption task is available')
-
-        if (engine === 'Deepbooru') {
-            // load attachment_mask to resize image to the nearest size dividible by 8 then ((export to png data URI)) (use pipline to avoid memory leak)
-            const attachment_process = sharp(attachment)
-
-            await attachment_process
-                .metadata()
-                .then((metadata) => {
-                    return attachment_process
-                        .resize(Math.ceil(metadata.width / 8) * 8, Math.ceil(metadata.height / 8) * 8)
-                        .png()
-                        .toBuffer()
-                })
-                .then(async data => {
-                    attachment = "data:image/png;base64," + data.toString('base64')
-                })
-                .catch((err) => {
-                    console.log(err)
-                    interaction.reply({ content: "Failed to resize image", ephemeral: true });
-                    return
-                })
-        }
         else {
-            // convert buffer to png data URI
-            await sharp(attachment)
-                .png()
-                .toBuffer()
-                .then(async data => {
-                    attachment = "data:image/png;base64," + data.toString('base64')
-                })
-                .catch((err) => {
-                    console.log(err)
-                    interaction.reply({ content: "Failed to convert image to png", ephemeral: true });
-                    return
-                })
+            await interaction.channel.send('Legacy engine no longer supported, please use Florence 2 engine instead.')
         }
 
-        let server_index = get_worker_server(-1)
-
-		if (server_index === -1) {
-            await interaction.editReply({ content: "No server is available, please try again later"});
-            return
-        }
-
-        // TODO: add progress ping
-        const session_hash = crypt.randomBytes(16).toString('base64');
-
-        const WORKER_ENDPOINT = server_pool[server_index].url
-    
-        const interrogate_data = [
-            0,
-            "",
-            "",
-            attachment,
-            "",
-            "",
-            "",
-            null
-        ]
-
-        const fn_index_interrogate = engine === 'Deepbooru' ? server_pool[server_index].fn_index_interrogate_deepbooru : server_pool[server_index].fn_index_interrogate
-
-        // make option_init but for axios
-        const option_init_axios = {
-            data: {
-                fn_index: fn_index_interrogate,
-                session_hash: session_hash,
-                data: interrogate_data
-            },
-            config: {
-                timeout: 900000
-            }
-        }
-
-        try {
-            await axios.post(`${WORKER_ENDPOINT}/run/predict/`, option_init_axios.data, option_init_axios.config )
-                .then((res) => {
-                    if (res.status !== 200) {
-                        throw 'Server can be reached but returned non-200 status'
-                    }
-                    return res.data
-                }) // fuck node fetch, all my homies use axios
-                .then(async (final_res_obj) => {
-                    const duration = final_res_obj.duration
-                    const description = final_res_obj.data[0]
-                    await interaction.editReply({content: `Description from ${engine}: ${description} (${duration.toFixed(2)}s)`, files: [{attachment: attachment_option.proxyURL, name: attachment.name}]})
-                })
-                .catch(err => {
-                    throw err
-                });
-        }
-        catch (err) {
-            console.log(err)
-            try {
-                await interaction.editReply({content: 'Error while interrogating '})
-            }
-            catch (err) {
-                console.log('cannot send error to discord', err)
-            }
-        }
-
-        client.cooldowns.set(interaction.user.id, true);
-
-        setTimeout(() => {
-            client.cooldowns.delete(interaction.user.id);
-        }, 5 * 1000);
+        return;
 	},
 };

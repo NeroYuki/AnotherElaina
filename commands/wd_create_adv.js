@@ -829,8 +829,8 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                         // if server index == 0, get local image directory, else initiate request to get image from server
                         let catbox_url = null
                         // Extract all image paths from the response
-                        const imagePaths = final_res_obj.data[0].map(item => item?.image?.path).filter(Boolean);
                         //console.dir(final_res_obj.data, {depth: null});
+                        const imagePaths = final_res_obj.data[0].value.map(item => item?.image?.path).filter(Boolean);
 
                         if (imagePaths.length === 0) {
                             // error from python server side, we bail
@@ -851,7 +851,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                         }
 
                         // Process metadata from response
-                        const metadataObj = JSON.parse(final_res_obj.data[1] || JSON.stringify({
+                        const metadataObj = JSON.parse(final_res_obj.data[2] || JSON.stringify({
                             seed: -1,
                             sd_model_hash: "-",
                             sd_model_name: "-"

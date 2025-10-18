@@ -3,7 +3,7 @@
 // const { byPassUser } = require('../config.json');
 const crypt = require('crypto');
 const { default: axios } = require('axios');
-const { server_pool, model_selection_flux } = require('./ai_server_config');
+const { server_pool, model_selection_flux, model_selection_xl, model_selection } = require('./ai_server_config');
 // const { loadImage } = require('../utils/load_discord_img');
 // const sharp = require('sharp');
 
@@ -19,7 +19,7 @@ const flux_support_models = [
     "t5-v1_1-xxl-encoder-Q8_0.gguf"
 ]
 
-async function support_model_change(models, session_hash) {
+async function support_model_change(models, session_hash, model_type) {
     const server_address = server_pool[0].url;
     return new Promise(async (resolve, reject) => {
         const option_init_axios = {
@@ -27,7 +27,8 @@ async function support_model_change(models, session_hash) {
                 fn_index: server_pool[0].fn_index_change_support_model,
                 session_hash: session_hash,
                 data: [
-                    models
+                    models,
+                    model_type
                 ]
             },
             config: {
@@ -56,6 +57,10 @@ async function support_model_change(models, session_hash) {
 
 function model_change(modelname, forced = false) {
     const server_address = server_pool[0].url;
+
+    const model_type = model_selection_xl.find(element => element.value === modelname) ? 'xl' :
+                       model_selection_flux.find(element => element.value === modelname) ? 'flux' :
+                       'sd';
     
     return new Promise(async (resolve, reject) => {
         // change model then send the notification to discord channel where the action is executed
@@ -68,7 +73,8 @@ function model_change(modelname, forced = false) {
                     fn_index: server_pool[0].fn_index_change_model,
                     session_hash: session_hash,
                     data: [
-                        modelname
+                        modelname,
+                        model_type
                     ]
                 },
                 config: {
@@ -93,7 +99,7 @@ function model_change(modelname, forced = false) {
                         cached_model.unshift(modelname)
 
                         if (model_selection_flux.find(element => element.value === modelname)) {
-                            await support_model_change(flux_support_models, session_hash).catch(err => {
+                            await support_model_change(flux_support_models, session_hash, model_type).catch(err => {
                                 console.log("support model cannot be changed due to failure")
                                 // rollback the model change?
                             })

@@ -78,7 +78,7 @@ module.exports = {
                         return res.data
                     }) // fuck node fetch, all my homies use axios
                     .then(async (final_res_obj) => {
-                        const data = JSON.parse(final_res_obj.data[0])
+                        const data = JSON.parse(final_res_obj.data[0].value)
                         if (data.contents) {
                             const prompt = `${data.contents || ''}`
                             const is_too_big = prompt.length > 4000
