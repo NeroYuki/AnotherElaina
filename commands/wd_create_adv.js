@@ -694,6 +694,16 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
 
         console.log(`requesting: ${WORKER_ENDPOINT}/run/predict/`)
 
+        // setting up a message ref in case the command run over the 15 minutes interaction limit
+        let message_ref = null
+        let is_interaction_time_limit_exceeded = false
+        
+        setTimeout(async () => {
+            is_interaction_time_limit_exceeded = true
+            message_ref = await interaction.channel.send({ content: `Continuing image generation result for ${interaction.user}` })
+            await interaction.editReply({ content: `Generation is taking too long, interaction limit exceeded. Please refer to the new message sent in the channel for the result.` })
+        }, 14 * 60 * 1000);
+
         function updateInteractionReply(data, state = 'queued') {
             return new Promise(async (resolve, reject) => {
                 let embeded = null
@@ -739,12 +749,20 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                         return
                     }
 
-                    await interaction.editReply(reply_content)
-                        .catch(err => {
-                            console.log(err)
-                            reject('Error while updating interaction reply')
-                        })
-
+                    if (is_interaction_time_limit_exceeded && message_ref) {
+                        await message_ref.edit(reply_content)
+                            .catch(err => {
+                                console.log(err)
+                                reject('Error while updating message ref')
+                            })
+                    }
+                    else {
+                        await interaction.editReply(reply_content)
+                            .catch(err => {
+                                console.log(err)
+                                reject('Error while updating interaction reply')
+                            })
+                    }    
                     resolve()
                 }
                 else {
@@ -930,7 +948,13 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         catch (err) {
             console.log(err)
             try {
-                await interaction.editReply({content: 'Error while creating image: ' + err, components: []})
+                if (is_interaction_time_limit_exceeded) {
+                    await interaction.channel.send({content: 'Error while creating image: ' + err, components: []})
+                    return
+                }
+                else {
+                    await interaction.editReply({ content: 'Error while creating image: ' + err, components: [] });
+                }
             }
             catch (err) {
                 console.log('cannot send error to discord', err)

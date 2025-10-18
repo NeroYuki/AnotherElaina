@@ -997,6 +997,7 @@ const model_selection_xl = [
     { name: 'NoobAIXL MDNT V-pred v1.0' , value: 'noobaixl_mdnt_vpred_v1.safetensors'},
     { name: 'Rouwei V-pred v0.8' , value: 'archive/rouwei_vpred_v0_8.safetensors'},
     { name: 'ColorPalette v1' , value: 'colorpalette_v10.safetensors'},
+    { name: 'Seele NoobAIXL V-pred v2.0' , value: 'seele_noobaixl_vpred_v2_0.safetensors'},
 ]
 
 const model_selection_inpaint = [
