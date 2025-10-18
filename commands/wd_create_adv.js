@@ -557,6 +557,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         const collector = interaction.channel.createMessageComponentCollector({ filter, time: 800000 });
 
         collector.on('collect', async i => {
+            clearInteractionTimeout()
             isCancelled = true
             collector.stop()
 
@@ -698,11 +699,18 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         let message_ref = null
         let is_interaction_time_limit_exceeded = false
         
-        setTimeout(async () => {
+        let interaction_timeout = setTimeout(async () => {
             is_interaction_time_limit_exceeded = true
             message_ref = await interaction.channel.send({ content: `Continuing image generation result for ${interaction.user}` })
             await interaction.editReply({ content: `Generation is taking too long, interaction limit exceeded. Please refer to the new message sent in the channel for the result.` })
         }, 14 * 60 * 1000);
+
+        const clearInteractionTimeout = () => {
+            if (interaction_timeout) {
+                clearTimeout(interaction_timeout)
+                interaction_timeout = null
+            }
+        }
 
         function updateInteractionReply(data, state = 'queued') {
             return new Promise(async (resolve, reject) => {
@@ -933,6 +941,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                             }
                         }
 
+                        clearInteractionTimeout()
                         isDone = true;
                     }
                     else {
@@ -941,11 +950,13 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                     }
                 })
                 .catch(err => {
+                    clearInteractionTimeout()
                     isCancelled = true
                     throw err
                 })
         }
         catch (err) {
+            clearInteractionTimeout()
             console.log(err)
             try {
                 if (is_interaction_time_limit_exceeded) {
