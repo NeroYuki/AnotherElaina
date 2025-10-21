@@ -5,8 +5,8 @@ const crypt = require('crypto');
 const { server_pool, get_prompt, get_negative_prompt, get_worker_server, model_name_hash_mapping, upscaler_selection } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
-const { loadImage } = require('../utils/load_discord_img');
-const { clamp } = require('../utils/common_helper');
+const { loadImage, uploadDiscordImageToGradio } = require('../utils/load_discord_img');
+const { clamp, convert_upload_path_to_file_data } = require('../utils/common_helper');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -65,12 +65,12 @@ module.exports = {
 		await interaction.deferReply();
 
         //download the image from attachment.proxyURL
-        let attachment = await loadImage(attachment_option.proxyURL,
-            /*getBuffer:*/ false, /*noDataURIHeader*/ false, /*safeMode*/ true).catch((err) => {
-            console.log(err)
-            interaction.reply({ content: "Failed to retrieve image", ephemeral: true });
-            return
-        })
+        // let attachment = await loadImage(attachment_option.proxyURL,
+        //     /*getBuffer:*/ false, /*noDataURIHeader*/ false, /*safeMode*/ true).catch((err) => {
+        //     console.log(err)
+        //     interaction.reply({ content: "Failed to retrieve image", ephemeral: true });
+        //     return
+        // })
 
         let server_index = get_worker_server(-1)
 
@@ -83,11 +83,17 @@ module.exports = {
         const session_hash = crypt.randomBytes(16).toString('base64');
 
         const WORKER_ENDPOINT = server_pool[server_index].url
+
+        let attachment_upload_path = await uploadDiscordImageToGradio(attachment_option.proxyURL, session_hash, WORKER_ENDPOINT).catch((err) => {
+            console.log(err)
+            interaction.editReply({ content: "Failed to upload image to server", ephemeral: true });
+            return
+        })
     
         const upscale_data = [
             `task(${session_hash})`,
             0,
-            attachment,
+            convert_upload_path_to_file_data(attachment_upload_path, WORKER_ENDPOINT),
             null,
             "",
             "",
@@ -151,7 +157,8 @@ module.exports = {
                 .then(async (final_res_obj) => {
                     // if server index == 0, get local image directory, else initiate request to get image from server
                     let img_buffer = null
-                    const file_dir = final_res_obj.data[0].value[0]?.image.path
+                    console.dir(final_res_obj, {depth: null})
+                    const file_dir = final_res_obj.data[0][0]?.image.path
                     console.log(final_res_obj.data)
                     if (!file_dir) {
                         throw 'Request return no image'
