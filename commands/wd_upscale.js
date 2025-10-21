@@ -99,11 +99,12 @@ module.exports = {
             "",
             true,
             true,
+            false,
             0,
             upscale_multiplier,
             0,
-            512,
-            512,
+            1024,
+            1024,
             true,
             upscaler,     // upscaler 1
             upscaler_2,                 // upscaler 2
@@ -133,6 +134,8 @@ module.exports = {
             0.5,
             1,
         ]
+
+        console.log(upscale_data)
 
         // make option_init but for axios
         const option_init_axios = {
