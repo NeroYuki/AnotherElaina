@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { controlnet_model_selection, controlnet_preprocessor_selection, model_selection_xl } = require('../utils/ai_server_config');
+const { controlnet_model_selection, controlnet_preprocessor_selection, model_selection_xl, model_selection, model_selection_flux, model_selection_legacy } = require('../utils/ai_server_config');
 const { cached_model } = require('../utils/model_change');
 const { clamp, truncate, try_parse_json_and_return_formated_string } = require('../utils/common_helper');
 
@@ -23,6 +23,10 @@ module.exports = {
                     option.setName('do_preview')
                         .setDescription('Do preview during image generation (default is false, will be slightly slower if true)')
                         .setRequired(false))
+                .addStringOption(option => 
+                    option.setName('hires_checkpoint')
+                        .setDescription('Force a cached checkpoint to be used in hires (not all option is cached)')
+                        .addChoices(...(model_selection.concat(model_selection_xl).concat(model_selection_flux).filter(x => !model_selection_legacy.map(y => y.value).includes(x.value)))))
                 )
 
     ,
@@ -46,11 +50,13 @@ module.exports = {
         }
 
         //parse the options
-        const do_preview = interaction.options.getBoolean('do_preview') || false
+        const do_preview = interaction.options.getBoolean('do_preview') !== null ? interaction.options.getBoolean('do_preview') : true
+        const hires_checkpoint = interaction.options.getString('hires_checkpoint') || null
 
         //setup the config
         const config = {
-            do_preview: do_preview
+            do_preview: do_preview,
+            hires_checkpoint: hires_checkpoint
         }
 
         const config_string = JSON.stringify(config)

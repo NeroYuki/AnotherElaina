@@ -194,7 +194,8 @@ function parse_common_setting(setting_json) {
         try {
             const usersetting_config_obj = JSON.parse(setting_json)
             return {
-                do_preview: usersetting_config_obj?.do_preview ?? true
+                do_preview: usersetting_config_obj?.do_preview ?? true,
+                hires_checkpoint: usersetting_config_obj?.hires_checkpoint ?? "Use same checkpoint"
             }
         }
         catch (err) {
@@ -203,7 +204,8 @@ function parse_common_setting(setting_json) {
     }
     else {
         return {
-            do_preview: true
+            do_preview: true,
+            hires_checkpoint: "Use same checkpoint"
         }
     }
 }

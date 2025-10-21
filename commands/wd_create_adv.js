@@ -365,7 +365,7 @@ module.exports = {
         
         // parse the user setting config
         const usersetting_config = client.usersetting_config.has(interaction.user.id) ? client.usersetting_config.get(interaction.user.id) : null
-        const { do_preview } = parse_common_setting(usersetting_config)
+        const usersetting = parse_common_setting(usersetting_config)
 
         let seed = -1
         try {
@@ -667,7 +667,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             seed, sampler, scheduler, session_hash, height, width, upscale_multiplier, upscaler, 
             upscale_denoise_strength, upscale_step, false, do_adetailer, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
             extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, extra_config.use_foocus, extra_config.use_booru_gen, 
-            booru_gen_config_obj, is_flux, colorbalance_config_obj, do_preview, extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config_obj, 
+            booru_gen_config_obj, is_flux, colorbalance_config_obj, usersetting, extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config_obj, 
             extra_config.mahiro_config, extra_config.teacache_config, batch_count, batch_size)
 
         // make option_init but for axios

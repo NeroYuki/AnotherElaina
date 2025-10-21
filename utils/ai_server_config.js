@@ -20,7 +20,7 @@ const server_pool = [
         fn_index_interrogate: 1250,
         fn_index_interrogate_deepbooru: 1251,
         // fn_index_use_script: 1138,
-        fn_index_upscale: 1326,
+        fn_index_upscale: 1325,
         fn_index_change_model: 7,
         fn_index_change_support_model: 8,
         fn_index_coupler_region_preview: [292, 912],
@@ -201,7 +201,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
     is_using_adetailer = false, coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, 
     freeu_config = null, dynamic_threshold_config = null, pag_config = null, inpaint_area = "Whole picture", mask_padding = 32,
     use_foocus = false, use_booru_gen = false, booru_gen_config = null, is_flux = false,
-    inpaint_img_upload_path = null, inpaint_mask_upload_path = null, colorbalance_config = null, do_preview = true, outpaint_config = null, 
+    inpaint_img_upload_path = null, inpaint_mask_upload_path = null, colorbalance_config = null, usersetting = null, outpaint_config = null, 
     upscale_config = null, extra_script = "None", detail_daemon_config = null, tipo_input = null, latentmod_config = null,
     mahiro_config = null, teacache_config = null) => {
     // default mode 0 is img2img, 4 is inpainting
@@ -277,7 +277,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             0,
             0,
             enable_censor,
-            do_preview,
+            usersetting?.do_preview ?? true,
             is_using_adetailer,
             false,
             null,
@@ -519,7 +519,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
     height, width, upscale_multiplier, upscaler, upscale_denoise_strength, upscale_step, face_restore = false, is_using_adetailer = false, 
     coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, 
     freeu_config = null, dynamic_threshold_config = null, pag_config = null, use_foocus = false, use_booru_gen = false, booru_gen_config = null, 
-    is_flux = false, colorbalance_config = null, do_preview = true, detail_daemon_config = null, tipo_input = null, latentmod_config = null,
+    is_flux = false, colorbalance_config = null, usersetting = null, detail_daemon_config = null, tipo_input = null, latentmod_config = null,
     mahiro_config = null, teacache_config = null, batch_count = 1, batch_size = 1) => {
 
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
@@ -547,7 +547,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             upscale_step,
             0,
             0,
-            "Use same checkpoint",
+            usersetting?.hires_checkpoint ?? "Use same checkpoint",
             [
                 "Use same choices"
             ],
@@ -574,7 +574,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             0,
             0,
             enable_censor,
-            do_preview,
+            usersetting?.do_preview ?? true,
             is_using_adetailer,
             false,
             null,

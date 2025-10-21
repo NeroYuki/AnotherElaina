@@ -251,7 +251,7 @@ module.exports = {
         const should_override_1st_controlnet = (interaction.options.getString('controlnet_config') || profile?.controlnet_config)? true : false
         const self = this;
         const usersetting_config = client.usersetting_config.has(interaction.user.id) ? client.usersetting_config.get(interaction.user.id) : null
-        const { do_preview } = parse_common_setting(usersetting_config)
+        const usersetting = parse_common_setting(usersetting_config)
 
         let seed = -1
         try {
@@ -921,7 +921,7 @@ module.exports = {
                 seed, sampler, scheduler, session_hash, height, width, attachment, mask_data_uri, denoising_strength, 4, mask_blur, mask_content, "None", false, 
                 extra_config.coupler_config, extra_config.color_grading_config, 1, is_censor, extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config,
                 inpaint_area, mask_padding, extra_config.use_foocus, extra_config.use_booru_gen, booru_gen_config_obj, is_flux, attachment_upload_path, mask_upload_path, 
-                colorbalance_config_obj, do_preview, null, null, "None", extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config,
+                colorbalance_config_obj, usersetting, null, null, "None", extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config,
                 extra_config.mahiro_config, extra_config.teacache_config)
     
             // make option_init but for axios
