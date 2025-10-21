@@ -39,6 +39,9 @@ module.exports = {
         .addNumberOption(option =>
             option.setName('codeformer_weight')
                 .setDescription('The weight of the Codeformer model (default is "0, no effect)'))       
+        .addBooleanOption(option =>
+            option.setName('private_mode')
+                .setDescription('Whether to use private mode for this generation (default is "false")'))
         // .addNumberOption(option =>
         //     option.setName('color_enhance_weight')
         //         .setDescription('The weight of the color enhancement script (default is "0, no enhancement")'))
@@ -59,10 +62,11 @@ module.exports = {
         const gfpgan_visibility = clamp(interaction.options.getNumber('gfpgan_visibility') || 0, 0, 1)
         const codeformer_visibility = clamp(interaction.options.getNumber('codeformer_visibility') || 0, 0, 1)
         const codeformer_weight = clamp(interaction.options.getNumber('codeformer_weight') || 0, 0, 1)
+        const private_mode = interaction.options.getBoolean('private_mode') != null ?  interaction.options.getBoolean('private_mode') : false
         // const color_enhance_weight = clamp(interaction.options.getNumber('color_enhance_weight') || 0, 0, 1)
 
         //make a temporary reply to not get timeout'd
-		await interaction.deferReply();
+		await interaction.deferReply({ephemeral: private_mode});
 
         //download the image from attachment.proxyURL
         // let attachment = await loadImage(attachment_option.proxyURL,
@@ -135,7 +139,7 @@ module.exports = {
             1,
         ]
 
-        console.log(upscale_data)
+        //console.log(upscale_data)
 
         // make option_init but for axios
         const option_init_axios = {
@@ -160,9 +164,9 @@ module.exports = {
                 .then(async (final_res_obj) => {
                     // if server index == 0, get local image directory, else initiate request to get image from server
                     let img_buffer = null
-                    console.dir(final_res_obj, {depth: null})
+                    //console.dir(final_res_obj, {depth: null})
                     const file_dir = final_res_obj.data[0][0]?.image.path
-                    console.log(final_res_obj.data)
+                    //console.log(final_res_obj.data)
                     if (!file_dir) {
                         throw 'Request return no image'
                     }
@@ -194,7 +198,7 @@ module.exports = {
                         .setImage(`attachment://${output_data.img_name}`)
                         .setFooter({text: `Putting ${Array("my RTX 4060 Ti","plub's RTX 3070")[server_index]} to good use!`});
 
-                    const reply_content = {embeds: [embeded]}
+                    const reply_content = {embeds: [embeded]};
                     if (output_data.img) {
                         reply_content.files = [{attachment: output_data.img, name: output_data.img_name}]
                     }
