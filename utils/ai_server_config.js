@@ -1040,9 +1040,8 @@ const controlnet_model_selection_flux = [
 const upscaler_selection = [
     { name: 'Lanczos - Fast', value: 'Lanczos' },
     { name: 'ESRGAN_4x', value: 'ESRGAN_4x' },
-    { name: 'R-ESRGAN 4x+', value: 'R-ESRGAN 4x+' },
-    { name: 'R-ESRGAN 4x+ Anime6B', value: 'R-ESRGAN 4x+ Anime6B' },
-    { name: 'SwinIR 4x', value: 'SwinIR_4x' },
+    { name: 'R-ESRGAN 4x+', value: 'RealESRGAN_x4plus' },
+    { name: 'R-ESRGAN 4x+ Anime6B', value: 'RealESRGAN_x4plus_anime_6B' },
     { name: 'AnimeSharp 4x', value: '4x_AnimeSharp' },
     { name: 'AnimeSharp v3 2x', value: '2x-AnimeSharpV3' },
     { name: 'AnimeSharp v4 RCAN 2x', value: '2x-AnimeSharpV4_RCAN' },
