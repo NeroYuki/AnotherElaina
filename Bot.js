@@ -38,6 +38,7 @@ client.latentmod_config = new Map();
 client.shipgirl_quiz_config = new Map();	
 client.shipgirl_quiz_multi = new Map();
 client.mapperatorinator_queue = []
+client.mai_mod_queue = []
 client.COOLDOWN_SECONDS = 30; // replace with desired cooldown time in seconds
 
 console.log('current env', process.env.BOT_ENV)
@@ -147,6 +148,7 @@ client.on('interactionCreate', async interaction => {
 
 	const mapperatorinator_backend_require = [
 		'osu_mapperinator',
+		'osu_mai_mod',
 	]
 
 	const no_backend_require = [

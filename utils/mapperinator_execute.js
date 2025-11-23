@@ -102,10 +102,13 @@ async function streamOutput(url, callback) {
 }
 
 // sending a POST request to the `localhost:7050/upload_audio` endpoint, input audio is a buffer, param is formdata with audio_file being the only field
-async function uploadAudio(url, audioBuffer, filename) {
+async function uploadAudio(url, audioBuffer, filename, subfolder = '') {
     const endpoint = `${url}/upload_audio`;
     const formData = new FormData();
     formData.append('audio_file', audioBuffer, { filename: filename });
+    if (subfolder) {
+        formData.append('subfolder', subfolder);
+    }
 
     try {
         const response = await axios.post(endpoint, formData);
@@ -116,16 +119,34 @@ async function uploadAudio(url, audioBuffer, filename) {
     }
 }
 
-async function uploadBeatmap(url, beatmapData, filename) {
+async function uploadBeatmap(url, beatmapData, filename, subfolder = '') {
     const endpoint = `${url}/upload_beatmap`;
     const formData = new FormData();
     formData.append('beatmap_file', beatmapData, { filename: filename });
+    if (subfolder) {
+        formData.append('subfolder', subfolder);
+    }
 
     try {
         const response = await axios.post(endpoint, formData);
         return response.data;
     } catch (error) {
         console.log('Error uploading beatmap:', error.message);
+        throw error;
+    }
+}
+
+async function uploadBeatmapSet(url, beatmapSetData, filename) {
+    const endpoint = `${url}/upload_beatmapset`;
+    const formData = new FormData();
+
+    formData.append('beatmapset_file', beatmapSetData, { filename: filename });
+    try {
+        const response = await axios.post(endpoint, formData);
+        return response.data;
+    }
+    catch (error) {
+        console.log('Error uploading beatmapset:', error.message);
         throw error;
     }
 }
@@ -156,14 +177,41 @@ async function getServerHealth(url) {
         console.log('Error getting server health:', error.message);
         throw error;
     }
-}   
+}
+
+/**
+ * Sends a POST request to the `start_inference` endpoint for mai_mod_ui.py with simplified parameters.
+ * @param {string} url - The base URL of the API (e.g., "http://localhost:7051").
+ * @param {Object} params - The parameters to send in the request.
+ * @param {string} params.beatmap_path - Path to the beatmap file.
+ * @returns {Promise<Object>} - The response from the API.
+ */
+async function startInferenceMaiMod(url, params) {
+    const endpoint = `${url}/start_inference`;
+    const formData = new FormData();
+
+    // Add the required beatmap_path parameter
+    formData.append('beatmap_path', params.beatmap_path || '');
+
+    try {
+        const response = await axios.post(endpoint, formData, {
+            headers: formData.getHeaders(),
+        });
+        return response.data;
+    } catch (error) {
+        console.log('Error sending request to start_inference (MaiMod):', error.message);
+        throw error;
+    }
+}
 
 
 module.exports = {
     startInference,
+    startInferenceMaiMod,
     streamOutput,
     uploadAudio,
     uploadBeatmap,
+    uploadBeatmapSet,
     getBeatmap,
     getServerHealth,
 };
