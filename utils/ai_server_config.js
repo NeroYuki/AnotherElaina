@@ -8,34 +8,34 @@ const server_pool = [
     {
         index: 0,
         url: process.env.BOT_ENV === 'lan' ? 'http://192.168.1.2:7860' : 'http://192.168.196.142:7860',
-        fn_index_create: 566,
+        fn_index_create: 545,
         fn_index_abort: 51,
-        fn_index_img2img: 1254,
-        fn_index_controlnet: [409, 1031],        //[txt2img, img2img, 792]  
-        fn_index_controlnet_annotation: [405, 1175],   // 1121 - 1059 = 62
+        fn_index_img2img: 1188,
+        fn_index_controlnet: [402, 1003],        //[txt2img, img2img, 792]  
+        fn_index_controlnet_annotation: [398, 999],   // 1121 - 1059 = 62
         // fn_index_controlnet_2: [440, 976], 
         // fn_index_controlnet_annotation_2: [1129, 1091],
         // fn_index_controlnet_3: [487, 1025],
         // fn_index_controlnet_annotation_3: [1137, 1099],
-        fn_index_interrogate: 1250,
-        fn_index_interrogate_deepbooru: 1251,
+        // fn_index_interrogate: 1250,
+        // fn_index_interrogate_deepbooru: 1251,
         // fn_index_use_script: 1138,
-        fn_index_upscale: 1325,
+        fn_index_upscale: 1259,
         fn_index_change_model: 7,
         fn_index_change_support_model: 8,
-        fn_index_coupler_region_preview: [292, 912],
-        fn_index_change_adetailer_model1: [90, 710],
+        fn_index_coupler_region_preview: [292, 891],
+        fn_index_change_adetailer_model1: [90, 689],
         // fn_index_change_adetailer_prompt1: [99, 644],       //+3
         // fn_index_change_adetailer_neg_prompt1: [100, 645],  //+4
         // fn_index_change_adetailer_model2: [146, 691],       //+51
         // fn_index_change_adetailer_prompt2: [148, 693],      //+54
         // fn_index_change_adetailer_neg_prompt2: [149, 694],  //+55
-        fn_index_execute_segment_anything: 970,
+        fn_index_execute_segment_anything: 949,
         // fn_index_execute_grounding_dino_preview: 877,            // -3
         // fn_index_execute_expand_mask: 881,                       // +1
         // fn_index_unload_segmentation_model: 897,                 // +17
-        fn_index_rembg: 1340,
-        fn_fetch_wildcards: 1341,
+        fn_index_rembg: 1273,
+        fn_fetch_wildcards: 1274,
         is_online: true,
         queue: [],
     },
@@ -548,9 +548,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             0,
             0,
             usersetting?.hires_checkpoint ?? "Use same checkpoint",
-            [
-                "Use same choices"
-            ],
+            ["Use same choices"],
             "Use same sampler",
             "Use same scheduler",
             "",
@@ -611,22 +609,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             coupler_config?.direction || "Horizontal",       // direction (Horizontal or Vertical)
             coupler_config?.global || "First Line",       // use which line for global effect (First Line or Last Line or None)
             coupler_config?.global_weight || 0.5,                // global weight
-            coupler_config?.adv_regions || [
-                [
-                    0,
-                    0.5,
-                    0,
-                    1,
-                    1
-                ],
-                [
-                    0.5,
-                    1,
-                    0,
-                    1,
-                    1
-                ]
-            ],
+            coupler_config?.adv_regions || [[0, 0.5, 0, 1, 1], [0.5, 1, 0, 1, 1]],
             0.35,           // extra samplers setting, adaptive progressive
             0.75,
             0.4,
@@ -882,7 +865,7 @@ const model_selection_legacy = [
     { name: 'ArtiWaifu v2', value: 'archive/artiwaifu_v2.safetensors'},
     { name: 'IllustriousXL v1', value: 'archive/Illustriousxl_v10.safetensors'},
     { name: 'IllustriousXL v1.1', value: 'archive/Illustriousxl_v11.safetensors'},
-    { name: 'WAI-NSFW-IllustriousXL v10', value: 'archive/wai_nsfw_illustrious_v100.safetensors'},
+    { name: 'WAI-NSFW-IllustriousXL v12', value: 'wai_nsfw_illustrious_v120.safetensors'},
     { name: 'RealVisXL v5', value: 'archive/realvisxl_v5.safetensors'},
     { name: 'SilenceMix v1', value: 'archive/silencemix_v10.safetensors'},
     { name: 'Flux.dev Q6_K', value: 'archive/flux1-dev-Q6_K.gguf' },
@@ -918,8 +901,8 @@ const model_selection_xl = [
     { name: 'IllustriousXL v1', value: 'archive/Illustriousxl_v10.safetensors'},
     { name: 'IllustriousXL v1.1', value: 'archive/Illustriousxl_v11.safetensors'},
     { name: 'IllustriousXL v2.0', value: 'Illustriousxl_v20.safetensors'},
-    { name: 'WAI-NSFW-IllustriousXL v10', value: 'archive/wai_nsfw_illustrious_v100.safetensors'},
     { name: 'WAI-NSFW-IllustriousXL v12', value: 'wai_nsfw_illustrious_v120.safetensors'},
+    { name: 'WAI-NSFW-IllustriousXL v15', value: 'wai_nsfw_illustrious_v150.safetensors'},
     { name: 'CatTower NoobAIXL V-pred v1.5' , value: 'cattowernoobaixl_vpred_v15.safetensors'},
     { name: 'IllumiyumeXL V-pred v3.1' , value: 'illumiyumexl_vpred_v31.safetensors'},
     { name: 'IllumiyumeXL V-pred v3.2' , value: 'illumiyumexl_vpred_v32.safetensors'},
