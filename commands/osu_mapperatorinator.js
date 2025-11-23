@@ -495,7 +495,7 @@ BeatmapSetID:-1`);
 
         const request_res = await startInference(params.server_address, {
             audio_path: './temp/' + params.audio_path_res.path.split('\\').pop().split('/').pop(),
-            beatmap_path: params.beatmap_path ? './temp/' + params.beatmap_path_res.path.ssplit('\\').pop().split('/').pop() : '',
+            beatmap_path: params.beatmap_path_res ? './temp/' + params.beatmap_path_res.path.split('\\').pop().split('/').pop() : '',
             output_path: './output',
             model: params.model,
             difficulty: params.difficulty,
