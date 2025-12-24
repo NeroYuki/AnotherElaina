@@ -21,6 +21,10 @@ module.exports = {
             subcommand
                 .setName('set')
                 .setDescription('Setup the Latent Modifier config, will persist through generation')
+                .addBooleanOption(option =>
+                    option.setName('simple_mode')
+                        .setDescription('If true, only set a accept option for rescale cfg')
+                        .setRequired(false))
                 .addNumberOption(option =>
                     option.setName('sharpness_multiplier')
                         .setDescription('The sharpness multiplier of the generated prompt')
@@ -195,29 +199,37 @@ module.exports = {
         const spectral_mod_multiplier = clamp(interaction.options.getNumber('spectral_mod_multiplier') || 0, -15, 15)
         const affect_uncond = interaction.options.getString('affect_uncond') || 'None'
         const dyncfg_augment = interaction.options.getString('dyncfg_augment') || 'None'
-
+        const simple_mode = interaction.options.getBoolean('simple_mode') || false
 
         let config = {
-            "sharpness_multiplier": sharpness_multiplier,
-            "sharpness_method": sharpness_method,
-            "tonemap_multiplier": tonemap_multiplier,
-            "tonemap_method": tonemap_method,
-            "tonemap_percentile": tonemap_percentile,
-            "contrast_multiplier": contrast_multiplier,
-            "contrast_method": contrast_method,
-            "combat_cfg_drift": combat_cfg_drift,
             "rescale_cfg_phi": rescale_cfg_phi,
-            "extra_noise_type": extra_noise_type,
-            "extra_noise_method": extra_noise_method,
-            "extra_noise_multiplier": extra_noise_multiplier,
-            "extra_noise_lowpass": extra_noise_lowpass,
-            "divisive_norm_size": divisive_norm_size,
-            "divisive_norm_multiplier": divisive_norm_multiplier,
-            "spectral_mod_mode": spectral_mod_mode,
-            "spectral_mod_percentile": spectral_mod_percentile,
-            "spectral_mod_multiplier": spectral_mod_multiplier,
-            "affect_uncond": affect_uncond,
-            "dyncfg_augment": dyncfg_augment
+            "mode": "simple"
+        }
+
+        if (!simple_mode) {
+            config = {
+                "sharpness_multiplier": sharpness_multiplier,
+                "sharpness_method": sharpness_method,
+                "tonemap_multiplier": tonemap_multiplier,
+                "tonemap_method": tonemap_method,
+                "tonemap_percentile": tonemap_percentile,
+                "contrast_multiplier": contrast_multiplier,
+                "contrast_method": contrast_method,
+                "combat_cfg_drift": combat_cfg_drift,
+                "rescale_cfg_phi": rescale_cfg_phi,
+                "extra_noise_type": extra_noise_type,
+                "extra_noise_method": extra_noise_method,
+                "extra_noise_multiplier": extra_noise_multiplier,
+                "extra_noise_lowpass": extra_noise_lowpass,
+                "divisive_norm_size": divisive_norm_size,
+                "divisive_norm_multiplier": divisive_norm_multiplier,
+                "spectral_mod_mode": spectral_mod_mode,
+                "spectral_mod_percentile": spectral_mod_percentile,
+                "spectral_mod_multiplier": spectral_mod_multiplier,
+                "affect_uncond": affect_uncond,
+                "dyncfg_augment": dyncfg_augment,
+                "mode": "advanced"
+            }
         }
 
         const config_string = JSON.stringify(config)
