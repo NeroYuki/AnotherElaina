@@ -587,11 +587,11 @@ module.exports = {
                                 } else if (instance.severity === 'minor') {
                                     instEmoji = '🔵';
                                 }
-                                fieldValue += `  ${instEmoji} ${instance.text}\n`;
+                                fieldValue += `${instEmoji} ${instance.text}\n`;
                             }
                             
                             if (filteredInstances.length > 5) {
-                                fieldValue += `  ... and ${filteredInstances.length - 5} more\n`;
+                                fieldValue += `... and ${filteredInstances.length - 5} more\n`;
                             }
                         }
                         
