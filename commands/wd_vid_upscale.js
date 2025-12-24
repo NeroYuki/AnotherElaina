@@ -53,6 +53,12 @@ module.exports = {
                         { name: 'RIFE47', value: 'rife47.pth' },
                         { name: 'RIFE49', value: 'rife49.pth' },
                     ))
+            .addNumberOption(option =>
+                option.setName('fps_multiplier')
+                    .setDescription('The FPS multiplier for frame interpolation (default is 2, 1 to disable)')
+                    .setMinValue(1.0)
+                    .setMaxValue(10.0)
+                    .setRequired(false))
 
     ,
 
@@ -67,6 +73,7 @@ module.exports = {
         const ref_image_option = interaction.options.getAttachment('ref_image');
         const upscaler = interaction.options.getString('upscaler') || 'None';
         const frame_interpolation = interaction.options.getString('frame_interpolation') || 'None';
+        const fps_multiplier = interaction.options.getNumber('fps_multiplier') || 2;
 
         if (color_correction === 'None' && upscaler === 'None' && frame_interpolation === 'None') {
             interaction.editReply({ content: "No post processing options selected, nothing to do." });
@@ -159,13 +166,14 @@ module.exports = {
 
         workflow[frame_interpolation_node]["inputs"]["frames"] = images_location.slice(0);  
 
-        if (frame_interpolation === 'None') {
+        if (frame_interpolation === 'None' || fps_multiplier === 1) {
             delete workflow[frame_interpolation_node];
             workflow[fps_multiplier_node]["inputs"]["value"] = 1
         }
         else {
             images_location = [frame_interpolation_node, 0];
             workflow[frame_interpolation_node]["inputs"]["model_name"] = frame_interpolation
+            workflow[fps_multiplier_node]["inputs"]["value"] = fps_multiplier
         }
 
         workflow[output_video_node]["inputs"]["images"] = images_location.slice(0);  

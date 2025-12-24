@@ -7,6 +7,8 @@ const { default: axios } = require('axios');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const { loadImage, uploadDiscordImageToGradio } = require('../utils/load_discord_img');
 const { clamp, convert_upload_path_to_file_data } = require('../utils/common_helper');
+const { catboxFileUpload } = require('../utils/catbox_upload');
+const fs = require('fs');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -15,7 +17,11 @@ module.exports = {
 		.addAttachmentOption(option =>
 			option.setName('image')
 				.setDescription('The image to be upscaled')
-				.setRequired(true))
+				.setRequired(false))
+        .addStringOption(option =>
+            option.setName('image_url')
+                .setDescription('URL of the image to be upscaled (alternative to attachment)')
+                .setRequired(false))
         .addNumberOption(option =>
             option.setName('upscale_multiplier')
                 .setDescription('The rate to upscale the generated image (default is "1, no upscaling")'))
@@ -55,6 +61,19 @@ module.exports = {
         }
 
         let attachment_option = interaction.options.getAttachment('image')
+        let image_url = interaction.options.getString('image_url')
+        
+        // Validate that either attachment or URL is provided
+        if (!attachment_option && !image_url) {
+            await interaction.reply({ content: "Please provide either an image attachment or an image URL", ephemeral: true });
+            return;
+        }
+        
+        // If both are provided, prefer attachment
+        if (attachment_option && image_url) {
+            image_url = null;
+        }
+        
         const upscale_multiplier = clamp(interaction.options.getNumber('upscale_multiplier') || 1, 1, 6)
         const upscaler = interaction.options.getString('upscaler') || 'Lanczos'
         const upscaler_2 = interaction.options.getString('upscaler_2') || 'None'
@@ -88,7 +107,9 @@ module.exports = {
 
         const WORKER_ENDPOINT = server_pool[server_index].url
 
-        let attachment_upload_path = await uploadDiscordImageToGradio(attachment_option.proxyURL, session_hash, WORKER_ENDPOINT).catch((err) => {
+        const image_source = attachment_option ? attachment_option.proxyURL : image_url;
+        
+        let attachment_upload_path = await uploadDiscordImageToGradio(image_source, session_hash, WORKER_ENDPOINT).catch((err) => {
             console.log(err)
             interaction.editReply({ content: "Failed to upload image to server", ephemeral: true });
             return
@@ -191,23 +212,58 @@ module.exports = {
                         duration: final_res_obj.duration
                     }
 
-                    const embeded = new MessageEmbed()
-                        .setColor('#22ff77')
-                        .setTitle('Output')
-                        .setDescription(`Here you go. Generated in ${output_data.duration.toFixed(2)} seconds.`)
-                        .setImage(`attachment://${output_data.img_name}`)
-                        .setFooter({text: `Putting ${Array("my RTX 4060 Ti","plub's RTX 3070")[server_index]} to good use!`});
+                    // check if the image buffer is larger than 10MB
+                    const fileSizeInBytes = output_data.img.length;
 
-                    const reply_content = {embeds: [embeded]};
-                    if (output_data.img) {
-                        reply_content.files = [{attachment: output_data.img, name: output_data.img_name}]
-                    }
+                    if (fileSizeInBytes > 9_800_000) {
+                        // if the image is larger than 10MB, upload it to catbox
+                        const temp_filename = `temp_upscale_${Date.now()}.png`;
+                        const temp_filepath = `./temp/${temp_filename}`;
+                        
+                        fs.writeFileSync(temp_filepath, output_data.img);
+                        
+                        let catbox_url = await catboxFileUpload(temp_filepath).catch((err) => {
+                            console.log(err);
+                            interaction.editReply({ content: "Failed to upload image to catbox", ephemeral: true });
+                            return;
+                        });
 
-                    await interaction.editReply(reply_content)
-                        .catch(err => {
-                            console.log(err)
-                            reject('Error while updating interaction reply')
+                        if (!catbox_url) {
+                            // delete the temp file
+                            fs.unlinkSync(temp_filepath);
+                            throw new Error("Failed to upload image to catbox");
+                        }
+
+                        await interaction.editReply({ 
+                            content: `Here you go. Generated in ${output_data.duration.toFixed(2)} seconds.\n\nImage size exceeds 10MB, uploaded to catbox.`, 
+                            files: [{ attachment: catbox_url, name: output_data.img_name }] 
                         })
+                        .catch(err => {
+                            console.log(err);
+                            throw 'Error while updating interaction reply';
+                        });
+
+                        // delete the temp file after sending
+                        fs.unlinkSync(temp_filepath);
+                    } else {
+                        const embeded = new MessageEmbed()
+                            .setColor('#22ff77')
+                            .setTitle('Output')
+                            .setDescription(`Here you go. Generated in ${output_data.duration.toFixed(2)} seconds.`)
+                            .setImage(`attachment://${output_data.img_name}`)
+                            .setFooter({text: `Putting ${Array("my RTX 4060 Ti","plub's RTX 3070")[server_index]} to good use!`});
+
+                        const reply_content = {embeds: [embeded]};
+                        if (output_data.img) {
+                            reply_content.files = [{attachment: output_data.img, name: output_data.img_name}]
+                        }
+
+                        await interaction.editReply(reply_content)
+                            .catch(err => {
+                                console.log(err);
+                                throw 'Error while updating interaction reply';
+                            });
+                    }
                 })
                 .catch(err => {
                     throw err
