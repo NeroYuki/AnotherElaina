@@ -28,12 +28,13 @@ module.exports = {
                             { name: 'YOLO Hand v8n', value: 'hand_yolov8n.pt' },
                             { name: 'YOLO Eyes (Segment)', value: 'Anzhc Eyes -seg-hd.pt'},
                             { name: 'YOLO Person v8s (Segment)', value: 'person_yolov8n-seg.pt'},
-                            { name: 'YOLO World v8x', value: 'yolov8x_world.pt'}
+                            { name: 'YOLO World v8x', value: 'yolov8x_world.pt'},
+                            { name: 'GroudingDINO', value: 'groundingdino'}
                         )
                         .setRequired(false))
                 .addStringOption(option =>
                     option.setName('object_to_detect')
-                        .setDescription('Detect object listing if using wolrd model (default is "person", COCO class only)')
+                        .setDescription('Detect object listing (default is "person", COCO class if world model, or custom for groundingdino)')
                         .setRequired(false))
                 .addStringOption(option =>
                     option.setName('adetailer_prompt')
