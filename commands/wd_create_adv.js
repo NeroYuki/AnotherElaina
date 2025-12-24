@@ -2,6 +2,8 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { byPassUser, censorGuildIds, optOutGuildIds } = require('../config.json');
 const crypt = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const { server_pool, get_data_body, get_negative_prompt, initiate_server_heartbeat, get_worker_server, get_prompt, 
     model_name_hash_mapping, get_data_controlnet, get_data_controlnet_annotation, check_model_filename, model_selection, upscaler_selection, model_selection_xl, model_selection_legacy,
     sampler_selection, model_selection_inpaint, model_selection_flux, scheduler_selection, 
@@ -663,12 +665,29 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             }
         }
     
-        const create_data = get_data_body(server_index, prompt, neg_prompt, sampling_step, cfg_scale, 
+        let create_data = get_data_body(server_index, prompt, neg_prompt, sampling_step, cfg_scale, 
             seed, sampler, scheduler, session_hash, height, width, upscale_multiplier, upscaler, 
             upscale_denoise_strength, upscale_step, false, do_adetailer, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
             extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, extra_config.use_foocus, extra_config.use_booru_gen, 
             booru_gen_config_obj, is_flux, colorbalance_config_obj, usersetting, extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config_obj, 
             extra_config.mahiro_config, extra_config.teacache_config, batch_count, batch_size)
+
+        // Check for [DEBUG-WEBUI] prompt override
+        if (prompt.includes('[DEBUG-WEBUI]')) {
+            try {
+                const debug_data_path = path.join(__dirname, '..', 'resources', 'debug_sdwebui_request.json');
+                const debug_data_raw = fs.readFileSync(debug_data_path, 'utf-8');
+                const debug_data_obj = JSON.parse(debug_data_raw);
+                create_data = debug_data_obj.data;
+                // Update session hash in the debug data
+                create_data[0] = `task(${session_hash})`;
+                await interaction.channel.send(':warning: **DEBUG MODE: Using debug_sdwebui_request.json data. All command parameters are ignored.**');
+                console.log('Debug override activated, using data from debug_sdwebui_request.json');
+            } catch (err) {
+                console.log('Error loading debug data:', err);
+                await interaction.channel.send(':x: Failed to load debug data: ' + err.message);
+            }
+        }
 
         // make option_init but for axios
         const option_init_axios = {
