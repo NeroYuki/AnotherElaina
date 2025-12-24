@@ -24,6 +24,7 @@
 		"dotenv": "^16.0.1",
 		"exifreader": "^4.21.1",
 		"fast-levenshtein": "^3.0.0",
+		"get-audio-duration": "^4.0.1",
 		"he": "^1.2.0",
 		"java-deserialization": "^0.1.0",
 		"mongodb": "^4.8.0",
