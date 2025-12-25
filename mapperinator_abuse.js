@@ -2,9 +2,13 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const archiver = require('archiver');
+const { exec } = require('child_process');
+const { promisify } = require('util');
 const { uploadAudio, startInference, streamOutput, getBeatmap } = require('./utils/mapperinator_execute');
 const NodeID3 = require('node-id3');
-const { getAudioDurationInSeconds } = require('get-audio-duration')
+const { getAudioDurationInSeconds } = require('get-audio-duration');
+
+const execPromise = promisify(exec);
 
 // Load beatmap users data
 const beatmapUsers = JSON.parse(fs.readFileSync('./beatmap_users.json', 'utf8'));
@@ -17,7 +21,7 @@ const CONFIG = {
     server_address: 'http://192.168.1.2:7050',
     
     // Audio file path (replace with your audio file)
-    audio_file_path: "E:\\music\\Foster the People - Houdini.mp3",
+    audio_file_path: "E:\\music_2_trimmed\\09.Fire Beat.mp3",
     
     // Background image path (optional, set to null if not needed)
     image_file_path: null, // e.g., './temp/background.jpg'
@@ -77,18 +81,20 @@ const CONFIG = {
     enable_flash_attn: true, // Use flash attention if supported
     //=============================================
 
-    difficulty: 7,
+    lora_path: "D:\\AIstuff\\Mapperatorinator\\lora\\Mapperatorinator-v30-LoRA-highSR",
+
+    difficulty: 10,
     sv: 1.4,
     tick_rate: 1,
     cs: 4.2,
-    od: 9.2,
-    ar: 9.5,
+    od: 10,
+    ar: 10,
     hp: 5,
     seed: '',
     gamemode: '0', // 0=Standard, 1=Taiko, 2=Catch, 3=Mania
     year: null,
     cfg_scale: 3.0,
-    temperature: 0.92,
+    temperature: 0.95,
     top_p: 0.9,
     super_timing: false,
     add_hitsounds: true,
@@ -165,6 +171,49 @@ async function getAudioDuration(filePath) {
     } catch (err) {
         console.log('Failed to extract audio duration:', err.message);
         return 0;
+    }
+}
+
+/**
+ * Preprocess audio file: re-encode to MP3 128kbps and normalize volume
+ */
+async function preprocessAudio(inputPath) {
+    const outputDir = './temp';
+    if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+    }
+    
+    const randomId = crypto.randomBytes(8).toString('hex');
+    const outputPath = path.join(outputDir, `processed_${randomId}.mp3`);
+    
+    console.log('  Preprocessing audio with ffmpeg...');
+    console.log('    - Re-encoding to MP3 128kbps');
+    console.log('    - Normalizing volume (loudnorm)');
+    
+    try {
+        // Use ffmpeg to:
+        // 1. Normalize audio with loudnorm filter (EBU R128 standard)
+        // 2. Re-encode to MP3 at 128kbps
+        const ffmpegCmd = `ffmpeg -i "${inputPath}" -af loudnorm=I=-16:TP=-1.5:LRA=11 -b:a 128k -y "${outputPath}"`;
+        
+        const { stdout, stderr } = await execPromise(ffmpegCmd);
+        
+        if (!fs.existsSync(outputPath)) {
+            throw new Error('Processed audio file was not created');
+        }
+        
+        const originalSize = fs.statSync(inputPath).size;
+        const processedSize = fs.statSync(outputPath).size;
+        console.log(`  ✓ Audio preprocessed: ${outputPath}`);
+        console.log(`    Original size: ${(originalSize / 1024 / 1024).toFixed(2)} MB`);
+        console.log(`    Processed size: ${(processedSize / 1024 / 1024).toFixed(2)} MB`);
+        console.log(`    Size reduction: ${((1 - processedSize / originalSize) * 100).toFixed(1)}%`);
+        
+        return outputPath;
+    } catch (err) {
+        console.error('  ✗ Failed to preprocess audio:', err.message);
+        console.error('  Falling back to original audio file...');
+        return inputPath; // Return original path if preprocessing fails
     }
 }
 
@@ -365,6 +414,7 @@ async function processMapperID(mapper_id, uploaded_audio_path, audio_filename, b
             descriptors: [],
             negative_descriptors: [],
             in_context_options: [],
+            lora_path: CONFIG.lora_path,
         };
         
         await startInference(CONFIG.server_address, inference_params);
@@ -413,10 +463,14 @@ async function main() {
     console.log('='.repeat(60));
     
     try {
+        // Preprocess audio file
+        console.log('\nPreprocessing audio file...');
+        const processed_audio_path = await preprocessAudio(CONFIG.audio_file_path);
+        
         // Load audio file
-        console.log('\nLoading audio file...');
-        const audio_file = await loadAudioFile(CONFIG.audio_file_path);
-        const audio_filename = path.basename(CONFIG.audio_file_path);
+        console.log('\nLoading preprocessed audio file...');
+        const audio_file = await loadAudioFile(processed_audio_path);
+        const audio_filename = path.basename(processed_audio_path);
         console.log(`✓ Audio loaded: ${audio_filename} (${audio_file.length} bytes)`);
         
         // Load image file if provided
@@ -434,12 +488,12 @@ async function main() {
             }
         }
         
-        // Extract metadata
+        // Extract metadata (from original file for better tag reading)
         const tags = extractMetadata(audio_file);
         console.log('✓ Metadata extracted:', tags);
         
-        // Get audio duration
-        const audio_duration = await getAudioDuration(CONFIG.audio_file_path);
+        // Get audio duration (from processed file)
+        const audio_duration = await getAudioDuration(processed_audio_path);
         console.log(`✓ Audio duration: ${audio_duration.toFixed(2)}s`);
         
         // Prepare beatmap info (shared across all difficulties)
@@ -561,6 +615,16 @@ async function main() {
         
         console.log('\n✓ Bulk processing completed!');
         console.log(`Output directory: ${CONFIG.output_dir}`);
+        
+        // Clean up processed audio file
+        if (processed_audio_path !== CONFIG.audio_file_path && fs.existsSync(processed_audio_path)) {
+            try {
+                fs.unlinkSync(processed_audio_path);
+                console.log('\n✓ Cleaned up temporary processed audio file');
+            } catch (err) {
+                console.log('⚠ Failed to clean up temporary file:', err.message);
+            }
+        }
         
     } catch (err) {
         console.error('\n✗ Fatal error:', err.message);

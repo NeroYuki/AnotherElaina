@@ -1,6 +1,14 @@
 const axios = require('axios');
 const FormData = require('form-data');
 
+const lora_mapping = {
+    'high_sr': './lora/Mapperatorinator-v30-LoRA-highSR',
+    'kroytz': './lora/Mapperatorinator-v30-LoRA-Kroytz',
+    'arles': './lora/Mapperatorinator-v30-LoRA-Arles-v1',
+    'slider_slop': './lora/Mapperatorinator-v30-LoRA-sliderSlop',
+    'ranked_2025': './lora/Mapperatorinator-v30-LoRA-2025',
+}
+
 /**
  * Sends a POST request to the `start_inference` endpoint with all required parameters.
  * @param {string} url - The base URL of the API (e.g., "http://localhost:5000").
@@ -16,6 +24,7 @@ async function startInference(url, params) {
     formData.append('audio_path', params.audio_path || '');
     formData.append('output_path', params.output_path || '');
     formData.append('beatmap_path', params.beatmap_path || '');
+    formData.append('lora_path', params.lora_path || '');
 
     // Add basic settings
     formData.append('gamemode', parseInt(params.gamemode) || 0);
@@ -216,4 +225,5 @@ module.exports = {
     uploadBeatmapSet,
     getBeatmap,
     getServerHealth,
+    lora_mapping,
 };
