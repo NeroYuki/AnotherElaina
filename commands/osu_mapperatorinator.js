@@ -388,6 +388,102 @@ BeatmapSetID:-1`);
         })
     },
 
+    async switchToLocalServer(params, msgRef) {
+        const local_server_address = 'http://127.0.0.1:7050'
+
+        let audio_path_res = await uploadAudio(local_server_address, params.audio_file, params.audio_filename).catch((err) => {
+            console.log(err)
+            msgRef.edit({ content: "Failed to upload audio to local server"});
+            return
+        })
+
+        if (!audio_path_res) {
+            msgRef.edit({ content: "Failed to upload audio to local server, request aborted"});
+            return false;
+        }
+
+        console.log("Audio re-uploaded: " + audio_path_res.path)
+        params.audio_path_res = audio_path_res;
+
+        const beatmap_path_res = params.beatmap_file ? await uploadBeatmap(local_server_address, params.beatmap_file, params.beatmap_filename).catch((err) => {
+            console.log(err)
+            msgRef.edit({ content: "Failed to upload beatmap file to local server"});
+            return
+        }) : null
+
+        if (params.beatmap_file && !beatmap_path_res) {
+            msgRef.edit({ content: "Failed to upload beatmap file to local server, request aborted"});
+            return false;
+        }
+
+        params.beatmap_path_res = beatmap_path_res;
+        params.server_address = local_server_address;
+        return true;
+    },
+
+    cancelMapperTask(params, client, msgRef) {
+        msgRef.edit({ content: `<@${params.user_id}> Beatmap generation cancelled by user` });
+        // dequeue the current task
+        client.mapperatorinator_queue.shift();
+        // check if there is another task in the queue
+        console.log("Cancelled task, Current queue length: " + client.mapperatorinator_queue.length)
+        if (client.mapperatorinator_queue.length > 0) {
+            this.execute_inference(client.mapperatorinator_queue[0].interaction, client.mapperatorinator_queue[0].params, client);
+        }
+    },
+
+    createActionButtons(interaction, includeSwitch = true) {
+        const row = new MessageActionRow();
+        
+        if (includeSwitch) {
+            row.addComponents(new MessageButton()
+                .setCustomId('switchtocpu_' + interaction.id)
+                .setLabel('🚶‍♂️ Switch to CPU Generation')
+                .setStyle('PRIMARY')
+            );
+        }
+
+        row.addComponents(new MessageButton()
+            .setCustomId('cancelmapper_' + interaction.id)
+            .setEmoji("<:nuke:338322910018142208>")
+            .setLabel('Cancel')
+            .setStyle('DANGER')
+        );
+
+        return row;
+    },
+
+    async handleActionButtons(interaction, params, client, msgRef, onTimeout = null) {
+        const filter = i => {
+            i.deferUpdate();
+            return i.user.id === interaction.user.id;
+        };
+
+        return msgRef.channel.awaitMessageComponent({ filter, time: 300000 })
+            .then(async i => {
+                if (i.customId.startsWith('switchtocpu_')) {
+                    const success = await this.switchToLocalServer(params, msgRef);
+                    if (success) {
+                        this.execute_inference(interaction, params, client, msgRef);
+                    }
+                    return;
+                }
+                else if (i.customId.startsWith('cancelmapper_')) {
+                    this.cancelMapperTask(params, client, msgRef);
+                    return;
+                }
+            })
+            .catch(err => {
+                console.log(err);
+                if (onTimeout) {
+                    onTimeout();
+                } else {
+                    msgRef.edit({ content: `<@${params.user_id}> Request timed out, please try again later` });
+                    this.cancelMapperTask(params, client, msgRef);
+                }
+            });
+    },
+
     async execute_inference(interaction, params, client, msgRef = null) {
         console.log("Starting task, Current queue length: " + client.mapperatorinator_queue.length)
 
@@ -401,27 +497,7 @@ BeatmapSetID:-1`);
         const is_gpu_having_enough_vram = (params.model !== 'v30' && comfyClient.comfyStat.gpu_vram_used < 4) || (params.model === 'v30' && comfyClient.comfyStat.gpu_vram_used < 10)
 
         if (!health || (health && is_using_gpu && !is_gpu_having_enough_vram)) {
-            const row = new MessageActionRow()
-
-            if (params.model === 'v30') {
-                row.addComponents(new MessageButton()
-                    .setCustomId('switchtocpu_' + interaction.id)
-                    .setLabel('🚶‍♂️ Switch to CPU Generation')
-                    .setStyle('PRIMARY')
-                )
-            }
-
-            row.addComponents(new MessageButton()
-                .setCustomId('cancelmapper_' + interaction.id)
-                .setEmoji("<:nuke:338322910018142208>")
-                .setLabel('Cancel')
-                .setStyle('DANGER')
-            );
-
-            const filter = i => {
-                i.deferUpdate();
-                return i.user.id === interaction.user.id;
-            };
+            const row = this.createActionButtons(interaction, params.model === 'v30');
 
             const message_content = { content: `<@${params.user_id}> The server is currently under heavy load, generation will be retried after 5 minutes`, components: [row]}
 
@@ -436,104 +512,82 @@ BeatmapSetID:-1`);
             //     this.execute_inference(interaction, params, client, msgRef);
             // }, 5 * 60 * 1000); // retry after 5 minutes
 
-            msgRef.channel.awaitMessageComponent({ filter, time: 300000 })
-                .then(async i => {
-                    if (i.customId.startsWith('switchtocpu_')) {
-                        const local_server_address = 'http://127.0.0.1:7050'
-
-                        let audio_path_res = await uploadAudio(local_server_address, params.audio_file, params.audio_filename).catch((err) => {
-                            console.log(err)
-                            msgRef.edit({ content: "Failed to upload audio to local server"});
-                            return
-                        })
-
-                        if (!audio_path_res) {
-                            msgRef.edit({ content: "Failed to upload audio to local server, request aborted"});
-                            return
-                        }
-
-                        console.log("Audio re-uploaded: " + audio_path_res.path)
-                        params.audio_path_res = audio_path_res;
-
-                        const beatmap_path_res = params.beatmap_file ? await uploadBeatmap(local_server_address, params.beatmap_file, params.beatmap_filename).catch((err) => {
-                            console.log(err)
-                            msgRef.edit({ content: "Failed to upload beatmap file to local server"});
-                            return
-                        }) : null
-
-                        if (params.beatmap_file && !beatmap_path_res) {
-                            msgRef.edit({ content: "Failed to upload beatmap file to local server, request aborted"});
-                            return;
-                        }
-
-                        params.beatmap_path_res = beatmap_path_res;
-                        params.server_address = local_server_address;
-                        this.execute_inference(interaction, params, client, msgRef)
-                        return;
-                    }
-
-                    else if (i.customId.startsWith('cancelmapper_')) {
-                        msgRef.edit({ content: `<@${params.user_id}> Beatmap generation cancelled by user` });
-                        // dequeue the current task
-                        client.mapperatorinator_queue.shift();
-                        // check if there is another task in the queue
-                        console.log("Cancelled task, Current queue length: " + client.mapperatorinator_queue.length)
-                        if (client.mapperatorinator_queue.length > 0) {
-                            this.execute_inference(client.mapperatorinator_queue[0].interaction, client.mapperatorinator_queue[0].params, client);
-                        }
-                        return;
-                    }
-                })
-                .catch(err => {
-                    // in case timeout, retry the inference on gpu
-                    console.log(err)
-                    console.log("Message component interaction timed out, retrying inference on same device");
-                    this.execute_inference(interaction, params, client, msgRef);
-                });
+            await this.handleActionButtons(interaction, params, client, msgRef, () => {
+                // in case timeout, retry the inference on gpu
+                console.log("Message component interaction timed out, retrying inference on same device");
+                this.execute_inference(interaction, params, client, msgRef);
+            });
             return;
         }
 
-        console.log(is_using_gpu ? "Using GPU for inference" : "Using CPU for inference");
+        console.log('DEBUG:', is_using_gpu ? "Using GPU for inference" : "Using CPU for inference");
 
-        const request_res = await startInference(params.server_address, {
-            audio_path: './temp/' + params.audio_path_res.path.split('\\').pop().split('/').pop(),
-            beatmap_path: params.beatmap_path_res ? './temp/' + params.beatmap_path_res.path.split('\\').pop().split('/').pop() : '',
-            output_path: './output',
-            model: params.model,
-            enable_bf16: is_using_gpu,
-            enable_flash_attn: is_using_gpu,
-            difficulty: params.difficulty,
-            slider_multiplier: params.sv,
-            slider_tick_rate: params.tick_rate,
-            circle_size: params.cs,
-            hp_drain_rate: params.hp,
-            approach_rate: params.ar,
-            overall_difficulty: params.od,
-            keycount: params.keycount,
-            hold_note_ratio: params.hold_note_ratio,
-            scroll_speed_ratio: params.scroll_speed_ratio,
-            seed: params.seed,
-            gamemode: params.gamemode,
-            year: params.year,
-            mapper_id: params.mapper_id,
-            cfg_scale: params.cfg_scale,
-            temperature: params.temperature,
-            top_p: params.top_p,
-            super_timing: params.super_timing,
-            hitsounded: params.add_hitsounds,
-            descriptors: params.descriptors || [],
-            negative_descriptors: params.negative_descriptors || [],
-            in_context_options: params.in_context_options || [],
-        }).catch((err) => {
+        let request_res;
+        try {
+            request_res = await startInference(params.server_address, {
+                audio_path: './temp/' + params.audio_path_res.path.split('\\').pop().split('/').pop(),
+                beatmap_path: params.beatmap_path_res ? './temp/' + params.beatmap_path_res.path.split('\\').pop().split('/').pop() : '',
+                output_path: './output',
+                model: params.model,
+                enable_bf16: is_using_gpu,
+                enable_flash_attn: is_using_gpu,
+                difficulty: params.difficulty,
+                slider_multiplier: params.sv,
+                slider_tick_rate: params.tick_rate,
+                circle_size: params.cs,
+                hp_drain_rate: params.hp,
+                approach_rate: params.ar,
+                overall_difficulty: params.od,
+                keycount: params.keycount,
+                hold_note_ratio: params.hold_note_ratio,
+                scroll_speed_ratio: params.scroll_speed_ratio,
+                seed: params.seed,
+                gamemode: params.gamemode,
+                year: params.year,
+                mapper_id: params.mapper_id,
+                cfg_scale: params.cfg_scale,
+                temperature: params.temperature,
+                top_p: params.top_p,
+                super_timing: params.super_timing,
+                hitsounded: params.add_hitsounds,
+                descriptors: params.descriptors || [],
+                negative_descriptors: params.negative_descriptors || [],
+                in_context_options: params.in_context_options || [],
+            });
+        } catch (err) {
             console.log(err)
-            if (err.response && err.response.status === 409) {
+            // Check if this is a 409 error and we can offer CPU fallback
+            const is_non_local_server = !params.server_address.startsWith('http://127.0.0.1') && !params.server_address.startsWith('http://localhost');
+            
+            if (err.response && err.response.status === 409 && is_non_local_server && params.model === 'v30') {
+                // Server busy (409), offer CPU fallback for non-local v30 requests
+                const row = this.createActionButtons(interaction, true);
+
+                const filter = i => {
+                    i.deferUpdate();
+                    return i.user.id === interaction.user.id;
+                };
+
+                const message_content = { content: `<@${params.user_id}> The server is currently busy with another generation. You can switch to CPU generation (slower) or cancel.`, components: [row]}
+
+                if (msgRef) {
+                    await msgRef.edit(message_content);
+                }
+                else {
+                    msgRef = await interaction.channel.send(message_content);
+                }
+
+                await this.handleActionButtons(interaction, params, client, msgRef);
+                return;
+            }
+            else if (err.response && err.response.status === 409) {
                 interaction.channel.send({ content: "A beatmap generation is already in progress, please wait..." });
             }
             else {
                 interaction.channel.send({ content: `<@${params.user_id}> Failed to start inference: ` + err.message});
             }
-            return
-        })
+            return;
+        }
 
         if (!request_res) {
             return
