@@ -1,7 +1,7 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageActionRow, MessageSelectMenu, MessageButton } = require('discord.js');
 const { loadImage } = require('../utils/load_discord_img');
-const { uploadAudio, startInference, streamOutput, getBeatmap, uploadBeatmap, getServerHealth } = require('../utils/mapperinator_execute');
+const { uploadAudio, startInference, streamOutput, getBeatmap, uploadBeatmap, getServerHealth, lora_mapping } = require('../utils/mapperinator_execute');
 const NodeID3 = require('node-id3')
 const crypto = require('crypto');
 const fs = require('fs');
@@ -175,12 +175,9 @@ module.exports = {
         .addNumberOption(option =>
             option.setName('difficulty')
                 .setDescription('The target (PC) star rating for the beatmap, value from 0-30, default is 5'))
-        .addNumberOption(option =>
-            option.setName('sv')
-                .setDescription('The slider multiplier for the beatmap, value from 0.1-10, default is 1.4'))
-        .addNumberOption(option =>
-            option.setName('tick_rate')
-                .setDescription('The slider tick rate for the beatmap, value from 0.5-8, default is 1'))
+        .addStringOption(option =>
+            option.setName('sv_tick_rate')
+                .setDescription('The slider velocity and (optional) tick rate multiplier, value from 0.1-10[:0.5-8], default is 1.4[:1]'))
         .addNumberOption(option =>
             option.setName('cs')
                 .setDescription('The circle size/key count for the beatmap, value from -10 to 13, default is 4'))
@@ -249,7 +246,7 @@ module.exports = {
                 .setRequired(false))
         .addAttachmentOption(option =>
             option.setName('beatmap_file')
-                .setDescription('Attach a beatmap to use v31\'s in-context mode, default is empty')
+                .setDescription('Attach a beatmap to use in-context mode, default is empty')
                 .setRequired(false))
         .addNumberOption(option =>
             option.setName('hold_note_ratio')
@@ -257,7 +254,16 @@ module.exports = {
         .addNumberOption(option =>
             option.setName('scroll_speed_ratio')
                 .setDescription('The scroll speed ratio for catch and mania beatmap, value from 0-1, default is 0'))
-
+        .addStringOption(option =>
+            option.setName('lora')
+                .setDescription('The LoRA to use for the beatmap generation, default is none')
+                .addChoices(
+                    { name: 'High SR', value: 'high_sr' },
+                    { name: 'Kroytz', value: 'kroytz' },
+                    { name: 'Arles', value: 'arles' },
+                    { name: 'Slider Slop', value: 'slider_slop' },
+                    { name: 'Ranked 2025', value: 'ranked_2025' },
+                ))
     ,
 
     sendFinishBeatmap(msgRef, audio_file, audio_filename, beatmap_path, beatmap_info, user_id, image_file = null, image_filename = null, request_server_address = server_address) {
@@ -521,7 +527,6 @@ BeatmapSetID:-1`);
         }
 
         console.log('DEBUG:', is_using_gpu ? "Using GPU for inference" : "Using CPU for inference");
-
         let request_res;
         try {
             request_res = await startInference(params.server_address, {
@@ -529,6 +534,7 @@ BeatmapSetID:-1`);
                 beatmap_path: params.beatmap_path_res ? './temp/' + params.beatmap_path_res.path.split('\\').pop().split('/').pop() : '',
                 output_path: './output',
                 model: params.model,
+                lora_path: params.lora_path || '',
                 enable_bf16: is_using_gpu,
                 enable_flash_attn: is_using_gpu,
                 difficulty: params.difficulty,
@@ -841,8 +847,20 @@ BeatmapSetID:-1`);
 
         const model = interaction.options.getString('model') || 'v30';
         const difficulty = clamp(interaction.options.getNumber('difficulty') || 5, 0, 30);
-        const sv = clamp(interaction.options.getNumber('sv') || 1.4, 0.1, 10);
-        const tick_rate = clamp(interaction.options.getNumber('tick_rate') || 1, 0.5, 8);
+        
+        // Parse sv_tick_rate: format is "sv:tick_rate" or just "sv"
+        const sv_tick_rate_input = interaction.options.getString('sv_tick_rate') || '1.4';
+        let sv, tick_rate;
+        if (sv_tick_rate_input.includes(':')) {
+            const parts = sv_tick_rate_input.split(':');
+            sv = clamp(parseFloat(parts[0]) || 1.4, 0.1, 10);
+            tick_rate = clamp(parseFloat(parts[1]) || 1, 0.5, 8);
+        } else {
+            // Single number - assume it's for sv only
+            sv = clamp(parseFloat(sv_tick_rate_input) || 1.4, 0.1, 10);
+            tick_rate = 1; // default tick_rate
+        }
+        
         const cs = clamp(interaction.options.getNumber('cs') || 4, -10, 13)
         const od = clamp(interaction.options.getNumber('od') || 8, 0, 13);
         const ar = clamp(interaction.options.getNumber('ar') || 9, -10, 13);
@@ -861,6 +879,8 @@ BeatmapSetID:-1`);
         const descriptor_mode = interaction.options.getString('descriptor_mode') || '0_0'; // default to 'No Descriptor'
         const hold_note_ratio = clamp(interaction.options.getNumber('hold_note_ratio') || 0.3, 0, 1); // only works for mania
         const scroll_speed_ratio = clamp(interaction.options.getNumber('scroll_speed_ratio') || 0, 0, 1); // only works for mania
+        const lora_selection = interaction.options.getString('lora') || 'none';
+        const lora_path = lora_selection !== 'none' ? lora_mapping[lora_selection] : '';
         const use_descriptors = descriptor_mode.startsWith('1_') ? true : false; // if the first part is '1', use descriptors
         const use_negative_descriptors = descriptor_mode.endsWith('_1') ? true : false; // if the second part is '1', use negative descriptors
         const keycount = gamemode === '3' ? clamp(cs, 0, 10) : 1
@@ -995,6 +1015,7 @@ BeatmapSetID:-1`);
             top_p: top_p,
             super_timing: super_timing,
             add_hitsounds: add_hitsounds,
+            lora_path: lora_path,
             descriptors: descriptor,
             negative_descriptors: negative_descriptor,
             in_context_options: in_context_option,
