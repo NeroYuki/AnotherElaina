@@ -27,9 +27,18 @@ module.exports = {
                             { name: 'YOLO Face v8s', value: 'face_yolov8s.pt' },
                             { name: 'YOLO Hand v8n', value: 'hand_yolov8n.pt' },
                             { name: 'YOLO Eyes (Segment)', value: 'Anzhc Eyes -seg-hd.pt'},
+                            { name: 'YOLO Breast (Segment)', value: 'Anzhc Breasts Seg v1 1024m.pt'},
+                            { name: 'YOLO Head+Hair (Segment)', value: 'Anzhc HeadHair seg y8m.pt'},
+                            { name: 'YOLO Face (Segment)', value: 'Anzhc Face seg 1024 v2 y8n.pt'},
                             { name: 'YOLO Person v8s (Segment)', value: 'person_yolov8n-seg.pt'},
+                            { name: 'Watermark', value: 'watermark.pt'},
                             { name: 'YOLO World v8x', value: 'yolov8x_world.pt'},
-                            { name: 'GroudingDINO', value: 'groundingdino'}
+                            { name: 'GroudingDINO Tiny', value: 'groundingdino'},
+                            { name: 'GroudingDINO Base', value: 'groundingdino_base'},
+                            { name: 'Florence2 Base', value: 'florence-2-base'},
+                            { name: 'Florence2 Base Fine-tuned', value: 'florence-2-base-ft'},
+                            { name: 'Florence2 Large', value: 'florence-2-large'},
+                            { name: 'Florence2 Large Fine-tuned', value: 'florence-2-large-ft'}
                         )
                         .setRequired(false))
                 .addStringOption(option =>
@@ -64,8 +73,18 @@ module.exports = {
                             { name: 'YOLO Face v8s', value: 'face_yolov8s.pt' },
                             { name: 'YOLO Hand v8n', value: 'hand_yolov8n.pt' },
                             { name: 'YOLO Eyes (Segment)', value: 'Anzhc Eyes -seg-hd.pt'},
+                            { name: 'YOLO Breast (Segment)', value: 'Anzhc Breasts Seg v1 1024m.pt'},
+                            { name: 'YOLO Head+Hair (Segment)', value: 'Anzhc HeadHair seg y8m.pt'},
+                            { name: 'YOLO Face (Segment)', value: 'Anzhc Face seg 1024 v2 y8n.pt'},
                             { name: 'YOLO Person v8s (Segment)', value: 'person_yolov8n-seg.pt'},
-                            { name: 'YOLO World v8x', value: 'yolov8x_world.pt'}
+                            { name: 'Watermark', value: 'watermark.pt'},
+                            { name: 'YOLO World v8x', value: 'yolov8x_world.pt'},
+                            { name: 'GroudingDINO Tiny', value: 'groundingdino'},
+                            { name: 'GroudingDINO Base', value: 'groundingdino_base'},
+                            { name: 'Florence2 Base', value: 'florence-2-base'},
+                            { name: 'Florence2 Base Fine-tuned', value: 'florence-2-base-ft'},
+                            { name: 'Florence2 Large', value: 'florence-2-large'},
+                            { name: 'Florence2 Large Fine-tuned', value: 'florence-2-large-ft'}
                         )
                         .setRequired(false))
                 .addStringOption(option =>
@@ -100,8 +119,18 @@ module.exports = {
                             { name: 'YOLO Face v8s', value: 'face_yolov8s.pt' },
                             { name: 'YOLO Hand v8n', value: 'hand_yolov8n.pt' },
                             { name: 'YOLO Eyes (Segment)', value: 'Anzhc Eyes -seg-hd.pt'},
+                            { name: 'YOLO Breast (Segment)', value: 'Anzhc Breasts Seg v1 1024m.pt'},
+                            { name: 'YOLO Head+Hair (Segment)', value: 'Anzhc HeadHair seg y8m.pt'},
+                            { name: 'YOLO Face (Segment)', value: 'Anzhc Face seg 1024 v2 y8n.pt'},
                             { name: 'YOLO Person v8s (Segment)', value: 'person_yolov8n-seg.pt'},
-                            { name: 'YOLO World v8x', value: 'yolov8x_world.pt'}
+                            { name: 'Watermark', value: 'watermark.pt'},
+                            { name: 'YOLO World v8x', value: 'yolov8x_world.pt'},
+                            { name: 'GroudingDINO Tiny', value: 'groundingdino'},
+                            { name: 'GroudingDINO Base', value: 'groundingdino_base'},
+                            { name: 'Florence2 Base', value: 'florence-2-base'},
+                            { name: 'Florence2 Base Fine-tuned', value: 'florence-2-base-ft'},
+                            { name: 'Florence2 Large', value: 'florence-2-large'},
+                            { name: 'Florence2 Large Fine-tuned', value: 'florence-2-large-ft'}
                         )
                         .setRequired(false))
                 .addStringOption(option =>

@@ -8,11 +8,11 @@ const server_pool = [
     {
         index: 0,
         url: process.env.BOT_ENV === 'lan' ? 'http://192.168.1.2:7860' : 'http://192.168.196.142:7860',
-        fn_index_create: 547,
+        fn_index_create: 615,
         fn_index_abort: 51,
-        fn_index_img2img: 1191,
-        fn_index_controlnet: [402, 1005],        //[txt2img, img2img, 792]  
-        fn_index_controlnet_annotation: [398, 1001],   // 1121 - 1059 = 62
+        fn_index_img2img: 1328,
+        fn_index_controlnet: [470, 1141],        //[txt2img, img2img, 792]  
+        fn_index_controlnet_annotation: [466, 1137],   // 1121 - 1059 = 62
         // fn_index_controlnet_2: [440, 976], 
         // fn_index_controlnet_annotation_2: [1129, 1091],
         // fn_index_controlnet_3: [487, 1025],
@@ -20,22 +20,22 @@ const server_pool = [
         // fn_index_interrogate: 1250,
         // fn_index_interrogate_deepbooru: 1251,
         // fn_index_use_script: 1138,
-        fn_index_upscale: 1262,
+        fn_index_upscale: 1398,
         fn_index_change_model: 7,
         fn_index_change_support_model: 8,
-        fn_index_coupler_region_preview: [292, 893],
-        fn_index_change_adetailer_model1: [90, 691],
+        fn_index_coupler_region_preview: [360, 1029],
+        fn_index_change_adetailer_model1: [94, 691],
         // fn_index_change_adetailer_prompt1: [99, 644],       //+3
         // fn_index_change_adetailer_neg_prompt1: [100, 645],  //+4
         // fn_index_change_adetailer_model2: [146, 691],       //+51
         // fn_index_change_adetailer_prompt2: [148, 693],      //+54
         // fn_index_change_adetailer_neg_prompt2: [149, 694],  //+55
-        fn_index_execute_segment_anything: 951,
+        fn_index_execute_segment_anything: 1087,
         // fn_index_execute_grounding_dino_preview: 877,            // -3
         // fn_index_execute_expand_mask: 881,                       // +1
         // fn_index_unload_segmentation_model: 897,                 // +17
-        fn_index_rembg: 1276,
-        fn_fetch_wildcards: 1277,
+        fn_index_rembg: 1412,
+        fn_fetch_wildcards: 1413,
         is_online: true,
         queue: [],
     },
