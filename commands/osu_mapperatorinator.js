@@ -177,7 +177,7 @@ module.exports = {
                 .setDescription('The target (PC) star rating for the beatmap, value from 0-30, default is 5'))
         .addStringOption(option =>
             option.setName('sv_tick_rate')
-                .setDescription('The slider velocity and (optional) tick rate multiplier, value from 0.1-10[:0.5-8], default is 1.4[:1]'))
+                .setDescription('The slider velocity and (opt.) tick rate, value from 0.1-10[:0.5-8], default is 1.4[:1]'))
         .addNumberOption(option =>
             option.setName('cs')
                 .setDescription('The circle size/key count for the beatmap, value from -10 to 13, default is 4'))
@@ -259,6 +259,7 @@ module.exports = {
                 .setDescription('The LoRA to use for the beatmap generation, default is none')
                 .addChoices(
                     { name: 'High SR', value: 'high_sr' },
+                    { name: 'High SR v1.3', value: 'high_sr_v1_3' },
                     { name: 'Kroytz', value: 'kroytz' },
                     { name: 'Arles', value: 'arles' },
                     { name: 'Slider Slop', value: 'slider_slop' },

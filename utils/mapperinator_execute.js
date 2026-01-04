@@ -2,7 +2,8 @@ const axios = require('axios');
 const FormData = require('form-data');
 
 const lora_mapping = {
-    'high_sr': './lora/Mapperatorinator-v30-LoRA-highSR',
+    'high_sr_v1_3': './lora/Mapperatorinator-v30-LoRA-highSR-v1_3',
+    'high_sr': './lora/Mapperatorinator-v30-LoRA-highSR-v1_1',
     'kroytz': './lora/Mapperatorinator-v30-LoRA-Kroytz',
     'arles': './lora/Mapperatorinator-v30-LoRA-Arles-v1',
     'slider_slop': './lora/Mapperatorinator-v30-LoRA-sliderSlop',

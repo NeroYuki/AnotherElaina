@@ -5,7 +5,7 @@ const RECORD_SEPARATOR = String.fromCharCode(0x1E);
 const mapsetVerifierClient = {
     client: null,
     isConnected: false,
-    SERVER_ENDPOINT: process.env.BOT_ENV === 'lan' ? '192.168.1.2:7052' : '192.168.196.142:7052',
+    SERVER_ENDPOINT: 'localhost:7052',
     
     init: function() {
         const url = `ws://${this.SERVER_ENDPOINT}/mapsetverifier/signalr`;
