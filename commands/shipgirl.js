@@ -24,13 +24,30 @@ module.exports = {
 					{ name: "Battleship Girl", value: "Battleship Girl" },
 					{ name: "Battleship Bishoujo Puzzle", value: "Battleship Bishoujo Puzzle" },
 				))
-		.addBooleanOption(option =>
+		.addStringOption(option =>
 			option.setName('hardmode')
-				.setDescription('Image will be in silhouette instead, lol. Only work if a specific series is chosen')
-			)
+				.setDescription('Image processing mode (only works for specific series)')
+				.addChoices(
+					{ name: 'Silhouette', value: 'silhouette' },
+					{ name: 'Crop Center (1/9)', value: 'crop_center' },
+					{ name: 'Crop Random (1/9)', value: 'crop_random' },
+					{ name: 'Crop Center Extreme (1/25)', value: 'crop_center_extreme' },
+					{ name: 'Crop Random Extreme (1/25)', value: 'crop_random_extreme' },
+				))
+		.addStringOption(option =>
+			option.setName('easymode')
+				.setDescription('Hint mode to make the quiz easier')
+				.addChoices(
+					{ name: 'Name Hint', value: 'name_hint' },
+					{ name: 'Progressive Name Hint', value: 'progressive_name_hint' },
+					{ name: 'Nation Hint', value: 'nation_hint' },
+					{ name: 'Hull Type Hint', value: 'hull_type_hint' },
+					{ name: 'Category Hint', value: 'category_hint' },
+					{ name: 'Description Hint (requires hardmode)', value: 'description_hint' },
+				))
 		.addBooleanOption(option =>
 			option.setName('base_only')
-				.setDescription('No alernative outfits / forms will be included')
+				.setDescription('No alternative outfits / forms will be included')
 			)
 		.addStringOption(option =>
 			option.setName('nation')
@@ -89,10 +106,14 @@ module.exports = {
 		//parse option
 
 		const category = interaction.options.getString('category') || (shipgirl_config.category ? shipgirl_config.category : null)
-		const isHardmode = interaction.options.getBoolean('hardmode') || (shipgirl_config.hardmode ? shipgirl_config.hardmode : false)
+		const hardmodeOption = interaction.options.getString('hardmode') || (shipgirl_config.hardmode ? shipgirl_config.hardmode : null)
+		const easymodeOption = interaction.options.getString('easymode') || null
 		const requireBase = interaction.options.getBoolean('base_only') || (shipgirl_config.base_only ? shipgirl_config.base_only : false)
 		const nation = interaction.options.getString('nation') || (shipgirl_config.nation ? shipgirl_config.nation : null)
 		const hull_type = interaction.options.getString('hull_type') || (shipgirl_config.hull_type ? shipgirl_config.hull_type : null)
+		
+		const isHardmode = !!hardmodeOption
+		const isEasymode = !!easymodeOption
 
 		//make a temporary reply to not get timeout'd
 
@@ -180,30 +201,200 @@ module.exports = {
 		let ship = {
 			char: query_res[0].char,
 			filename: './resources/shipgirls/' + query_res[0].folder + '/' + query_res[0].filename,
-			is_base: query_res[0].is_base
+			is_base: query_res[0].is_base,
+			nation: query_res[0].nation,
+			ship_type: query_res[0].ship_type,
+			description: query_res[0].description
 		}
 		let fr_name = query_res[0].folder
 		let alias = query_res[0].alias || []
 		let alias_lowercase = alias.map(val => val.toLowerCase())
 		
-		//resize and blacken the image (if hardmode is selected)
+		//resize and process the image (if hardmode is selected)
 
 		let img = null
 		let img_base = null
 
 		if (isHardmode) {
-			img = await sharp(ship.filename)
-				.resize({height: 512})
+			// Check if this is a crop mode
+			const hasCrop = hardmodeOption.startsWith('crop_')
+			const hasSilhouette = hardmodeOption === 'silhouette'
+			
+			// Start with base image - resize now if no crop mode (saves compute time)
+			let imgSharp = sharp(ship.filename)
+			if (!hasCrop) {
+				imgSharp = imgSharp.resize({height: 512})
+			}
+			
+			img_base = await imgSharp.png().toBuffer()
+			
+			// Helper function to validate and create silhouette
+			const validateAndCreateSilhouette = async (buffer) => {
+				try {
+					const { data, info } = await sharp(buffer).raw().toBuffer({ resolveWithObject: true })
+					let transparentPixelCount = 0
+					const totalPixels = info.width * info.height
+					
+					for (let i = 0; i < data.length; i += info.channels) {
+						// Check if pixel is fully transparent (alpha channel = 0)
+						if (info.channels === 4) {
+							const alpha = data[i + 3]
+							if (alpha === 0) {
+								transparentPixelCount++
+							}
+						}
+					}
+					
+					const transparentPixelRatio = transparentPixelCount / totalPixels
+					
+					if (transparentPixelRatio > 0.75) {
+						// Too many transparent pixels (background fills canvas), invalid for silhouette
+						return null
+					}
+					
+					// Validation passed, convert to silhouette
+					const silhouetteBuffer = await sharp(buffer)
+						.modulate({
+							brightness: 0,
+							saturation: 0,
+						})
+						.png()
+						.toBuffer()
+					
+					return silhouetteBuffer
+				} catch (error) {
+					console.error('Silhouette validation error:', error)
+					return null
+				}
+			}
+			
+			// Helper function to validate crop area
+			const validateCropArea = async (buffer) => {
+				try {
+					const { data, info } = await sharp(buffer).raw().toBuffer({ resolveWithObject: true })
+					
+					// Standard validation: check center pixel and color diversity
+					const centerX = Math.floor(info.width / 2)
+					const centerY = Math.floor(info.height / 2)
+					const centerIdx = (centerY * info.width + centerX) * info.channels
+					
+					// Check if center is transparent
+					if (info.channels === 4 && data[centerIdx + 3] < 128) {
+						return false
+					}
+					
+					// Check if center is white
+					const r = data[centerIdx]
+					const g = data[centerIdx + 1]
+					const b = data[centerIdx + 2]
+					if (r > 250 && g > 250 && b > 250) {
+						return false
+					}
+					
+					// Check color diversity (need at least 2 distinct colors)
+					const colorSet = new Set()
+					for (let i = 0; i < data.length; i += info.channels) {
+						const colorKey = `${data[i]},${data[i+1]},${data[i+2]}`
+						colorSet.add(colorKey)
+						if (colorSet.size >= 2) {
+							return true
+						}
+					}
+					
+					return colorSet.size >= 2
+				} catch (error) {
+					console.error('Validation error:', error)
+					return false
+				}
+			}
+			
+			// Get image metadata for crop operations
+			const metadata = await sharp(img_base).metadata()
+			const width = metadata.width
+			const height = metadata.height
+			
+			// Process based on selected mode
+			if (hasCrop) {
+				// Crop mode selected
+				const isExtreme = hardmodeOption.includes('extreme')
+				const isRandom = hardmodeOption.includes('random')
 				
-			img_base = await img.png()
-				.toBuffer()
+				const divisor = isExtreme ? 25 : 9
+				const sqrtDivisor = Math.sqrt(divisor)
+				const cropWidth = Math.floor(width / sqrtDivisor)
+				const cropHeight = Math.floor(height / sqrtDivisor)
+				
+				let cropX, cropY
+				let validCrop = false
+				let attempts = 0
+				const maxAttempts = 20
+				
+				// Try to find a valid crop area
+				while (!validCrop && attempts < maxAttempts) {
+					if (isRandom) {
+						// Random position
+						const maxX = width - cropWidth
+						const maxY = height - cropHeight
+						cropX = Math.floor(Math.random() * maxX)
+						cropY = Math.floor(Math.random() * maxY)
+					} else {
+						// Center position
+						cropX = Math.floor((width - cropWidth) / 2)
+						cropY = Math.floor((height - cropHeight) / 2)
+					}
+					
+					// Extract crop and validate
+					const testCrop = await sharp(img_base)
+						.extract({ left: cropX, top: cropY, width: cropWidth, height: cropHeight })
+						.png()
+						.toBuffer()
+					
+					validCrop = await validateCropArea(testCrop)
+					
+					if (validCrop) {
+						img = testCrop
+						break
+					}
+					
+					attempts++
+					// For center crop, don't retry since position is fixed
+					if (!isRandom) break
+				}
+				
+				// If no valid crop found, skip question
+				if (!validCrop) {
+					console.log(`Failed to find valid crop area after ${attempts} attempts`)
+					await interaction.editReply({content: 'Image unsuitable for crop mode, please try again'})
+					return
+				}
+			} else if (hasSilhouette) {
+				// Only silhouette mode
+				const silhouetteResult = await validateAndCreateSilhouette(img_base)
+				if (silhouetteResult) {
+					img = silhouetteResult
+				} else {
+					console.log('Silhouette validation failed')
+					await interaction.editReply({content: 'Image unsuitable for silhouette mode, please try again'})
+					return
+				}
+			} else {
+				// No valid mode selected, use original
+				img = img_base
+			}
+			
+			// Resize to final height of 512 for the question (only if crop mode was used)
+			if (hasCrop) {
+				img = await sharp(img)
+					.resize({height: 512})
+					.png()
+					.toBuffer()
 
-			img = await img.modulate({
-				brightness: 0,
-				saturation: 0,
-			})
-				.png()
-				.toBuffer()
+				// Also resize img_base for reveal
+				img_base = await sharp(img_base)
+					.resize({height: 512})
+					.png()
+					.toBuffer()
+			}
 		}
 		else {
 			img = await sharp(ship.filename)
@@ -221,10 +412,61 @@ module.exports = {
 		
 		const TIME_LIMIT = (ship.char.length > 10) ? 15 : 10
 
+		// Helper function to create name hint with underscores
+		const createNameHint = (name) => {
+			return name.split('').map(char => {
+				if (char === ' ') return '  '
+				return '_ '
+			}).join('').trim()
+		}
+
+		// Helper function to reveal characters progressively
+		// Generate a consistent random order for character reveals
+		const chars = ship.char.split('')
+		const nonSpaceIndices = chars.map((c, i) => c !== ' ' ? i : -1).filter(i => i !== -1)
+		const revealOrder = [...nonSpaceIndices].sort(() => Math.random() - 0.5)
+		
+		const revealCharacters = (name, percentage) => {
+			const chars = name.split('')
+			const numToReveal = Math.ceil(chars.filter(c => c !== ' ').length * percentage)
+			const toReveal = new Set(revealOrder.slice(0, numToReveal))
+			
+			return chars.map((char, i) => {
+				if (char === ' ') return '  '
+				if (toReveal.has(i)) return char + ' '
+				return '_ '
+			}).join('').trim()
+		}
+
+		// Build initial hint text
+		let hintText = ''
+		if (isEasymode) {
+			const hints = []
+			
+			if (easymodeOption === 'name_hint' || easymodeOption === 'progressive_name_hint') {
+				hints.push(`**Name:** \`${createNameHint(ship.char)}\``)
+			}
+			if (easymodeOption === 'nation_hint') {
+				const nationInfo = ship.nation || 'Unknown'
+				hints.push(`**Nation:** ${nationInfo}`)
+			}
+			if (easymodeOption === 'hull_type_hint') {
+				const hullInfo = ship.ship_type || 'Unknown'
+				hints.push(`**Hull Type:** ${hullInfo}`)
+			}
+			if (easymodeOption === 'category_hint') {
+				hints.push(`**Category:** ${fr_name}`)
+			}
+			
+			if (hints.length > 0) {
+				hintText = '\n\n**Hints:**\n' + hints.join('\n')
+			}
+		}
+
 		const question_embeded = new MessageEmbed()
 			.setColor('#0099ff')
 			.setTitle('Question')
-			.setDescription(`Who is this ship girl? You have ${TIME_LIMIT} seconds.`)
+			.setDescription(`Who is this ship girl? You have ${TIME_LIMIT} seconds.${hintText}`)
 			.setImage('attachment://img.png')
 			.setFooter({text: "Your last message in this channel before timeout is your final answer"});
 
@@ -248,7 +490,98 @@ module.exports = {
 			answerer.set(m.author.id, m)
 		});
 
+		// Schedule progressive hints
+		const hintTimeouts = []
+		
+		// Track description hint state
+		let descriptionHintAdded = false
+		let descriptionHintText = ''
+		
+		if (isEasymode && easymodeOption === 'progressive_name_hint') {
+			// 25% time mark - reveal 20% of characters
+			hintTimeouts.push(setTimeout(async () => {
+				try {
+					const hints = []
+					hints.push(`**Name:** \`${revealCharacters(ship.char, 0.2)}\``)
+					
+					let description = `Who is this ship girl? You have ${TIME_LIMIT} seconds.\n\n**Hints:**\n${hints.join('\n')}`
+					if (descriptionHintAdded) {
+						description += descriptionHintText
+					}
+					
+					const updatedEmbed = new MessageEmbed()
+						.setColor('#0099ff')
+						.setTitle('Question')
+						.setDescription(description)
+						.setImage('attachment://img.png')
+						.setFooter({text: "Your last message in this channel before timeout is your final answer"})
+					
+					await interaction.editReply({ embeds: [updatedEmbed] })
+				} catch (error) {
+					console.error('Error updating hint at 25%:', error)
+				}
+			}, TIME_LIMIT * 1000 * 0.25))
+			
+			// 60% time mark - reveal 50% of characters
+			hintTimeouts.push(setTimeout(async () => {
+				try {
+					const hints = []
+					hints.push(`**Name:** \`${revealCharacters(ship.char, 0.5)}\``)
+					
+					let description = `Who is this ship girl? You have ${TIME_LIMIT} seconds.\n\n**Hints:**\n${hints.join('\n')}`
+					if (descriptionHintAdded) {
+						description += descriptionHintText
+					}
+					
+					const updatedEmbed = new MessageEmbed()
+						.setColor('#0099ff')
+						.setTitle('Question')
+						.setDescription(description)
+						.setImage('attachment://img.png')
+						.setFooter({text: "Your last message in this channel before timeout is your final answer"})
+					
+					await interaction.editReply({ embeds: [updatedEmbed] })
+				} catch (error) {
+					console.error('Error updating hint at 60%:', error)
+				}
+			}, TIME_LIMIT * 1000 * 0.6))
+		}
+		
+		// Description hint at 30% time (requires hardmode)
+		if (isEasymode && easymodeOption === 'description_hint' && isHardmode) {
+			hintTimeouts.push(setTimeout(async () => {
+				try {
+					// Get description tags from ship data
+					const descTags = ship.description || []
+					if (descTags.length > 0) {
+						// Select up to 10 random tags
+						const selectedTags = [...descTags].sort(() => Math.random() - 0.5).slice(0, 10)
+						
+						descriptionHintText = `\n\n**Description Tags:** ${selectedTags.join(', ')}`
+						descriptionHintAdded = true
+						
+						let description = `Who is this ship girl? You have ${TIME_LIMIT} seconds.`
+						description += descriptionHintText
+						
+						const updatedEmbed = new MessageEmbed()
+							.setColor('#0099ff')
+							.setTitle('Question')
+							.setDescription(description)
+							.setImage('attachment://img.png')
+							.setFooter({text: "Your last message in this channel before timeout is your final answer"})
+						
+						await interaction.editReply({ embeds: [updatedEmbed] })
+					}
+				} catch (error) {
+					console.error('Error updating description hint at 30%:', error)
+				}
+			}, TIME_LIMIT * 1000 * 0.3))
+		}
+
 		collector.on('end', collected => {
+
+			// Clear all hint timeouts
+			hintTimeouts.forEach(timeout => clearTimeout(timeout))
 
 			//check for right answers
 
@@ -272,15 +605,15 @@ module.exports = {
 			result_embeded.addField('People who answered correctly:', answerer_list)
 			result_embeded.addField('People whose answers are nearly correct (~80% match):', near_answerer_list)
 
-			if (isHardmode) {
+			if (isHardmode && img_base) {
 				const new_question_embeded = question_embeded.setImage('attachment://img_base.png')
 				interaction.editReply({ embeds: [new_question_embeded], files: [
 					{ attachment: img_base, name: 'img_base.png' } ]
 				})
 			}
 
-			//console.log(`Collected ${collected.size} items`);
-			interaction.followUp({ embeds: [result_embeded] })
-		});
+		//console.log(`Collected ${collected.size} items`);
+		interaction.followUp({ embeds: [result_embeded] })
+	});
 	},
 };
