@@ -29,6 +29,8 @@ module.exports = {
                 .setDescription('Image processing mode (only works for specific series)')
                 .addChoices(
                     { name: 'Silhouette', value: 'silhouette' },
+                    { name: 'Blur', value: 'blur' },
+                    { name: 'Blur Extreme', value: 'blur_extreme' },
                     { name: 'Crop Center (1/9)', value: 'crop_center' },
                     { name: 'Crop Random (1/9)', value: 'crop_random' },
                     { name: 'Crop Center Extreme (1/25)', value: 'crop_center_extreme' },
@@ -40,7 +42,7 @@ module.exports = {
                 ))
     .addStringOption(option =>
         option.setName('max_rating')
-            .setDescription('Maximum risque rating of shipgirls to be used (default: explicit)')
+            .setDescription('Maximum risque rating of shipgirls to be used (default: sensitive)')
             .addChoices(
                 { name: 'General', value: 'general' },
                 { name: 'Sensitive', value: 'sensitive' },
@@ -61,6 +63,10 @@ module.exports = {
         .addBooleanOption(option =>
             option.setName('base_only')
                 .setDescription('No alternative outfits / forms will be included')
+            )
+        .addBooleanOption(option =>
+            option.setName('best_effort_mode')
+                .setDescription('Use full-text search to match long/difficult names (more lenient)')
             )
         .addStringOption(option =>
             option.setName('nation')
@@ -102,6 +108,62 @@ module.exports = {
                     { name: 'Coastal Defense Ship', value: 'Coastal Defense Ship' },
                 )
             )
+        .addStringOption(option =>
+            option.setName('category_exclude')
+                .setDescription('Exclude specific category from the quiz')
+                .addChoices(
+                    { name: 'Azur Lane', value: 'Azur Lane' },
+                    { name: 'Kantai Collection', value: 'Kantai Collection' },
+                    { name: 'Warship Girls R', value: 'Warship Girls R' },
+                    { name: 'Axis Senki', value: 'Axis Senki' },
+                    { name: 'Abyss Horizon', value: 'Abyss Horizon' },
+                    { name: 'Black Surgenights', value: 'Black Surgenights' },
+                    { name: 'Blue Oath', value: 'Blue Oath' },
+                    { name: 'Velvet Code', value: 'Velvet Code' },
+                    { name: 'Victory Belles', value: 'Victory Belles' },
+                    { name: "Battleship Girl", value: "Battleship Girl" },
+                    { name: "Battleship Bishoujo Puzzle", value: "Battleship Bishoujo Puzzle" },
+                ))
+        .addStringOption(option =>
+            option.setName('nation_exclude')
+                .setDescription('Exclude specific nation from the quiz')
+                .addChoices(
+                    { name: 'United Kingdom', value: 'United Kingdom' },
+                    { name: 'United States', value: 'United States' },
+                    { name: 'Japan', value: 'Japan' },
+                    { name: 'Germany', value: 'Germany' },
+                    { name: 'Soviet Union', value: 'Soviet Union' },
+                    { name: 'Italy', value: 'Italy' },
+                    { name: 'France', value: 'France' },
+                    { name: 'Minor Power', value: 'Minor Power' },
+                    { name: 'Fictional', value: 'Fictional' },
+                )
+            )
+        .addStringOption(option =>
+            option.setName('hull_type_exclude')
+                .setDescription('Exclude specific hull type from the quiz')
+                .addChoices(
+                    { name: 'Destroyer', value: 'Destroyer' },
+                    { name: 'Light Cruiser', value: 'Light Cruiser' },
+                    { name: 'Heavy Cruiser', value: 'Heavy Cruiser' },
+                    { name: 'Battlecruiser', value: 'Battlecruiser' },
+                    { name: 'Battleship', value: 'Battleship' },
+                    { name: 'Light Carrier', value: 'Light Carrier' },
+                    { name: 'Aircraft Carrier', value: 'Aircraft Carrier' },
+                    { name: 'Submarine', value: 'Submarine' },
+                    { name: 'Aviation Battleship', value: 'Aviation Battleship' },
+                    { name: 'Repair Ship', value: 'Repair Ship' },
+                    { name: 'Monitor', value: 'Monitor' },
+                    { name: 'Aviation Submarine', value: 'Aviation Submarine' },
+                    { name: 'Large Cruiser', value: 'Large Cruiser' },
+                    { name: 'Munition Ship', value: 'Munition Ship' },
+                    { name: 'Guided Missile Cruiser', value: 'Guided Missile Cruiser' },
+                    { name: 'Sailing Frigate', value: 'Sailing Frigate' },
+                    { name: 'Aviation Cruiser', value: 'Aviation Cruiser' },
+                    { name: 'Amphibious Assault Ship', value: 'Amphibious Assault Ship' },
+                    { name: 'Coastal Defense Ship', value: 'Coastal Defense Ship' },
+                )
+            )
     ,
 
     async init() {},
@@ -119,43 +181,55 @@ module.exports = {
         //parse option
 
         const category = interaction.options.getString('category') || (shipgirl_config.category ? shipgirl_config.category : null)
+        const best_effort_mode = interaction.options.getBoolean('best_effort_mode') || (shipgirl_config.best_effort_mode ? shipgirl_config.best_effort_mode : false)
         
         // Handle hardmode - check if config has hardmode_options array (new format) or single hardmode value (old format)
-        let hardmodeOption = interaction.options.getString('hardmode')
-        if (!hardmodeOption && shipgirl_config.hardmode) {
+        let hardmode_options = []
+        const commandHardmode = interaction.options.getString('hardmode')
+        if (commandHardmode) {
+            hardmode_options = [commandHardmode]
+        } else if (shipgirl_config.hardmode) {
             // Use config - check if it's the new format with hardmode_options array
             if (shipgirl_config.hardmode_options && shipgirl_config.hardmode_options.length > 0) {
-                // New format: randomly select one from the array
-                hardmodeOption = shipgirl_config.hardmode_options[Math.floor(Math.random() * shipgirl_config.hardmode_options.length)]
+                // New format: use all options from the array
+                hardmode_options = shipgirl_config.hardmode_options
             } else if (typeof shipgirl_config.hardmode === 'string') {
                 // Old format: single string value
-                hardmodeOption = shipgirl_config.hardmode
+                hardmode_options = [shipgirl_config.hardmode]
             } else {
                 // Boolean true without options, default to silhouette
-                hardmodeOption = 'silhouette'
+                hardmode_options = ['silhouette']
             }
         }
         
         // Handle easymode - check if config has easymode_options array (new format)
-        let easymodeOption = interaction.options.getString('easymode')
-        if (!easymodeOption && shipgirl_config.easymode) {
+        let easymode_options = []
+        const commandEasymode = interaction.options.getString('easymode')
+        if (commandEasymode) {
+            easymode_options = [commandEasymode]
+        } else if (shipgirl_config.easymode) {
             // Use config - check if it's the new format with easymode_options array
             if (shipgirl_config.easymode_options && shipgirl_config.easymode_options.length > 0) {
-                // New format: randomly select one from the array
-                easymodeOption = shipgirl_config.easymode_options[Math.floor(Math.random() * shipgirl_config.easymode_options.length)]
+                // New format: use all options from the array
+                easymode_options = shipgirl_config.easymode_options
             } else if (typeof shipgirl_config.easymode === 'string') {
                 // Old format: single string value
-                easymodeOption = shipgirl_config.easymode
+                easymode_options = [shipgirl_config.easymode]
             }
         }
         
         const requireBase = interaction.options.getBoolean('base_only') || (shipgirl_config.base_only ? shipgirl_config.base_only : false) || (shipgirl_config.easymode_options && shipgirl_config.easymode_options.includes('base_only'))
         const nation = interaction.options.getString('nation') || (shipgirl_config.nation ? shipgirl_config.nation : null)
         const hull_type = interaction.options.getString('hull_type') || (shipgirl_config.hull_type ? shipgirl_config.hull_type : null)
-        const max_rating = interaction.options.getString('max_rating') || (shipgirl_config.max_rating ? shipgirl_config.max_rating : 'explicit')
+        const max_rating = interaction.options.getString('max_rating') || (shipgirl_config.max_rating ? shipgirl_config.max_rating : 'sensitive')
         
-        const isHardmode = !!hardmodeOption
-        const isEasymode = !!easymodeOption        
+        // Parse exclusions
+        const category_exclude = interaction.options.getString('category_exclude') || (shipgirl_config.category_exclude ? shipgirl_config.category_exclude : null)
+        const nation_exclude = interaction.options.getString('nation_exclude') || (shipgirl_config.nation_exclude ? shipgirl_config.nation_exclude : null)
+        const hull_type_exclude = interaction.options.getString('hull_type_exclude') || (shipgirl_config.hull_type_exclude ? shipgirl_config.hull_type_exclude : null)
+        
+        const isHardmode = hardmode_options.length > 0
+        const isEasymode = easymode_options.length > 0        
 
         //make a temporary reply to not get timeout'd
         await interaction.deferReply();
@@ -267,6 +341,77 @@ module.exports = {
                 db_query.rating = { $in: allowed_ratings }
             }
         }
+
+        // Apply exclusions
+        if (category_exclude) {
+            if (Array.isArray(category_exclude)) {
+                db_query.$and.push({ folder: { $nin: category_exclude } })
+            } else {
+                db_query.$and.push({ folder: { $ne: category_exclude } })
+            }
+        }
+        if (nation_exclude) {
+            if (Array.isArray(nation_exclude)) {
+                const excludeQueries = []
+                nation_exclude.forEach(n => {
+                    if (n === 'Minor Power') {
+                        // Exclude Minor Power means include only major powers
+                        excludeQueries.push({
+                            $or: [
+                                { nation: { $in: non_minor_power_nation } },
+                                ...non_minor_power_nation.map(val => ({ nation: "? " + val }))
+                            ]
+                        })
+                    } else {
+                        excludeQueries.push({
+                            $and: [
+                                { nation: { $ne: n } },
+                                { nation: { $ne: "? " + n } }
+                            ]
+                        })
+                    }
+                })
+                db_query.$and.push({ $and: excludeQueries })
+            } else {
+                if (nation_exclude === 'Minor Power') {
+                    // Exclude Minor Power means include only major powers
+                    db_query.$and.push({
+                        $or: [
+                            { nation: { $in: non_minor_power_nation } },
+                            ...non_minor_power_nation.map(val => ({ nation: "? " + val }))
+                        ]
+                    })
+                } else {
+                    db_query.$and.push({
+                        $and: [
+                            { nation: { $ne: nation_exclude } },
+                            { nation: { $ne: "? " + nation_exclude } }
+                        ]
+                    })
+                }
+            }
+        }
+        if (hull_type_exclude) {
+            if (Array.isArray(hull_type_exclude)) {
+                const excludeQueries = []
+                hull_type_exclude.forEach(ht => {
+                    excludeQueries.push({
+                        $and: [
+                            { ship_type: { $ne: ht } },
+                            { ship_type: { $ne: "? " + ht } }
+                        ]
+                    })
+                })
+                db_query.$and.push({ $and: excludeQueries })
+            } else {
+                db_query.$and.push({
+                    $and: [
+                        { ship_type: { $ne: hull_type_exclude } },
+                        { ship_type: { $ne: "? " + hull_type_exclude } }
+                    ]
+                })
+            }
+        }
     
         // if db_query.$and is empty, remove it
         if (!db_query.$and.length) {
@@ -308,9 +453,11 @@ module.exports = {
         let img_base = null
 
         if (isHardmode) {
-            // Check if this is a crop mode
-            const hasCrop = hardmodeOption.startsWith('crop_')
-            const hasSilhouette = hardmodeOption === 'silhouette'
+            // Check mode combinations
+            const hasCrop = hardmode_options.some(opt => opt.startsWith('crop_'))
+            const hasSilhouette = hardmode_options.includes('silhouette')
+            const hasBlur = hardmode_options.includes('blur') || hardmode_options.includes('blur_extreme')
+            const combineMode = hasCrop && hasSilhouette
             
             // Start with base image - resize now if no crop mode (saves compute time)
             let imgSharp = sharp(ship.filename)
@@ -407,16 +554,34 @@ module.exports = {
             
             // Process based on selected mode
             if (hasCrop) {
-                // Check if this is a body crop mode
+                // Determine which crop mode to apply (prioritize body crops, then random > center, extreme > normal)
+                let selectedCropMode = null
                 const bodyCropModes = ['crop_head', 'crop_face', 'crop_breast', 'crop_eyes']
-                const isBodyCrop = bodyCropModes.includes(hardmodeOption)
+                const selectedBodyCrop = hardmode_options.find(opt => bodyCropModes.includes(opt))
+                
+                if (selectedBodyCrop) {
+                    selectedCropMode = selectedBodyCrop
+                } else {
+                    // Apply priority logic for standard crop modes
+                    if (hardmode_options.includes('crop_random_extreme')) {
+                        selectedCropMode = 'crop_random_extreme'
+                    } else if (hardmode_options.includes('crop_center_extreme')) {
+                        selectedCropMode = 'crop_center_extreme'
+                    } else if (hardmode_options.includes('crop_random')) {
+                        selectedCropMode = 'crop_random'
+                    } else if (hardmode_options.includes('crop_center')) {
+                        selectedCropMode = 'crop_center'
+                    }
+                }
+                
+                const isBodyCrop = bodyCropModes.includes(selectedCropMode)
                 
                 let cropX, cropY, cropWidth, cropHeight
                 let validCrop = false
                 
                 if (isBodyCrop) {
                     // Body crop mode
-                    const bodyCropField = hardmodeOption.replace('crop_', '')
+                    const bodyCropField = selectedCropMode.replace('crop_', '')
                     const bodyCropData = ship.body_crop && ship.body_crop[bodyCropField]
                     
                     if (bodyCropData && Array.isArray(bodyCropData) && bodyCropData.length === 4) {
@@ -488,8 +653,8 @@ module.exports = {
                     }
                 } else {
                     // Standard crop mode
-                    const isExtreme = hardmodeOption.includes('extreme')
-                    const isRandom = hardmodeOption.includes('random')
+                    const isExtreme = selectedCropMode.includes('extreme')
+                    const isRandom = selectedCropMode.includes('random')
                     
                     const divisor = isExtreme ? 25 : 9
                     const sqrtDivisor = Math.sqrt(divisor)
@@ -522,7 +687,18 @@ module.exports = {
                         validCrop = await validateCropArea(testCrop)
                         
                         if (validCrop) {
-                            img = testCrop
+                            // Apply silhouette if combine mode, otherwise just use crop
+                            if (combineMode) {
+                                const silhouetteResult = await validateAndCreateSilhouette(testCrop)
+                                if (silhouetteResult) {
+                                    img = silhouetteResult
+                                } else {
+                                    // Silhouette validation failed, just use the crop
+                                    img = testCrop
+                                }
+                            } else {
+                                img = testCrop
+                            }
                             break
                         }
                         
@@ -531,11 +707,23 @@ module.exports = {
                         if (!isRandom) break
                     }
                     
-                    // If no valid crop found, skip question
+                    // If no valid crop found, fall back to silhouette (if selected) or skip question
                     if (!validCrop) {
                         console.log(`Failed to find valid crop area after ${attempts} attempts`)
-                        await interaction.editReply({content: 'Image unsuitable for crop mode, please try again'})
-                        return
+                        if (hasSilhouette) {
+                            console.log('Falling back to silhouette mode')
+                            const silhouetteResult = await validateAndCreateSilhouette(img_base)
+                            if (silhouetteResult) {
+                                img = silhouetteResult
+                            } else {
+                                console.log('Silhouette validation also failed, skipping question')
+                                await interaction.editReply({content: 'Image unsuitable for selected hardmode options, please try again'})
+                                return
+                            }
+                        } else {
+                            await interaction.editReply({content: 'Image unsuitable for crop mode, please try again'})
+                            return
+                        }
                     }
                 }
             } else if (hasSilhouette) {
@@ -563,6 +751,15 @@ module.exports = {
                 // Also resize img_base for reveal
                 img_base = await sharp(img_base)
                     .resize({height: 512})
+                    .png()
+                    .toBuffer()
+            }
+            
+            // Apply blur after resize if blur mode is active
+            if (hasBlur) {
+                const blurRadius = hardmode_options.includes('blur_extreme') ? 36 : 12
+                img = await sharp(img)
+                    .blur(blurRadius)
                     .png()
                     .toBuffer()
             }
@@ -614,18 +811,18 @@ module.exports = {
         if (isEasymode) {
             const hints = []
             
-            if (easymodeOption === 'name_hint' || easymodeOption === 'progressive_name_hint') {
+            if (easymode_options.includes('name_hint') || easymode_options.includes('progressive_name_hint')) {
                 hints.push(`**Name:** \`${createNameHint(ship.char)}\``)
             }
-            if (easymodeOption === 'nation_hint') {
+            if (easymode_options.includes('nation_hint')) {
                 const nationInfo = ship.nation || 'Unknown'
                 hints.push(`**Nation:** ${nationInfo}`)
             }
-            if (easymodeOption === 'hull_type_hint') {
+            if (easymode_options.includes('hull_type_hint')) {
                 const hullInfo = ship.ship_type || 'Unknown'
                 hints.push(`**Hull Type:** ${hullInfo}`)
             }
-            if (easymodeOption === 'category_hint') {
+            if (easymode_options.includes('category_hint')) {
                 hints.push(`**Category:** ${fr_name}`)
             }
             
@@ -668,12 +865,24 @@ module.exports = {
         let descriptionHintAdded = false
         let descriptionHintText = ''
         
-        if (isEasymode && easymodeOption === 'progressive_name_hint') {
+        if (isEasymode && easymode_options.includes('progressive_name_hint')) {
             // 25% time mark - reveal 20% of characters
             hintTimeouts.push(setTimeout(async () => {
                 try {
                     const hints = []
                     hints.push(`**Name:** \`${revealCharacters(ship.char, 0.2)}\``)
+                    
+                    if (easymode_options.includes('nation_hint')) {
+                        const nationInfo = ship.nation || 'Unknown'
+                        hints.push(`**Nation:** ${nationInfo}`)
+                    }
+                    if (easymode_options.includes('hull_type_hint')) {
+                        const hullInfo = ship.ship_type || 'Unknown'
+                        hints.push(`**Hull Type:** ${hullInfo}`)
+                    }
+                    if (easymode_options.includes('category_hint')) {
+                        hints.push(`**Category:** ${fr_name}`)
+                    }
                     
                     let description = `Who is this ship girl? You have ${TIME_LIMIT} seconds.\n\n**Hints:**\n${hints.join('\n')}`
                     if (descriptionHintAdded) {
@@ -699,6 +908,18 @@ module.exports = {
                     const hints = []
                     hints.push(`**Name:** \`${revealCharacters(ship.char, 0.5)}\``)
                     
+                    if (easymode_options.includes('nation_hint')) {
+                        const nationInfo = ship.nation || 'Unknown'
+                        hints.push(`**Nation:** ${nationInfo}`)
+                    }
+                    if (easymode_options.includes('hull_type_hint')) {
+                        const hullInfo = ship.ship_type || 'Unknown'
+                        hints.push(`**Hull Type:** ${hullInfo}`)
+                    }
+                    if (easymode_options.includes('category_hint')) {
+                        hints.push(`**Category:** ${fr_name}`)
+                    }
+                    
                     let description = `Who is this ship girl? You have ${TIME_LIMIT} seconds.\n\n**Hints:**\n${hints.join('\n')}`
                     if (descriptionHintAdded) {
                         description += descriptionHintText
@@ -719,7 +940,7 @@ module.exports = {
         }
         
         // Description hint at 30% time (requires hardmode)
-        if (isEasymode && easymodeOption === 'description_hint' && isHardmode) {
+        if (isEasymode && easymode_options.includes('description_hint') && isHardmode) {
             hintTimeouts.push(setTimeout(async () => {
                 try {
                     // Get description tags from ship data
@@ -731,7 +952,27 @@ module.exports = {
                         descriptionHintText = `\n\n**Description Tags:** ${selectedTags.join(', ')}`
                         descriptionHintAdded = true
                         
+                        // Build current hints
+                        const hints = []
+                        if (easymode_options.includes('name_hint') || easymode_options.includes('progressive_name_hint')) {
+                            hints.push(`**Name:** \`${createNameHint(ship.char)}\``)
+                        }
+                        if (easymode_options.includes('nation_hint')) {
+                            const nationInfo = ship.nation || 'Unknown'
+                            hints.push(`**Nation:** ${nationInfo}`)
+                        }
+                        if (easymode_options.includes('hull_type_hint')) {
+                            const hullInfo = ship.ship_type || 'Unknown'
+                            hints.push(`**Hull Type:** ${hullInfo}`)
+                        }
+                        if (easymode_options.includes('category_hint')) {
+                            hints.push(`**Category:** ${fr_name}`)
+                        }
+                        
                         let description = `Who is this ship girl? You have ${TIME_LIMIT} seconds.`
+                        if (hints.length > 0) {
+                            description += `\n\n**Hints:**\n${hints.join('\n')}`
+                        }
                         description += descriptionHintText
                         
                         const updatedEmbed = new MessageEmbed()
@@ -749,7 +990,7 @@ module.exports = {
             }, TIME_LIMIT * 1000 * 0.3))
         }
 
-        collector.on('end', collected => {
+        collector.on('end', async collected => {
 
             // Clear all hint timeouts
             hintTimeouts.forEach(timeout => clearTimeout(timeout))
@@ -759,12 +1000,42 @@ module.exports = {
             const correct_answerer = []
             const near_correct_answerer = []
 
+            // Build best effort lookup map if enabled
+            const bestEffortMap = new Map()
+            if (best_effort_mode) {
+                // Perform full-text search for each unique answer
+                const uniqueAnswers = [...new Set(answerer.map(e => e.content.toLowerCase()))]
+                const searchPromises = uniqueAnswers.map(async (answer) => {
+                    try {
+                        const searchResult = await aggregateRecord('shipgirl', [
+                            { $match: { $text: { $search: answer } } },
+                            { $limit: 1 }
+                        ], true)
+                        if (searchResult && searchResult.length > 0) {
+                            return [answer, searchResult[0].char]
+                        }
+                    } catch (e) {
+                        // Text search failed, ignore
+                    }
+                    return null
+                })
+                const results = await Promise.all(searchPromises)
+                results.forEach(result => {
+                    if (result) {
+                        bestEffortMap.set(result[0], result[1])
+                    }
+                })
+            }
+
             answerer.forEach(entry => {
-                if (entry.content.toLowerCase() === ship.char.toLowerCase() || alias_lowercase.includes(entry.content.toLowerCase()))
+                const answerLower = entry.content.toLowerCase()
+                if (answerLower === ship.char.toLowerCase() || alias_lowercase.includes(answerLower))
                     correct_answerer.push(`- ${entry.author.username} - ${(entry.createdTimestamp - startTimestamp)/1000}s`)
-                else if (levenshtein.get(entry.content.toLowerCase(), ship.char.toLowerCase()) <= Math.floor(ship.char.length * 0.2)
-                    || alias_lowercase.some(val => levenshtein.get(entry.content.toLowerCase(), val) <= Math.floor(val.length * 0.2)))
+                else if (levenshtein.get(answerLower, ship.char.toLowerCase()) <= Math.floor(ship.char.length * 0.2)
+                    || alias_lowercase.some(val => levenshtein.get(answerLower, val) <= Math.floor(val.length * 0.2)))
                     near_correct_answerer.push(`- ${entry.author.username} - ${(entry.createdTimestamp - startTimestamp)/1000}s`)
+                else if (best_effort_mode && bestEffortMap.has(answerLower) && bestEffortMap.get(answerLower) === ship.char)
+                    near_correct_answerer.push(`- ${entry.author.username} - ${(entry.createdTimestamp - startTimestamp)/1000}s (best effort match)`)
             })
             let answerer_list = ""
             if (correct_answerer.length === 0) answerer_list = "None"			

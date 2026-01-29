@@ -155,6 +155,66 @@ module.exports = {
                             { name: 'Coastal Defense Ship', value: 'Coastal Defense Ship' },
                         )
                     )
+                .addStringOption(option =>
+                    option.setName('category_exclude')
+                        .setDescription('Specify which categories to EXCLUDE from the quiz')
+                        .addChoices(
+                            { name: 'Multiple Types...', value: 'MULTIPLE' },
+                            { name: 'Azur Lane', value: 'Azur Lane' },
+                            { name: 'Kantai Collection', value: 'Kantai Collection' },
+                            { name: 'Warship Girls R', value: 'Warship Girls R' },
+                            { name: 'Axis Senki', value: 'Axis Senki' },
+                            { name: 'Abyss Horizon', value: 'Abyss Horizon' },
+                            { name: 'Black Surgenights', value: 'Black Surgenights' },
+                            { name: 'Blue Oath', value: 'Blue Oath' },
+                            { name: 'Velvet Code', value: 'Velvet Code' },
+                            { name: 'Victory Belles', value: 'Victory Belles' },
+                            { name: 'Battleship Girl', value: 'Battleship Girl' },
+                            { name: 'Battleship Bishoujo Puzzle', value: 'Battleship Bishoujo Puzzle' },
+                        )
+                    )
+                .addStringOption(option =>
+                    option.setName('nation_exclude')
+                        .setDescription('Specify which nations to EXCLUDE from the quiz')
+                        .addChoices(
+                            { name: 'Multiple Types...', value: 'MULTIPLE' },
+                            { name: 'United Kingdom', value: 'United Kingdom' },
+                            { name: 'United States', value: 'United States' },
+                            { name: 'Japan', value: 'Japan' },
+                            { name: 'Germany', value: 'Germany' },
+                            { name: 'Soviet Union', value: 'Soviet Union' },
+                            { name: 'Italy', value: 'Italy' },
+                            { name: 'France', value: 'France' },
+                            { name: 'Minor Power', value: 'Minor Power' },
+                            { name: 'Fictional', value: 'Fictional' },
+                        )
+                    )
+                .addStringOption(option =>
+                    option.setName('hull_type_exclude')
+                        .setDescription('Specify which hull types to EXCLUDE from the quiz')
+                        .addChoices(
+                            { name: 'Multiple Types...', value: 'MULTIPLE' },
+                            { name: 'Destroyer', value: 'Destroyer' },
+                            { name: 'Light Cruiser', value: 'Light Cruiser' },
+                            { name: 'Heavy Cruiser', value: 'Heavy Cruiser' },
+                            { name: 'Battlecruiser', value: 'Battlecruiser' },
+                            { name: 'Battleship', value: 'Battleship' },
+                            { name: 'Light Carrier', value: 'Light Carrier' },
+                            { name: 'Aircraft Carrier', value: 'Aircraft Carrier' },
+                            { name: 'Submarine', value: 'Submarine' },
+                            { name: 'Aviation Battleship', value: 'Aviation Battleship' },
+                            { name: 'Repair Ship', value: 'Repair Ship' },
+                            { name: 'Monitor', value: 'Monitor' },
+                            { name: 'Aviation Submarine', value: 'Aviation Submarine' },
+                            { name: 'Large Cruiser', value: 'Large Cruiser' },
+                            { name: 'Munition Ship', value: 'Munition Ship' },
+                            { name: 'Guided Missile Cruiser', value: 'Guided Missile Cruiser' },
+                            { name: 'Sailing Frigate', value: 'Sailing Frigate' },
+                            { name: 'Aviation Cruiser', value: 'Aviation Cruiser' },
+                            { name: 'Amphibious Assault Ship', value: 'Amphibious Assault Ship' },
+                            { name: 'Coastal Defense Ship', value: 'Coastal Defense Ship' },
+                        )
+                    )
             )
     ,
 
@@ -201,9 +261,30 @@ module.exports = {
                     
                     // Hull Type
                     if (Array.isArray(config.hull_type)) {
-                        configText += `Hull Type: ${config.hull_type.join(', ')}`
+                        configText += `Hull Type: ${config.hull_type.join(', ')}\n`
                     } else {
-                        configText += `Hull Type: ${config.hull_type || "Any"}`
+                        configText += `Hull Type: ${config.hull_type || "Any"}\n`
+                    }
+                    
+                    // Category Exclude
+                    if (Array.isArray(config.category_exclude)) {
+                        configText += `Category Exclude: ${config.category_exclude.join(', ')}\n`
+                    } else if (config.category_exclude) {
+                        configText += `Category Exclude: ${config.category_exclude}\n`
+                    }
+                    
+                    // Nation Exclude
+                    if (Array.isArray(config.nation_exclude)) {
+                        configText += `Nation Exclude: ${config.nation_exclude.join(', ')}\n`
+                    } else if (config.nation_exclude) {
+                        configText += `Nation Exclude: ${config.nation_exclude}\n`
+                    }
+                    
+                    // Hull Type Exclude
+                    if (Array.isArray(config.hull_type_exclude)) {
+                        configText += `Hull Type Exclude: ${config.hull_type_exclude.join(', ')}`
+                    } else if (config.hull_type_exclude) {
+                        configText += `Hull Type Exclude: ${config.hull_type_exclude}`
                     }
                     
                     await interaction.reply(configText);
@@ -225,6 +306,9 @@ module.exports = {
         const base_only = interaction.options.getBoolean('base_only') || false
         const nation = interaction.options.getString('nation') || null
         const hull_type = interaction.options.getString('hull_type') || null
+        const category_exclude = interaction.options.getString('category_exclude') || null
+        const nation_exclude = interaction.options.getString('nation_exclude') || null
+        const hull_type_exclude = interaction.options.getString('hull_type_exclude') || null
 
         // Defer reply for potential multi-select interactions
         await interaction.deferReply();
@@ -333,6 +417,69 @@ module.exports = {
             finalHullType = await handleMultiSelect('hull_type', 'MULTIPLE', hullTypeOptions, 'hull types')
         }
 
+        // Handle multiple category_exclude selection
+        let finalCategoryExclude = category_exclude
+        if (category_exclude === 'MULTIPLE') {
+            const categoryOptions = [
+                { name: 'Azur Lane', value: 'Azur Lane' },
+                { name: 'Kantai Collection', value: 'Kantai Collection' },
+                { name: 'Warship Girls R', value: 'Warship Girls R' },
+                { name: 'Axis Senki', value: 'Axis Senki' },
+                { name: 'Abyss Horizon', value: 'Abyss Horizon' },
+                { name: 'Black Surgenights', value: 'Black Surgenights' },
+                { name: 'Blue Oath', value: 'Blue Oath' },
+                { name: 'Velvet Code', value: 'Velvet Code' },
+                { name: 'Victory Belles', value: 'Victory Belles' },
+                { name: 'Battleship Girl', value: 'Battleship Girl' },
+                { name: 'Battleship Bishoujo Puzzle', value: 'Battleship Bishoujo Puzzle' },
+            ]
+            finalCategoryExclude = await handleMultiSelect('category_exclude', 'MULTIPLE', categoryOptions, 'categories to exclude')
+        }
+
+        // Handle multiple nation_exclude selection
+        let finalNationExclude = nation_exclude
+        if (nation_exclude === 'MULTIPLE') {
+            const nationOptions = [
+                { name: 'United Kingdom', value: 'United Kingdom' },
+                { name: 'United States', value: 'United States' },
+                { name: 'Japan', value: 'Japan' },
+                { name: 'Germany', value: 'Germany' },
+                { name: 'Soviet Union', value: 'Soviet Union' },
+                { name: 'Italy', value: 'Italy' },
+                { name: 'France', value: 'France' },
+                { name: 'Minor Power', value: 'Minor Power' },
+                { name: 'Fictional', value: 'Fictional' },
+            ]
+            finalNationExclude = await handleMultiSelect('nation_exclude', 'MULTIPLE', nationOptions, 'nations to exclude')
+        }
+
+        // Handle multiple hull_type_exclude selection
+        let finalHullTypeExclude = hull_type_exclude
+        if (hull_type_exclude === 'MULTIPLE') {
+            const hullTypeOptions = [
+                { name: 'Destroyer', value: 'Destroyer' },
+                { name: 'Light Cruiser', value: 'Light Cruiser' },
+                { name: 'Heavy Cruiser', value: 'Heavy Cruiser' },
+                { name: 'Battlecruiser', value: 'Battlecruiser' },
+                { name: 'Battleship', value: 'Battleship' },
+                { name: 'Light Carrier', value: 'Light Carrier' },
+                { name: 'Aircraft Carrier', value: 'Aircraft Carrier' },
+                { name: 'Submarine', value: 'Submarine' },
+                { name: 'Aviation Battleship', value: 'Aviation Battleship' },
+                { name: 'Repair Ship', value: 'Repair Ship' },
+                { name: 'Monitor', value: 'Monitor' },
+                { name: 'Aviation Submarine', value: 'Aviation Submarine' },
+                { name: 'Large Cruiser', value: 'Large Cruiser' },
+                { name: 'Munition Ship', value: 'Munition Ship' },
+                { name: 'Guided Missile Cruiser', value: 'Guided Missile Cruiser' },
+                { name: 'Sailing Frigate', value: 'Sailing Frigate' },
+                { name: 'Aviation Cruiser', value: 'Aviation Cruiser' },
+                { name: 'Amphibious Assault Ship', value: 'Amphibious Assault Ship' },
+                { name: 'Coastal Defense Ship', value: 'Coastal Defense Ship' },
+            ]
+            finalHullTypeExclude = await handleMultiSelect('hull_type_exclude', 'MULTIPLE', hullTypeOptions, 'hull types to exclude')
+        }
+
         // If hardmode is enabled, prompt user to select processing modes
         let hardmode_options = []
         if (isHardmode) {
@@ -340,12 +487,22 @@ module.exports = {
                 .setCustomId('hardmode_select')
                 .setPlaceholder('Select image processing modes')
                 .setMinValues(1)
-                .setMaxValues(9)
+                .setMaxValues(11)
                 .addOptions([
                     {
                         label: 'Silhouette',
                         description: 'Convert image to black silhouette',
                         value: 'silhouette',
+                    },
+                    {
+                        label: 'Blur',
+                        description: 'Apply gaussian blur (radius 12px)',
+                        value: 'blur',
+                    },
+                    {
+                        label: 'Blur Extreme',
+                        description: 'Apply heavy gaussian blur (radius 36px)',
+                        value: 'blur_extreme',
                     },
                     {
                         label: 'Crop Center',
@@ -404,9 +561,10 @@ module.exports = {
 
                 hardmode_options = selectInteraction.values
 
-                // Check if combining crop and silhouette modes
+                // Check for mode combinations
                 const hasCrop = hardmode_options.some(opt => opt.startsWith('crop_'))
                 const hasSilhouette = hardmode_options.includes('silhouette')
+                const hasBlur = hardmode_options.includes('blur') || hardmode_options.includes('blur_extreme')
                 let warningMsg = `Selected modes: ${hardmode_options.join(', ')}`
 
                 if (hasCrop && hasSilhouette) {
@@ -430,7 +588,7 @@ module.exports = {
                 .setCustomId('easymode_select')
                 .setPlaceholder('Select hint modes')
                 .setMinValues(1)
-                .setMaxValues(7)
+                .setMaxValues(8)
                 .addOptions([
                     {
                         label: 'Name Hint',
@@ -466,6 +624,11 @@ module.exports = {
                         label: 'Description Hint',
                         description: 'Show description tags after 30% time (requires hardmode)',
                         value: 'description_hint',
+                    },
+                    {
+                        label: 'Best Effort Mode',
+                        description: 'Use full-text search for long/difficult names',
+                        value: 'best_effort_mode',
                     },
                 ])
 
@@ -513,7 +676,10 @@ module.exports = {
             easymode_options: easymode_options,
             base_only: base_only,
             nation: finalNation,
-            hull_type: finalHullType
+            hull_type: finalHullType,
+            category_exclude: finalCategoryExclude,
+            nation_exclude: finalNationExclude,
+            hull_type_exclude: finalHullTypeExclude
         }
 
         const config_string = JSON.stringify(config)

@@ -42,7 +42,7 @@ module.exports = {
                         ))
                 .addStringOption(option =>
                     option.setName('max_rating')
-                        .setDescription('Maximum risque rating of shipgirls to be used (default: explicit)')
+                        .setDescription('Maximum risque rating of shipgirls to be used (default: sensitive)')
                         .addChoices(
                             { name: 'General', value: 'general' },
                             { name: 'Sensitive', value: 'sensitive' },
@@ -103,6 +103,65 @@ module.exports = {
                 .addStringOption(option =>
                     option.setName('hull_type')
                         .setDescription('Specify which hull type to be used for the quiz, might be incorrect')
+                        .addChoices(
+                            { name: 'Multiple Types...', value: 'MULTIPLE' },
+                            { name: 'Destroyer', value: 'Destroyer' },
+                            { name: 'Light Cruiser', value: 'Light Cruiser' },
+                            { name: 'Heavy Cruiser', value: 'Heavy Cruiser' },
+                            { name: 'Battlecruiser', value: 'Battlecruiser' },
+                            { name: 'Battleship', value: 'Battleship' },
+                            { name: 'Light Carrier', value: 'Light Carrier' },
+                            { name: 'Aircraft Carrier', value: 'Aircraft Carrier' },
+                            { name: 'Submarine', value: 'Submarine' },
+                            { name: 'Aviation Battleship', value: 'Aviation Battleship' },
+                            { name: 'Repair Ship', value: 'Repair Ship' },
+                            { name: 'Monitor', value: 'Monitor' },
+                            { name: 'Aviation Submarine', value: 'Aviation Submarine' },
+                            { name: 'Large Cruiser', value: 'Large Cruiser' },
+                            { name: 'Munition Ship', value: 'Munition Ship' },
+                            { name: 'Guided Missile Cruiser', value: 'Guided Missile Cruiser' },
+                            { name: 'Sailing Frigate', value: 'Sailing Frigate' },
+                            { name: 'Aviation Cruiser', value: 'Aviation Cruiser' },
+                            { name: 'Amphibious Assault Ship', value: 'Amphibious Assault Ship' },
+                            { name: 'Coastal Defense Ship', value: 'Coastal Defense Ship' },
+                        )
+                )
+                .addStringOption(option =>
+                    option.setName('category_exclude')
+                        .setDescription('Exclude specific category (use MULTIPLE in config for multi-select)')
+                        .addChoices(
+                            { name: 'Multiple Types...', value: 'MULTIPLE' },
+                            { name: 'Azur Lane', value: 'Azur Lane' },
+                            { name: 'Kantai Collection', value: 'Kantai Collection' },
+                            { name: 'Warship Girls R', value: 'Warship Girls R' },
+                            { name: 'Axis Senki', value: 'Axis Senki' },
+                            { name: 'Abyss Horizon', value: 'Abyss Horizon' },
+                            { name: 'Black Surgenights', value: 'Black Surgenights' },
+                            { name: 'Blue Oath', value: 'Blue Oath' },
+                            { name: 'Velvet Code', value: 'Velvet Code' },
+                            { name: 'Victory Belles', value: 'Victory Belles' },
+                            { name: 'Battleship Girl', value: 'Battleship Girl' },
+                            { name: 'Battleship Bishoujo Puzzle', value: 'Battleship Bishoujo Puzzle' },
+                        ))
+                .addStringOption(option =>
+                    option.setName('nation_exclude')
+                        .setDescription('Exclude specific nation (use MULTIPLE in config for multi-select)')
+                        .addChoices(
+                            { name: 'Multiple Types...', value: 'MULTIPLE' },
+                            { name: 'United Kingdom', value: 'United Kingdom' },
+                            { name: 'United States', value: 'United States' },
+                            { name: 'Japan', value: 'Japan' },
+                            { name: 'Germany', value: 'Germany' },
+                            { name: 'Soviet Union', value: 'Soviet Union' },
+                            { name: 'Italy', value: 'Italy' },
+                            { name: 'France', value: 'France' },
+                            { name: 'Minor Power', value: 'Minor Power' },
+                            { name: 'Fictional', value: 'Fictional' },
+                        )
+                )
+                .addStringOption(option =>
+                    option.setName('hull_type_exclude')
+                        .setDescription('Exclude specific hull type (use MULTIPLE in config for multi-select)')
                         .addChoices(
                             { name: 'Multiple Types...', value: 'MULTIPLE' },
                             { name: 'Destroyer', value: 'Destroyer' },
@@ -208,10 +267,15 @@ module.exports = {
             let nation = interaction.options.getString('nation') || (shipgirl_config.nation ? shipgirl_config.nation : null)
             let hull_type = interaction.options.getString('hull_type') || (shipgirl_config.hull_type ? shipgirl_config.hull_type : null)
             const scoring_mode = interaction.options.getString('scoring_mode') || 'Classic'
-            const max_rating = interaction.options.getString('max_rating') || (shipgirl_config.max_rating ? shipgirl_config.max_rating : 'explicit')
+            const max_rating = interaction.options.getString('max_rating') || (shipgirl_config.max_rating ? shipgirl_config.max_rating : 'sensitive')
             const is_survival = scoring_mode === 'Survival'
             const time_multiplier = interaction.options.getNumber('time_multiplier') || 1.0
             const ranked_score = interaction.options.getBoolean('ranked_score') || false
+            
+            // Parse exclusions
+            let category_exclude = interaction.options.getString('category_exclude') || (shipgirl_config.category_exclude ? shipgirl_config.category_exclude : null)
+            let nation_exclude = interaction.options.getString('nation_exclude') || (shipgirl_config.nation_exclude ? shipgirl_config.nation_exclude : null)
+            let hull_type_exclude = interaction.options.getString('hull_type_exclude') || (shipgirl_config.hull_type_exclude ? shipgirl_config.hull_type_exclude : null)
             
             // Check if config has pre-configured options
             const hasConfigHardmode = !interaction.options.getBoolean('hardmode') && shipgirl_config.hardmode && shipgirl_config.hardmode_options && shipgirl_config.hardmode_options.length > 0
@@ -219,6 +283,9 @@ module.exports = {
             const hasConfigCategory = !interaction.options.getString('category') && Array.isArray(shipgirl_config.category) && shipgirl_config.category.length > 0
             const hasConfigNation = !interaction.options.getString('nation') && Array.isArray(shipgirl_config.nation) && shipgirl_config.nation.length > 0
             const hasConfigHullType = !interaction.options.getString('hull_type') && Array.isArray(shipgirl_config.hull_type) && shipgirl_config.hull_type.length > 0
+            const hasConfigCategoryExclude = !interaction.options.getString('category_exclude') && Array.isArray(shipgirl_config.category_exclude) && shipgirl_config.category_exclude.length > 0
+            const hasConfigNationExclude = !interaction.options.getString('nation_exclude') && Array.isArray(shipgirl_config.nation_exclude) && shipgirl_config.nation_exclude.length > 0
+            const hasConfigHullTypeExclude = !interaction.options.getString('hull_type_exclude') && Array.isArray(shipgirl_config.hull_type_exclude) && shipgirl_config.hull_type_exclude.length > 0
 
             // In survival mode, round parameter becomes number of lives
             let numLives = 3 // Default lives
@@ -339,6 +406,72 @@ module.exports = {
                 await interaction.followUp(`Using configured hull types: ${shipgirl_config.hull_type.join(', ')}`)
             }
 
+            // Handle multiple category exclusion selection (skip if config has it)
+            if (category_exclude === 'MULTIPLE' && !hasConfigCategoryExclude) {
+                const categoryOptions = [
+                    { name: 'Azur Lane', value: 'Azur Lane' },
+                    { name: 'Kantai Collection', value: 'Kantai Collection' },
+                    { name: 'Warship Girls R', value: 'Warship Girls R' },
+                    { name: 'Axis Senki', value: 'Axis Senki' },
+                    { name: 'Abyss Horizon', value: 'Abyss Horizon' },
+                    { name: 'Black Surgenights', value: 'Black Surgenights' },
+                    { name: 'Blue Oath', value: 'Blue Oath' },
+                    { name: 'Velvet Code', value: 'Velvet Code' },
+                    { name: 'Victory Belles', value: 'Victory Belles' },
+                    { name: 'Battleship Girl', value: 'Battleship Girl' },
+                    { name: 'Battleship Bishoujo Puzzle', value: 'Battleship Bishoujo Puzzle' },
+                ]
+                category_exclude = await handleMultiSelect('category_exclude', 'MULTIPLE', categoryOptions, 'categories to exclude')
+            } else if (hasConfigCategoryExclude) {
+                await interaction.followUp(`Using configured category exclusions: ${shipgirl_config.category_exclude.join(', ')}`)
+            }
+
+            // Handle multiple nation exclusion selection (skip if config has it)
+            if (nation_exclude === 'MULTIPLE' && !hasConfigNationExclude) {
+                const nationOptions = [
+                    { name: 'United Kingdom', value: 'United Kingdom' },
+                    { name: 'United States', value: 'United States' },
+                    { name: 'Japan', value: 'Japan' },
+                    { name: 'Germany', value: 'Germany' },
+                    { name: 'Soviet Union', value: 'Soviet Union' },
+                    { name: 'Italy', value: 'Italy' },
+                    { name: 'France', value: 'France' },
+                    { name: 'Minor Power', value: 'Minor Power' },
+                    { name: 'Fictional', value: 'Fictional' },
+                ]
+                nation_exclude = await handleMultiSelect('nation_exclude', 'MULTIPLE', nationOptions, 'nations to exclude')
+            } else if (hasConfigNationExclude) {
+                await interaction.followUp(`Using configured nation exclusions: ${shipgirl_config.nation_exclude.join(', ')}`)
+            }
+
+            // Handle multiple hull_type exclusion selection (skip if config has it)
+            if (hull_type_exclude === 'MULTIPLE' && !hasConfigHullTypeExclude) {
+                const hullTypeOptions = [
+                    { name: 'Destroyer', value: 'Destroyer' },
+                    { name: 'Light Cruiser', value: 'Light Cruiser' },
+                    { name: 'Heavy Cruiser', value: 'Heavy Cruiser' },
+                    { name: 'Battlecruiser', value: 'Battlecruiser' },
+                    { name: 'Battleship', value: 'Battleship' },
+                    { name: 'Light Carrier', value: 'Light Carrier' },
+                    { name: 'Aircraft Carrier', value: 'Aircraft Carrier' },
+                    { name: 'Submarine', value: 'Submarine' },
+                    { name: 'Aviation Battleship', value: 'Aviation Battleship' },
+                    { name: 'Repair Ship', value: 'Repair Ship' },
+                    { name: 'Monitor', value: 'Monitor' },
+                    { name: 'Aviation Submarine', value: 'Aviation Submarine' },
+                    { name: 'Large Cruiser', value: 'Large Cruiser' },
+                    { name: 'Munition Ship', value: 'Munition Ship' },
+                    { name: 'Guided Missile Cruiser', value: 'Guided Missile Cruiser' },
+                    { name: 'Sailing Frigate', value: 'Sailing Frigate' },
+                    { name: 'Aviation Cruiser', value: 'Aviation Cruiser' },
+                    { name: 'Amphibious Assault Ship', value: 'Amphibious Assault Ship' },
+                    { name: 'Coastal Defense Ship', value: 'Coastal Defense Ship' },
+                ]
+                hull_type_exclude = await handleMultiSelect('hull_type_exclude', 'MULTIPLE', hullTypeOptions, 'hull types to exclude')
+            } else if (hasConfigHullTypeExclude) {
+                await interaction.followUp(`Using configured hull type exclusions: ${shipgirl_config.hull_type_exclude.join(', ')}`)
+            }
+
             // If hardmode is enabled, prompt user to select processing modes (skip if config has it)
             let hardmode_options = []
             if (isHardmode && !hasConfigHardmode) {
@@ -346,12 +479,22 @@ module.exports = {
                     .setCustomId('hardmode_select')
                     .setPlaceholder('Select image processing modes')
                     .setMinValues(1)
-                    .setMaxValues(9)
+                    .setMaxValues(11)
                     .addOptions([
                         {
                             label: 'Silhouette',
                             description: 'Convert image to black silhouette',
                             value: 'silhouette',
+                        },
+                        {
+                            label: 'Blur',
+                            description: 'Apply gaussian blur (radius 12px)',
+                            value: 'blur',
+                        },
+                        {
+                            label: 'Blur Extreme',
+                            description: 'Apply heavy gaussian blur (radius 36px)',
+                            value: 'blur_extreme',
                         },
                         {
                             label: 'Crop Center',
@@ -413,6 +556,7 @@ module.exports = {
                     // Check if combining crop and silhouette modes
                     const hasCrop = hardmode_options.some(opt => opt.startsWith('crop_'))
                     const hasSilhouette = hardmode_options.includes('silhouette')
+                    const hasBlur = hardmode_options.includes('blur') || hardmode_options.includes('blur_extreme')
                     let warningMsg = `Selected modes: ${hardmode_options.join(', ')}`
 
                     if (hasCrop && hasSilhouette) {
@@ -440,7 +584,7 @@ module.exports = {
                     .setCustomId('easymode_select')
                     .setPlaceholder('Select hint modes')
                     .setMinValues(1)
-                    .setMaxValues(7)
+                    .setMaxValues(8)
                     .addOptions([
                         {
                             label: 'Name Hint',
@@ -476,6 +620,11 @@ module.exports = {
                             label: 'Description Hint',
                             description: 'Show description tags after 30% time (requires hardmode)',
                             value: 'description_hint',
+                        },
+                        {
+                            label: 'Best Effort Mode',
+                            description: 'Use full-text search for long/difficult names',
+                            value: 'best_effort_mode',
                         },
                     ])
 
@@ -639,6 +788,54 @@ module.exports = {
             if (requireBase) {
                 db_query.is_base = true
             }
+
+            // Add exclusion filters
+            if (category_exclude) {
+                if (Array.isArray(category_exclude)) {
+                    db_query.$and.push({ folder: { $nin: category_exclude } })
+                } else {
+                    db_query.$and.push({ folder: { $ne: category_exclude } })
+                }
+            }
+
+            if (nation_exclude) {
+                const nation_exclusions = Array.isArray(nation_exclude) ? nation_exclude : [nation_exclude]
+                
+                for (const excluded_nation of nation_exclusions) {
+                    if (excluded_nation === 'Minor Power') {
+                        // Exclude Minor Power means include only major powers
+                        const major_powers = ['United Kingdom', 'United States', 'Japan', 'Germany', 'Soviet Union', 'Italy', 'France']
+                        const majorPowerQueries = major_powers.flatMap(nation => [
+                            { nation: nation },
+                            { nation: `? ${nation}` }
+                        ])
+                        db_query.$and.push({ $or: majorPowerQueries })
+                    } else {
+                        // Exclude specific nation (both plain and "? " prefixed versions)
+                        db_query.$and.push({
+                            $and: [
+                                { nation: { $ne: excluded_nation } },
+                                { nation: { $ne: `? ${excluded_nation}` } }
+                            ]
+                        })
+                    }
+                }
+            }
+
+            if (hull_type_exclude) {
+                const hull_type_exclusions = Array.isArray(hull_type_exclude) ? hull_type_exclude : [hull_type_exclude]
+                
+                for (const excluded_type of hull_type_exclusions) {
+                    // Exclude specific hull type (both plain and "? " prefixed versions)
+                    db_query.$and.push({
+                        $and: [
+                            { hull_type: { $ne: excluded_type } },
+                            { hull_type: { $ne: `? ${excluded_type}` } }
+                        ]
+                    })
+                }
+            }
+
             if (max_rating) {
                 const rating_order = ['general', 'sensitive', 'questionable', 'explicit']
                 const max_index = rating_order.indexOf(max_rating)
@@ -694,7 +891,9 @@ module.exports = {
 
             // Calculate score multiplier for ranked mode
             let score_multiplier = 1.0
-            let multiplier_breakdown = {}
+            let multiplier_breakdown = {
+                hardmode: 1.0
+            }
 
             if (ranked_score) {
                 // 1. Question pool multiplier (baseline: 1000 questions = 1.0x)
@@ -712,6 +911,8 @@ module.exports = {
                 if (isHardmode && hardmode_options.length > 0) {
                     const hardmodeValues = {
                         'silhouette': 1.2,
+                        'blur': 1.1,
+                        'blur_extreme': 1.25,
                         'crop_center': 1.1,
                         'crop_random': 1.12,
                         'crop_center_extreme': 1.2,
@@ -738,7 +939,8 @@ module.exports = {
                         'hull_type_hint': 0.7,
                         'category_hint': 0.8,
                         'description_hint': 0.7,
-                        'base_only': 0.5
+                        'base_only': 0.5,
+                        'best_effort_mode': 1
                     }
 
                     // Multiply all easymode reductions together
@@ -799,6 +1001,7 @@ module.exports = {
                 time_multiplier: time_multiplier,
                 ranked_score: ranked_score,
                 score_multiplier: score_multiplier,
+                multiplier_breakdown: multiplier_breakdown,
                 question_multipliers: new Array(round).fill(score_multiplier),
                 quiz: query_res.map(val => {
                     return {
@@ -894,6 +1097,15 @@ module.exports = {
                 if (activePlayers.length === 0) {
                     await interaction.channel.send('All players have been eliminated! Game over!')
                     break;
+                }
+            }
+
+            // For survival mode first round, initialize lives for ALL participants who joined in prep phase
+            if (quiz_data.is_survival && i === 0 && quiz_data.participants.size > 0) {
+                // Create userId to username mapping from the collector messages during the prep phase
+                // We'll populate this as messages come in during the first round
+                if (!quiz_data.userIdToUsername) {
+                    quiz_data.userIdToUsername = new Map()
                 }
             }
 
@@ -1065,13 +1277,17 @@ module.exports = {
                     if (fallbackMode) {
                         const hardmodeValues = {
                             'crop_random': 1.12,
-                            'crop_random_extreme': 1.25
+                            'crop_random_extreme': 1.25,
+                            'blur': 1.1,
+                            'blur_extreme': 1.25
                         }
                         appliedMultiplier = hardmodeValues[fallbackMode] || 1.0
                         await interaction.channel.send(`⚠️ Body crop data not available, falling back to **${fallbackMode.replace('crop_', '').replace('_', ' ')}** mode for this question (multiplier: x${appliedMultiplier})`)
                     } else {
                         const hardmodeValues = {
                             'silhouette': 1.2,
+                            'blur': 1.1,
+                            'blur_extreme': 1.25,
                             'crop_center': 1.1,
                             'crop_random': 1.12,
                             'crop_center_extreme': 1.2,
@@ -1087,7 +1303,7 @@ module.exports = {
                     // Update question multiplier for ranked mode
                     if (quiz_data.ranked_score && fallbackMode) {
                         // Recalculate multiplier with fallback hardmode value
-                        const baseMultiplier = quiz_data.score_multiplier / multiplier_breakdown.hardmode
+                        const baseMultiplier = quiz_data.score_multiplier / quiz_data.multiplier_breakdown.hardmode
                         quiz_data.question_multipliers[i] = baseMultiplier * appliedMultiplier
                     }
 
@@ -1183,19 +1399,21 @@ module.exports = {
                             validCrop = await validateCropArea(testCrop, combineMode)
 
                             if (validCrop) {
-                                // Apply silhouette if combine mode, otherwise just use crop
+                                // In combine mode, also need to pass silhouette validation
                                 if (combineMode) {
                                     const silhouetteResult = await validateAndCreateSilhouette(testCrop)
                                     if (silhouetteResult) {
                                         img = silhouetteResult
+                                        break
                                     } else {
-                                        // Silhouette validation failed, just use the crop
-                                        img = testCrop
+                                        // Silhouette validation failed in combine mode, try again
+                                        validCrop = false
                                     }
                                 } else {
+                                    // Crop only mode
                                     img = testCrop
+                                    break
                                 }
-                                break
                             }
 
                             attempts++
@@ -1266,6 +1484,15 @@ module.exports = {
                 // Non-hardmode path needs resize
                 img = await sharp(img)
                     .resize({ height: 512 })
+                    .png()
+                    .toBuffer()
+            }
+            
+            // Apply blur after resize if blur mode is active
+            if (quiz_data.hardmode && (quiz_data.hardmode_options.includes('blur') || quiz_data.hardmode_options.includes('blur_extreme'))) {
+                const blurRadius = quiz_data.hardmode_options.includes('blur_extreme') ? 36 : 12
+                img = await sharp(img)
+                    .blur(blurRadius)
                     .png()
                     .toBuffer()
             }
@@ -1486,6 +1713,10 @@ module.exports = {
                 // For survival mode first question, also register participants who answer (in addition to prep phase)
                 if (quiz_data.is_survival && quiz_data.current_round === 0) {
                     quiz_data.participants.add(m.author.id)
+                    // Build userId to username mapping
+                    if (quiz_data.userIdToUsername) {
+                        quiz_data.userIdToUsername.set(m.author.id, m.author.username)
+                    }
                 }
                 // In survival mode after first question, only accept answers from registered participants
                 if (quiz_data.is_survival && quiz_data.current_round > 0 && !quiz_data.participants.has(m.author.id)) {
@@ -1494,7 +1725,7 @@ module.exports = {
                 answerer.set(m.author.id, m)
             });
 
-            collector.on('end', collected => {
+            collector.on('end', async collected => {
 
                 // Clear all hint timeouts
                 hintTimeouts.forEach(timeout => clearTimeout(timeout))
@@ -1506,13 +1737,56 @@ module.exports = {
                 const correct_answerer_display = []
                 const near_correct_answerer_display = []
 
+                // In survival mode first round, initialize lives for ALL participants who have a known username
+                if (quiz_data.is_survival && quiz_data.current_round === 0) {
+                    quiz_data.participants.forEach(userId => {
+                        const username = quiz_data.userIdToUsername.get(userId)
+                        // Only initialize if we have a username mapping (skip phantom users)
+                        if (username && !quiz_data.lives.has(username)) {
+                            quiz_data.lives.set(username, quiz_data.numLives)
+                        }
+                    })
+                }
+
+                // Build best effort lookup map if enabled
+                const bestEffortMap = new Map()
+                const hasBestEffortMode = quiz_data.easymode && quiz_data.easymode_options.includes('best_effort_mode')
+                if (hasBestEffortMode) {
+                    // Perform full-text search for each unique answer
+                    const uniqueAnswers = [...new Set(answerer.map(e => e.content.toLowerCase()))]
+                    const searchPromises = uniqueAnswers.map(async (answer) => {
+                        try {
+                            const searchResult = await aggregateRecord('shipgirl', [
+                                { $match: { $text: { $search: answer } } },
+                                { $limit: 1 }
+                            ], true)
+                            if (searchResult && searchResult.length > 0) {
+                                return [answer, searchResult[0].char]
+                            }
+                        } catch (e) {
+                            // Text search failed, ignore
+                        }
+                        return null
+                    })
+                    const results = await Promise.all(searchPromises)
+                    results.forEach(result => {
+                        if (result) {
+                            bestEffortMap.set(result[0], result[1])
+                        }
+                    })
+                }
+
                 answerer.forEach(entry => {
                     const userId = entry.author.id
                     const username = entry.author.username
 
-                    // In survival mode, initialize lives for new participants (first round only)
-                    if (quiz_data.is_survival && quiz_data.current_round === 0 && !quiz_data.lives.has(username)) {
-                        quiz_data.lives.set(username, quiz_data.numLives)
+                    // Update username mapping
+                    if (quiz_data.is_survival && quiz_data.userIdToUsername) {
+                        quiz_data.userIdToUsername.set(userId, username)
+                        // If this username wasn't in lives yet (late joiner in round 1), add them
+                        if (quiz_data.current_round === 0 && !quiz_data.lives.has(username)) {
+                            quiz_data.lives.set(username, quiz_data.numLives)
+                        }
                     }
 
                     // In survival mode, skip players with 0 lives
@@ -1520,14 +1794,19 @@ module.exports = {
                         return
                     }
 
-                    if (entry.content.toLowerCase() === ship.char.toLowerCase() || alias_lowercase.includes(entry.content.toLowerCase())) {
+                    const answerLower = entry.content.toLowerCase()
+                    if (answerLower === ship.char.toLowerCase() || alias_lowercase.includes(answerLower)) {
                         correct_answerer.push([username, (entry.createdTimestamp - startTimestamp) / 1000, userId])
                         correct_answerer_display.push(`- ${username} - ${(entry.createdTimestamp - startTimestamp) / 1000}s`)
                     }
-                    else if (levenshtein.get(entry.content.toLowerCase(), ship.char.toLowerCase()) <= Math.floor(ship.char.length * 0.2)
-                        || alias_lowercase.some(val => levenshtein.get(entry.content.toLowerCase(), val) <= Math.floor(val.length * 0.2))) {
+                    else if (levenshtein.get(answerLower, ship.char.toLowerCase()) <= Math.floor(ship.char.length * 0.2)
+                        || alias_lowercase.some(val => levenshtein.get(answerLower, val) <= Math.floor(val.length * 0.2))) {
                         near_correct_answerer.push([username, (entry.createdTimestamp - startTimestamp) / 1000, userId])
                         near_correct_answerer_display.push(`- ${username} - ${(entry.createdTimestamp - startTimestamp) / 1000}s`)
+                    }
+                    else if (hasBestEffortMode && bestEffortMap.has(answerLower) && bestEffortMap.get(answerLower) === ship.char) {
+                        near_correct_answerer.push([username, (entry.createdTimestamp - startTimestamp) / 1000, userId])
+                        near_correct_answerer_display.push(`- ${username} - ${(entry.createdTimestamp - startTimestamp) / 1000}s (best effort match)`)
                     }
                 })
                 let answerer_list = ""
@@ -1575,53 +1854,28 @@ module.exports = {
                     const answeredUserIds = new Set([...answerer.keys()])
 
                     quiz_data.participants.forEach(userId => {
-                        const userEntry = [...answerer.values()].find(m => m.author.id === userId)
+                        const username = quiz_data.userIdToUsername.get(userId)
+                        // Skip if we don't have a username mapping (phantom users who never answered)
+                        if (!username) {
+                            return
+                        }
+                        
+                        const userEntry = answerer.get(userId)
 
                         if (!userEntry) {
                             // Didn't answer at all - lose a life
-                            // Find username from lives map (they must have participated before)
-                            const username = [...quiz_data.lives.keys()].find(name => {
-                                // Check if this username's userId matches
-                                // We need to find any previous message from this user
-                                return quiz_data.scores.has(name)
-                            })
-
-                            // Try to find username by searching through all participants
-                            for (const [storedUsername, _] of quiz_data.lives) {
-                                // We'll deduct life for all participants who didn't answer
-                                // Check if this user didn't answer by userId
-                                if (!answeredUserIds.has(userId)) {
-                                    // Find the username that corresponds to this userId
-                                    // Since we can't directly map userId to username without a message,
-                                    // we need to use a different approach
-                                    break
-                                }
+                            const currentLives = quiz_data.lives.has(username) ? quiz_data.lives.get(username) : quiz_data.numLives
+                            if (currentLives > 0) {
+                                quiz_data.lives.set(username, Math.max(0, currentLives - 1))
+                                scores.set(username, (scores.get(username) || 0) + 0)
                             }
-                            return
-                        }
-
-                        const username = userEntry.author.username
-                        if (!answered_users.has(username)) {
+                        } else if (!answered_users.has(username)) {
                             // Wrong answer - lose a life
-                            const currentLives = quiz_data.lives.get(username) || quiz_data.numLives
+                            const currentLives = quiz_data.lives.has(username) ? quiz_data.lives.get(username) : quiz_data.numLives
                             quiz_data.lives.set(username, Math.max(0, currentLives - 1))
                             scores.set(username, (scores.get(username) || 0) + 0)
                         }
                     })
-
-                    // Also check for participants who have lives but didn't answer this round
-                    for (const [username, lives] of quiz_data.lives) {
-                        if (lives > 0 && !answered_users.has(username)) {
-                            // This participant didn't answer - check if they're still in the game
-                            const userAnsweredThisRound = [...answerer.values()].some(m => m.author.username === username)
-                            if (!userAnsweredThisRound) {
-                                // Didn't answer at all - lose a life
-                                const currentLives = quiz_data.lives.get(username) || quiz_data.numLives
-                                quiz_data.lives.set(username, Math.max(0, currentLives - 1))
-                                scores.set(username, (scores.get(username) || 0) + 0)
-                            }
-                        }
-                    }
                 } else {
                     // Original scoring logic for Classic and Speed modes
                     const multiplier = quiz_data.ranked_score ? quiz_data.question_multipliers[i] : 1.0
