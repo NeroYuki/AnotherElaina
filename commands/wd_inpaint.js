@@ -167,6 +167,10 @@ module.exports = {
         workflow["17"]["inputs"]["image"] = image_info.name
         workflow["48"]["inputs"]["image"] = mask_info.name
 
+        // Unload Forge model before using ComfyUI
+        const { unloadForgeCheckpoint } = require('../utils/forge_api_execute');
+        await unloadForgeCheckpoint();
+
         ComfyClient.sendPrompt(workflow, (data) => {
             if (data.node !== null) interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] });
         }, (data) => {
@@ -914,6 +918,14 @@ module.exports = {
                 catch (err) {
                     interaction.channel.send("Failed to parse Latent Modifier config")
                     return
+                }
+            }
+
+            // Set default latentmod config for vpred models if not already set
+            if (cached_model[0].toLowerCase().includes('vpred') && !latentmod_config_obj) {
+                latentmod_config_obj = {
+                    mode: 'simple',
+                    rescale_cfg_phi: 0.5,
                 }
             }
         

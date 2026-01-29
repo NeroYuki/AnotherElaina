@@ -9,6 +9,7 @@ const ComfyClient = require('./utils/comfy_client');
 const { free_up_llm_resource } = require('./utils/ollama_request');
 const { context_storage } = require('./utils/text_gen_store');
 const { rateLimiter } = require('./utils/rate_limiter');
+const { getForgeMemory, getForgeProgress, unloadForgeCheckpoint } = require('./utils/forge_api_execute');
 
 require('dotenv').config()
 
@@ -44,195 +45,233 @@ client.COOLDOWN_SECONDS = 30; // replace with desired cooldown time in seconds
 console.log('current env', process.env.BOT_ENV)
 
 for (const file of commandFiles) {
-	const filePath = path.join(commandsPath, file);
-	const command = require(filePath);
+    const filePath = path.join(commandsPath, file);
+    const command = require(filePath);
 
-	console.log('loaded ' + file)
-	// Set a new item in the Collection
-	// With the key as the command name and the value as the exported module
-	client.commands.set(command.data.name, command);
+    console.log('loaded ' + file)
+    // Set a new item in the Collection
+    // With the key as the command name and the value as the exported module
+    client.commands.set(command.data.name, command);
 
-	if (command.init) {
-		try {
-			console.log('+ additional initialization for ' + file)
-			command.init()
-		}
-		catch (error) {
-			console.log("error when initiate ", + file)
-		}
-	}
+    if (command.init) {
+        try {
+            console.log('+ additional initialization for ' + file)
+            command.init()
+        }
+        catch (error) {
+            console.log("error when initiate ", + file)
+        }
+    }
 }
 
 client.once('ready', () => {
-	console.log('I\'m here');
-	setInterval(() => {
-		client.user.setPresence({
-			activities: [{
-				name: `Drawing: ${sd_available ? '✔' : '✖'} | Chatting: ${operating_mode !== 'disabled' ? '✔' : '✖'}`,
-				type: 'PLAYING'
-			}],
-		});
-	}, 1000 * 60 * 5)
+    console.log('I\'m here');
+    setInterval(() => {
+        client.user.setPresence({
+            activities: [{
+                name: `Drawing: ${sd_available ? '✔' : '✖'} | Chatting: ${operating_mode !== 'disabled' ? '✔' : '✖'}`,
+                type: 'PLAYING'
+            }],
+        });
+    }, 1000 * 60 * 5)
 
 });
 
 client.on('messageCreate', async message => {
-	// ignore if it is in direct message
-	if (!message.guild) return;
+    // ignore if it is in direct message
+    if (!message.guild) return;
 
-	// if message doesnt mention the bot or if that mention is from a reply or message is from a bot, add to existing channel context
-	if (!message.mentions.has(client.user) || message.reference || message.author.bot) {
-		if (context_storage.has(message.channel.id)) {
-			if (!message.author.bot || message.author.id === client.user.id && (message.content !== '...')) {
-				// if the message is not from a bot, or from this bot itself, add it to the context storage
-				if (context_storage.get(message.channel.id).messages) {
-					context_storage.get(message.channel.id).messages.push({
-						role: message.author.id === client.user.id ? 'assistant' : message.author.username,
-						content: message.content.replace(/<@!?\d+>/g, '').trim(),
-					})
-				}
-				else {
-					context_storage.get(message.channel.id).messages = [{
-						role: message.author.id === client.user.id ? 'assistant' : message.author.username,
-						content: message.content.replace(/<@!?\d+>/g, '').trim(),
-					}]
-				}
-			}
-		}
-	}
-	else {
-		// remove the mention to the bot
-		let content = message.content.replace(/<@!?\d+>/, '').trim();
+    // if message doesnt mention the bot or if that mention is from a reply or message is from a bot, add to existing channel context
+    if (!message.mentions.has(client.user) || message.reference || message.author.bot) {
+        if (context_storage.has(message.channel.id)) {
+            if (!message.author.bot || message.author.id === client.user.id && (message.content !== '...')) {
+                // if the message is not from a bot, or from this bot itself, add it to the context storage
+                if (context_storage.get(message.channel.id).messages) {
+                    context_storage.get(message.channel.id).messages.push({
+                        role: message.author.id === client.user.id ? 'assistant' : message.author.username,
+                        content: message.content.replace(/<@!?\d+>/g, '').trim(),
+                    })
+                }
+                else {
+                    context_storage.get(message.channel.id).messages = [{
+                        role: message.author.id === client.user.id ? 'assistant' : message.author.username,
+                        content: message.content.replace(/<@!?\d+>/g, '').trim(),
+                    }]
+                }
+            }
+        }
+    }
+    else {
+        // remove the mention to the bot
+        let content = message.content.replace(/<@!?\d+>/, '').trim();
 
-		// if message is empty, return
-		if (content.trim().length === 0) return;
+        // if message is empty, return
+        if (content.trim().length === 0) return;
 
-		responseToMessage(client, message, content)
-	}
+        responseToMessage(client, message, content)
+    }
 
 });
 
 
 client.on('interactionCreate', async interaction => {
-	if (!(interaction.isCommand() || interaction.isMessageContextMenu() || interaction.isSelectMenu())) return;
+    if (!(interaction.isCommand() || interaction.isMessageContextMenu() || interaction.isSelectMenu())) return;
 
-	if (interaction.isSelectMenu() && interaction.customId === 'legacy_model_picker') {
-		await client.commands.get("wd_modelchange").selectModel(interaction, interaction.values[0], false)
-		return;
-	}
+    if (interaction.isSelectMenu() && interaction.customId === 'legacy_model_picker') {
+        await client.commands.get("wd_modelchange").selectModel(interaction, interaction.values[0], false)
+        return;
+    }
 
-	const command = client.commands.get(interaction.commandName);
+    const command = client.commands.get(interaction.commandName);
 
-	if (!command) return;
+    if (!command) return;
 
-	// if (interaction.user.id !== byPassUser) {
-	// 	await interaction.reply({ content: 'Bot is in maintainance mode right now', ephemeral: true });
-	// 	return;
-	// }
+    // if (interaction.user.id !== byPassUser) {
+    // 	await interaction.reply({ content: 'Bot is in maintainance mode right now', ephemeral: true });
+    // 	return;
+    // }
 
-	const forge_backend_require = [
-		'wd_create', 
-		'wd_img2img', 
-		'wd_inpaint', 
-		'wd_interrogate', 
-		'wd_create_adv', 
-		'wd_img2img_adv', 
-		'wd_upscale', 
-		'wd_rembg',
-	]
+    const forge_backend_require = [
+        'wd_create', 
+        'wd_img2img', 
+        'wd_inpaint', 
+        'wd_interrogate', 
+        'wd_create_adv', 
+        'wd_img2img_adv', 
+        'wd_upscale', 
+        'wd_rembg',
+    ]
 
-	const comfy_backend_require = [
-		'wd_img2model',
-		'wd_txt2vid',
-	]
+    const comfy_backend_require = [
+        'wd_img2model',
+        'wd_txt2vid',
+        'wd_img2vid',
+    ]
 
-	const mapperatorinator_backend_require = [
-		'osu_mapperinator',
-		'osu_mai_mod',
-	]
+    const mapperatorinator_backend_require = [
+        'osu_mapperinator',
+        'osu_mai_mod',
+    ]
 
-	const no_backend_require = [
-		'wd_controlnet', 
-		'wd_adetailer', 
-		'wd_boorugen',
-		'wd_colorbalance',
-		'wd_setting',
-		'shipgirl',
-		'shipgirl_config',
-		'shipgirl_multi',
-		'wd_script_outpaint',
-		'wd_script_upscale',
-		'wd_latentmod',
-	]
+    const no_backend_require = [
+        'wd_controlnet', 
+        'wd_adetailer', 
+        'wd_boorugen',
+        'wd_colorbalance',
+        'wd_setting',
+        'shipgirl',
+        'shipgirl_config',
+        'shipgirl_multi',
+        'wd_script_outpaint',
+        'wd_script_upscale',
+        'wd_latentmod',
+    ]
 
-	try {
-		if ([
-			...forge_backend_require,
-			...comfy_backend_require,
-			...mapperatorinator_backend_require,
-		].includes(interaction.commandName)) {
+    try {
+        if ([
+            ...forge_backend_require,
+            ...comfy_backend_require,
+            ...mapperatorinator_backend_require,
+        ].includes(interaction.commandName)) {
 
-			free_up_llm_resource().catch(err => {
-				console.log("free up llm resource error: ", err)
-			});
-		}
-		
-		if ([
-			...forge_backend_require,
-			...comfy_backend_require,
-			...no_backend_require,
-			...mapperatorinator_backend_require,
-		].includes(interaction.commandName)) {
+            free_up_llm_resource().catch(err => {
+                console.log("free up llm resource error: ", err)
+            });
+        }
 
-			const isComfyRunning = ComfyClient.comfyStat.is_running
+        if ([
+            ...comfy_backend_require,
+            ...mapperatorinator_backend_require
+        ].includes(interaction.commandName)) {
+            const forgeMemory = await getForgeMemory();
+            
+            if (forgeMemory && forgeMemory.cuda && forgeMemory.cuda.system) {
+                const freeCudaMemory = forgeMemory.cuda.system.free;
+                const allocatedCudaMemory = forgeMemory.cuda.allocated.current;
+                const GB = 1024 * 1024 * 1024;
+                
+                // Different VRAM requirements: Comfy needs 12GB, Mapperatorinator needs 6GB
+                const requiredFreeVram = mapperatorinator_backend_require.includes(interaction.commandName) ? 6 * GB : 12 * GB;
+                
+                // If free CUDA memory < required and allocated > 2GB, attempt to unload
+                if (freeCudaMemory < requiredFreeVram && allocatedCudaMemory > 2 * GB) {
+                    const forgeProgress = await getForgeProgress();
+                    
+                    // Check if there's an active job
+                    if (forgeProgress && forgeProgress.state && forgeProgress.state.job_count > 0) {
+                        await interaction.channel.send({ 
+                            content: 'Active forge backend job is running, cannot unload model to free up VRAM, please try again later'
+                        });
+                        return;
+                    }
+                    
+                    // Attempt to unload checkpoint
+                    console.log('[Bot] Attempting to unload Forge checkpoint to free VRAM...');
+                    const unloadResult = await unloadForgeCheckpoint();
+                    if (unloadResult !== null) {
+                        console.log('[Bot] Forge checkpoint unloaded successfully');
+                        // Wait a bit for VRAM to be freed
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                    }
+                }
+            }
+        }
+        
+        if ([
+            ...forge_backend_require,
+            ...comfy_backend_require,
+            ...no_backend_require,
+            ...mapperatorinator_backend_require,
+        ].includes(interaction.commandName)) {
+            const isComfyRunning = ComfyClient.comfyStat.is_running
 
-			const isEstimatedNotEnoughResource = (forge_backend_require.includes(interaction.commandName) && ComfyClient.promptListener.length > 0) ||
-				(interaction.commandName === "wd_txt2vid" && ComfyClient.promptListener.length == 0 && ComfyClient.comfyStat.gpu_vram_used > 3.5) ||
-				(interaction.commandName === "wd_img2model" && ComfyClient.promptListener.length == 0 && ComfyClient.comfyStat.gpu_vram_used > 6)
+            const isEstimatedNotEnoughResource = ([...forge_backend_require, ...mapperatorinator_backend_require].includes(interaction.commandName) && ComfyClient.promptListener.length > 0) ||
+                (["wd_txt2vid", "wd_img2vid"].includes(interaction.commandName) && ComfyClient.promptListener.length == 0 && ComfyClient.comfyStat.gpu_vram_used > 3.5) ||
+                (interaction.commandName === "wd_img2model" && ComfyClient.promptListener.length == 0 && ComfyClient.comfyStat.gpu_vram_used > 6)
 
-			if (isComfyRunning && isEstimatedNotEnoughResource) {
-				await interaction.channel.send({ content: 'Not enough resource can be allocated to finish this command, please try again later', ephemeral: true });
-				return;
-			} 
+            if (isComfyRunning && isEstimatedNotEnoughResource) {
+                await interaction.channel.send({ content: 'Not enough resource can be allocated to finish this command, please try again later' });
+                return;
+            } 
 
-			await command.execute(interaction, client)
-		}
-		else {
-			await command.execute(interaction);
-		}
-	} catch (error) {
-		console.error(error);
-		try {
-			await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
-		}
-		catch (error) {}
-	}
+            await command.execute(interaction, client)
+        }
+        else {
+            await command.execute(interaction);
+        }
+    } catch (error) {
+        console.error(error);
+        try {
+            await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+        }
+        catch (error) {}
+    }
 });
 
 client.login(token);
 
 databaseConnection.initConnection(() => {
-	console.log('database connection established');
+    console.log('database connection established');
 })
 
 // Graceful shutdown handling to save rate limit data
 process.on('SIGINT', () => {
-	console.log('\n[Bot] Received SIGINT, shutting down gracefully...');
-	rateLimiter.destroy();
-	process.exit(0);
+    console.log('\n[Bot] Received SIGINT, shutting down gracefully...');
+    rateLimiter.destroy();
+    process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-	console.log('\n[Bot] Received SIGTERM, shutting down gracefully...');
-	rateLimiter.destroy();
-	process.exit(0);
+    console.log('\n[Bot] Received SIGTERM, shutting down gracefully...');
+    rateLimiter.destroy();
+    process.exit(0);
 });
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
-	console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-	// Save rate limit data before potentially crashing
-	rateLimiter.saveData();
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    // Save rate limit data before potentially crashing
+    rateLimiter.saveData();
 });
 
 console.log('[Bot] Rate limiting system initialized with persistent storage');

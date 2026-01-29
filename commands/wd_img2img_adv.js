@@ -144,7 +144,11 @@ module.exports = {
             return
         }
 
-        workflow["41"]["inputs"]["image"] = image_info.name
+        workflow["5"]["inputs"]["image"] = image_info.name
+
+        // Unload Forge model before using ComfyUI
+        const { unloadForgeCheckpoint } = require('../utils/forge_api_execute');
+        await unloadForgeCheckpoint();
 
         ComfyClient.sendPrompt(workflow, (data) => {
             if (data.node !== null) interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] });
@@ -214,7 +218,11 @@ module.exports = {
             return
         }
 
-        workflow["17"]["inputs"]["image"] = image_info.name
+        workflow["15"]["inputs"]["image"] = image_info.name
+
+        // Unload Forge model before using ComfyUI
+        const { unloadForgeCheckpoint } = require('../utils/forge_api_execute');
+        await unloadForgeCheckpoint();
 
         ComfyClient.sendPrompt(workflow, (data) => {
             if (data.node !== null) interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] });
@@ -463,7 +471,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         // calculate compute (change model)
         compute += checkpoint ? 2_000_000 : 0
 
-        const cooldown = compute / 1_700_000
+        const cooldown = compute / 2_500_000
         
         await interaction.editReply({ content: `Generating image, you can create another image in ${cooldown.toFixed(2)} seconds ${teacache_check.teacache_config ? "(Teacache activated: -" + (100 * (1 - Math.pow(1 - teacache_check.teacache_config?.threshold || 0.1, 2))).toFixed(0) + "%)" : ""}` });
 
@@ -686,6 +694,14 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             catch (err) {
                 interaction.channel.send("Failed to parse Latent Modifier config")
                 return
+            }
+        }
+
+        // Set default latentmod config for vpred models if not already set
+        if (cached_model[0].toLowerCase().includes('vpred') && !latentmod_config_obj) {
+            latentmod_config_obj = {
+                mode: 'simple',
+                rescale_cfg_phi: 0.5,
             }
         }
     

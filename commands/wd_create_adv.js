@@ -182,6 +182,10 @@ module.exports = {
             workflow["28"]["inputs"]["model"] = [previous_model_node, 0]
         }
 
+        // Unload Forge model before using ComfyUI
+        const { unloadForgeCheckpoint } = require('../utils/forge_api_execute');
+        await unloadForgeCheckpoint();
+
         ComfyClient.sendPrompt(workflow, (data) => {
             if (data.node !== null) interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] });
         }, (data) => {
@@ -474,7 +478,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         // calculate compute (upscale)
         compute += upscale_multiplier > 1 ? (upscale_multiplier * height * upscale_multiplier * width * upscale_step * (slow_sampler.includes(sampler) ? 1.5 : 1)) : 0
         // calculate compute (change model)
-        const cooldown = compute * bulk_size / (bulk_size > 1 ? 1_850_000 : 1_700_000)
+        const cooldown = compute * bulk_size / (bulk_size > 1 ? 2_750_000 : 2_500_000)
 
         const force_legacy_flux = prompt.includes('[FLUX_FORGE]')
         prompt = prompt.replace('[FLUX_FORGE]', '')
@@ -662,6 +666,14 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             catch (err) {
                 interaction.channel.send("Failed to parse Latent Modifier config")
                 return
+            }
+        }
+
+        // Set default latentmod config for vpred models if not already set
+        if (cached_model[0].toLowerCase().includes('vpred') && !latentmod_config_obj) {
+            latentmod_config_obj = {
+                mode: 'simple',
+                rescale_cfg_phi: 0.5,
             }
         }
     
