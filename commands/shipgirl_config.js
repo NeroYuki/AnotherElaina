@@ -114,6 +114,21 @@ module.exports = {
                         .setDescription('No alernative outfits / forms will be included')
                     )
                 .addStringOption(option =>
+                    option.setName('question_type')
+                        .setDescription('Specify the question type for multiple choice quiz')
+                        .addChoices(
+                            { name: 'Multiple Types...', value: 'MULTIPLE' },
+                            { name: 'Random', value: 'random' },
+                            { name: 'Name', value: 'name' },
+                            { name: 'Category', value: 'category' },
+                            { name: 'Hull Type', value: 'hull_type' },
+                            { name: 'Nation', value: 'nation' },
+                            { name: 'Birthday', value: 'birthday' },
+                            { name: 'Height', value: 'height' },
+                            { name: 'Weight', value: 'weight' },
+                        )
+                    )
+                .addStringOption(option =>
                     option.setName('nation')
                         .setDescription('Specify which nation to be used for the quiz, might be incorrect')
                         .addChoices(
@@ -252,6 +267,13 @@ module.exports = {
                     }
                     configText += `Base Only: ${config.base_only || false}\n`
                     
+                    // Question Type
+                    if (Array.isArray(config.question_type)) {
+                        configText += `Question Type (MC): ${config.question_type.join(', ')}\n`
+                    } else {
+                        configText += `Question Type (MC): ${config.question_type || "name"}\n`
+                    }
+                    
                     // Nation
                     if (Array.isArray(config.nation)) {
                         configText += `Nation: ${config.nation.join(', ')}\n`
@@ -304,6 +326,7 @@ module.exports = {
         const isHardmode = interaction.options.getBoolean('hardmode') || false
         const isEasymode = interaction.options.getBoolean('easymode') || false
         const base_only = interaction.options.getBoolean('base_only') || false
+        const question_type = interaction.options.getString('question_type') || null
         const nation = interaction.options.getString('nation') || null
         const hull_type = interaction.options.getString('hull_type') || null
         const category_exclude = interaction.options.getString('category_exclude') || null
@@ -478,6 +501,22 @@ module.exports = {
                 { name: 'Coastal Defense Ship', value: 'Coastal Defense Ship' },
             ]
             finalHullTypeExclude = await handleMultiSelect('hull_type_exclude', 'MULTIPLE', hullTypeOptions, 'hull types to exclude')
+        }
+
+        // Handle multiple question_type selection
+        let finalQuestionType = question_type
+        if (question_type === 'MULTIPLE') {
+            const questionTypeOptions = [
+                { name: 'Random', value: 'random' },
+                { name: 'Name', value: 'name' },
+                { name: 'Category', value: 'category' },
+                { name: 'Hull Type', value: 'hull_type' },
+                { name: 'Nation', value: 'nation' },
+                { name: 'Birthday', value: 'birthday' },
+                { name: 'Height', value: 'height' },
+                { name: 'Weight', value: 'weight' },
+            ]
+            finalQuestionType = await handleMultiSelect('question_type', 'MULTIPLE', questionTypeOptions, 'question types')
         }
 
         // If hardmode is enabled, prompt user to select processing modes
@@ -675,6 +714,7 @@ module.exports = {
             easymode: isEasymode,
             easymode_options: easymode_options,
             base_only: base_only,
+            question_type: finalQuestionType,
             nation: finalNation,
             hull_type: finalHullType,
             category_exclude: finalCategoryExclude,

@@ -55,11 +55,11 @@ module.exports = {
             .addChoices(
                 { name: 'Name Hint', value: 'name_hint' },
                 { name: 'Progressive Name Hint', value: 'progressive_name_hint' },
-                    { name: 'Nation Hint', value: 'nation_hint' },
-                    { name: 'Hull Type Hint', value: 'hull_type_hint' },
-                    { name: 'Category Hint', value: 'category_hint' },
-                    { name: 'Description Hint (requires hardmode)', value: 'description_hint' },
-                ))
+                { name: 'Nation Hint', value: 'nation_hint' },
+                { name: 'Hull Type Hint', value: 'hull_type_hint' },
+                { name: 'Category Hint', value: 'category_hint' },
+                { name: 'Description Hint (requires hardmode)', value: 'description_hint' },
+            ))
         .addBooleanOption(option =>
             option.setName('base_only')
                 .setDescription('No alternative outfits / forms will be included')

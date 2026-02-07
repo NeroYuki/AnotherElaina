@@ -1,0 +1,20 @@
+Destroyer
+Light Cruiser
+Heavy Cruiser
+Battlecruiser
+Battleship
+Light Carrier
+Aircraft Carrier
+Submarine
+Aviation Battleship
+Repair Ship
+Monitor
+Aviation Submarine
+Large Cruiser
+Munition Ship
+Guided Missile Cruiser
+Sailing Frigate
+Aviation Cruiser
+Amphibious Assault Ship
+Coastal Defense Ship
+Unknown

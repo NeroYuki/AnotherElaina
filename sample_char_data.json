@@ -1,0 +1,125 @@
+{
+    "char": "Quincy",
+    "modifier": "base",
+    "full_dir": "./data/assets/shipgirls/Warship Girls R/Quincy_base.png",
+    "filename": "Quincy_base.png",
+    "is_base": true,
+    "is_damage": false,
+    "is_oath": false,
+    "is_retrofit": false,
+    "include_bg": false,
+    "non_ai_processed": null,
+    "is_censored": false,
+    "is_outfit": false,
+    "file_hash": "c3d073e2a12cfe36e2a95f964828a2e91cdd6002",
+    "file_modified_date": "2022-03-01T16:51:03.000Z",
+    "file_size": 1123929,
+    "folder": "Warship Girls R",
+    "alias": [],
+    "description": [
+        "1girl",
+        "solo",
+        "blue hair",
+        "hat",
+        "red eyes",
+        "skirt",
+        "long hair",
+        "full body",
+        "school uniform",
+        "turret",
+        "cannon",
+        "transparent background",
+        "smile",
+        "looking at viewer",
+        "serafuku",
+        "weapon",
+        "machinery",
+        "mini hat",
+        "socks",
+        "pleated skirt"
+    ],
+    "rating": "sensitive",
+    "body_crop": {
+        "breast": [
+        825,
+        763,
+        1032,
+        899
+        ],
+        "head": [
+        733,
+        437,
+        1398,
+        985
+        ],
+        "face": [
+        904,
+        531,
+        1058,
+        685
+        ],
+        "eyes": [
+        924,
+        575,
+        1033,
+        632
+        ]
+    },
+    "l2d": null,
+    "chibi": {
+        "dir": "./data/assets/shipgirls/Warship Girls R/wg_spine/Ship_girl_40.skel",
+        "name": "Quincy_base.png"
+    },
+    "spine": null,
+    "voice": {
+        "files": [
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_atk_cn.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_atk_jp.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_break_cn.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_break_jp.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_formation_cn.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_formation_jp.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_friend_room_cn.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_get_cn.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_get_jp.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_main_01_cn.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_main_01_jp.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_main_02_cn.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_main_02_jp.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_main_03_cn.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_main_03_jp.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_main_07_cn.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_main_07_jp.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_main_08_cn.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_main_08_jp.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_main_09_cn.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_main_09_jp.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_main_13_cn.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_main_14_cn.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_main_15_cn.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_main_16_cn.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_main_17_cn.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_main_18_cn.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_mvp_cn.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_my_room_cn.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_night_atk_cn.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_vow_cn.mp3",
+        "./data/assets/shipgirls/Warship Girls R/wg_voice/40_vow_jp.mp3"
+        ],
+        "name": "Quincy_base.png"
+    },
+    "voice_actor": [
+        "花玲00",
+        "中村绘里子"
+    ],
+    "m3d": null,
+    "nation": [
+        "United States"
+    ],
+    "illust": "zhenming",
+    "danbooru_banned": false,
+    "birthday": "6/19",
+    "height": "179m",
+    "displacement": "9950it",
+    "ship_type": "? Heavy Cruiser"
+}
