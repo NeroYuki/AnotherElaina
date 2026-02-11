@@ -110,7 +110,7 @@ module.exports = {
         .addStringOption(option => 
             option.setName('checkpoint')
                 .setDescription('Force a cached checkpoint to be used (not all option is cached)')
-                .addChoices(...(model_selection.concat(model_selection_xl).concat(model_selection_flux).filter(x => !model_selection_legacy.map(y => y.value).includes(x.value)))))
+                .addChoices(...(model_selection.concat(model_selection_xl).filter(x => !model_selection_legacy.map(y => y.value).includes(x.value)))))
         .addStringOption(option =>
             option.setName('profile')
                 .setDescription('Specify the profile to use (default is No Profile)'))
@@ -338,9 +338,14 @@ module.exports = {
         let height = clamp(interaction.options.getInteger('height') || profile?.height || 512, 64, 4096)
         const sampler = interaction.options.getString('sampler') || profile?.sampler || 'Euler'
         const scheduler = interaction.options.getString('scheduler') || profile?.scheduler || 'Automatic'
-        const cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || profile?.cfg_scale || 7, 0, 30)
+        let cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || profile?.cfg_scale || 7, 0, 30)
         const sampling_step = clamp(interaction.options.getInteger('sampling_step') || profile?.sampling_step || 20, 1, 100)
         const default_neg_prompt = interaction.options.getString('default_neg_prompt') || 'n_sfw'
+        
+        // Force cfg_scale to 1 if no negative prompt is specified at all
+        if (default_neg_prompt === 'n_nsfw' && neg_prompt.trim() === '') {
+            cfg_scale = 1;
+        }
         const upscale_multiplier = clamp(interaction.options.getNumber('upscale_multiplier') || profile?.upscale_multiplier || 1, 1, 4)
         const upscaler = interaction.options.getString('upscaler') || profile?.upscaler || 'Lanczos'
         const upscale_denoise_strength = clamp(interaction.options.getNumber('upscale_denoise_strength') || profile?.upscale_denoise_strength || 0.7, 0, 1)
@@ -681,7 +686,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             seed, sampler, scheduler, session_hash, height, width, upscale_multiplier, upscaler, 
             upscale_denoise_strength, upscale_step, false, do_adetailer, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
             extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, extra_config.use_foocus, extra_config.use_booru_gen, 
-            booru_gen_config_obj, is_flux, colorbalance_config_obj, usersetting, extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config_obj, 
+            booru_gen_config_obj, cached_model[0], colorbalance_config_obj, usersetting, extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config_obj, 
             extra_config.mahiro_config, extra_config.teacache_config, batch_count, batch_size)
 
         // Check for [DEBUG-WEBUI] prompt override
@@ -754,7 +759,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                         .addField('Random seed', data.seed, true)
                         .addField('Model used', `${data.model_name || "Unknown Model"} (${data.model})`, true)
                         .setImage(data.catbox_url ? data.catbox_url : `attachment://${data.img_name}`)
-                        .setFooter({text: `Putting ${Array("my RTX 4060 Ti","plub's RTX 3070")[server_index]} to good use!`});
+                        .setFooter({text: `Putting ${Array("my RTX 5060 Ti","plub's RTX 3070")[server_index]} to good use!`});
                 }
                 else if (state === 'progress') {
                     embeded = new MessageEmbed()

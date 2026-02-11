@@ -234,9 +234,15 @@ module.exports = {
                             throw new Error("Failed to upload image to catbox");
                         }
 
+                        const embeded = new MessageEmbed()
+                            .setColor('#22ff77')
+                            .setTitle('Output')
+                            .setDescription(`Here you go. Generated in ${output_data.duration.toFixed(2)} seconds.\n\n[Click here to view full image](${catbox_url})`)
+                            .setImage(catbox_url)
+                            .setFooter({text: `Putting ${Array("my RTX 5060 Ti","plub's RTX 3070")[server_index]} to good use!`});
+
                         await interaction.editReply({ 
-                            content: `Here you go. Generated in ${output_data.duration.toFixed(2)} seconds.\n\nImage size exceeds 10MB, uploaded to catbox.`, 
-                            files: [{ attachment: catbox_url, name: output_data.img_name }] 
+                            embeds: [embeded]
                         })
                         .catch(err => {
                             console.log(err);
@@ -251,7 +257,7 @@ module.exports = {
                             .setTitle('Output')
                             .setDescription(`Here you go. Generated in ${output_data.duration.toFixed(2)} seconds.`)
                             .setImage(`attachment://${output_data.img_name}`)
-                            .setFooter({text: `Putting ${Array("my RTX 4060 Ti","plub's RTX 3070")[server_index]} to good use!`});
+                            .setFooter({text: `Putting ${Array("my RTX 5060 Ti","plub's RTX 3070")[server_index]} to good use!`});
 
                         const reply_content = {embeds: [embeded]};
                         if (output_data.img) {

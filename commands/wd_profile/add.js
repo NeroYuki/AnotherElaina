@@ -1,5 +1,6 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { upscaler_selection, model_selection, model_selection_xl, model_selection_flux, model_selection_legacy, sampler_selection, scheduler_selection } = require('../../utils/ai_server_config');
+const { MessageActionRow, MessageSelectMenu } = require('discord.js');
+const { upscaler_selection, model_selection, model_selection_xl, model_selection_flux, model_selection_legacy, model_selection_chroma, model_selection_flux_klein_4b, model_selection_flux_klein_9b, model_selection_anima, model_selection_lumina, model_selection_qwen_image, model_selection_z_image, sampler_selection, scheduler_selection } = require('../../utils/ai_server_config');
 const { addRecord, queryRecord, queryRecordLimit, editRecords } = require('../../database/database_interaction');
 const { clamp } = require('../../utils/common_helper');
 
@@ -72,7 +73,9 @@ module.exports = {
             option.setName('checkpoint')
                 .setDescription('The checkpoint to use for the profile')
                 .addChoices(
-                    ...(model_selection.concat(model_selection_xl).concat(model_selection_flux).filter(x => !model_selection_legacy.map(y => y.value).includes(x.value)))
+                    ...(model_selection.concat(model_selection_xl).filter(x => !model_selection_legacy.map(y => y.value).includes(x.value))),
+                    { name: 'LEGACY MODELS', value: 'legacy' },
+                    { name: 'EXPERIMENTAL MODELS', value: 'experimental' }
                 ))
         .addStringOption(option =>
             option.setName('adetailer_config')
@@ -133,6 +136,87 @@ module.exports = {
             return;
         }
 
+        // Handle legacy and experimental model selections with dropdown
+        if (checkpoint === 'legacy') {
+            const legacySelectMenu = new MessageSelectMenu()
+                .setCustomId('legacy_model_select')
+                .setPlaceholder('Select a legacy model')
+                .addOptions(model_selection_legacy.map(x => ({
+                    label: x.name,
+                    value: x.value
+                })));
+            
+            const row = new MessageActionRow().addComponents(legacySelectMenu);
+            
+            const selectMessage = await interaction.followUp({
+                content: 'Select a legacy model from the following list (:warning: Consider using regular models when possible)',
+                components: [row],
+                fetchReply: true,
+            });
+            
+            try {
+                const selectInteraction = await selectMessage.awaitMessageComponent({
+                    componentType: 'SELECT_MENU',
+                    time: 60000,
+                });
+                
+                checkpoint = selectInteraction.values[0];
+                
+                await selectInteraction.update({
+                    content: `Selected model: ${model_selection_legacy.find(x => x.value === checkpoint)?.name || checkpoint}`,
+                    components: [],
+                });
+            } catch (error) {
+                await interaction.followUp('Model selection timed out. Profile not created.');
+                return;
+            }
+        }
+        
+        if (checkpoint === 'experimental') {
+            const experimental_models = model_selection_flux
+                .concat(model_selection_chroma)
+                .concat(model_selection_flux_klein_4b)
+                .concat(model_selection_flux_klein_9b)
+                .concat(model_selection_anima)
+                .concat(model_selection_lumina)
+                .concat(model_selection_qwen_image)
+                .concat(model_selection_z_image)
+                .filter(x => !model_selection_legacy.map(y => y.value).includes(x.value));
+            
+            const experimentalSelectMenu = new MessageSelectMenu()
+                .setCustomId('experimental_model_select')
+                .setPlaceholder('Select an experimental model')
+                .addOptions(experimental_models.map(x => ({
+                    label: x.name,
+                    value: x.value
+                })));
+            
+            const row = new MessageActionRow().addComponents(experimentalSelectMenu);
+            
+            const selectMessage = await interaction.followUp({
+                content: 'Select an experimental model from the following list (:warning: These models are for testing and may be unstable)',
+                components: [row],
+                fetchReply: true,
+            });
+            
+            try {
+                const selectInteraction = await selectMessage.awaitMessageComponent({
+                    componentType: 'SELECT_MENU',
+                    time: 60000,
+                });
+                
+                checkpoint = selectInteraction.values[0];
+                
+                await selectInteraction.update({
+                    content: `Selected model: ${experimental_models.find(x => x.value === checkpoint)?.name || checkpoint}`,
+                    components: [],
+                });
+            } catch (error) {
+                await interaction.followUp('Model selection timed out. Profile not created.');
+                return;
+            }
+        }
+
         let isOverwrite = false;
 
         // check if the profile created by user already exists
@@ -180,6 +264,6 @@ module.exports = {
         await editRecords('wd_profile', query, action, {upsert: true})
 
         // send the reply
-        await interaction.editReply(`Profile ${name} ${isOverwrite ? 'updated' : 'added'}`);
+        await interaction.followUp(`Profile ${name} ${isOverwrite ? 'updated' : 'added'}`);
 	},
 };

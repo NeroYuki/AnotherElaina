@@ -90,7 +90,7 @@ module.exports = {
         .addStringOption(option => 
             option.setName('checkpoint')
                 .setDescription('Force a cached checkpoint to be used (not all option is cached)')
-                .addChoices(...(model_selection.concat(model_selection_xl).concat(model_selection_flux).filter(x => !model_selection_legacy.map(y => y.value).includes(x.value)))))
+                .addChoices(...(model_selection.concat(model_selection_xl).filter(x => !model_selection_legacy.map(y => y.value).includes(x.value)))))
         .addStringOption(option =>
             option.setName('upscaler')
                 .setDescription('The upscaler to use (default is "None")')
@@ -279,9 +279,14 @@ module.exports = {
         const denoising_strength = clamp(interaction.options.getNumber('denoising_strength') || 0.7, 0, 1)
         const sampler = interaction.options.getString('sampler') || profile?.sampler || 'Euler'
         const scheduler = interaction.options.getString('scheduler') || profile?.scheduler || 'Automatic'
-        const cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || profile?.cfg_scale || 7, 0, 30)
+        let cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || profile?.cfg_scale || 7, 0, 30)
         const sampling_step = clamp(interaction.options.getInteger('sampling_step') || profile?.sampling_step || 20, 1, 100)
         const default_neg_prompt = interaction.options.getString('default_neg_prompt') || 'n_sfw'
+        
+        // Force cfg_scale to 1 if no negative prompt is specified at all
+        if (default_neg_prompt === 'n_nsfw' && neg_prompt.trim() === '') {
+            cfg_scale = 1;
+        }
         const force_server_selection = clamp(interaction.options.getInteger('force_server_selection') !== null ? interaction.options.getInteger('force_server_selection') : -1 , -1, 1)
         const controlnet_input_option = interaction.options.getAttachment('controlnet_input') || null
         const controlnet_input_option_2 = interaction.options.getAttachment('controlnet_input_2') || null
@@ -709,7 +714,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             seed, sampler, scheduler, session_hash, height, width, attachment, null, denoising_strength, /*img2img mode*/ 0, 4, "original", upscaler, 
             do_adetailer, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
             extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, "Whole picture", 32, 
-            extra_config.use_foocus, extra_config.use_booru_gen, booru_gen_config_obj, is_flux, null, null, colorbalance_config_obj, usersetting, outpaint_config_obj, 
+            extra_config.use_foocus, extra_config.use_booru_gen, booru_gen_config_obj, cached_model[0], null, null, colorbalance_config_obj, usersetting, outpaint_config_obj, 
             upscale_config_obj, extra_script, extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config,
             extra_config.mahiro_config, extra_config.teacache_config)
 
@@ -751,7 +756,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                         .addField('Random seed', data.seed, true)
                         .addField('Model used', `${data.model_name || "Unknown Model"} (${data.model})`, true)
                         .setImage(`attachment://${data.img_name}`)
-                        .setFooter({text: `Putting ${Array("my RTX 4060 Ti","plub's RTX 3070")[server_index]} to good use!`});
+                        .setFooter({text: `Putting ${Array("my RTX 5060 Ti","plub's RTX 3070")[server_index]} to good use!`});
                 }
                 else if (state === 'progress') {
                     embeded = new MessageEmbed()

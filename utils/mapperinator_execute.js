@@ -57,6 +57,9 @@ async function startInference(url, params) {
     if (params.super_timing) formData.append('super_timing', 'true');
     if (params.enable_bf16) formData.append('enable_bf16', 'true');
     if (params.enable_flash_attn) formData.append('enable_flash_attn', 'true');
+    if (params.enable_compile) formData.append('enable_compile', 'true');
+    if (params.enable_parallel) formData.append('enable_parallel', 'true');
+    if (params.max_batch_size) formData.append('max_batch_size', params.max_batch_size.toString());
 
     // Add descriptors
     if (Array.isArray(params.descriptors) && params.descriptors.length > 0) {

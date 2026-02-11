@@ -188,6 +188,11 @@ module.exports = {
         let sampling_step = clamp(profile?.sampling_step || 25, 1, 100)
 
         const default_neg_prompt = interaction.options.getString('default_neg_prompt') || 'q_sfw'
+        
+        // Force cfg_scale to 1 if no negative prompt is specified at all
+        if (default_neg_prompt === 'n_nsfw' && neg_prompt.trim() === '') {
+            cfg_scale = 1;
+        }
 
         const force_server_selection = -1
 
@@ -558,7 +563,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             seed, sampler, scheduler, session_hash, height, width, upscale_multiplier, upscaler, 
             upscale_denoise_strength, upscale_step, false, use_adetailer, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
             extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, override_neg_prompt ? false : true, extra_config.use_booru_gen, 
-            booru_gen_config_obj, is_flux, colorbalance_config_obj, usersetting, extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config_obj,
+            booru_gen_config_obj, cached_model[0], colorbalance_config_obj, usersetting, extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config_obj,
             extra_config.mahiro_config, extra_config.teacache_config, batch_count, batch_size)
 
         // make option_init but for axios
@@ -597,7 +602,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                         .addField('Random seed', data.seed, true)
                         .addField('Model used', `${data.model_name || "Unknown Model"} (${data.model})`, true)
                         .setImage(data.catbox_url ? data.catbox_url : `attachment://${data.img_name}`)
-                        .setFooter({text: `Putting ${Array("my RTX 4060 Ti","plub's RTX 3070")[server_index]} to good use!`});
+                        .setFooter({text: `Putting ${Array("my RTX 5060 Ti","plub's RTX 3070")[server_index]} to good use!`});
                 }
                 else if (state === 'progress') {
                     embeded = new MessageEmbed()

@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageActionRow, MessageSelectMenu } = require('discord.js');
 const { model_change, cached_model } = require('../utils/model_change');
 const { byPassUser } = require('../config.json');
-const { check_model_filename, model_selection, model_selection_xl, model_selection_inpaint, model_selection_flux, model_selection_legacy} = require('../utils/ai_server_config');
+const { check_model_filename, model_selection, model_selection_xl, model_selection_inpaint, model_selection_flux, model_selection_legacy, model_selection_chroma, model_selection_flux_klein_4b, model_selection_flux_klein_9b, model_selection_anima, model_selection_lumina, model_selection_qwen_image, model_selection_z_image} = require('../utils/ai_server_config');
 
 
 // ["362dae27f8", "RefSlave v2"],
@@ -23,10 +23,25 @@ module.exports = {
                 .setDescription('The checkpoint to be used')
                 // this list is combining model_selection, model_selection_xl ,model_selection_flux but exclusding all model_selection_legacy
                 .addChoices(
-                    ...(model_selection.concat(model_selection_xl).concat(model_selection_flux).filter(x => !model_selection_legacy.map(y => y.value).includes(x.value))),
+                    ...(model_selection.concat(model_selection_xl).filter(x => !model_selection_legacy.map(y => y.value).includes(x.value))),
                     { name: 'LEGACY MODELS', value: 'legacy' }
                 )
-                .setRequired(true))
+                .setRequired(false))
+        .addStringOption(option =>
+            option.setName('experimental_checkpoint')
+                .setDescription('The experimental checkpoint to be used (for testing new models, may be unstable)')
+                .addChoices(
+                    ...(model_selection_flux
+                        .concat(model_selection_chroma)
+                        .concat(model_selection_flux_klein_4b)
+                        .concat(model_selection_flux_klein_9b)
+                        .concat(model_selection_anima)
+                        .concat(model_selection_lumina)
+                        .concat(model_selection_qwen_image)
+                        .concat(model_selection_z_image)
+                        .filter(x => !model_selection_legacy.map(y => y.value).includes(x.value)))
+                    )
+                .setRequired(false))
         .addBooleanOption(option =>
             option.setName('inpaint')
                 .setDescription('Use inpaint model instead of the main model')
@@ -79,8 +94,14 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
 
 	async execute(interaction) {
 
-        let checkpoint = interaction.options.getString('checkpoint')
+        let checkpoint = interaction.options.getString('checkpoint') || null
+        let experimental_checkpoint = interaction.options.getString('experimental_checkpoint') || null
         const inpaint = interaction.options.getBoolean('inpaint') || false
+
+        if (!checkpoint && !experimental_checkpoint) {
+            await interaction.reply('You need to specify at least one checkpoint to change to!')
+            return
+        }
 
         if (checkpoint == 'legacy') {
             // make a dropdown for legacy models
@@ -100,7 +121,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             await interaction.reply({ content: 'Select a model from the following list (:warning: There aren\'t many reasons to use these models, make sure you know what your are selecting)', components: [row] });
         }   
         else {
-            await this.selectModel(interaction, checkpoint, inpaint)
+            await this.selectModel(interaction, checkpoint ?? experimental_checkpoint, inpaint)
         }
 	},
 };

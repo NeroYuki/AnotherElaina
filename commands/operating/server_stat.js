@@ -60,7 +60,7 @@ module.exports = {
             + '**CPU Usage: **' + server_stat.cpu_usage.toFixed(2) + "%" + "\n"
             + '**RAM Usage: **' + `${server_stat.ram_used.toFixed(2)}/${server_stat.ram_total.toFixed(2)}GB (${server_stat.ram_percent.toFixed(2)}%)` + "\n"
             + '------------------------------------------' + "\n"
-            + "**GPU (NVIDIA RTX 4060 Ti): **" + server_stat.gpu_usage.toFixed(2) + "%" + "\n"
+            + "**GPU (NVIDIA RTX 5060 Ti): **" + server_stat.gpu_usage.toFixed(2) + "%" + "\n"
             + '**VRAM Usage: **' + `${server_stat.gpu_vram_used.toFixed(2)}/${server_stat.gpu_vram_total.toFixed(2)}GB (${server_stat.gpu_memory_percent.toFixed(2)}%)` + "\n"
             + "**GPU Temp: **" + server_stat.gpu_temp.toFixed(2) + "°C"
 

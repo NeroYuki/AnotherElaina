@@ -229,9 +229,15 @@ module.exports = {
         const mask_color = interaction.options.getString('mask_color') || 'black'
         const sampler = interaction.options.getString('sampler') || profile?.sampler || 'Euler a'
         const scheduler = interaction.options.getString('scheduler') || profile?.scheduler || 'Automatic'
-        const cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || profile?.cfg_scale || 7, 0, 30)
+        let cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || profile?.cfg_scale || 7, 0, 30)
         const sampling_step = clamp(interaction.options.getInteger('sampling_step') || profile?.sampling_step || 20, 1, 100)
         const default_neg_prompt = interaction.options.getString('default_neg_prompt') || 'n_sfw'
+        
+        // Force cfg_scale to 1 if no negative prompt is specified at all
+        if (default_neg_prompt === 'n_nsfw' && neg_prompt.trim() === '') {
+            cfg_scale = 1;
+        }
+        
         let inpaint_area = interaction.options.getString('inpaint_area') || 'Whole picture'
         let should_mask_control = false
         if (inpaint_area === 'Whole picture_M') {
@@ -932,7 +938,7 @@ module.exports = {
             const create_data = get_data_body_img2img(server_index, prompt, neg_prompt, sampling_step, cfg_scale,
                 seed, sampler, scheduler, session_hash, height, width, attachment, mask_data_uri, denoising_strength, 4, mask_blur, mask_content, "None", false, 
                 extra_config.coupler_config, extra_config.color_grading_config, 1, is_censor, extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config,
-                inpaint_area, mask_padding, extra_config.use_foocus, extra_config.use_booru_gen, booru_gen_config_obj, is_flux, attachment_upload_path, mask_upload_path, 
+                inpaint_area, mask_padding, extra_config.use_foocus, extra_config.use_booru_gen, booru_gen_config_obj, cached_model[0], attachment_upload_path, mask_upload_path, 
                 colorbalance_config_obj, usersetting, null, null, "None", extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config,
                 extra_config.mahiro_config, extra_config.teacache_config)
     
@@ -972,7 +978,7 @@ module.exports = {
                             .addField('Random seed', data.seed, true)
                             .addField('Model used', `${data.model_name || "Unknown Model"} (${data.model})`, true)
                             .setImage(`attachment://${data.img_name}`)
-                            .setFooter({text: `Putting ${Array("my RTX 4060 Ti","plub's RTX 3070")[0]} to good use!`});
+                            .setFooter({text: `Putting ${Array("my RTX 5060 Ti","plub's RTX 3070")[0]} to good use!`});
                     }
                     else if (state === 'progress') {
                         embeded = new MessageEmbed()

@@ -200,7 +200,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
     height, width, attachment, attachment2, denoising_strength, mode = 0, mask_blur = 4, mask_content = "original", upscaler = "None", 
     is_using_adetailer = false, coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, 
     freeu_config = null, dynamic_threshold_config = null, pag_config = null, inpaint_area = "Whole picture", mask_padding = 32,
-    use_foocus = false, use_booru_gen = false, booru_gen_config = null, is_flux = false,
+    use_foocus = false, use_booru_gen = false, booru_gen_config = null, current_model = '',
     inpaint_img_upload_path = null, inpaint_mask_upload_path = null, colorbalance_config = null, usersetting = null, outpaint_config = null, 
     upscale_config = null, extra_script = "None", detail_daemon_config = null, tipo_input = null, latentmod_config = null,
     mahiro_config = null, teacache_config = null) => {
@@ -211,6 +211,26 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
     const inpaint_mask = convert_upload_path_to_file_data(inpaint_mask_upload_path, server_pool[0].url)
     // check if prompt contain "(<word>:-<decimal number>)" format
     const shouldUseNegPip = (prompt && prompt.match(/\([\w\s]+:-?\d+(\.\d+)?\)/g)) ? true : false
+
+    // Determine model type and calculate cfg/shift accordingly
+    const is_flux = model_selection_flux.find(x => x.value === current_model) != null
+    const is_lumina = model_selection_lumina.find(x => x.value === current_model) != null
+    const is_z_image = model_selection_z_image.find(x => x.value === current_model) != null
+    
+    let final_cfg, final_shift;
+    if (is_flux) {
+        final_cfg = 1;
+        final_shift = cfg_scale;
+    } else if (is_lumina) {
+        final_cfg = cfg_scale;
+        final_shift = 6;
+    } else if (is_z_image) {
+        final_cfg = 1;
+        final_shift = cfg_scale;
+    } else {
+        final_cfg = cfg_scale;
+        final_shift = 3;
+    }
 
     if (true) {
         return [
@@ -233,8 +253,8 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             mask_content,
             1,
             1,
-            is_flux ? 1 : cfg_scale,        // sd cfg scale
-            is_flux ? cfg_scale : 1,        // distilled cfg scale
+            final_cfg,    // cfg
+            final_shift,      // distilled cfg/shift
             1.5,            // still no idea what this is
             denoising_strength,
             0,
@@ -499,13 +519,33 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
     height, width, upscale_multiplier, upscaler, upscale_denoise_strength, upscale_step, face_restore = false, is_using_adetailer = false, 
     coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, 
     freeu_config = null, dynamic_threshold_config = null, pag_config = null, use_foocus = false, use_booru_gen = false, booru_gen_config = null, 
-    is_flux = false, colorbalance_config = null, usersetting = null, detail_daemon_config = null, tipo_input = null, latentmod_config = null,
+    current_model = '', colorbalance_config = null, usersetting = null, detail_daemon_config = null, tipo_input = null, latentmod_config = null,
     mahiro_config = null, teacache_config = null, batch_count = 1, batch_size = 1) => {
 
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 1600000) ? true : false
     // check if prompt contain "(<word>:-<decimal number>)" format
     const shouldUseNegPip = (prompt && prompt.match(/\([\w\s]+:-?\d+(\.\d+)?\)/g)) ? true : false
+
+    // Determine model type and calculate cfg/shift accordingly
+    const is_flux = model_selection_flux.find(x => x.value === current_model) != null
+    const is_lumina = model_selection_lumina.find(x => x.value === current_model) != null
+    const is_z_image = model_selection_z_image.find(x => x.value === current_model) != null
+    
+    let final_cfg, final_shift;
+    if (is_flux) {
+        final_cfg = 1;
+        final_shift = cfg_scale;
+    } else if (is_lumina) {
+        final_cfg = cfg_scale;
+        final_shift = 6;
+    } else if (is_z_image) {
+        final_cfg = 1;
+        final_shift = cfg_scale;
+    } else {
+        final_cfg = cfg_scale;
+        final_shift = 3;
+    }
 
     console.log(upscale_multiplier, upscaler, upscale_denoise_strength, upscale_step)
     if (true) {
@@ -516,8 +556,8 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             [],
             batch_count,
             batch_size,
-            is_flux ? 1 : cfg_scale,
-            is_flux ? cfg_scale : 3.5,
+            final_cfg,    // cfg
+            final_shift,      // distilled cfg/shift
             height,
             width,
             upscale_multiplier > 1 ? true : false,      // Hires fix
@@ -533,8 +573,8 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             "Use same scheduler",
             "",
             "",
-            4,  // sd cfg
-            3,  // flux distilled cfg
+            final_cfg,  // hires cfg
+            final_shift,  // hires distilled cfg/shift
             null,
             "None",
             sampling_step,
@@ -818,70 +858,70 @@ const model_name_hash_mapping = new Map([
 const model_selection = [
     { name: 'Pastel Mix v2.1', value: 'pastelmix.safetensors' },
     { name: 'Counterfeit v2.5', value: 'counterfeit.safetensors' },
-    { name: 'MeinaMix v11', value: 'archive/meinamix_v11.safetensors' },
+    { name: 'MeinaMix v11', value: 'archive\\meinamix_v11.safetensors' },
     { name: 'HimawariMix v8', value: 'himawarimix.safetensors' },
     { name: 'Anything v5', value: 'anythingv5.safetensors' },
-    { name: 'CetusMix (Coda v2)', value: 'archive/cetusmix_coda2.safetensors' },
-    { name: 'RichyRichMix v2', value: 'archive/richyrichmix_v2.safetensors' },
-    { name: 'CuteYukiMix', value: 'archive/cuteyukimix.safetensors' },
-    { name: 'IrisMix v5b', value: 'archive/irismix_v5b.safetensors'},
+    { name: 'CetusMix (Coda v2)', value: 'archive\\cetusmix_coda2.safetensors' },
+    { name: 'RichyRichMix v2', value: 'archive\\richyrichmix_v2.safetensors' },
+    { name: 'CuteYukiMix', value: 'archive\\cuteyukimix.safetensors' },
+    { name: 'IrisMix v5b', value: 'archive\\irismix_v5b.safetensors'},
 ]
 
 // if model is in this list, remove it when construct the model selection
 const model_selection_legacy = [
     { name: 'Counterfeit v2.5', value: 'counterfeit.safetensors' },
     { name: 'Anything v5', value: 'anythingv5.safetensors' },
-    { name: 'CetusMix (Coda v2)', value: 'archive/cetusmix_coda2.safetensors' },
-    { name: 'MeinaMix v11', value: 'archive/meinamix_v11.safetensors' },
-    { name: 'RichyRichMix v2', value: 'archive/richyrichmix_v2.safetensors' },
-    { name: 'CuteYukiMix', value: 'archive/cuteyukimix.safetensors' },
-    { name: 'IrisMix v5b', value: 'archive/irismix_v5b.safetensors'},
-    { name: 'KohakuXL Zeta', value: 'archive/kohakuxl_zeta.safetensors'},
-    { name: 'Dreamshaper XL Lightning', value: 'archive/dreamshaperxl_lightning.safetensors'},
-    { name: 'PonyDiffusionXL v6', value: 'archive/ponydiffusionxl_v6.safetensors'},
-    { name: 'PonyRealism v2.2', value: 'archive/ponyrealism_v22.safetensors'},
+    { name: 'CetusMix (Coda v2)', value: 'archive\\cetusmix_coda2.safetensors' },
+    { name: 'MeinaMix v11', value: 'archive\\meinamix_v11.safetensors' },
+    { name: 'RichyRichMix v2', value: 'archive\\richyrichmix_v2.safetensors' },
+    { name: 'CuteYukiMix', value: 'archive\\cuteyukimix.safetensors' },
+    { name: 'IrisMix v5b', value: 'archive\\irismix_v5b.safetensors'},
+    { name: 'KohakuXL Zeta', value: 'archive\\kohakuxl_zeta.safetensors'},
+    { name: 'Dreamshaper XL Lightning', value: 'archive\\dreamshaperxl_lightning.safetensors'},
+    { name: 'PonyDiffusionXL v6', value: 'archive\\ponydiffusionxl_v6.safetensors'},
+    { name: 'PonyRealism v2.2', value: 'archive\\ponyrealism_v22.safetensors'},
     { name: 'IllusionBreed v3', value: 'illusionbreed_vpred_v30.safetensors'},
-    { name: 'AnimagineXL v3', value: 'archive/animaginexl_v3.safetensors'},
-    { name: 'NekorayXL v0.6', value: 'archive/nekorayxl.safetensors' },
-    { name: 'ArtiWaifu v2', value: 'archive/artiwaifu_v2.safetensors'},
-    { name: 'IllustriousXL v1', value: 'archive/Illustriousxl_v10.safetensors'},
-    { name: 'IllustriousXL v1.1', value: 'archive/Illustriousxl_v11.safetensors'},
+    { name: 'AnimagineXL v3', value: 'archive\\animaginexl_v3.safetensors'},
+    { name: 'NekorayXL v0.6', value: 'archive\\nekorayxl.safetensors' },
+    { name: 'ArtiWaifu v2', value: 'archive\\artiwaifu_v2.safetensors'},
+    { name: 'IllustriousXL v1', value: 'archive\\Illustriousxl_v10.safetensors'},
+    { name: 'IllustriousXL v1.1', value: 'archive\\Illustriousxl_v11.safetensors'},
     { name: 'WAI-NSFW-IllustriousXL v12', value: 'wai_nsfw_illustrious_v120.safetensors'},
-    { name: 'RealVisXL v5', value: 'archive/realvisxl_v5.safetensors'},
-    { name: 'SilenceMix v1', value: 'archive/silencemix_v10.safetensors'},
-    { name: 'Flux.dev Q6_K', value: 'archive/flux1-dev-Q6_K.gguf' },
-    { name: 'PrefectPony v5.0', value: 'archive/prefectpony_v50.safetensors'},
-    { name: 'AutismMix PonyXL', value: 'archive/autismmix_ponyxl.safetensors'},
+    { name: 'RealVisXL v5', value: 'archive\\realvisxl_v5.safetensors'},
+    { name: 'SilenceMix v1', value: 'archive\\silencemix_v10.safetensors'},
+    { name: 'Flux.dev Q6_K', value: 'archive\\flux1-dev-Q6_K.gguf' },
+    { name: 'PrefectPony v5.0', value: 'archive\\prefectpony_v50.safetensors'},
+    { name: 'AutismMix PonyXL', value: 'archive\\autismmix_ponyxl.safetensors'},
     { name: 'IllumiyumeXL V-pred v3.2' , value: 'illumiyumexl_vpred_v32.safetensors'},
-    { name: 'Rouwei V-pred v0.8' , value: 'archive/rouwei_vpred_v0_8.safetensors'},
+    { name: 'Rouwei V-pred v0.8' , value: 'archive\\rouwei_vpred_v0_8.safetensors'},
 ]
 
 const model_selection_xl = [
-    { name: 'PrefectPony v5.0', value: 'archive/prefectpony_v50.safetensors'},
-    { name: 'AutismMix PonyXL', value: 'archive/autismmix_ponyxl.safetensors'},
+    { name: 'PrefectPony v5.0', value: 'archive\\prefectpony_v50.safetensors'},
+    { name: 'AutismMix PonyXL', value: 'archive\\autismmix_ponyxl.safetensors'},
     { name: 'NoobAIXL v1.1', value: 'noobaixl_v1_1.safetensors'},
     { name: 'NoobAIXL V-pred v1.0', value: 'noobaixl_vpred_v1.safetensors'},
-    { name: 'NekorayXL v0.6', value: 'archive/nekorayxl.safetensors' },
+    { name: 'NekorayXL v0.6', value: 'archive\\nekorayxl.safetensors' },
     { name: 'AnimagineXL v4', value: 'animaginexl_v40_opt.safetensors' },
-    { name: 'AnimagineXL v3', value: 'archive/animaginexl_v3.safetensors'},
+    { name: 'AnimagineXL v3', value: 'archive\\animaginexl_v3.safetensors'},
     { name: 'AnimagineXL v3.1', value: 'animaginexl_v31.safetensors'},
     { name: 'ChimeraXL v2', value: 'chimera2_xl.safetensors'},
-    { name: 'KohakuXL Zeta', value: 'archive/kohakuxl_zeta.safetensors'},
-    { name: 'Juggernaut XL', value: 'archive/juggernautxl_turbo.safetensors'},
-    { name: 'PonyRealism v2.2', value: 'archive/ponyrealism_v22.safetensors'},
-    { name: 'Dreamshaper XL Lightning', value: 'archive/dreamshaperxl_lightning.safetensors'},
-    { name: 'RealVisXL v5', value: 'archive/realvisxl_v5.safetensors'},
+    { name: 'KohakuXL Zeta', value: 'archive\\kohakuxl_zeta.safetensors'},
+    { name: 'Juggernaut XL', value: 'archive\\juggernautxl_turbo.safetensors'},
+    { name: 'PonyRealism v2.2', value: 'archive\\ponyrealism_v22.safetensors'},
+    { name: 'Dreamshaper XL Lightning', value: 'archive\\dreamshaperxl_lightning.safetensors'},
+    { name: 'RealVisXL v5', value: 'archive\\realvisxl_v5.safetensors'},
     { name: 'StableYogis Realism v4', value: 'stableyogi_realism_v40.safetensors'},
-    { name: 'PonyDiffusionXL v6', value: 'archive/ponydiffusionxl_v6.safetensors'},
+    { name: 'PonyDiffusionXL v6', value: 'archive\\ponydiffusionxl_v6.safetensors'},
     { name: 'SilverMoonMix3 v2', value: 'silvermoonmix03_v20.safetensors'},
     { name: 'IllusionBreed v3', value: 'illusionbreed_vpred_v30.safetensors'},
-    { name: 'SilenceMix v1', value: 'archive/silencemix_v10.safetensors'},
+    { name: 'SilenceMix v1', value: 'archive\\silencemix_v10.safetensors'},
     { name: 'SilenceMix v3', value: 'silencemix_v30.safetensors'},
     { name: 'ZukiCuteIL v5', value: 'zukicuteil_v50.safetensors'},
     { name: 'ZukiNewCuteIL v1', value: 'zukinewcuteil_v10.safetensors'},
-    { name: 'ArtiWaifu v2', value: 'archive/artiwaifu_v2.safetensors'},
-    { name: 'IllustriousXL v1', value: 'archive/Illustriousxl_v10.safetensors'},
-    { name: 'IllustriousXL v1.1', value: 'archive/Illustriousxl_v11.safetensors'},
+    { name: 'ArtiWaifu v2', value: 'archive\\artiwaifu_v2.safetensors'},
+    { name: 'IllustriousXL v1', value: 'archive\\Illustriousxl_v10.safetensors'},
+    { name: 'IllustriousXL v1.1', value: 'archive\\Illustriousxl_v11.safetensors'},
     { name: 'IllustriousXL v2.0', value: 'Illustriousxl_v20.safetensors'},
     { name: 'WAI-NSFW-IllustriousXL v12', value: 'wai_nsfw_illustrious_v120.safetensors'},
     { name: 'WAI-NSFW-IllustriousXL v16', value: 'wai_nsfw_illustrious_v160.safetensors'},
@@ -889,7 +929,7 @@ const model_selection_xl = [
     { name: 'IllumiyumeXL V-pred v3.1' , value: 'illumiyumexl_vpred_v31.safetensors'},
     { name: 'IllumiyumeXL V-pred v3.2' , value: 'illumiyumexl_vpred_v32.safetensors'},
     { name: 'NoobAIXL MDNT V-pred v1.0' , value: 'noobaixl_mdnt_vpred_v1.safetensors'},
-    { name: 'Rouwei V-pred v0.8' , value: 'archive/rouwei_vpred_v0_8.safetensors'},
+    { name: 'Rouwei V-pred v0.8' , value: 'archive\\rouwei_vpred_v0_8.safetensors'},
     { name: 'ColorPalette v1' , value: 'colorpalette_v10.safetensors'},
     { name: 'Seele NoobAIXL V-pred v2.0' , value: 'seele_noobaixl_vpred_v2_0.safetensors'},
     { name: 'PVC Model Style v1.1', value: 'PVCStyleModelMovable_epsIll11.safetensors' },
@@ -897,15 +937,50 @@ const model_selection_xl = [
 
 const model_selection_inpaint = [
     { value: 'animaginexl_v31.safetensors', inpaint: 'animaginexl_v31_inpaint.safetensors'},
-    { value: 'archive/juggernautxl_turbo.safetensors', inpaint: 'juggernautxl_inpaint.safetensors'},
-    { value: 'archive/realvisxl_v5.safetensors', inpaint: 'archive/realvisxl_v3_inpaint.safetensors'}
+    { value: 'archive\\juggernautxl_turbo.safetensors', inpaint: 'juggernautxl_inpaint.safetensors'},
+    { value: 'archive\\realvisxl_v5.safetensors', inpaint: 'archive\\realvisxl_v3_inpaint.safetensors'}
 ]
 
 const model_selection_flux = [
-    { name: 'Flux.dev Q6_K', value: 'archive/flux1-dev-Q6_K.gguf' },
+    { name: 'Flux.dev Q6_K', value: 'archive\\flux1-dev-Q6_K.gguf' },
     { name: 'Flux.dev Q8_0', value: 'flux1-dev-Q8_0.gguf'},
     { name: 'Flux Krea.dev Q8_0', value: 'flux1-krea-dev-Q8_0.gguf'},
+    { name: 'Flux Fill.dev Q6_K', value: 'comfy_sym\\flux1-fill-dev-Q6_K.gguf'},
+    { name: 'Flux Kontext.dev Q6_K', value: 'comfy_sym\\flux1-kontext-dev-Q6_K.gguf'},
     { name: 'Pixelwave Flux v3 Q8_0', value: 'pixelwave-flux-Q8_0.gguf'}
+]
+
+const model_selection_chroma = [
+    { name: 'Chroma1 HD Flash Q8_0', value: 'Chroma1-HD-Flash-Q8_0.gguf'},
+    { name: 'Chroma1 HD Q8_0', value: 'comfy_sym\\Chroma1-HD-dc-fl-Q8_0.gguf'},
+    { name: 'Chroma Detail v0.94 Q8_0', value: 'comfy_sym\\chroma-unlocked-v47-detail-calibrated-Q8_0.gguf'},
+]
+
+const model_selection_flux_klein_9b = [
+    { name: 'Flux2 Klein 9B FP8', value: 'flux-2-klein-9b-fp8.safetensors'}
+]
+
+const model_selection_flux_klein_4b = [
+    { name: 'Flux2 Klein 4B', value: 'flux-2-klein-4b.safetensors'}
+]
+
+const model_selection_anima = [
+    { name: 'Anima Preview', value: 'anima-preview.safetensors'},
+]
+
+const model_selection_z_image = [
+    { name: 'Z Image Turbo', value: 'comfy_sym\\z_image_turbo_bf16.safetensors'},
+]
+
+const model_selection_qwen_image = [
+    { name: 'Qwen Image Nunchaku FP4', value: 'comfy_sym\\svdq-fp4_r128-qwen-image.safetensors'},
+    { name: 'Qwen Image Edit Nck. FP4 8 Steps', value: 'comfy_sym\\svdq-fp4_r128-qwen-image-edit-lightningv1.0-8steps.safetensors'},
+    { name: 'Qwen Image Edit 2509 Nck. FP4 8 Steps', value: 'comfy_sym\\svdq-fp4_r128-qwen-image-edit-2509-lightningv2.0-8steps.safetensors'},
+]
+
+const model_selection_lumina = [
+    { name: 'Neta Lumina v1', value: 'comfy_sym\\neta-lumina-v1.0.safetensors'},
+    { name: 'NetaYume Lumina v3', value: 'comfy_sym\\NetaYumev3_unet.safetensors'},
 ]
 
 const model_selection_curated = [
@@ -1033,7 +1108,7 @@ const sampler_selection = [
     { name: 'DPM adaptive', value: 'DPM adaptive' },
     { name: 'DPM++ 2M SDE', value: 'DPM++ 2M SDE' },
     { name: 'DPM++ 2M SDE Heun', value: 'DPM++ 2M SDE Heun' },
-    { name: 'DEIS', value: 'DEIS' }, 
+    { name: 'ER SDE', value: 'ER SDE' }, 
     { name: 'DPM++ 4M SDE', value: 'DPM++ 4M SDE' },
     { name: 'Refined Exponential Solver', value: 'Refined Exponential Solver' },
     { name: 'Res Multistep Ancestral', value: 'Res Multistep Ancestral' },
@@ -1043,7 +1118,7 @@ const sampler_selection = [
     { name: 'Heun Ancestral', value: 'Heun Ancestral' },
     { name: 'Kohaku LoNyu Yog', value: 'Kohaku LoNyu Yog' },
     { name: 'Langevin Euler', value: 'Langevin Euler' },
-    { name: 'Euler Max', value: 'Euler Max' }
+    { name: 'Res Multistep', value: 'Res Multistep' }
 ]
 
 const scheduler_selection = [
@@ -1057,9 +1132,14 @@ const scheduler_selection = [
     { name: 'Normal', value: 'Normal'},
     { name: 'Simple', value: 'Simple'},
     { name: 'Cosine', value: 'Cosine'},
+    { name: 'CosineExponential', value: 'CosineExponential blend'},
     { name: 'Beta', value: 'Beta'},
+    { name: 'Turbo', value: 'Turbo'},
     { name: 'Karras Dynamic', value: 'Karras Dynamic'},
+    { name: 'Phi', value: 'Phi'},
+    { name: 'Laplace', value: 'Laplace'},
     { name: 'KL Optimal', value: 'KL Optimal'},
+    { name: 'Bong Tangent', value: 'Bong Tangent'},
     { name: 'Align Your Steps GITS', value: 'Align Your Steps GITS'},
     { name: 'Align Your Steps 32', value: 'Align Your Steps 32'},
 ]
@@ -1091,12 +1171,38 @@ const scheduler_to_comfy_name_mapping = {
 }
 
 const check_model_filename = (model_filename) => {
+    console.log(`Checking model filename: ${model_filename}`)
+
+    // deprecated model name mapping (a1111 legacy)
     for (let [key, value] of model_name_hash_mapping) {
         if (model_filename.includes(key)) {
             return value
         }
     }
-    return model_filename
+
+    // map with all model_selection arrays
+    const all_model_selections = [
+        ...model_selection,
+        ...model_selection_xl,
+        ...model_selection_flux,
+        ...model_selection_anima,
+        ...model_selection_chroma,
+        ...model_selection_flux_klein_9b,
+        ...model_selection_flux_klein_4b,
+        ...model_selection_z_image,
+        ...model_selection_qwen_image,
+        ...model_selection_lumina,
+        ...model_selection_curated,
+        ...model_selection_inpaint,
+        ...model_selection_legacy,
+    ]
+    for (let model of all_model_selections) {
+        if (model_filename.includes(model.value)) {
+            return model.value
+        }
+    }
+
+    return model_filename + " (Testing)"
 }
 
 function escape_for_regex(s) {
@@ -1217,6 +1323,13 @@ module.exports = {
     model_selection,
     model_selection_xl,
     model_selection_flux,
+    model_selection_anima,
+    model_selection_chroma,
+    model_selection_flux_klein_9b,
+    model_selection_flux_klein_4b,
+    model_selection_z_image,
+    model_selection_qwen_image,
+    model_selection_lumina,
     model_selection_curated,
     model_selection_inpaint,
     model_selection_legacy,
