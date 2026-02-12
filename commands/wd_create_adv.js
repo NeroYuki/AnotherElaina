@@ -485,38 +485,38 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         // calculate compute (change model)
         const cooldown = compute * bulk_size / (bulk_size > 1 ? 2_750_000 : 2_500_000)
 
-        const force_legacy_flux = prompt.includes('[FLUX_FORGE]')
-        prompt = prompt.replace('[FLUX_FORGE]', '')
+        // const force_legacy_flux = prompt.includes('[FLUX_FORGE]')
+        // prompt = prompt.replace('[FLUX_FORGE]', '')
         
         const is_debugging = prompt.includes('[DEBUG]') || neg_prompt.includes('[DEBUG]')
         prompt = prompt.replace('[DEBUG]', '').trim()
         neg_prompt = neg_prompt.replace('[DEBUG]', '').trim()
         // search for lora load call <lora:...:...>
-        if (is_flux && !force_legacy_flux) {
-            // flux lora is broken in forge backend, switch to comfyUI backend
-            interaction.channel.send({ content: `Detected Flux, switching to ComfyUI backend, some options will be ignore. You can create another image in ${cooldown.toFixed(2)} seconds ${teacache_check.teacache_config ? "(Teacache activated: -" + (100 * (1 - Math.pow(1 - teacache_check.teacache_config?.threshold || 0.1, 2))).toFixed(0) + "%)" : ""}` });
-            if (ComfyClient.promptListener.length == 0 && ComfyClient.comfyStat.gpu_vram_used > 5) {
-                await interaction.editReply({ content: 'Not enough resource can be allocated to finish this command, please try again later' });
-                return;
-            }
-            this.execute_comfy(interaction, client, {
-                prompt,
-                width,
-                height,
-                sampling_step,
-                model: cached_model[0],
-                sampler: sampler_to_comfy_name_mapping[sampler] ?? "euler",
-                scheduler: scheduler_to_comfy_name_mapping[scheduler] ?? "normal",
-                teacache_strength: teacache_check.teacache_config ? teacache_check.teacache_config.threshold : 0
-            })
+        // if (is_flux && !force_legacy_flux) {
+        //     // flux lora is broken in forge backend, switch to comfyUI backend
+        //     interaction.channel.send({ content: `Detected Flux, switching to ComfyUI backend, some options will be ignore. You can create another image in ${cooldown.toFixed(2)} seconds ${teacache_check.teacache_config ? "(Teacache activated: -" + (100 * (1 - Math.pow(1 - teacache_check.teacache_config?.threshold || 0.1, 2))).toFixed(0) + "%)" : ""}` });
+        //     if (ComfyClient.promptListener.length == 0 && ComfyClient.comfyStat.gpu_vram_used > 5) {
+        //         await interaction.editReply({ content: 'Not enough resource can be allocated to finish this command, please try again later' });
+        //         return;
+        //     }
+        //     this.execute_comfy(interaction, client, {
+        //         prompt,
+        //         width,
+        //         height,
+        //         sampling_step,
+        //         model: cached_model[0],
+        //         sampler: sampler_to_comfy_name_mapping[sampler] ?? "euler",
+        //         scheduler: scheduler_to_comfy_name_mapping[scheduler] ?? "normal",
+        //         teacache_strength: teacache_check.teacache_config ? teacache_check.teacache_config.threshold : 0
+        //     })
 
-            client.cooldowns.set(interaction.user.id, true);
+        //     client.cooldowns.set(interaction.user.id, true);
 
-            setTimeout(() => {
-                client.cooldowns.delete(interaction.user.id);
-            }, cooldown * 1000);
-            return
-        }
+        //     setTimeout(() => {
+        //         client.cooldowns.delete(interaction.user.id);
+        //     }, cooldown * 1000);
+        //     return
+        // }
 
         if (is_debugging) {
             // debug mode, use comfyUI backend
