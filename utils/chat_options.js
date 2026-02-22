@@ -465,7 +465,7 @@ const operatingMode2Config = {
         prompt_config: qwen
     },
     "online": {
-        model: "gemini-2.5-flash",
+        model: "gemini-3-flash-preview",
         server: "https://generativelanguage.googleapis.com",
         override_options: {
             num_ctx: 128000,
@@ -474,10 +474,10 @@ const operatingMode2Config = {
         prompt_config: gemini
     },
     "online_lite": {
-        model: "gemini-2.5-flash-lite-preview-06-17",
+        model: "gemini-2.5-flash",
         server: "https://generativelanguage.googleapis.com",
         override_options: {
-            num_ctx: 64000,
+            num_ctx: 128000,
             num_predict: 500,
         },
         prompt_config: gemini
