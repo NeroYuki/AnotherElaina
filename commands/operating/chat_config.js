@@ -1,7 +1,7 @@
 var { operating_mode } = require('../../utils/text_gen_store');
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { byPassUser } = require('../../config.json');
-const { unload_model } = require('../../utils/ollama_request');
+const { unload_model } = require('../../utils/lmstudio_request');
 const { operatingMode2Config } = require('../../utils/chat_options');
 
 module.exports = {
@@ -20,8 +20,7 @@ module.exports = {
                     { name: 'Standard', value: 'standard' },
                     { name: 'Uncensored', value: 'uncensored' },
                     { name: 'Online', value: 'online' },
-                    { name: 'Online Lite', value: 'online_lite' },
-                    { name: 'Uncensored Vision', value: 'vision' }
+                    { name: 'Online Lite', value: 'online_lite' }
                 ))
         .addBooleanOption(option =>
             option.setName('stream')
@@ -42,7 +41,7 @@ module.exports = {
             return;
         }
 
-        if (mode == "disabled" || mode == "auto" || mode == "auto_local" || mode == "saving" || mode == "standard" || mode == "vision") {
+        if (mode == "disabled" || mode == "auto" || mode == "auto_local" || mode == "saving" || mode == "standard") {
             if (operatingMode2Config[globalThis.operating_mode]) {
                 unload_model(operatingMode2Config[globalThis.operating_mode].model);
             }

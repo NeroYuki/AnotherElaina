@@ -58,7 +58,7 @@ function chat_completion(model, context) {
                 reject(new Error('Request failed'))
             }
         }).then(res => {
-            // Convert Gemini response to ollama-like format
+            // Convert Gemini response to LM Studio-compatible format
             const response = {
                 message: {
                     role: 'assistant',
@@ -128,7 +128,7 @@ function text_completion(config, prompt, callback, images = [] /* list of base64
     }).then(async res => {
         if (res.ok) {
             const json = await res.json()
-            // Convert to ollama-like response format
+            // Convert to LM Studio-compatible response format
             const response = {
                 response: json.candidates?.[0]?.content?.parts?.[0]?.text || '',
                 done: true,

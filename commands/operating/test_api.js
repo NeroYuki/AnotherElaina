@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { text_completion_stream } = require('../../utils/ollama_request');
+const { text_completion_stream } = require('../../utils/lmstudio_request');
 
 module.exports = {
 	data: new SlashCommandBuilder()

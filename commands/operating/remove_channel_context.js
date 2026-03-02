@@ -1,7 +1,7 @@
 var { operating_mode, context_storage } = require('../../utils/text_gen_store');
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { byPassUser } = require('../../config.json');
-const { unload_model } = require('../../utils/ollama_request');
+const { unload_model } = require('../../utils/lmstudio_request');
 const { operatingMode2Config } = require('../../utils/chat_options');
 
 module.exports = {

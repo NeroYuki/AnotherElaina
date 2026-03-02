@@ -1,10 +1,10 @@
 const { context_storage } = require('../utils/text_gen_store');
 var { is_generating } = require('../utils/text_gen_store');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
-const { text_completion_stream, text_completion } = require('../utils/ollama_request');
+const { text_completion_stream, text_completion } = require('../utils/lmstudio_request');
 const { text_completion: gemini_text_completion, text_completion_stream: gemini_text_completion_stream } = require('../utils/gemini_request');
 const { loadImage } = require('../utils/load_discord_img');
-const { operatingMode2Config } = require('../utils/chat_options');
+const { operatingMode2Config, buildPrompt } = require('../utils/chat_options');
 const comfyClient = require('../utils/comfy_client');
 const { getBestOperatingMode, getOperatingModeStatus } = require('../utils/operating_mode_selector');
 
@@ -39,13 +39,11 @@ async function responseToMessage(client, message, content, is_continue = false, 
             console.log('[Token Override] <local> token detected - forcing auto_local mode for this message')
         }
         
-        // Check for <unsafe> token - forces vision (with images) or uncensored mode
+        // Check for <unsafe> token - forces uncensored mode
         if (content.includes('<unsafe>')) {
-            const hasImages = attachment_options && attachment_options.length > 0
-            
-            forced_mode = hasImages ? 'vision' : 'uncensored'
+            forced_mode = 'uncensored'
             content = content.replace(/<unsafe>/g, '').trim()
-            console.log(`[Token Override] <unsafe> token detected - forcing ${forced_mode} mode for this message`)
+            console.log(`[Token Override] <unsafe> token detected - forcing uncensored mode for this message`)
         }
     }
 
@@ -53,7 +51,6 @@ async function responseToMessage(client, message, content, is_continue = false, 
     const current_mode = forced_mode || globalThis.operating_mode
 
     if (current_mode === "auto" || current_mode === "auto_local") {
-        // Check if we have images to determine if vision mode is needed
         const hasImages = attachment_options && attachment_options.length > 0
         
         // Determine if we should avoid online modes
@@ -68,7 +65,7 @@ async function responseToMessage(client, message, content, is_continue = false, 
             console.log('[Thinking Mode] Switching to uncensored mode for thinking capability in auto_local')
             operating_mode = 'uncensored_thinking'
         }
-        else if (localOnly && ['saving', 'vision', 'standard'].includes(operating_mode)) {
+        else if (localOnly && ['saving', 'standard'].includes(operating_mode)) {
             should_think = false // Reset thinking mode if not applicable
         }
         
@@ -84,9 +81,8 @@ async function responseToMessage(client, message, content, is_continue = false, 
             console.log('[Thinking Mode] Thinking enabled for this message')
         }
         
-        // Load images if we have any and the selected mode supports them
-        if (hasImages && ['vision', 'online', 'online_lite', 'standard', 'saving'].includes(operating_mode)) {
-            //download the image from attachment.proxyURL
+        // Load images if we have any (all modes now support vision)
+        if (hasImages) {
             for (let i = 0; i < attachment_options.length; i++) {
                 attachments.push(await loadImage(attachment_options[i].proxyURL, false, true).catch((err) => {
                     console.log(err)
@@ -94,21 +90,15 @@ async function responseToMessage(client, message, content, is_continue = false, 
                     return
                 }))
             }
-        } else if (hasImages && !['vision', 'online', 'online_lite', 'standard', 'saving'].includes(operating_mode)) {
-            // Inform user that images cannot be processed in the current mode
-            const reason = localOnly ? "local-only mode is active" : "rate limits and system load"
-            message.channel.send(`SYSTEM: Image processing is temporarily unavailable due to ${reason}. Please try again later or use text-only input.`)
-            return
         }
     } else if (forced_mode) {
         // If mode is forced by token, use it directly
         operating_mode = forced_mode
         console.log(`[Forced Mode] Using ${operating_mode} mode due to token override`)
         
-        // Load images if we have any and the mode supports them
+        // Load images if we have any (all modes now support vision)
         const hasImages = attachment_options && attachment_options.length > 0
-        if (hasImages && ['vision', 'online', 'online_lite', 'standard', 'saving'].includes(operating_mode)) {
-            //download the image from attachment.proxyURL
+        if (hasImages) {
             for (let i = 0; i < attachment_options.length; i++) {
                 attachments.push(await loadImage(attachment_options[i].proxyURL, false, true).catch((err) => {
                     console.log(err)
@@ -184,29 +174,38 @@ async function responseToMessage(client, message, content, is_continue = false, 
 
     let options = operatingMode2Config[operating_mode].override_options
 
-    let prompt = ''
-    let scenario = prompt_config.scenario
-
-    // build back prompt
-    prompt = `${scenario}`
-
-    // console.log("Context:")
-    // console.log(context)
-
-    for (let i = 0; i < context.length; i++) {
-        if (context[i].role !== 'bot') {
-            prompt += `${prompt_config.user_message(context[i].role).prefix}${context[i].content}${prompt_config.user_message(context[i].role).suffix}` + "\n"
-        }
-        else {
-            prompt += `${prompt_config.bot_message.prefix}${context[i].content}${prompt_config.bot_message.suffix}` + "\n"
-        }
-    }
-
-    // if the total length of content in the context is more than 80000 characters, remove the oldest content
+    // Trim context so it doesn't exceed ~num_ctx*4 characters before building the prompt
     let total_length = context.reduce((acc, val) => acc + val.content.length, 0)
     while (total_length > options.num_ctx * 4) {
         context.shift()
         total_length = context.reduce((acc, val) => acc + val.content.length, 0)
+    }
+
+    let prompt = ''
+    if (["online", "online_lite"].includes(operating_mode)) {
+        // Build prompt using prompt_config for Gemini API
+        let scenario = prompt_config.scenario
+        prompt = `${scenario}`
+        for (let i = 0; i < context.length; i++) {
+            if (context[i].role !== 'bot') {
+                prompt += `${prompt_config.user_message(context[i].role).prefix}${context[i].content}${prompt_config.user_message(context[i].role).suffix}` + "\n"
+            }
+            else {
+                prompt += `${prompt_config.bot_message.prefix}${context[i].content}${prompt_config.bot_message.suffix}` + "\n"
+            }
+        }
+        if (is_continue) {
+            // Gemini is a generative API, not a text completion API — can't leave a message "open".
+            // Instead, add a continuation instruction so the model picks up where it left off.
+            prompt += `${prompt_config.user_message("user").prefix}Continue your previous response seamlessly from where you stopped. Do not repeat what you already said, do not add greetings or preamble.${prompt_config.user_message("user").suffix}` + "\n"
+            prompt += prompt_config.bot_message.prefix
+        }
+        else {
+            prompt += prompt_config.bot_message.prefix
+        }
+    } else {
+        // Build prompt using jinja template format for LM Studio local models
+        prompt = buildPrompt(operatingMode2Config[operating_mode], context, is_continue, ['web-search'])
     }
 
     const row = new MessageActionRow()
@@ -247,19 +246,7 @@ async function responseToMessage(client, message, content, is_continue = false, 
     
     const collector = message.channel.createMessageComponentCollector({ filter, time: 180000 });
 
-    // console.log(prompt)
-    // if is_continue, strip the bot_message.suffix at the end of the prompt if found
-    if (is_continue) {
-        const suffix = prompt_config.bot_message.suffix
-        if (prompt.endsWith(suffix)) {
-            prompt = prompt.slice(0, -suffix.length)
-        }
-    }
-    else {
-        prompt += prompt_config.bot_message.prefix
-    }
-
-    // console.log("Construced prompt:")
+    // console.log("Constructed prompt:")
     // console.log(prompt)
 
     const msgRef = await message.channel.send("...").catch((err) => {
@@ -287,7 +274,7 @@ async function responseToMessage(client, message, content, is_continue = false, 
                     res_gen_elaina += value.response
                     debug_info = value
                     is_done = true
-                }, attachments, should_think)
+                }, attachments, should_think, context)
             }
         }
         else {
@@ -309,7 +296,7 @@ async function responseToMessage(client, message, content, is_continue = false, 
                         debug_info = value
                     }
                     res_gen_elaina += value.response
-                }, attachments, should_think)
+                }, attachments, should_think, context)
             }
         }
 
@@ -328,7 +315,7 @@ async function responseToMessage(client, message, content, is_continue = false, 
             if (is_done) {
                 clearInterval(intervalId)
                 console.log("done")
-                if (["vision", "standard"].includes(operating_mode)) {
+                if (["standard"].includes(operating_mode)) {
                     if (globalThis.llm_load_timer) {
                         console.log("LLM load timer resetted")
                         clearTimeout(globalThis.llm_load_timer)

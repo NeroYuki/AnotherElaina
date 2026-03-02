@@ -40,13 +40,8 @@ function getBestOperatingMode(hasImages = false, localOnly = false) {
     
     // Check if we can use local GPU
     if (comfyClient.comfyStat.gpu_vram_used < 4 || globalThis.llm_load_timer) {
-        if (hasImages) {
-            // console.log('[Mode Selection] Using vision mode - local GPU available with images')
-            return 'standard'
-        } else {
-            // console.log('[Mode Selection] Using standard mode - local GPU available')
-            return 'standard'
-        }
+        // console.log('[Mode Selection] Using standard mode - local GPU available')
+        return 'standard'
     } else {
         if (localOnly) {
             // console.log('[Mode Selection] Using saving mode - local GPU busy and local-only mode active')

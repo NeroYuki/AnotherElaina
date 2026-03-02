@@ -410,35 +410,36 @@ Keep the response short and concise and must be in English, unless requested oth
 
 const operatingMode2Config = {
     "saving": {
-        model: "gemma_lite",        // gemma 3 12b q4 host locally
-        server: "127.0.0.1:11434",
+        model: "qwen3-vl-8b-instruct-heretic",        // qwen3 vl 8b host locally via LM Studio
+        server: "127.0.0.1:1234",
         override_options: {
-            num_ctx: 16384,
+            num_ctx: 8192,
+            num_predict: 400,
             stop: [
-                '<end_of_turn>',
-                '<start_of_turn>',
+                "<|im_start|>",
+                "<|im_end|>",
             ],
-            num_gpu: 0,
         },
-        prompt_config: gemma
+        prompt_config: qwen,
+        prompt_template: 'saving'
     },
     "standard": {
-        model: "gemma_27b",
-        server: process.env.BOT_ENV === 'lan' ? '192.168.1.2:11434' : '192.168.196.142:11434',    // gemma 3 27b q4 host on ai server
+        model: "qwen3.5-35b-a3b-heretic",
+        server: process.env.BOT_ENV === 'lan' ? '192.168.1.2:1234' : '192.168.196.142:1234',    // qwen3.5 35b host on ai server via LM Studio
         override_options: {
             num_ctx: 32000,
             num_predict: 400,
             stop: [
-                '<end_of_turn>',
-                '<start_of_turn>',
+                "<|im_start|>",
+                "<|im_end|>",
             ],
-            num_gpu: 36,
         },
-        prompt_config: gemma
+        prompt_config: qwen,
+        prompt_template: 'standard'
     },
     "uncensored_thinking": {
-        model: "qwq_32b",
-        server: process.env.BOT_ENV === 'lan' ? '192.168.1.2:11434' : '192.168.196.142:11434',    // qwq 32b q4 host on ai server
+        model: "qwen3.5-35b-a3b-heretic",
+        server: process.env.BOT_ENV === 'lan' ? '192.168.1.2:1234' : '192.168.196.142:1234',    // qwen3.5 35b (thinking) host on ai server via LM Studio
         override_options: {
             num_ctx: 32000,
             num_predict: 400,
@@ -446,13 +447,13 @@ const operatingMode2Config = {
                 "<|im_start|>",
                 "<|im_end|>",
             ],
-            num_gpu: 36,
         },
-        prompt_config: qwen
+        prompt_config: qwen,
+        prompt_template: 'standard'
     },
     "uncensored": {
-        model: "qwen3_32b",
-        server: process.env.BOT_ENV === 'lan' ? '192.168.1.2:11434' : '192.168.196.142:11434',    // qwen3 32b q4 host on ai server
+        model: "qwen3.5-27b-heretic-v2",
+        server: process.env.BOT_ENV === 'lan' ? '192.168.1.2:1234' : '192.168.196.142:1234',    // qwen3.5 27b (non-thinking) host on ai server via LM Studio
         override_options: {
             num_ctx: 32000,
             num_predict: 400,
@@ -460,9 +461,9 @@ const operatingMode2Config = {
                 "<|im_start|>",
                 "<|im_end|>",
             ],
-            num_gpu: 36,
         },
-        prompt_config: qwen
+        prompt_config: qwen,
+        prompt_template: 'non_thinking'
     },
     "online": {
         model: "gemini-3-flash-preview",
@@ -482,18 +483,148 @@ const operatingMode2Config = {
         },
         prompt_config: gemini
     },
-    "vision": {
-        model: "qwen_vision_32b",
-        server: process.env.BOT_ENV === 'lan' ? '192.168.1.2:11434' : '192.168.196.142:11434',    // qwenvl 2.5 32b q4 host on ai server
-        override_options: {
-            num_ctx: 32000,
-            num_predict: 400,
-            num_gpu: 36,
-        },
-        prompt_config: qwen
-    }
 }
     
+
+/**
+ * Build a raw prompt string following the jinja chat template format for LM Studio models.
+ * 
+ * Template types:
+ *   - 'standard'     → thinking enabled: generation ends with <think>\n
+ *   - 'non_thinking' → thinking disabled: generation ends with <think>\n\n</think>\n\n
+ *   - 'saving'       → no thinking block: generation ends with <|im_start|>assistant\n
+ *
+ * @param {object} config - An operatingMode2Config entry (must have prompt_template and prompt_config)
+ * @param {Array<{role: string, content: string, tool_calls?: Array}>} context - Chat messages (role is username for users, 'bot' for assistant, 'tool' for tool responses)
+ * @param {boolean} is_continue - Whether continuing a previous assistant response
+ * @param {Array} tools - Optional array of tool/function definitions to make available
+ * @returns {string} The formatted prompt string
+ */
+function buildPrompt(config, context, is_continue = false, tools = []) {
+    const templateType = config.prompt_template
+    const systemPrompt = (config.prompt_config.system_prompt || '').trim()
+    let prompt = ''
+
+    // ── System message (with optional tools) ──
+    if (tools.length > 0) {
+        prompt += '<|im_start|>system\n'
+
+        if (templateType === 'saving') {
+            // Saving: system content first, then tools
+            if (systemPrompt) {
+                prompt += systemPrompt + '\n\n'
+            }
+            prompt += '# Tools\n\nYou may call one or more functions to assist with the user query.\n\n'
+            prompt += 'You are provided with function signatures within <tools></tools> XML tags:\n<tools>'
+            for (const tool of tools) {
+                prompt += '\n' + JSON.stringify(tool)
+            }
+            prompt += '\n</tools>\n\nFor each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:\n<tool_call>\n{"name": <function-name>, "arguments": <args-json-object>}\n</tool_call>'
+        } else {
+            // Standard / non_thinking: tools first, then system content
+            prompt += '# Tools\n\nYou have access to the following functions:\n\n<tools>'
+            for (const tool of tools) {
+                prompt += '\n' + JSON.stringify(tool)
+            }
+            prompt += '\n</tools>'
+            prompt += '\n\nIf you choose to call a function ONLY reply in the following format with NO suffix:\n\n'
+            prompt += '<tool_call>\n<function=example_function_name>\n<parameter=example_parameter_1>\nvalue_1\n</parameter>\n<parameter=example_parameter_2>\nThis is the value for the second parameter\nthat can span\nmultiple lines\n</parameter>\n</function>\n</tool_call>'
+            prompt += '\n\n<IMPORTANT>\nReminder:\n- Function calls MUST follow the specified format: an inner <function=...></function> block must be nested within <tool_call></tool_call> XML tags\n- Required parameters MUST be specified\n- You may provide optional reasoning for your function call in natural language BEFORE the function call, but NOT after\n- If there is no function call available, answer the question like normal with your current knowledge and do not tell the user about function calls\n</IMPORTANT>'
+            if (systemPrompt) {
+                prompt += '\n\n' + systemPrompt
+            }
+        }
+
+        prompt += '<|im_end|>\n'
+    } else if (systemPrompt) {
+        prompt += `<|im_start|>system\n${systemPrompt}<|im_end|>\n`
+    }
+
+    // ── Conversation messages ──
+    for (let i = 0; i < context.length; i++) {
+        const msg = context[i]
+        const isLast = (i === context.length - 1)
+        const prevMsg = i > 0 ? context[i - 1] : null
+        const nextMsg = i < context.length - 1 ? context[i + 1] : null
+
+        if (msg.role === 'bot') {
+            // ── Assistant message ──
+            const content = msg.content || ''
+
+            if (isLast && is_continue) {
+                // Continue: leave the assistant message open (no closing tag)
+                prompt += `<|im_start|>assistant\n${content}`
+            } else {
+                prompt += `<|im_start|>assistant\n${content}`
+
+                // Append tool calls if present
+                if (msg.tool_calls && msg.tool_calls.length > 0) {
+                    if (templateType === 'saving') {
+                        // Saving format: {"name": "...", "arguments": {...}}
+                        for (let j = 0; j < msg.tool_calls.length; j++) {
+                            const tc = msg.tool_calls[j]
+                            const fn = tc.function || tc
+                            if ((j === 0 && content) || j > 0) {
+                                prompt += '\n'
+                            }
+                            const argsStr = typeof fn.arguments === 'string' ? fn.arguments : JSON.stringify(fn.arguments)
+                            prompt += `<tool_call>\n{"name": "${fn.name}", "arguments": ${argsStr}}\n</tool_call>`
+                        }
+                    } else {
+                        // Standard / non_thinking format: <function=name><parameter=key>...</parameter></function>
+                        for (let j = 0; j < msg.tool_calls.length; j++) {
+                            const tc = msg.tool_calls[j]
+                            const fn = tc.function || tc
+                            if (j === 0 && content.trim()) {
+                                prompt += '\n\n'
+                            } else if (j > 0) {
+                                prompt += '\n'
+                            }
+                            prompt += `<tool_call>\n<function=${fn.name}>\n`
+                            const args = typeof fn.arguments === 'string' ? JSON.parse(fn.arguments) : fn.arguments
+                            if (args) {
+                                for (const [key, value] of Object.entries(args)) {
+                                    const strValue = (typeof value === 'object' && value !== null) ? JSON.stringify(value) : String(value)
+                                    prompt += `<parameter=${key}>\n${strValue}\n</parameter>\n`
+                                }
+                            }
+                            prompt += `</function>\n</tool_call>`
+                        }
+                    }
+                }
+
+                prompt += '<|im_end|>\n'
+            }
+        } else if (msg.role === 'tool') {
+            // ── Tool response message ──
+            // Consecutive tool responses are grouped under a single <|im_start|>user block
+            if (!prevMsg || prevMsg.role !== 'tool') {
+                prompt += '<|im_start|>user'
+            }
+            prompt += `\n<tool_response>\n${msg.content}\n</tool_response>`
+            if (!nextMsg || nextMsg.role !== 'tool') {
+                prompt += '<|im_end|>\n'
+            }
+        } else {
+            // ── User message ──
+            prompt += `<|im_start|>user\n${msg.role}: ${msg.content}<|im_end|>\n`
+        }
+    }
+
+    // ── Generation prompt (only when not continuing a previous response) ──
+    if (!is_continue) {
+        prompt += '<|im_start|>assistant\n'
+
+        if (templateType === 'standard') {
+            prompt += '<think>\n'
+        } else if (templateType === 'non_thinking') {
+            prompt += '<think>\n\n</think>\n\n'
+        }
+        // 'saving' template: no thinking block at all
+    }
+
+    return prompt
+}
 
 module.exports = {
     maid,
@@ -502,5 +633,6 @@ module.exports = {
     qwen,
     gemma,
     gemini,
-    operatingMode2Config
+    operatingMode2Config,
+    buildPrompt
 }
