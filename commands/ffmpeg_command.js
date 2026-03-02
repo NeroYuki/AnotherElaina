@@ -4,7 +4,7 @@ const { catboxFileUpload } = require('../utils/catbox_upload');
 const crypto = require('crypto');
 const fs = require('fs');
 const { promisify } = require('util');
-const { exec } = require('child_process');
+const { exec, spawn } = require('child_process');
 const execPromise = promisify(exec);
 const path = require('path');
 
@@ -55,7 +55,11 @@ module.exports = {
     async execute(interaction, client) {
         await interaction.deferReply();
 
-        const ffmpegCommand = interaction.options.getString('command');
+        let ffmpegCommand = interaction.options.getString('command').trim();
+        // Prune accidental leading 'ffmpeg' prefix the user may have typed
+        if (/^ffmpeg\s+/i.test(ffmpegCommand)) {
+            ffmpegCommand = ffmpegCommand.replace(/^ffmpeg\s+/i, '');
+        }
         const videoAttachment = interaction.options.getAttachment('video');
         const videoUrl = interaction.options.getString('url');
         const outputFormat = interaction.options.getString('output_format') || 'mp4';
@@ -145,16 +149,99 @@ module.exports = {
                 throw new Error('Command validation failed');
             }
 
-            await interaction.editReply({ content: 'Processing video with ffmpeg...' });
-
-            // Execute ffmpeg command with timeout
+            // Get video duration for progress bar
+            let videoDuration = null;
             try {
-                const { stdout, stderr } = await execPromise(actualCommand, { timeout: 300000 }); // 5 min timeout
-                console.log('FFmpeg output:', stderr); // ffmpeg outputs to stderr
-            } catch (err) {
-                console.error('FFmpeg error:', err);
-                throw new Error(`FFmpeg processing failed: ${err.message}`);
-            }
+                const { stdout: probeOut } = await execPromise(`ffprobe -v quiet -print_format json -show_format "${inputPath}"`);
+                const probeData = JSON.parse(probeOut);
+                videoDuration = parseFloat(probeData.format?.duration);
+                if (isNaN(videoDuration)) videoDuration = null;
+            } catch (e) { /* duration unknown — progress bar will show time only */ }
+
+            const buildProgressBar = (currentSec, totalSec) => {
+                const fmtTime = (s) => {
+                    const h = Math.floor(s / 3600);
+                    const m = Math.floor((s % 3600) / 60);
+                    const sec = Math.floor(s % 60);
+                    return h > 0
+                        ? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+                        : `${m}:${String(sec).padStart(2, '0')}`;
+                };
+                if (!totalSec) return `⏱️ ${fmtTime(currentSec)} elapsed`;
+                const pct = Math.min(currentSec / totalSec, 1);
+                const bars = 20;
+                const filled = Math.round(pct * bars);
+                const bar = '█'.repeat(filled) + '░'.repeat(bars - filled);
+                return `[${bar}] ${(pct * 100).toFixed(1)}% (${fmtTime(currentSec)} / ${fmtTime(totalSec)})`;
+            };
+
+            // Helpers for replying after possible interaction expiry (>15 min)
+            const INTERACTION_LIFETIME_MS = 12 * 60 * 1000; // 12 min safety margin
+            const startTime = Date.now();
+            let interactionExpired = false;
+            let expirySentOnce = false;
+
+            const safeEdit = async (content) => {
+                if (interactionExpired) return;
+                const elapsed = Date.now() - startTime;
+                if (elapsed >= INTERACTION_LIFETIME_MS) {
+                    interactionExpired = true;
+                    if (!expirySentOnce) {
+                        expirySentOnce = true;
+                        await interaction.channel.send({
+                            content: `<@${interaction.user.id}> ⏳ FFmpeg is still running — the interaction has expired but I'll post the result here when it's done.`
+                        }).catch(() => {});
+                    }
+                    return;
+                }
+                try {
+                    await interaction.editReply({ content });
+                } catch (e) {
+                    // Token expired mid-flight
+                    interactionExpired = true;
+                    if (!expirySentOnce) {
+                        expirySentOnce = true;
+                        await interaction.channel.send({
+                            content: `<@${interaction.user.id}> ⏳ FFmpeg is still running — the interaction has expired but I'll post the result here when it's done.`
+                        }).catch(() => {});
+                    }
+                }
+            };
+
+            await safeEdit('⚙️ Processing video with ffmpeg...');
+
+            // Stream ffmpeg so we can parse real-time progress from stderr
+            await new Promise((resolve, reject) => {
+                const proc = spawn(actualCommand, { shell: true });
+                let lastProgressUpdate = 0;
+                const PROGRESS_INTERVAL_MS = 5000;
+                let stderrBuf = '';
+
+                proc.stderr.on('data', (chunk) => {
+                    stderrBuf += chunk.toString();
+                    // ffmpeg overwrites the progress line with \r; split on both
+                    const lines = stderrBuf.split(/[\r\n]/);
+                    stderrBuf = lines.pop(); // keep incomplete last fragment
+                    for (const line of lines) {
+                        const m = line.match(/time=(\d+):(\d+):(\d+\.\d+)/);
+                        if (m) {
+                            const currentSec = parseInt(m[1]) * 3600 + parseInt(m[2]) * 60 + parseFloat(m[3]);
+                            const now = Date.now();
+                            if (now - lastProgressUpdate >= PROGRESS_INTERVAL_MS) {
+                                lastProgressUpdate = now;
+                                const bar = buildProgressBar(currentSec, videoDuration);
+                                safeEdit(`⚙️ Processing video with ffmpeg...\n\`${bar}\``).catch(() => {});
+                            }
+                        }
+                    }
+                });
+
+                proc.on('error', reject);
+                proc.on('close', (code) => {
+                    if (code === 0) resolve();
+                    else reject(new Error(`FFmpeg exited with code ${code}`));
+                });
+            });
 
             // Check if output file exists
             if (!fs.existsSync(outputPath)) {
@@ -171,18 +258,21 @@ module.exports = {
 
             // Upload to catbox or send directly
             if (fileSizeInBytes > MAX_OUTPUT_SIZE) {
-                await interaction.editReply({ content: 'Output file exceeds 10MB, uploading to catbox...' });
-                
+                await safeEdit('Output file exceeds 10MB, uploading to catbox...');
+
                 const catboxUrl = await catboxFileUpload(outputPath).catch((err) => {
                     console.log(err);
                     throw new Error('Failed to upload to catbox');
                 });
 
-                await interaction.editReply({ 
-                    content: `✅ Processing complete! File size: ${(fileSizeInBytes / 1024 / 1024).toFixed(2)}MB\nDownload: ${catboxUrl}` 
-                });
+                const doneMsg = `✅ Processing complete! File size: ${(fileSizeInBytes / 1024 / 1024).toFixed(2)}MB\nDownload: ${catboxUrl}`;
+                if (interactionExpired) {
+                    await interaction.channel.send({ content: `<@${interaction.user.id}> ${doneMsg}` });
+                } else {
+                    await interaction.editReply({ content: doneMsg });
+                }
             } else {
-                await interaction.editReply({ content: 'Uploading result...' });
+                await safeEdit('Uploading result...');
                 await interaction.channel.send({
                     content: `<@${interaction.user.id}> ✅ Processing complete! File size: ${(fileSizeInBytes / 1024 / 1024).toFixed(2)}MB`,
                     files: [outputPath]
@@ -191,7 +281,12 @@ module.exports = {
 
         } catch (err) {
             console.error('Error:', err);
-            await interaction.editReply({ content: `❌ Error: ${err.message}` });
+            const errMsg = `❌ Error: ${err.message}`;
+            try {
+                await interaction.editReply({ content: errMsg });
+            } catch (e) {
+                await interaction.channel.send({ content: `<@${interaction.user.id}> ${errMsg}` }).catch(() => {});
+            }
         } finally {
             // Cleanup
             if (inputPath && fs.existsSync(inputPath)) {
