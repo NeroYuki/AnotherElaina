@@ -8,11 +8,11 @@ const server_pool = [
     {
         index: 0,
         url: process.env.BOT_ENV === 'lan' ? 'http://192.168.1.2:7860' : 'http://192.168.196.142:7860',
-        fn_index_create: 611,
+        fn_index_create: 613,
         fn_index_abort: 51,
-        fn_index_img2img: 1317,
-        fn_index_controlnet: [466, 1137],        //[txt2img, img2img, 792]  
-        fn_index_controlnet_annotation: [462, 1133],   // 1121 - 1059 = 62
+        fn_index_img2img: 1323,
+        fn_index_controlnet: [466, 1139],        //[txt2img, img2img, 792]  
+        fn_index_controlnet_annotation: [462, 1135],   // 1121 - 1059 = 62
         // fn_index_controlnet_2: [440, 976], 
         // fn_index_controlnet_annotation_2: [1129, 1091],
         // fn_index_controlnet_3: [487, 1025],
@@ -20,22 +20,22 @@ const server_pool = [
         // fn_index_interrogate: 1250,
         // fn_index_interrogate_deepbooru: 1251,
         // fn_index_use_script: 1138,
-        fn_index_upscale: 1388,
-        fn_index_change_model: 3,
-        fn_index_change_support_model: 4,
-        fn_index_coupler_region_preview: [356, 1025],
-        fn_index_change_adetailer_model1: [90, 687],
+        fn_index_upscale: 1394,
+        fn_index_change_model: 2,
+        fn_index_change_support_model: 3,
+        fn_index_coupler_region_preview: [356, 1027],
+        fn_index_change_adetailer_model1: [90, 761],
         // fn_index_change_adetailer_prompt1: [99, 644],       //+3
         // fn_index_change_adetailer_neg_prompt1: [100, 645],  //+4
         // fn_index_change_adetailer_model2: [146, 691],       //+51
         // fn_index_change_adetailer_prompt2: [148, 693],      //+54
         // fn_index_change_adetailer_neg_prompt2: [149, 694],  //+55
-        fn_index_execute_segment_anything: 1083,
+        fn_index_execute_segment_anything: 1085,
         // fn_index_execute_grounding_dino_preview: 877,            // -3
         // fn_index_execute_expand_mask: 881,                       // +1
         // fn_index_unload_segmentation_model: 897,                 // +17
-        fn_index_rembg: 1402,
-        fn_fetch_wildcards: 1403,
+        fn_index_rembg: 1408,
+        fn_fetch_wildcards: 1409,
         is_online: true,
         queue: [],
     },
@@ -203,7 +203,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
     use_foocus = false, use_booru_gen = false, booru_gen_config = null, current_model = '',
     inpaint_img_upload_path = null, inpaint_mask_upload_path = null, colorbalance_config = null, usersetting = null, outpaint_config = null, 
     upscale_config = null, extra_script = "None", detail_daemon_config = null, tipo_input = null, latentmod_config = null,
-    mahiro_config = null, teacache_config = null) => {
+    mahiro_config = null, teacache_config = null, modulation_config = null) => {
     // default mode 0 is img2img, 4 is inpainting
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 3000000 && upscaler == "None") ? true : false
@@ -216,6 +216,12 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
     const is_flux = model_selection_flux.find(x => x.value === current_model) != null
     const is_lumina = model_selection_lumina.find(x => x.value === current_model) != null
     const is_z_image = model_selection_z_image.find(x => x.value === current_model) != null
+    const is_anima = model_selection_anima.find(x => x.value === current_model) != null
+
+    if (!is_anima && modulation_config?.enable) {
+        console.warn("Modulation is only supported for Anima models. Disabling modulation.");
+        modulation_config.enable = false;
+    }
     
     let final_cfg, final_shift;
     if (is_flux) {
@@ -467,10 +473,32 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             latentmod_config?.affect_uncond || "None",
             latentmod_config?.dyncfg_augment || "None",
             false,
+            "MultiDiffusion",
+            768,
+            768,
+            64,
+            4,
+            false,               // never oom
             false,
+            "Automatic",         // torch.compile
             "m + (M-m)*(1-x)**3",
             false,
             [],
+            false,               // spectrum guidance
+            0.5,
+            4,
+            0.1,
+            2,
+            0.5,
+            4,
+            0.85,
+            modulation_config?.modulation || false,              // modulation guidance
+            "anzch_clip_l.safetensors",
+            "",
+            "",
+            3,
+            0,
+            -1,
             2,
             0.5,
             "Linear",
@@ -504,6 +532,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             false,
             false,
             0,
+            0,
             false,
             5,
             1.25,
@@ -520,7 +549,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
     coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, 
     freeu_config = null, dynamic_threshold_config = null, pag_config = null, use_foocus = false, use_booru_gen = false, booru_gen_config = null, 
     current_model = '', colorbalance_config = null, usersetting = null, detail_daemon_config = null, tipo_input = null, latentmod_config = null,
-    mahiro_config = null, teacache_config = null, batch_count = 1, batch_size = 1) => {
+    mahiro_config = null, teacache_config = null, batch_count = 1, batch_size = 1, modulation_config = null) => {
 
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 1600000) ? true : false
@@ -531,6 +560,12 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
     const is_flux = model_selection_flux.find(x => x.value === current_model) != null
     const is_lumina = model_selection_lumina.find(x => x.value === current_model) != null
     const is_z_image = model_selection_z_image.find(x => x.value === current_model) != null
+    const is_anima = model_selection_anima.find(x => x.value === current_model) != null
+
+    if (!is_anima && modulation_config?.enable) {
+        console.warn("Modulation is only supported for Anima models. Disabling modulation.");
+        modulation_config.enable = false;
+    }
     
     let final_cfg, final_shift;
     if (is_flux) {
@@ -584,7 +619,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             "None",
             0.8,
             latentmod_config?.mode === 'simple' ? (latentmod_config?.rescale_cfg_phi ?? 0) : 0,              // rescale cfg
-            mahiro_config?.mahiro || false,	    // mahiro guidance,
+            mahiro_config?.mahiro || false,		    // mahiro guidance,
             seed,
             false,
             -1,     // variation seed
@@ -763,6 +798,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             latentmod_config?.dyncfg_augment || "None",
             false,      // never OOM
             false,
+            "Automatic",
             "m + (M-m)*(1-x)**3",
             false,      // extra script (default)
             [],
@@ -772,6 +808,21 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             32,
             "No Decay",     // seed varience decay
             1,
+            false,                          // spectrum guidance
+            0.5,
+            4,
+            0.1,
+            2,
+            0.5,
+            4,
+            0.85,
+            modulation_config?.modulation || false,                          // modulation guidance
+            "anzch_clip_l.safetensors",
+            "",
+            "",
+            3,
+            0,
+            -1,
             false,
             false,
             "positive",
@@ -783,13 +834,13 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             "",
             "Seed",
             "",
-            "",
+            [],
             "Nothing",
             "",
-            "",
+            [],
             "Nothing",
             "",
-            "",
+            [],
             true,
             false,
             false,
@@ -797,6 +848,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             false,
             false,
             false,
+            0,
             0,
             false,
             5,
@@ -926,6 +978,7 @@ const model_selection_xl = [
     { name: 'WAI-NSFW-IllustriousXL v12', value: 'wai_nsfw_illustrious_v120.safetensors'},
     { name: 'WAI-NSFW-IllustriousXL v16', value: 'wai_nsfw_illustrious_v160.safetensors'},
     { name: 'Chenkin NoobAI v0.2', value: 'chenkin_nai_v0_2.safetensors'},
+    { name: 'Chenkin NoobAI v0.3 Rectified Flow', value: 'chenkin_nai_v0_3_rectified.safetensors'},
     { name: 'IllumiyumeXL V-pred v3.1' , value: 'illumiyumexl_vpred_v31.safetensors'},
     { name: 'IllumiyumeXL V-pred v3.2' , value: 'illumiyumexl_vpred_v32.safetensors'},
     { name: 'NoobAIXL MDNT V-pred v1.0' , value: 'noobaixl_mdnt_vpred_v1.safetensors'},

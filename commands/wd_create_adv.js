@@ -687,7 +687,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             upscale_denoise_strength, upscale_step, false, do_adetailer, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
             extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, extra_config.use_foocus, extra_config.use_booru_gen, 
             booru_gen_config_obj, cached_model[0], colorbalance_config_obj, usersetting, extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config_obj, 
-            extra_config.mahiro_config, extra_config.teacache_config, batch_count, batch_size)
+            extra_config.mahiro_config, extra_config.teacache_config, batch_count, batch_size, extra_config.modulation_config)
 
         // Check for [DEBUG-WEBUI] prompt override
         if (prompt.includes('[DEBUG-WEBUI]')) {

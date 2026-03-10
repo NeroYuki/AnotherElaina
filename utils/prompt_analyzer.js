@@ -382,6 +382,30 @@ function get_mahiro_config_from_prompt(prompt) {
     }
 }
 
+function get_modulation_guidance_config_from_prompt(prompt) {
+    // check for following pattern in prompt |modulation|
+    // if found, return the value {modulation: true}
+    // else return null
+
+    const modulation_pattern = /\|modulation\|/i
+
+    const modulation_match = prompt.match(modulation_pattern)
+
+    if (modulation_match && modulation_match[0]) {
+        return {
+            prompt: prompt.replace(modulation_pattern, ''),
+            modulation_config: {
+                modulation: true
+            }
+        }
+    }
+
+    return {
+        prompt: prompt,
+        modulation_config: null
+    }
+}
+
 function get_prompt_enhancer_call(prompt) {
     // if prompt contain [BOORU] return booru_gen = true in result object
     // if prompt contain [FOOCUS] return foocus = true in result object
@@ -508,7 +532,8 @@ function full_prompt_analyze(prompt, is_xl) {
     let dynamic_threshold_config = get_dynamic_threshold_config_from_prompt(freeu_config.prompt)
     let pag_config = get_pag_config_from_prompt(dynamic_threshold_config.prompt)
     let mahiro_config = get_mahiro_config_from_prompt(pag_config.prompt)
-    let prompt_enhancer = get_prompt_enhancer_call(mahiro_config.prompt)
+    let modulation_config = get_modulation_guidance_config_from_prompt(mahiro_config.prompt)
+    let prompt_enhancer = get_prompt_enhancer_call(modulation_config.prompt)
     let detail_daemon_config = get_detail_daemon_config_from_prompt(prompt_enhancer.prompt)
     let teacache_config = get_teacache_config_from_prompt(detail_daemon_config.prompt)
 
@@ -521,6 +546,7 @@ function full_prompt_analyze(prompt, is_xl) {
         detail_daemon_config: detail_daemon_config.detail_daemon_config,
         pag_config: pag_config.pag_config,
         mahiro_config: mahiro_config.mahiro_config,
+        modulation_config: modulation_config.modulation_config,
         use_foocus: prompt_enhancer.foocus,
         use_booru_gen: prompt_enhancer.booru_gen,
         tipo_input: prompt_enhancer.tipo,
@@ -534,6 +560,7 @@ module.exports = {
     get_freeu_config_from_prompt,
     get_dynamic_threshold_config_from_prompt,
     get_pag_config_from_prompt,
+    get_modulation_guidance_config_from_prompt,
     get_prompt_enhancer_call,
     full_prompt_analyze,
     preview_coupler_setting,
