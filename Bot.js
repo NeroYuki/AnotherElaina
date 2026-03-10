@@ -174,9 +174,13 @@ client.on('interactionCreate', async interaction => {
             ...mapperatorinator_backend_require,
         ].includes(interaction.commandName)) {
 
-            free_up_llm_resource().catch(err => {
-                console.log("free up llm resource error: ", err)
-            });
+            // In saving mode the LLM is loaded on the bot server, not the AI server,
+            // so it doesn't compete for AI server VRAM and must not be unloaded.
+            if (globalThis.operating_mode !== 'saving') {
+                free_up_llm_resource().catch(err => {
+                    console.log("free up llm resource error: ", err)
+                });
+            }
         }
 
         if ([
