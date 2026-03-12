@@ -11,6 +11,7 @@ const { queryRecordLimit } = require('../database/database_interaction.js');
 const { full_prompt_analyze, preview_coupler_setting, fetch_user_defined_wildcard, get_teacache_config_from_prompt } = require('../utils/prompt_analyzer.js');
 const { load_profile } = require('../utils/profile_helper.js');
 const { clamp, parse_common_setting } = require('../utils/common_helper');
+const { get_model_family_defaults } = require('../utils/model_defaults');
 const workflow_outpaint = require('../resources/flux_fill_outpaint.json')
 const workflow_kontext = require('../resources/flux_kontext.json')
 const ComfyClient = require('../utils/comfy_client');
@@ -371,6 +372,17 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             width = Math.ceil(width / 8) * 8
         }
 
+        // Apply family defaults from imggen_default_config.json
+        const family_def = get_model_family_defaults(cached_model[0], 'i2i')
+        if (family_def) {
+            if (family_def.sampler)       sampler       = family_def.sampler
+            if (family_def.scheduler)     scheduler     = family_def.scheduler
+            if (family_def.step !== null) sampling_step = family_def.step
+            const f_cfg = family_def.cfg !== 1 ? (family_def.cfg ?? 1) : family_def.dcfg
+            if (f_cfg !== null) cfg_scale = f_cfg
+        }
+
+        // Per-model specific overrides (take priority over family defaults)
         if (cached_model[0] === 'dreamshaperxl_turbo.safetensors') {
             sampler = 'DPM++ SDE'
             scheduler = 'Karras'
@@ -423,24 +435,6 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             scheduler = 'SGM Uniform'
             cfg_scale = 1.5
             sampling_step = 28
-        }
-        else if (model_selection_flux.find(x => x.value === cached_model[0])) {
-            sampler = 'Euler'
-            scheduler = 'SGM Uniform'
-            cfg_scale = 3.5
-            sampling_step = 20
-        }
-        else if (model_selection.find(x => x.value === cached_model[0])) {
-            sampler = 'DPM++ 2M'
-            scheduler = 'Karras'
-            cfg_scale = 7
-            sampling_step = 30
-        }
-        else {
-            sampler = profile?.sampler ?? 'DPM++ 2M'
-            scheduler = profile?.scheduler ?? 'Align Your Step'
-            cfg_scale = profile?.cfg_scale ?? 7
-            sampling_step = profile?.sampling_step ?? 12
         }
 
         if (extra_script === 'Flux Outpaint') {

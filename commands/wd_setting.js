@@ -1,8 +1,9 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageActionRow, MessageSelectMenu } = require('discord.js');
-const { controlnet_model_selection, controlnet_preprocessor_selection, model_selection_xl, model_selection, model_selection_flux, model_selection_legacy, model_selection_chroma, model_selection_flux_klein_4b, model_selection_flux_klein_9b, model_selection_anima, model_selection_lumina, model_selection_qwen_image, model_selection_z_image } = require('../utils/ai_server_config');
+const { controlnet_model_selection, controlnet_preprocessor_selection, model_selection_xl, model_selection, model_selection_flux, model_selection_legacy, model_selection_chroma, model_selection_flux_klein_4b, model_selection_flux_klein_9b, model_selection_anima, model_selection_lumina, model_selection_qwen_image, model_selection_z_image, sampler_selection, scheduler_selection } = require('../utils/ai_server_config');
 const { cached_model } = require('../utils/model_change');
 const { clamp, truncate, try_parse_json_and_return_formated_string } = require('../utils/common_helper');
+const { get_model_family_defaults } = require('../utils/model_defaults');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -32,6 +33,32 @@ module.exports = {
                             { name: 'LEGACY MODELS', value: 'legacy' },
                             { name: 'EXPERIMENTAL MODELS', value: 'experimental' }
                         ))
+                .addStringOption(option =>
+                    option.setName('hires_sampler')
+                        .setDescription('Sampler to use for hires (default: Use same sampler)')
+                        .addChoices(
+                            { name: 'Use same sampler', value: 'Use same sampler' },
+                            ...sampler_selection
+                        ))
+                .addStringOption(option =>
+                    option.setName('hires_scheduler')
+                        .setDescription('Scheduler to use for hires (default: Use same scheduler)')
+                        .addChoices(
+                            { name: 'Use same scheduler', value: 'Use same scheduler' },
+                            ...scheduler_selection
+                        ))
+                .addStringOption(option =>
+                    option.setName('hires_positive')
+                        .setDescription('Extra positive prompt appended during hires (leave empty to use same prompt)'))
+                .addStringOption(option =>
+                    option.setName('hires_negative')
+                        .setDescription('Extra negative prompt appended during hires (leave empty to use same negative)'))
+                .addNumberOption(option =>
+                    option.setName('hires_cfg')
+                        .setDescription('CFG scale for hires (leave unset to use same CFG as base generation)'))
+                .addNumberOption(option =>
+                    option.setName('hires_shift')
+                        .setDescription('Distilled CFG / shift for hires (leave unset to use same shift as base generation)'))
                 )
 
     ,
@@ -57,6 +84,12 @@ module.exports = {
         //parse the options
         const do_preview = interaction.options.getBoolean('do_preview') !== null ? interaction.options.getBoolean('do_preview') : true
         let hires_checkpoint = interaction.options.getString('hires_checkpoint') || null
+        let hires_sampler = interaction.options.getString('hires_sampler') || null
+        let hires_scheduler = interaction.options.getString('hires_scheduler') || null
+        const hires_positive = interaction.options.getString('hires_positive') ?? null
+        const hires_negative = interaction.options.getString('hires_negative') ?? null
+        let hires_cfg = interaction.options.getNumber('hires_cfg') ?? null
+        let hires_shift = interaction.options.getNumber('hires_shift') ?? null
 
         await interaction.deferReply();
 
@@ -142,9 +175,32 @@ module.exports = {
         }
 
         //setup the config
+        // If user set a hires checkpoint but left sampler/scheduler/cfg/shift unset,
+        // fill those in from family defaults so the hires pass uses correct settings.
+        if (hires_checkpoint && hires_checkpoint !== 'Use same checkpoint') {
+            const hires_family_def = get_model_family_defaults(hires_checkpoint, 't2i')
+            if (hires_family_def) {
+                if (hires_sampler === null && hires_family_def.sampler)
+                    hires_sampler = hires_family_def.sampler
+                if (hires_scheduler === null && hires_family_def.scheduler)
+                    hires_scheduler = hires_family_def.scheduler
+                if (hires_cfg === null && hires_family_def.hr_cfg !== null) {
+                    hires_cfg = hires_family_def.hr_cfg  // 1 = distilled model
+                    if (hires_shift === null && hires_family_def.hr_dcfg !== null)
+                        hires_shift = hires_family_def.hr_dcfg
+                }
+            }
+        }
+
         const config = {
             do_preview: do_preview,
-            hires_checkpoint: hires_checkpoint
+            hires_checkpoint: hires_checkpoint,
+            hires_sampler: hires_sampler,
+            hires_scheduler: hires_scheduler,
+            hires_positive: hires_positive,
+            hires_negative: hires_negative,
+            hires_cfg: hires_cfg,
+            hires_shift: hires_shift
         }
 
         const config_string = JSON.stringify(config)

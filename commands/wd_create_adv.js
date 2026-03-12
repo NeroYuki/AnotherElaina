@@ -20,6 +20,7 @@ const { catboxUpload } = require('../utils/catbox_upload.js');
 const { queryRecordLimit } = require('../database/database_interaction.js');
 const { full_prompt_analyze, preview_coupler_setting, fetch_user_defined_wildcard, get_teacache_config_from_prompt, get_debug_prompt_analyze } = require('../utils/prompt_analyzer.js');
 const { load_profile } = require('../utils/profile_helper.js');
+const { get_model_family_defaults } = require('../utils/model_defaults');
 const { clamp, calculateOptimalGrid, parseImageCount, parse_common_setting } = require('../utils/common_helper');
 const workflow_og = require('../resources/flux_lora.json')
 const workflow_daam = require('../resources/daam_test.json')
@@ -336,10 +337,14 @@ module.exports = {
 		let neg_prompt = (profile?.neg_prompt_pre || '') + (interaction.options.getString('neg_prompt') || '') + (profile?.neg_prompt || '')
         let width = clamp(interaction.options.getInteger('width') || profile?.width || 512, 64, 4096) // this can only end well :)
         let height = clamp(interaction.options.getInteger('height') || profile?.height || 512, 64, 4096)
-        const sampler = interaction.options.getString('sampler') || profile?.sampler || 'Euler'
-        const scheduler = interaction.options.getString('scheduler') || profile?.scheduler || 'Automatic'
-        let cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || profile?.cfg_scale || 7, 0, 30)
-        const sampling_step = clamp(interaction.options.getInteger('sampling_step') || profile?.sampling_step || 20, 1, 100)
+        const user_sampler = interaction.options.getString('sampler')
+        const user_scheduler = interaction.options.getString('scheduler')
+        const user_cfg = interaction.options.getNumber('cfg_scale')
+        const user_step = interaction.options.getInteger('sampling_step')
+        let sampler = user_sampler || profile?.sampler || 'Euler'
+        let scheduler = user_scheduler || profile?.scheduler || 'Automatic'
+        let cfg_scale = clamp(user_cfg ?? profile?.cfg_scale ?? 7, 0, 30)
+        let sampling_step = clamp(user_step ?? profile?.sampling_step ?? 20, 1, 100)
         const default_neg_prompt = interaction.options.getString('default_neg_prompt') || 'n_sfw'
         
         // Force cfg_scale to 1 if no negative prompt is specified at all
@@ -460,6 +465,21 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         const is_xl = model_selection_xl.find(x => x.value === cached_model[0]) != null
         const is_flux = model_selection_flux.find(x => x.value === cached_model[0]) != null
         const is_vpred = cached_model[0].includes('vpred')
+
+        // Apply family defaults when user and profile did not explicitly set the values
+        const family_def_adv = get_model_family_defaults(cached_model[0], 't2i')
+        if (family_def_adv) {
+            if (!user_sampler && !profile?.sampler && family_def_adv.sampler)
+                sampler = family_def_adv.sampler
+            if (!user_scheduler && !profile?.scheduler && family_def_adv.scheduler)
+                scheduler = family_def_adv.scheduler
+            if (user_step === null && !profile?.sampling_step && family_def_adv.step !== null)
+                sampling_step = family_def_adv.step
+            if (cfg_scale !== 1 && user_cfg === null && !profile?.cfg_scale) {
+                const f_cfg = family_def_adv.cfg !== 1 ? (family_def_adv.cfg ?? 1) : family_def_adv.dcfg
+                if (f_cfg !== null) cfg_scale = f_cfg
+            }
+        }
 
         if (is_flux ? width * height > 1_800_000 : is_xl ? width * height > 1_200_000 : width * height > 640_000) {
             await interaction.channel.send(`:warning: Image size is too large for model's capability and may introduce distorsion, please consider using smaller image size unless you know what you're doing`);

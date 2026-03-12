@@ -195,7 +195,13 @@ function parse_common_setting(setting_json) {
             const usersetting_config_obj = JSON.parse(setting_json)
             return {
                 do_preview: usersetting_config_obj?.do_preview ?? true,
-                hires_checkpoint: usersetting_config_obj?.hires_checkpoint ?? "Use same checkpoint"
+                hires_checkpoint: usersetting_config_obj?.hires_checkpoint ?? "Use same checkpoint",
+                hires_sampler: usersetting_config_obj?.hires_sampler ?? null,
+                hires_scheduler: usersetting_config_obj?.hires_scheduler ?? null,
+                hires_positive: usersetting_config_obj?.hires_positive ?? null,
+                hires_negative: usersetting_config_obj?.hires_negative ?? null,
+                hires_cfg: usersetting_config_obj?.hires_cfg ?? null,
+                hires_shift: usersetting_config_obj?.hires_shift ?? null
             }
         }
         catch (err) {
@@ -205,7 +211,13 @@ function parse_common_setting(setting_json) {
     else {
         return {
             do_preview: true,
-            hires_checkpoint: "Use same checkpoint"
+            hires_checkpoint: "Use same checkpoint",
+            hires_sampler: null,
+            hires_scheduler: null,
+            hires_positive: null,
+            hires_negative: null,
+            hires_cfg: null,
+            hires_shift: null
         }
     }
 }

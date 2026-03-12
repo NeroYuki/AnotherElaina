@@ -222,6 +222,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
         console.warn("Modulation is only supported for Anima models. Disabling modulation.");
         modulation_config.enable = false;
     }
+
     
     let final_cfg, final_shift;
     if (is_flux) {
@@ -401,6 +402,17 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             false,
             "Straight Abs.",
             "Flat",
+            "",          // DAAM prompt
+            false,
+            true,
+            false,
+            false,
+            "Auto",
+            0.5,
+            1,
+            false,
+            false,
+            false,               // Enable DAAM
             use_booru_gen,          // enable DanTagGen
             "After applying other prompt processings",
             booru_gen_config?.random_seed || -1,
@@ -539,7 +551,20 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             true,
             "16bpc",
             ".tiff",
-            1.2
+            1.2,
+            "seedvr2_ema_7b_sharp-Q4_K_M.gguf",     // seedvr2 upscale setting
+            "ema_vae_fp16.safetensors",
+            -1,
+            1600,
+            0,
+            0,
+            false,
+            true,
+            false,
+            true,
+            1024,
+            128,
+            false,
         ]
     }
 }
@@ -582,7 +607,24 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
         final_shift = 3;
     }
 
+    // Determine support models for hires based on the hires checkpoint's architecture.
+    // When the user picks a different arch as hires checkpoint, "Use same choices" won't load
+    // the correct VAE/text encoder — so we resolve the right support model list explicitly.
+    const hires_ckpt_value = usersetting?.hires_checkpoint ?? "Use same checkpoint";
+    const hires_support_models =
+        hires_ckpt_value === "Use same checkpoint" ? ["Use same choices"] :
+        model_selection_flux.find(x => x.value === hires_ckpt_value)           ? ["ae.safetensors", "clip_l.safetensors", "t5-v1_1-xxl-encoder-Q8_0.gguf"] :
+        model_selection_chroma.find(x => x.value === hires_ckpt_value)         ? ["ae.safetensors", "t5-v1_1-xxl-encoder-Q8_0.gguf"] :
+        model_selection_flux_klein_9b.find(x => x.value === hires_ckpt_value)  ? ["flux2-vae.safetensors", "Qwen3-8B-Q8_0.gguf"] :
+        model_selection_flux_klein_4b.find(x => x.value === hires_ckpt_value)  ? ["flux2-vae.safetensors", "qwen_3_4b.safetensors"] :
+        model_selection_qwen_image.find(x => x.value === hires_ckpt_value)     ? ["qwen_image_vae.safetensors", "qwen_2.5_vl_7b_fp8_scaled.safetensors"] :
+        model_selection_anima.find(x => x.value === hires_ckpt_value)          ? ["qwen_image_vae.safetensors", "qwen_3_06b_base.safetensors"] :
+        model_selection_z_image.find(x => x.value === hires_ckpt_value)        ? ["ae.safetensors", "qwen_3_4b.safetensors"] :
+        model_selection_lumina.find(x => x.value === hires_ckpt_value)         ? ["ae.safetensors", "gemma_2_2b_fp16.safetensors"] :
+        [];  // SD/XL requires no special support models
+
     console.log(upscale_multiplier, upscaler, upscale_denoise_strength, upscale_step)
+
     if (true) {
         return [
             `task(${session_hash})`,
@@ -603,13 +645,13 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             0,
             0,
             usersetting?.hires_checkpoint ?? "Use same checkpoint",
-            ["Use same choices"],
-            "Use same sampler",
-            "Use same scheduler",
-            "",
-            "",
-            final_cfg,  // hires cfg
-            final_shift,  // hires distilled cfg/shift
+            hires_support_models,
+            usersetting?.hires_sampler ?? "Use same sampler",
+            usersetting?.hires_scheduler ?? "Use same scheduler",
+            usersetting?.hires_positive ?? "",
+            usersetting?.hires_negative ?? "",
+            usersetting?.hires_cfg ?? final_cfg,      // hires cfg
+            usersetting?.hires_shift ?? final_shift,  // hires distilled cfg/shift
             null,
             "None",
             sampling_step,
@@ -725,6 +767,17 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             false,
             "Straight Abs.",
             "Flat",
+            "",          // DAAM prompt
+            false,
+            true,
+            false,
+            false,
+            "Auto",
+            0.5,
+            1,
+            false,
+            false,
+            false,               // Enable DAAM
             use_booru_gen,          // enable DanTagGen
             "After applying other prompt processings",
             booru_gen_config?.random_seed || -1,
@@ -856,7 +909,20 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             true,
             "16bpc",
             ".tiff",
-            1.2
+            1.2,
+            "seedvr2_ema_7b_sharp-Q4_K_M.gguf",     // seedvr2 upscale setting
+            "ema_vae_fp16.safetensors",
+            -1,
+            1600,
+            0,
+            0,
+            false,
+            true,
+            false,
+            true,
+            1024,
+            128,
+            false,
         ]
     }
 }
@@ -1019,6 +1085,7 @@ const model_selection_flux_klein_4b = [
 
 const model_selection_anima = [
     { name: 'Anima Preview', value: 'anima-preview.safetensors'},
+    { name: 'Anima Preview 2', value: 'anima-preview2.safetensors'},
 ]
 
 const model_selection_z_image = [
