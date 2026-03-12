@@ -203,7 +203,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
     use_foocus = false, use_booru_gen = false, booru_gen_config = null, current_model = '',
     inpaint_img_upload_path = null, inpaint_mask_upload_path = null, colorbalance_config = null, usersetting = null, outpaint_config = null, 
     upscale_config = null, extra_script = "None", detail_daemon_config = null, tipo_input = null, latentmod_config = null,
-    mahiro_config = null, teacache_config = null, modulation_config = null) => {
+    mahiro_config = null, teacache_config = null, modulation_config = null, daam_config = null) => {
     // default mode 0 is img2img, 4 is inpainting
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 3000000 && upscaler == "None") ? true : false
@@ -281,7 +281,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             "",
             "upload",
             null,
-            extra_script,
+            extra_script || (usersetting?.seedvr2_model ? "SeedVR2 Native Upscaler (24G)" : "None"),   // extra script
             false,        // soft inpainting
             1,
             0.5,
@@ -402,7 +402,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             false,
             "Straight Abs.",
             "Flat",
-            "",          // DAAM prompt
+            daam_config?.prompt || "",          // DAAM prompt
             false,
             true,
             false,
@@ -412,7 +412,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             1,
             false,
             false,
-            false,               // Enable DAAM
+            daam_config ? true : false,               // Enable DAAM
             use_booru_gen,          // enable DanTagGen
             "After applying other prompt processings",
             booru_gen_config?.random_seed || -1,
@@ -552,10 +552,10 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             "16bpc",
             ".tiff",
             1.2,
-            "seedvr2_ema_7b_sharp-Q4_K_M.gguf",     // seedvr2 upscale setting
-            "ema_vae_fp16.safetensors",
+            usersetting?.seedvr2_model ?? "seedvr2_ema_7b_sharp-Q4_K_M.gguf",     // seedvr2 upscale model
+            "ema_vae_fp16.safetensors",             // seedvr2 upscale VAE
             -1,
-            1600,
+            usersetting?.seedvr2_resolution ?? 1600,  // target resolution (shortest side)
             0,
             0,
             false,
@@ -574,7 +574,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
     coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, 
     freeu_config = null, dynamic_threshold_config = null, pag_config = null, use_foocus = false, use_booru_gen = false, booru_gen_config = null, 
     current_model = '', colorbalance_config = null, usersetting = null, detail_daemon_config = null, tipo_input = null, latentmod_config = null,
-    mahiro_config = null, teacache_config = null, batch_count = 1, batch_size = 1, modulation_config = null) => {
+    mahiro_config = null, teacache_config = null, batch_count = 1, batch_size = 1, modulation_config = null, daam_config = null) => {
 
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 1600000) ? true : false
@@ -653,7 +653,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             usersetting?.hires_cfg ?? final_cfg,      // hires cfg
             usersetting?.hires_shift ?? final_shift,  // hires distilled cfg/shift
             null,
-            "None",
+            usersetting?.seedvr2_model ? "SeedVR2 Native Upscaler (24G)" : "None",   // extra script
             sampling_step,
             sampler,
             scheduler,
@@ -767,7 +767,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             false,
             "Straight Abs.",
             "Flat",
-            "",          // DAAM prompt
+            daam_config?.prompt || "",          // DAAM prompt
             false,
             true,
             false,
@@ -777,7 +777,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             1,
             false,
             false,
-            false,               // Enable DAAM
+            daam_config ? true : false,               // Enable DAAM
             use_booru_gen,          // enable DanTagGen
             "After applying other prompt processings",
             booru_gen_config?.random_seed || -1,
@@ -853,7 +853,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             false,
             "Automatic",
             "m + (M-m)*(1-x)**3",
-            false,      // extra script (default)
+            false,
             [],
             false,      // seed varience
             3,
@@ -910,10 +910,10 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             "16bpc",
             ".tiff",
             1.2,
-            "seedvr2_ema_7b_sharp-Q4_K_M.gguf",     // seedvr2 upscale setting
-            "ema_vae_fp16.safetensors",
+            usersetting?.seedvr2_model ?? "seedvr2_ema_7b_sharp-Q4_K_M.gguf",     // seedvr2 upscale model
+            "ema_vae_fp16.safetensors",             // seedvr2 upscale VAE
             -1,
-            1600,
+            usersetting?.seedvr2_resolution ?? 1600,  // target resolution (shortest side)
             0,
             0,
             false,

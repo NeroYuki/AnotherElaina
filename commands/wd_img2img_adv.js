@@ -13,7 +13,7 @@ const { load_controlnet } = require('../utils/controlnet_execute.js');
 const { cached_model, model_change } = require('../utils/model_change.js');
 const { queryRecordLimit } = require('../database/database_interaction.js');
 const { load_adetailer } = require('../utils/adetailer_execute.js');
-const { full_prompt_analyze, preview_coupler_setting, fetch_user_defined_wildcard, get_teacache_config_from_prompt } = require('../utils/prompt_analyzer.js');
+const { full_prompt_analyze, preview_coupler_setting, fetch_user_defined_wildcard, get_teacache_config_from_prompt, get_debug_prompt_analyze } = require('../utils/prompt_analyzer.js');
 const { load_profile } = require('../utils/profile_helper.js');
 const { clamp, parse_common_setting } = require('../utils/common_helper');
 const { get_model_family_defaults } = require('../utils/model_defaults');
@@ -320,6 +320,9 @@ module.exports = {
         // parse the user setting config
         const usersetting_config = client.usersetting_config.has(interaction.user.id) ? client.usersetting_config.get(interaction.user.id) : null
         const usersetting = parse_common_setting(usersetting_config)
+        if (usersetting?.seedvr2_model) {
+            interaction.channel.send(`SeedVR2 upscaling active (${usersetting.seedvr2_model}, target ${usersetting.seedvr2_resolution ?? 1600}px shortest edge)`)
+        }
         
         let seed = -1
         try {
@@ -652,6 +655,12 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         neg_prompt = get_negative_prompt(neg_prompt, override_neg_prompt, remove_nsfw_restriction, cached_model[0])
 
         prompt = get_prompt(prompt, remove_nsfw_restriction, cached_model[0])
+        // Extract DAAM tokens from [DEBUG]#token# syntax and clean prompt
+        const debug_res = get_debug_prompt_analyze(prompt, neg_prompt)
+        const daam_config = debug_res.debug_prompt ? { prompt: debug_res.debug_prompt } : null
+        prompt = debug_res.prompt
+        neg_prompt = debug_res.neg_prompt
+        if (daam_config) interaction.channel.send({ content: 'DAAM visualization enabled.' })
         extra_config = full_prompt_analyze(prompt, is_xl)
         prompt = extra_config.prompt
         prompt = await fetch_user_defined_wildcard(prompt, interaction.user.id)
@@ -736,7 +745,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, "Whole picture", 32, 
             extra_config.use_foocus, extra_config.use_booru_gen, booru_gen_config_obj, cached_model[0], null, null, colorbalance_config_obj, usersetting, outpaint_config_obj, 
             upscale_config_obj, extra_script, extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config_obj,
-            extra_config.mahiro_config, extra_config.teacache_config, extra_config.modulation_config)
+            extra_config.mahiro_config, extra_config.teacache_config, extra_config.modulation_config, daam_config)
 
         // console.log(JSON.stringify(create_data.filter((x, i) => i !== 5), null, 2))
 
@@ -881,7 +890,8 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                     if (final_res_obj.data) {
                         // if server index == 0, get local image directory, else initiate request to get image from server
                         let img_buffer = null
-                        const file_dir = final_res_obj.data[0].value[0]?.image.path
+                        const daam_heatmap_count = daam_config ? daam_config.prompt.split(',').length : 0;
+                        const file_dir = final_res_obj.data[0].value[daam_heatmap_count]?.image.path
                         console.log(final_res_obj.data)
                         if (!file_dir) {
                             // error from python server side, we bail
@@ -928,6 +938,23 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                         }, 'completed').catch(err => {
                             console.log(err)
                         })
+
+                        // Send DAAM heatmap images after the main result
+                        if (daam_heatmap_count > 0) {
+                            const allPaths = final_res_obj.data[0].value.map(item => item?.image?.path).filter(Boolean);
+                            for (let h = 0; h < daam_heatmap_count && h < allPaths.length; h++) {
+                                const heatmap_res = await fetch(`${WORKER_ENDPOINT}/file=${allPaths[h]}`).catch(err => {
+                                    console.log(`Error fetching heatmap ${h+1}:`, err);
+                                });
+                                if (heatmap_res?.status === 200) {
+                                    const heatmap_buffer = Buffer.from(await heatmap_res.arrayBuffer());
+                                    await interaction.channel.send({
+                                        content: `DAAM heatmap ${h + 1} of ${daam_heatmap_count}`,
+                                        files: [{ attachment: heatmap_buffer, name: `daam_${h}.png` }]
+                                    }).catch(err => console.log('Error sending heatmap:', err));
+                                }
+                            }
+                        }
 
                         isDone = true
                     }

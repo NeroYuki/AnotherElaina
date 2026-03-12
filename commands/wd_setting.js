@@ -59,6 +59,19 @@ module.exports = {
                 .addNumberOption(option =>
                     option.setName('hires_shift')
                         .setDescription('Distilled CFG / shift for hires (leave unset to use same shift as base generation)'))
+                .addStringOption(option =>
+                    option.setName('seedvr2_model')
+                        .setDescription('SeedVR2 upscaling model to apply on all img2img/txt2img calls (Disable to turn off)')
+                        .addChoices(
+                            { name: 'Disable', value: 'disabled' },
+                            { name: 'SeedVR2 3B Q8', value: 'seedvr2_ema_3b-Q8_0.gguf' },
+                            { name: 'SeedVR2 7B Q8', value: 'seedvr2_ema_7b-Q8_0.gguf' },
+                            { name: 'SeedVR2 7B Sharp Q8', value: 'seedvr2_ema_7b_sharp-Q8_0.gguf' },
+                            { name: 'SeedVR2 7B Sharp Q4_K_M', value: 'seedvr2_ema_7b_sharp-Q4_K_M.gguf' },
+                        ))
+                .addIntegerOption(option =>
+                    option.setName('seedvr2_resolution')
+                        .setDescription('Target resolution shortest side for SeedVR2 upscaling (default: 1600)'))
                 )
 
     ,
@@ -90,6 +103,9 @@ module.exports = {
         const hires_negative = interaction.options.getString('hires_negative') ?? null
         let hires_cfg = interaction.options.getNumber('hires_cfg') ?? null
         let hires_shift = interaction.options.getNumber('hires_shift') ?? null
+        const seedvr2_model_raw = interaction.options.getString('seedvr2_model') ?? null
+        const seedvr2_model = seedvr2_model_raw === 'disabled' ? null : seedvr2_model_raw
+        const seedvr2_resolution = interaction.options.getInteger('seedvr2_resolution') ?? null
 
         await interaction.deferReply();
 
@@ -200,7 +216,9 @@ module.exports = {
             hires_positive: hires_positive,
             hires_negative: hires_negative,
             hires_cfg: hires_cfg,
-            hires_shift: hires_shift
+            hires_shift: hires_shift,
+            seedvr2_model: seedvr2_model,
+            seedvr2_resolution: seedvr2_resolution,
         }
 
         const config_string = JSON.stringify(config)

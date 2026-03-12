@@ -7,7 +7,7 @@ const { default: axios } = require('axios');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const { model_change, cached_model } = require('../utils/model_change.js');
 const { queryRecordLimit } = require('../database/database_interaction.js');
-const { full_prompt_analyze, preview_coupler_setting, fetch_user_defined_wildcard, get_teacache_config_from_prompt } = require('../utils/prompt_analyzer.js');
+const { full_prompt_analyze, preview_coupler_setting, fetch_user_defined_wildcard, get_teacache_config_from_prompt, get_debug_prompt_analyze } = require('../utils/prompt_analyzer.js');
 const { load_profile } = require('../utils/profile_helper.js');
 const { load_adetailer } = require('../utils/adetailer_execute.js');
 const { clamp, calculateOptimalGrid, parseImageCount, parse_common_setting } = require('../utils/common_helper');
@@ -219,6 +219,9 @@ module.exports = {
         // // parse the user setting config
         const usersetting_config = client.usersetting_config.has(interaction.user.id) ? client.usersetting_config.get(interaction.user.id) : null
         const usersetting = parse_common_setting(usersetting_config)
+        if (usersetting?.seedvr2_model) {
+            interaction.channel.send(`SeedVR2 upscaling active (${usersetting.seedvr2_model}, target ${usersetting.seedvr2_resolution ?? 1600}px shortest edge)`)
+        }
         
         let seed = -1
         try {
@@ -424,6 +427,12 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         const is_xl = model_selection_xl.find(x => x.value === cached_model[0]) != null
         const is_flux = model_selection_flux.find(x => x.value === cached_model[0]) != null
         const is_vpred = cached_model[0].includes('vpred')
+        // Extract DAAM tokens from [DEBUG]#token# syntax and clean prompt
+        const debug_res = get_debug_prompt_analyze(prompt, neg_prompt)
+        const daam_config = debug_res.debug_prompt ? { prompt: debug_res.debug_prompt } : null
+        prompt = debug_res.prompt
+        neg_prompt = debug_res.neg_prompt
+        if (daam_config) interaction.channel.send({ content: 'DAAM visualization enabled.' })
         extra_config = full_prompt_analyze(prompt, is_xl)
         prompt = extra_config.prompt
         prompt = await fetch_user_defined_wildcard(prompt, interaction.user.id)
@@ -559,7 +568,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             upscale_denoise_strength, upscale_step, false, use_adetailer, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
             extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, override_neg_prompt ? false : true, extra_config.use_booru_gen, 
             booru_gen_config_obj, cached_model[0], colorbalance_config_obj, usersetting, extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config_obj,
-            extra_config.mahiro_config, extra_config.teacache_config, batch_count, batch_size, extra_config.modulation_config)
+            extra_config.mahiro_config, extra_config.teacache_config, batch_count, batch_size, extra_config.modulation_config, daam_config)
 
         // make option_init but for axios
         const option_init_axios = {
@@ -710,17 +719,24 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                             // error from python server side, we bail
                             throw 'Request return no images';
                         }
-                        // if imagePath.length > 1, it mean the first image will be the grid, check if the gird w/h exceed 2000 pixel, if yes we will use jpg file of the same name
-                        if (imagePaths.length > 1 && bulk_size > 1) {
+                        // Skip DAAM heatmap images that precede the actual generated images.
+                        // The backend returns bulk_size * num_tokens heatmaps first, then the normal order (grid -> individual images).
+                        const daam_heatmap_count = daam_config ? bulk_size * daam_config.prompt.split(',').length : 0;
+                        const actualImagePaths = imagePaths.slice(daam_heatmap_count);
+                        if (actualImagePaths.length === 0) {
+                            throw 'Request return no images after filtering DAAM heatmaps';
+                        }
+                        // if actualImagePaths.length > 1, it means the first image is the grid; check if its dimensions exceed 3000px, if so use jpg
+                        if (actualImagePaths.length > 1 && bulk_size > 1) {
                             // calculate most efficient grid size, consider initial width and height as well
-                            const gridInfo = calculateOptimalGrid(width, height, imagePaths.length - 1);
-                            console.log(`Creating grid with ${gridInfo.columns}x${gridInfo.rows} layout for ${imagePaths.length - 1} images`);
+                            const gridInfo = calculateOptimalGrid(width, height, actualImagePaths.length - 1);
+                            console.log(`Creating grid with ${gridInfo.columns}x${gridInfo.rows} layout for ${actualImagePaths.length - 1} images`);
                             
                             // Check if the grid dimensions exceed 2000 pixels
                             if (gridInfo.gridWidth > 3000 || gridInfo.gridHeight > 3000) {
                                 console.log(`Grid dimensions (${gridInfo.gridWidth}x${gridInfo.gridHeight}) exceed 2000 pixels, will use JPG format`);
                                 // Here you could add code to change the file extension to jpg if needed
-                                imagePaths[0] = imagePaths[0].replace(/\.png$/, '.jpg');
+                                actualImagePaths[0] = actualImagePaths[0].replace(/\.png$/, '.jpg');
                             }
                         }
 
@@ -738,13 +754,13 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                         // Fetch all images and prepare result
                         const imageResults = [];
 
-                        for (let i = 0; i < imagePaths.length; i++) {
+                        for (let i = 0; i < actualImagePaths.length; i++) {
                             // all server is now remote
                             // retry fetch before throwing
                             let fetch_final_retry_count = 0;
                             let img_res = null;
                             while (fetch_final_retry_count < 3 && !img_res) {
-                                img_res = await fetch(`${WORKER_ENDPOINT}/file=${imagePaths[i]}`).catch(err => {
+                                img_res = await fetch(`${WORKER_ENDPOINT}/file=${actualImagePaths[i]}`).catch(err => {
                                     console.log(`Error while fetching image ${i+1} on remote server, retrying...`);
                                 });
                                 fetch_final_retry_count++;
@@ -753,7 +769,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                             }
                             
                             if (!img_res) {
-                                console.log(`Warning: Could not fetch image ${i+1} at path ${imagePaths[i]}`);
+                                console.log(`Warning: Could not fetch image ${i+1} at path ${actualImagePaths[i]}`);
                                 continue;
                             }
                             
@@ -761,7 +777,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                                 const img_buffer = Buffer.from(await img_res.arrayBuffer());
                                 imageResults.push({
                                     buffer: img_buffer,
-                                    path: imagePaths[i]
+                                    path: actualImagePaths[i]
                                 });
                                 
                                 if (i === 0) {
@@ -788,12 +804,29 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                                 else if (bulk_size > 1) {
                                     // send additional images as file in the channel the interaction was created
                                     await interaction.channel.send({
-                                        content: `Additional image ${i} of ${imagePaths.length - 1}`,
+                                        content: `Additional image ${i} of ${actualImagePaths.length - 1}`,
                                         files: [{
                                             attachment: img_buffer,
                                             name: `img_${i}.png`
                                         }]
                                     });
+                                }
+                            }
+                        }
+
+                        // Send DAAM heatmap images after the main result
+                        if (daam_heatmap_count > 0) {
+                            const heatmapPaths = imagePaths.slice(0, daam_heatmap_count);
+                            for (let h = 0; h < heatmapPaths.length; h++) {
+                                const heatmap_res = await fetch(`${WORKER_ENDPOINT}/file=${heatmapPaths[h]}`).catch(err => {
+                                    console.log(`Error fetching heatmap ${h+1}:`, err);
+                                });
+                                if (heatmap_res?.status === 200) {
+                                    const heatmap_buffer = Buffer.from(await heatmap_res.arrayBuffer());
+                                    await interaction.channel.send({
+                                        content: `DAAM heatmap ${h + 1} of ${heatmapPaths.length}`,
+                                        files: [{ attachment: heatmap_buffer, name: `daam_${h}.png` }]
+                                    }).catch(err => console.log('Error sending heatmap:', err));
                                 }
                             }
                         }
