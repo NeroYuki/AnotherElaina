@@ -27,6 +27,7 @@ if (!doClear) {
 	for (const file of commandFiles) {
 		const filePath = path.join(commandsPath, file);
 		const command = require(filePath);
+		if (!command || !command.data) continue;
 		if (!isGlobal) {
 			command.data.description = "[DEBUG] " + command.data.description
 			// set subcommand description

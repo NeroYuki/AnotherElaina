@@ -38,6 +38,7 @@ client.img2img_outpaint_config = new Map();
 client.latentmod_config = new Map();
 client.shipgirl_quiz_config = new Map();	
 client.shipgirl_quiz_multi = new Map();
+client.kansenindex_sessions = new Map();
 client.mapperatorinator_queue = []
 client.mai_mod_queue = []
 client.COOLDOWN_SECONDS = 30; // replace with desired cooldown time in seconds
@@ -48,6 +49,10 @@ for (const file of commandFiles) {
     const filePath = path.join(commandsPath, file);
     const command = require(filePath);
 
+    if (!command || !command.data || !command.execute) {
+        console.log('skipped ' + file + ' (no data/execute export)')
+        continue
+    }
     console.log('loaded ' + file)
     // Set a new item in the Collection
     // With the key as the command name and the value as the exported module
@@ -115,6 +120,14 @@ client.on('messageCreate', async message => {
 
 
 client.on('interactionCreate', async interaction => {
+    if (interaction.isAutocomplete()) {
+        const command = client.commands.get(interaction.commandName);
+        if (command && command.autocomplete) {
+            try { await command.autocomplete(interaction); } catch (e) { console.error(e); }
+        }
+        return;
+    }
+
     if (!(interaction.isCommand() || interaction.isMessageContextMenu() || interaction.isSelectMenu())) return;
 
     if (interaction.isSelectMenu() && interaction.customId === 'legacy_model_picker') {
@@ -162,6 +175,7 @@ client.on('interactionCreate', async interaction => {
         'shipgirl',
         'shipgirl_config',
         'shipgirl_multi',
+        'kansenindex',
         'wd_script_outpaint',
         'wd_script_upscale',
         'wd_latentmod',
