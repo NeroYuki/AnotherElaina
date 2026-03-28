@@ -216,105 +216,6 @@ module.exports = {
         });
     },
 
-    async execute_comfy_debug(interaction, client, data) {
-        const workflow = JSON.parse(JSON.stringify(workflow_daam))
-
-        const debug_res = get_debug_prompt_analyze(data.prompt, data.neg_prompt)
-
-        data.prompt = debug_res.prompt
-        data.neg_prompt = debug_res.neg_prompt
-
-        workflow["10"]["inputs"]["width"] = data.width
-        workflow["10"]["inputs"]["height"] = data.height
-        workflow["20"]["inputs"]["steps"] = data.sampling_step
-        workflow["25"]["inputs"]["wildcard_text"] = data.prompt
-        workflow["11"]["inputs"]["text"] = data.neg_prompt
-        workflow["1"]["inputs"]["ckpt_name"] = "sd\\" + data.model
-        workflow["20"]["inputs"]["sampler_name"] = data.sampler
-        workflow["20"]["inputs"]["scheduler"] = data.scheduler
-        workflow["20"]["inputs"]["seed"] = Math.floor(Math.random() * 2_000_000_000)
-
-        if (debug_res.debug_prompt) {
-            workflow["7"]["inputs"]["attentions"] = debug_res.debug_prompt
-        }
-        else {
-            // remove node 7 and 23
-            delete workflow["7"]
-            delete workflow["23"]
-        }
-
-        if (debug_res.debug_neg_prompt) {
-            workflow["22"]["inputs"]["attentions"] = debug_res.debug_neg_prompt
-        }
-        else {
-            // remove node 22 and 9
-            delete workflow["22"]
-            delete workflow["9"]
-        }
-
-        ComfyClient.sendPrompt(workflow, (data) => {
-            //console.log(data)
-            if (data.node !== null) interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] });
-        }, (data) => {
-            console.log('received success')
-            const filenames = data.output.images.map(x => x.filename)
-
-
-            // fetch images from comfyUI
-            let pendingImages = [];
-            let pendingSize = 0;
-            const MAX_SIZE = 10 * 1024 * 1024; // 10MB in bytes
-            let i = 0
-            
-            for (const filename of filenames) {
-                ComfyClient.getImage(filename, '', 'temp', /*only_filename*/ false).then(async (arraybuffer) => {
-                    // convert arraybuffer to buffer
-                    const buffer = Buffer.from(arraybuffer);
-                    const fileSize = buffer.length;
-                    
-                    // If adding this image would exceed the limit, send the current batch
-                    if (pendingSize + fileSize > MAX_SIZE && pendingImages.length > 0) {
-                        await interaction.channel.send({ 
-                            content: `Returned images (${pendingImages.length})`, 
-                            files: pendingImages 
-                        });
-                        pendingImages = [];
-                        pendingSize = 0;
-                    }
-                    
-                    // Add image to current batch
-                    pendingImages.push({ attachment: buffer, name: filename });
-                    pendingSize += fileSize;
-                    
-                    // If this was the last image, send any remaining batch
-                    if (pendingImages.length > 0 && i === filenames.length - 1) {
-                        await interaction.channel.send({ 
-                            content: `Returned images (${pendingImages.length})`, 
-                            files: pendingImages 
-                        });
-                    }
-
-                    if (i >= filenames.length - 1) {
-                        ComfyClient.freeMemory(true)
-                    }
-
-                    i += 1;
-                }).catch((err) => {
-                    console.log("Failed to retrieve image", err)
-                    interaction.editReply({ content: "Failed to retrieve image" });
-                });
-            }
-
-        }, (data) => {
-            console.log('received error')
-            interaction.editReply({ content: data.error });
-            ComfyClient.freeMemory(true)
-        }, (data) => {
-            console.log('received progress')
-            interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] + ` (${data.value}/${data.max})` });
-        });
-    },
-
 	async execute(interaction, client) {
         if (client.cooldowns.has(interaction.user.id) && !byPassUser.includes(interaction.user.id)) {
             // cooldown not ended
@@ -519,32 +420,6 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         if (daam_config) {
             interaction.channel.send({ content: 'DAAM visualization enabled (Forge backend).' })
         }
-        // search for lora load call <lora:...:...>
-        // if (is_flux && !force_legacy_flux) {
-        //     // flux lora is broken in forge backend, switch to comfyUI backend
-        //     interaction.channel.send({ content: `Detected Flux, switching to ComfyUI backend, some options will be ignore. You can create another image in ${cooldown.toFixed(2)} seconds ${teacache_check.teacache_config ? "(Teacache activated: -" + (100 * (1 - Math.pow(1 - teacache_check.teacache_config?.threshold || 0.1, 2))).toFixed(0) + "%)" : ""}` });
-        //     if (ComfyClient.promptListener.length == 0 && ComfyClient.comfyStat.gpu_vram_used > 5) {
-        //         await interaction.editReply({ content: 'Not enough resource can be allocated to finish this command, please try again later' });
-        //         return;
-        //     }
-        //     this.execute_comfy(interaction, client, {
-        //         prompt,
-        //         width,
-        //         height,
-        //         sampling_step,
-        //         model: cached_model[0],
-        //         sampler: sampler_to_comfy_name_mapping[sampler] ?? "euler",
-        //         scheduler: scheduler_to_comfy_name_mapping[scheduler] ?? "normal",
-        //         teacache_strength: teacache_check.teacache_config ? teacache_check.teacache_config.threshold : 0
-        //     })
-
-        //     client.cooldowns.set(interaction.user.id, true);
-
-        //     setTimeout(() => {
-        //         client.cooldowns.delete(interaction.user.id);
-        //     }, cooldown * 1000);
-        //     return
-        // }
 
         await interaction.editReply({ content: `Generating image, you can create another image in ${cooldown.toFixed(2)} seconds ${teacache_check.teacache_config ? "(Teacache activated: -" + (100 * (1 - Math.pow(1 - teacache_check.teacache_config?.threshold || 0.1, 2))).toFixed(0) + "%)" : ""}` });
 
@@ -786,10 +661,19 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
 
                 if (embeded) {
                     const reply_content = {embeds: [embeded], components: [row]}
-                    if (data.img && !data.catbox_url) {
+                    if (data.img && !data.catbox_url && data.img.length <= 9_500_000) {
                         reply_content.files = [{attachment: data.img, name: data.img_name}]
+                    }                    
+                    else if (data.img && !data.catbox_url && data.img.length > 9_500_000 && state === 'completed') {
+                        // emergency catbox upload for oversized image
+                        await interaction.channel.send('Image is too large to be sent as an attachment, attempting emergency upload to catbox...')
+                        const emergency_url = await catboxUpload(data.img).catch(err => {
+                            console.log('Emergency catbox upload failed:', err)
+                        })
+                        if (emergency_url) {
+                            reply_content.embeds[0].image = { url: emergency_url }
+                        }
                     }
-
                     // if completed, only allow edit if the state is completed
                     if ((state === 'progress' || state === 'queued') && (isDone || isCancelled)) {
                         resolve()
@@ -944,7 +828,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                                     path: actualImagePaths[i]
                                 });
                                 
-                                // Only upload images to catbox if keep_metadata is true
+                                // Upload to catbox if keep_metadata is true, or if image is too large for Discord
                                 if (keep_metadata) {
                                     catbox_url = await catboxUpload(img_buffer).catch(err => {
                                         console.log('Error uploading to catbox:', err);
@@ -957,6 +841,13 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
 
                                     if (imageResults.length === 0) {
                                         throw 'Failed to fetch any images from remote server';
+                                    }
+
+                                    // Auto-upload to catbox if grid image is too large for Discord
+                                    if (!catbox_url && img_buffer.length > 9_500_000) {
+                                        catbox_url = await catboxUpload(img_buffer).catch(err => {
+                                            console.log('Error uploading oversized grid to catbox:', err);
+                                        });
                                     }
 
                                     // Update the interaction reply with the first image and info about total count
@@ -974,15 +865,29 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                                 }
                                 else if (bulk_size > 1) {
                                     // send additional images as file in the channel the interaction was created
-                                    await interaction.channel.send({
-                                        content: `Additional image ${i} of ${actualImagePaths.length - 1}`,
-                                        files: [{
-                                            attachment: img_buffer,
-                                            name: `img_${i}.png`
-                                        }]
-                                    }).catch(err => {
-                                        console.log('Error sending additional image:', err);
-                                    });
+                                    let individual_catbox_url = null;
+                                    if (img_buffer.length > 9_500_000) {
+                                        individual_catbox_url = await catboxUpload(img_buffer).catch(err => {
+                                            console.log(`Error uploading oversized image ${i} to catbox:`, err);
+                                        });
+                                    }
+                                    if (individual_catbox_url) {
+                                        await interaction.channel.send({
+                                            content: `Additional image ${i} of ${actualImagePaths.length - 1} (full quality: ${individual_catbox_url})`,
+                                        }).catch(err => {
+                                            console.log('Error sending additional image link:', err);
+                                        });
+                                    } else {
+                                        await interaction.channel.send({
+                                            content: `Additional image ${i} of ${actualImagePaths.length - 1}`,
+                                            files: [{
+                                                attachment: img_buffer,
+                                                name: `img_${i}.png`
+                                            }]
+                                        }).catch(err => {
+                                            console.log('Error sending additional image:', err);
+                                        });
+                                    }
                                 }
                             }
                         }

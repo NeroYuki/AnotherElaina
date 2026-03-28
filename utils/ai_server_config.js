@@ -412,7 +412,11 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             1,
             false,
             false,
+            false,
+            false,
+            "Disabled",
             daam_config ? true : false,               // Enable DAAM
+            "Positive",
             use_booru_gen,          // enable DanTagGen
             "After applying other prompt processings",
             booru_gen_config?.random_seed || -1,
@@ -652,7 +656,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             usersetting?.hires_negative ?? "",
             usersetting?.hires_cfg ?? final_cfg,      // hires cfg
             usersetting?.hires_shift ?? final_shift,  // hires distilled cfg/shift
-            null,
+            [],
             usersetting?.seedvr2_model ? "SeedVR2 Native Upscaler (24G)" : "None",   // extra script
             sampling_step,
             sampler,
@@ -777,7 +781,11 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             1,
             false,
             false,
+            false,
+            false,
+            "Disabled",
             daam_config ? true : false,               // Enable DAAM
+            "Positive",
             use_booru_gen,          // enable DanTagGen
             "After applying other prompt processings",
             booru_gen_config?.random_seed || -1,

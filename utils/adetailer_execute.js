@@ -104,6 +104,24 @@ function load_adetailer(session_hash, server_index, adetailer_config, interactio
         }
         //console.log(adetailer_model, adetailer_prompt, adetailer_model_2, adetailer_prompt_2)
 
+        // check if adetailer_prompt contains [DETECT] flag, remove the flag and mark the prompt and set should_auto_tag
+        let should_auto_tag_1 = false
+        let should_auto_tag_2 = false
+        let should_auto_tag_3 = false
+        
+        if (adetailer_prompt.includes("[DETECT]")) {
+            should_auto_tag_1 = true
+            adetailer_prompt = adetailer_prompt.replace("[DETECT]", "").trim()
+        }
+        if (adetailer_prompt_2.includes("[DETECT]")) {
+            should_auto_tag_2 = true
+            adetailer_prompt_2 = adetailer_prompt_2.replace("[DETECT]", "").trim()
+        }
+        if (adetailer_prompt_3.includes("[DETECT]")) {
+            should_auto_tag_3 = true
+            adetailer_prompt_3 = adetailer_prompt_3.replace("[DETECT]", "").trim()
+        }
+
         const base_index = server_pool[server_index].fn_index_change_adetailer_model1[mode]
 
         Promise.all(
@@ -113,6 +131,7 @@ function load_adetailer(session_hash, server_index, adetailer_config, interactio
                 // +3 = apply to hires fix only
                 change_option_adetailer(adetailer_prompt, base_index + 4, session_hash, WORKER_ENDPOINT),
                 change_option_adetailer(adetailer_config_obj[0]?.neg_prompt || "", base_index + 5, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(should_auto_tag_1, base_index + 9, session_hash, WORKER_ENDPOINT),
                 change_option_adetailer(adetailer_config_obj[0]?.detection_threshold || 0.3, base_index + 15, session_hash, WORKER_ENDPOINT),
                 change_option_adetailer(adetailer_config_obj[0]?.mask_blur || 4, base_index + 24, session_hash, WORKER_ENDPOINT),
                 change_option_adetailer(adetailer_config_obj[0]?.denoise_strength || 0.5, base_index + 25, session_hash, WORKER_ENDPOINT),
@@ -121,6 +140,7 @@ function load_adetailer(session_hash, server_index, adetailer_config, interactio
                 change_option_adetailer(adetailer_config_obj[1]?.object_to_detect || "face", base_index + 68 + 1, session_hash, WORKER_ENDPOINT),
                 change_option_adetailer(adetailer_prompt_2, base_index + 68 + 4, session_hash, WORKER_ENDPOINT),
                 change_option_adetailer(adetailer_config_obj[1]?.neg_prompt || "", base_index + 68 + 5, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(should_auto_tag_2, base_index + 68 + 9, session_hash, WORKER_ENDPOINT),
                 change_option_adetailer(adetailer_config_obj[1]?.detection_threshold || 0.3, base_index + 68 + 15, session_hash, WORKER_ENDPOINT),
                 change_option_adetailer(adetailer_config_obj[1]?.mask_blur || 4, base_index + 68 + 24, session_hash, WORKER_ENDPOINT),
                 change_option_adetailer(adetailer_config_obj[1]?.denoise_strength || 0.5, base_index + 68 + 25, session_hash, WORKER_ENDPOINT),
@@ -129,6 +149,7 @@ function load_adetailer(session_hash, server_index, adetailer_config, interactio
                 change_option_adetailer(adetailer_config_obj[2]?.object_to_detect || "face", base_index + 136 + 1, session_hash, WORKER_ENDPOINT),
                 change_option_adetailer(adetailer_prompt_3, base_index + 136 + 4, session_hash, WORKER_ENDPOINT),
                 change_option_adetailer(adetailer_config_obj[2]?.neg_prompt || "", base_index + 136 + 5, session_hash, WORKER_ENDPOINT),
+                change_option_adetailer(should_auto_tag_3, base_index + 136 + 9, session_hash, WORKER_ENDPOINT),
                 change_option_adetailer(adetailer_config_obj[2]?.detection_threshold || 0.3, base_index + 136 + 15, session_hash, WORKER_ENDPOINT),
                 change_option_adetailer(adetailer_config_obj[2]?.mask_blur || 4, base_index + 136 + 24, session_hash, WORKER_ENDPOINT),
                 change_option_adetailer(adetailer_config_obj[2]?.denoise_strength || 0.5, base_index + 136 + 25, session_hash, WORKER_ENDPOINT),

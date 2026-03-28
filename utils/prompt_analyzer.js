@@ -243,7 +243,7 @@ function get_detail_daemon_config_from_prompt(prompt) {
     // else return null
 
     // white space can be omitted
-    const dd_pattern = /\|dd: ([0-9.]+)(,\s*([0-9.]+)-([0-9.]+)(,\s*([0-9.]+))?)?\||([0-9.]+)(,\s*([0-9.]+))?\|/i
+    const dd_pattern = /\|dd:\s*([0-9.]+)(?:,\s*(?:[0-9.]+-[0-9.]+(?:,\s*[0-9.]+)?|[0-9.]+))?\|/i
 
     const dd_match = prompt.match(dd_pattern)
 
@@ -496,8 +496,7 @@ function get_debug_prompt_analyze(prompt, neg_prompt) {
     if (debug_match) {
         let match;
         while ((match = debug_element_pattern.exec(prompt)) !== null) {
-            // match[1] is the element without the wrapping #
-            const element = match[1].replace(/[^a-zA-Z0-9_ ]/g, '').trim()
+            const element = match[1].trim()
             if (element) {
                 debug_prompt.push(element)
             }
@@ -508,8 +507,7 @@ function get_debug_prompt_analyze(prompt, neg_prompt) {
     if (debug_neg_match) {
         let match;
         while ((match = debug_element_pattern.exec(neg_prompt)) !== null) {
-            // match[1] is the element without the wrapping #
-            const element = match[1].replace(/[^a-zA-Z0-9_ ]/g, '').trim()
+            const element = match[1].trim()
             if (element) {
                 debug_neg_prompt.push(element)
             }

@@ -11,6 +11,7 @@ const { full_prompt_analyze, preview_coupler_setting, fetch_user_defined_wildcar
 const { load_profile } = require('../utils/profile_helper.js');
 const { load_adetailer } = require('../utils/adetailer_execute.js');
 const { clamp, calculateOptimalGrid, parseImageCount, parse_common_setting } = require('../utils/common_helper');
+const { catboxUpload } = require('../utils/catbox_upload.js');
 const { get_model_family_defaults } = require('../utils/model_defaults');
 const workflow_og = require('../resources/flux_lora.json')
 const ComfyClient = require('../utils/comfy_client');
@@ -458,35 +459,6 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
 
         const cooldown = compute * bulk_size / (bulk_size > 1 ? 2_750_000 : 2_500_000)
 
-        // const force_legacy_flux = prompt.includes('[FLUX_FORGE]')
-        // prompt = prompt.replace('[FLUX_FORGE]', '')
-        // // search for lora load call <lora:...:...>
-        // if (is_flux && !force_legacy_flux) {
-        //     // flux lora is broken in forge backend, switch to comfyUI backend
-        //     interaction.channel.send({ content: `Detected Flux, switching to ComfyUI backend, some options will be ignore. You can create another image in ${cooldown.toFixed(2)} seconds ${teacache_check.teacache_config ? "(Teacache activated: -" + (100 * (1 - Math.pow(1 - teacache_check.teacache_config?.threshold || 0.1, 2))).toFixed(0) + "%)" : ""}` });
-        //     if (ComfyClient.promptListener.length == 0 && ComfyClient.comfyStat.gpu_vram_used > 6) {
-        //         await interaction.editReply({ content: 'Not enough resource can be allocated to finish this command, please try again later' });
-        //         return;
-        //     }
-        //     this.execute_comfy(interaction, client, {
-        //         prompt,
-        //         width,
-        //         height,
-        //         sampling_step,
-        //         model: cached_model[0],
-        //         sampler: sampler_to_comfy_name_mapping[sampler] ?? "euler",
-        //         scheduler: scheduler_to_comfy_name_mapping[scheduler] ?? "normal",
-        //         teacache_strength: teacache_check.teacache_config ? teacache_check.teacache_config.threshold : 0
-        //     })
-
-        //     client.cooldowns.set(interaction.user.id, true);
-
-        //     setTimeout(() => {
-        //         client.cooldowns.delete(interaction.user.id);
-        //     }, cooldown * 1000);
-        //     return
-        // }
-
         await interaction.editReply({ content: `Generating image, you can create another image in ${cooldown.toFixed(2)} seconds ${teacache_check.teacache_config ? "(Teacache activated: -" + (100 * (1 - Math.pow(1 - teacache_check.teacache_config?.threshold || 0.1, 2))).toFixed(0) + "%)" : ""}` });
 
         if (extra_config.coupler_config && (height % 64 !== 0 || width % 64 !== 0)) {
@@ -630,8 +602,18 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
 
                 if (embeded) {
                     const reply_content = {embeds: [embeded], components: [row]}
-                    if (data.img && !data.catbox_url) {
+                    if (data.img && !data.catbox_url && data.img.length <= 9_500_000) {
                         reply_content.files = [{attachment: data.img, name: data.img_name}]
+                    }
+                    else if (data.img && !data.catbox_url && data.img.length > 9_500_000 && state === 'completed') {
+                        // emergency catbox upload for oversized image
+                        await interaction.channel.send('Image is too large to be sent as an attachment, attempting emergency upload to catbox...')
+                        const emergency_url = await catboxUpload(data.img).catch(err => {
+                            console.log('Emergency catbox upload failed:', err)
+                        })
+                        if (emergency_url) {
+                            reply_content.embeds[0].image = { url: emergency_url }
+                        }
                     }
 
                     // if completed, only allow edit if the state is completed
@@ -788,6 +770,13 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                                         throw 'Failed to fetch any images from remote server';
                                     }
 
+                                    // Auto-upload to catbox if grid image is too large for Discord
+                                    if (!catbox_url && img_buffer.length > 9_500_000) {
+                                        catbox_url = await catboxUpload(img_buffer).catch(err => {
+                                            console.log('Error uploading oversized grid to catbox:', err);
+                                        });
+                                    }
+
                                     // Update the interaction reply with the first image and info about total count
                                     await updateInteractionReply({
                                         img: imageResults[0].buffer || imageResults[0].path,
@@ -803,13 +792,25 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                                 }
                                 else if (bulk_size > 1) {
                                     // send additional images as file in the channel the interaction was created
-                                    await interaction.channel.send({
-                                        content: `Additional image ${i} of ${actualImagePaths.length - 1}`,
-                                        files: [{
-                                            attachment: img_buffer,
-                                            name: `img_${i}.png`
-                                        }]
-                                    });
+                                    let individual_catbox_url = null;
+                                    if (img_buffer.length > 9_500_000) {
+                                        individual_catbox_url = await catboxUpload(img_buffer).catch(err => {
+                                            console.log(`Error uploading oversized image ${i} to catbox:`, err);
+                                        });
+                                    }
+                                    if (individual_catbox_url) {
+                                        await interaction.channel.send({
+                                            content: `Additional image ${i} of ${actualImagePaths.length - 1} (full quality: ${individual_catbox_url})`,
+                                        });
+                                    } else {
+                                        await interaction.channel.send({
+                                            content: `Additional image ${i} of ${actualImagePaths.length - 1}`,
+                                            files: [{
+                                                attachment: img_buffer,
+                                                name: `img_${i}.png`
+                                            }]
+                                        });
+                                    }
                                 }
                             }
                         }

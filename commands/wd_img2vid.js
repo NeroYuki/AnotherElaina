@@ -69,162 +69,165 @@ module.exports = {
 	async execute(interaction, client) {
         await interaction.deferReply();
 
-        let prompt = interaction.options.getString('prompt');
-        let neg_prompt = interaction.options.getString('neg_prompt') || '';
-        const attachment_option = interaction.options.getAttachment('image');
-        const preset = interaction.options.getString('preset') || 'std';
-        const length = clamp(interaction.options.getInteger('length') || 3, 1, 15);
-        const fps = clamp(interaction.options.getInteger('fps') || 16, 5, 24);
-        const custom_budget = clamp(interaction.options.getInteger('custom_budget') || 24_000_000, 600_000, 50_000_000);
-        const model = interaction.options.getString('model') || 'wan2.1-i2v-14b-720p-Q4_K_M.gguf';
-        const shift = clamp(interaction.options.getInteger('shift') || 3, 1, 10);
+        // Deprecated, waiting for reimplementation with WAN2GP
+        await interaction.editReply('This command is currently under maintenance and will be re-enabled in the future with the new WAN2GP workflow. Stay tuned!');
 
-        let workflow = JSON.parse(JSON.stringify(og_workflow))
+        // let prompt = interaction.options.getString('prompt');
+        // let neg_prompt = interaction.options.getString('neg_prompt') || '';
+        // const attachment_option = interaction.options.getAttachment('image');
+        // const preset = interaction.options.getString('preset') || 'std';
+        // const length = clamp(interaction.options.getInteger('length') || 3, 1, 15);
+        // const fps = clamp(interaction.options.getInteger('fps') || 16, 5, 24);
+        // const custom_budget = clamp(interaction.options.getInteger('custom_budget') || 24_000_000, 600_000, 50_000_000);
+        // const model = interaction.options.getString('model') || 'wan2.1-i2v-14b-720p-Q4_K_M.gguf';
+        // const shift = clamp(interaction.options.getInteger('shift') || 3, 1, 10);
 
-        //download the image from attachment.proxyURL
-        let attachment = await loadImage(attachment_option.proxyURL,
-            /*getBuffer:*/ true).catch((err) => {
-            console.log("Failed to retrieve image from discord", err)
-            return
-        })
-        //set the image buffer to the workflow
-        const image_info = await ComfyClient.uploadImage(attachment, Date.now() + "_" + attachment_option.name, attachment_option.contentType).catch((err) => {
-            console.log("Failed to upload image", err)
-            return
-        })
+        // let workflow = JSON.parse(JSON.stringify(og_workflow))
 
-        console.log(image_info)
+        // //download the image from attachment.proxyURL
+        // let attachment = await loadImage(attachment_option.proxyURL,
+        //     /*getBuffer:*/ true).catch((err) => {
+        //     console.log("Failed to retrieve image from discord", err)
+        //     return
+        // })
+        // //set the image buffer to the workflow
+        // const image_info = await ComfyClient.uploadImage(attachment, Date.now() + "_" + attachment_option.name, attachment_option.contentType).catch((err) => {
+        //     console.log("Failed to upload image", err)
+        //     return
+        // })
 
-        if (image_info == null) {
-            interaction.editReply({ content: "Failed to receive input image" });
-            return
-        }
+        // console.log(image_info)
 
-        // calculate the allocated bugdet to frame count and resolution
-        const frame_count = length * fps
-        let budget = preset_to_budget_allocation[preset] 
-        if (preset === 'custom') {
-            budget = custom_budget
-        }
+        // if (image_info == null) {
+        //     interaction.editReply({ content: "Failed to receive input image" });
+        //     return
+        // }
 
-        if (model === 'skyreels-hunyuan-I2V-Q5_K_M.gguf') {
-            // older less optimized workflow, divide budget by 2
-            interaction.editReply({ content: "Using less optimized workflow, dividing budget by 2" });
-            budget /= 2
+        // // calculate the allocated bugdet to frame count and resolution
+        // const frame_count = length * fps
+        // let budget = preset_to_budget_allocation[preset] 
+        // if (preset === 'custom') {
+        //     budget = custom_budget
+        // }
 
-            if (frame_count > 81) {
-                interaction.editReply({ content: "Warning: Frame count is greater than 81 on legacy workflow, generated result can be looped unexpectedly" });
-            }
+        // if (model === 'skyreels-hunyuan-I2V-Q5_K_M.gguf') {
+        //     // older less optimized workflow, divide budget by 2
+        //     interaction.editReply({ content: "Using less optimized workflow, dividing budget by 2" });
+        //     budget /= 2
 
-            workflow["42"]["inputs"]["noise_seed"] = Math.floor(Math.random() * 2_000_000_000)
-            workflow["110"]["inputs"]["seed"] = Math.floor(Math.random() * 2_000_000_000)
-            workflow["151"]["inputs"]["image"] = image_info.name
-            workflow["140"]["inputs"]["float"] = budget
-            workflow["153"]["inputs"]["int"] = frame_count
-            workflow["50"]["inputs"]["frame_rate"] = fps
-            workflow["54"]["inputs"]["shift"] = shift
+        //     if (frame_count > 81) {
+        //         interaction.editReply({ content: "Warning: Frame count is greater than 81 on legacy workflow, generated result can be looped unexpectedly" });
+        //     }
 
-            workflow["45"]["inputs"]["text"] = "FPS-24, " + prompt
-            if (neg_prompt !== '') {
-                workflow["45"]["inputs"]["neg_text"] = "FPS-24, " + neg_prompt
-            }
-        }
-        else {
-            workflow = JSON.parse(JSON.stringify(wan_workflow))
+        //     workflow["42"]["inputs"]["noise_seed"] = Math.floor(Math.random() * 2_000_000_000)
+        //     workflow["110"]["inputs"]["seed"] = Math.floor(Math.random() * 2_000_000_000)
+        //     workflow["151"]["inputs"]["image"] = image_info.name
+        //     workflow["140"]["inputs"]["float"] = budget
+        //     workflow["153"]["inputs"]["int"] = frame_count
+        //     workflow["50"]["inputs"]["frame_rate"] = fps
+        //     workflow["54"]["inputs"]["shift"] = shift
 
-            workflow["83"]["inputs"]["seed"] = Math.floor(Math.random() * 2_000_000_000)
-            workflow["83"]["inputs"]["nag_scale"] = neg_prompt !== '' ? 8.0 : 1.0      
-            workflow["33"]["inputs"]["image"] = image_info.name  
-            workflow["5"]["inputs"]["frame_rate"] = fps
-            workflow["18"]["inputs"]["float"] = budget
-            workflow["23"]["inputs"]["int"] = frame_count
-            workflow["14"]["inputs"]["shift"] = shift
+        //     workflow["45"]["inputs"]["text"] = "FPS-24, " + prompt
+        //     if (neg_prompt !== '') {
+        //         workflow["45"]["inputs"]["neg_text"] = "FPS-24, " + neg_prompt
+        //     }
+        // }
+        // else {
+        //     workflow = JSON.parse(JSON.stringify(wan_workflow))
 
-            // select model
-            workflow["10"]["inputs"]["unet_name"] = model
-            if (model === 'aniWan2114BFp8E4m3fn_i2v720p.safetensors') {
-                workflow["10"] = {
-                    "inputs": {
-                        "unet_name": "aniWan2114BFp8E4m3fn_i2v720p.safetensors",
-                        "weight_dtype": "default"
-                    },
-                    "class_type": "UNETLoader",
-                    "_meta": {
-                        "title": "Load Diffusion Model"
-                    }
-                }
-            }
+        //     workflow["83"]["inputs"]["seed"] = Math.floor(Math.random() * 2_000_000_000)
+        //     workflow["83"]["inputs"]["nag_scale"] = neg_prompt !== '' ? 8.0 : 1.0      
+        //     workflow["33"]["inputs"]["image"] = image_info.name  
+        //     workflow["5"]["inputs"]["frame_rate"] = fps
+        //     workflow["18"]["inputs"]["float"] = budget
+        //     workflow["23"]["inputs"]["int"] = frame_count
+        //     workflow["14"]["inputs"]["shift"] = shift
 
-            if (frame_count > 81) {
-                if (frame_count > 129) {
-                    interaction.editReply({ content: "Warning: Frame count is greater than 128, generated result can be looped unexpectedly" });
-                }
-                else {
-                    interaction.channel.send({ content: "Frame count is greater than 81, use RifleXRoPE" });
-                }
-                workflow["900"] = {
-                    "inputs": {
-                        "k": 6,
-                        "model": [
-                            "12",
-                            0
-                        ],
-                        "latent": [
-                            "15",
-                            2
-                        ]
-                    },
-                    "class_type": "ApplyRifleXRoPE_WanVideo",
-                    "_meta": {
-                        "title": "Apply RifleXRoPE WanVideo"
-                    }
-                }
+        //     // select model
+        //     workflow["10"]["inputs"]["unet_name"] = model
+        //     if (model === 'aniWan2114BFp8E4m3fn_i2v720p.safetensors') {
+        //         workflow["10"] = {
+        //             "inputs": {
+        //                 "unet_name": "aniWan2114BFp8E4m3fn_i2v720p.safetensors",
+        //                 "weight_dtype": "default"
+        //             },
+        //             "class_type": "UNETLoader",
+        //             "_meta": {
+        //                 "title": "Load Diffusion Model"
+        //             }
+        //         }
+        //     }
 
-                // connect RifleXRoPE output to shift node
-                workflow["14"]["inputs"]["model"] = ["900", 0];
-            }
+        //     if (frame_count > 81) {
+        //         if (frame_count > 129) {
+        //             interaction.editReply({ content: "Warning: Frame count is greater than 128, generated result can be looped unexpectedly" });
+        //         }
+        //         else {
+        //             interaction.channel.send({ content: "Frame count is greater than 81, use RifleXRoPE" });
+        //         }
+        //         workflow["900"] = {
+        //             "inputs": {
+        //                 "k": 6,
+        //                 "model": [
+        //                     "12",
+        //                     0
+        //                 ],
+        //                 "latent": [
+        //                     "15",
+        //                     2
+        //                 ]
+        //             },
+        //             "class_type": "ApplyRifleXRoPE_WanVideo",
+        //             "_meta": {
+        //                 "title": "Apply RifleXRoPE WanVideo"
+        //             }
+        //         }
 
-            workflow["81"]["inputs"]["text"] = neg_prompt
-            workflow["13"]["inputs"]["text"] = prompt;
-        }
+        //         // connect RifleXRoPE output to shift node
+        //         workflow["14"]["inputs"]["model"] = ["900", 0];
+        //     }
 
-        ComfyClient.sendPrompt(workflow, (data) => {
-            if (data.node !== null) interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] });
-        }, (data) => {
-            console.log('received success')
-            if ((!data.output?.gifs) || data.output.gifs.length === 0) {
-                console.log('Output is not video')
-                return
-            }
-            const filename = data.output.gifs[0].filename
+        //     workflow["81"]["inputs"]["text"] = neg_prompt
+        //     workflow["13"]["inputs"]["text"] = prompt;
+        // }
 
-            // fetch video from comfyUI
-            ComfyClient.getImage(filename, '', '', /*only_filename*/ true).then(async (arraybuffer) => {
-                // convert arraybuffer to buffer
-                const buffer = Buffer.from(arraybuffer)
+        // ComfyClient.sendPrompt(workflow, (data) => {
+        //     if (data.node !== null) interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] });
+        // }, (data) => {
+        //     console.log('received success')
+        //     if ((!data.output?.gifs) || data.output.gifs.length === 0) {
+        //         console.log('Output is not video')
+        //         return
+        //     }
+        //     const filename = data.output.gifs[0].filename
 
-                await interaction.editReply({ content: "Generation Success", files: [{ attachment: buffer, name: filename }] });
+        //     // fetch video from comfyUI
+        //     ComfyClient.getImage(filename, '', '', /*only_filename*/ true).then(async (arraybuffer) => {
+        //         // convert arraybuffer to buffer
+        //         const buffer = Buffer.from(arraybuffer)
 
-                // TODO: allow user to post process the video (color matching, frame upscaling, frame interpolation)
-            }).catch((err) => {
-                console.log("Failed to retrieve video", err)
-                interaction.editReply({ content: "Failed to retrieve video" });
-            }).finally(() => {
-                ComfyClient.freeMemory(true)
-            })
+        //         await interaction.editReply({ content: "Generation Success", files: [{ attachment: buffer, name: filename }] });
 
-        }, (data) => {
-            console.log('received error')
-            interaction.editReply({ content: data.error });
-            ComfyClient.freeMemory(true)
-        }, (data) => {
-            console.log('received progress')
+        //         // TODO: allow user to post process the video (color matching, frame upscaling, frame interpolation)
+        //     }).catch((err) => {
+        //         console.log("Failed to retrieve video", err)
+        //         interaction.editReply({ content: "Failed to retrieve video" });
+        //     }).finally(() => {
+        //         ComfyClient.freeMemory(true)
+        //     })
 
-            // skip video combine node update progress (too spammy)
-            if (workflow[data.node]["_meta"]["title"] === "Video Combine 🎥🅥🅗🅢") return
+        // }, (data) => {
+        //     console.log('received error')
+        //     interaction.editReply({ content: data.error });
+        //     ComfyClient.freeMemory(true)
+        // }, (data) => {
+        //     console.log('received progress')
 
-            interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] + ` (${data.value}/${data.max})` });
-        });
-        // await interaction.editReply('This command is not implemented yet');
+        //     // skip video combine node update progress (too spammy)
+        //     if (workflow[data.node]["_meta"]["title"] === "Video Combine 🎥🅥🅗🅢") return
+
+        //     interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] + ` (${data.value}/${data.max})` });
+        // });
+        // // await interaction.editReply('This command is not implemented yet');
 	},
 };

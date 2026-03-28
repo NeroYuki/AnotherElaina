@@ -201,7 +201,9 @@ function parse_common_setting(setting_json) {
                 hires_positive: usersetting_config_obj?.hires_positive ?? null,
                 hires_negative: usersetting_config_obj?.hires_negative ?? null,
                 hires_cfg: usersetting_config_obj?.hires_cfg ?? null,
-                hires_shift: usersetting_config_obj?.hires_shift ?? null
+                hires_shift: usersetting_config_obj?.hires_shift ?? null,
+                seedvr2_model: usersetting_config_obj?.seedvr2_model ?? null,
+                seedvr2_resolution: usersetting_config_obj?.seedvr2_resolution ?? null
             }
         }
         catch (err) {
@@ -217,7 +219,9 @@ function parse_common_setting(setting_json) {
             hires_positive: null,
             hires_negative: null,
             hires_cfg: null,
-            hires_shift: null
+            hires_shift: null,
+            seedvr2_model: null,
+            seedvr2_resolution: null
         }
     }
 }
