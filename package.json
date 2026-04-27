@@ -28,6 +28,7 @@
 		"he": "^1.2.0",
 		"java-deserialization": "^0.1.0",
 		"mongodb": "^4.8.0",
+		"mysql2": "^3.22.2",
 		"node-catbox": "^3.4.0",
 		"node-fetch": "^3.3.0",
 		"node-id3": "^0.2.9",

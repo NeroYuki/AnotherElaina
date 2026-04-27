@@ -271,7 +271,9 @@ client.login(token);
 databaseConnection.initConnection(() => {
     console.log('database connection established');
 })
-
+databaseConnection.initElainaDB().catch(err => {
+    console.error('Failed to connect to Elaina DB:', err)
+})
 // Graceful shutdown handling to save rate limit data
 process.on('SIGINT', () => {
     console.log('\n[Bot] Received SIGINT, shutting down gracefully...');
