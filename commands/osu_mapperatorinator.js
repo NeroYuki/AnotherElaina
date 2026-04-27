@@ -805,7 +805,7 @@ BeatmapSetID:-1`);
 
 	async execute(interaction, client) {
         //make a temporary reply to not get timeout'd
-        await interaction.deferReply();
+        if (!interaction.deferred && !interaction.replied) await interaction.deferReply();
 
         let audio_file_attachment = interaction.options.getAttachment('audio_file')
         let image_file_attachment = interaction.options.getAttachment('background') || null

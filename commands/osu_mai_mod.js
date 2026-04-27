@@ -9,6 +9,21 @@ const { parseMapsetVerifierHTML } = require('../utils/mapset_verifier_parser');
 const fs = require('fs');
 
 const server_address = process.env.BOT_ENV === 'lan' ? 'http://192.168.1.2:7051' : 'http://192.168.196.142:7051'
+const mapset_verifier_address = 'http://192.168.1.2:7052'
+
+/**
+ * The AI server runs on Windows and returns absolute Windows paths.
+ * When the bot runs on Linux the same directory is accessible via a Samba mount.
+ * This function transparently remaps  D:/...../temp/<rest>  →  /mnt/mapperatorinator_temp/<rest>
+ */
+function resolveServerPath(serverPath) {
+    const normalized = serverPath.replace(/\\/g, '/')
+    if (process.platform !== 'win32' && /^[A-Za-z]:\//.test(normalized)) {
+        const afterTemp = normalized.replace(/^.*\/temp\//, '')
+        return '/mnt/mapperatorinator_temp/' + afterTemp
+    }
+    return normalized
+}
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -695,7 +710,7 @@ module.exports = {
     },
 
     async execute(interaction, client) {
-        await interaction.deferReply();
+        if (!interaction.deferred && !interaction.replied) await interaction.deferReply();
 
         // Get the beatmap file attachment
         const beatmap_file_attachment = interaction.options.getAttachment('beatmap_file');
@@ -836,9 +851,9 @@ module.exports = {
 
         // Read difficulty name from beatmap file
         // read the subfolder directory for .osu file
-        const beatmap_subfolder = beatmapset_path?.path ? 
-                                beatmapset_path.path.replace(/\\/g, '/') :
-                                beatmap_path.path.replace(/\\/g, '/').split('/').slice(0, -1).join('/');
+        const beatmap_subfolder = beatmapset_path?.path
+            ? resolveServerPath(beatmapset_path.path)
+            : resolveServerPath(beatmap_path.path).split('/').slice(0, -1).join('/')
 
         const beatmaps_list = fs.readdirSync(beatmap_subfolder).filter(file => file.endsWith('.osu'));
 
@@ -881,15 +896,19 @@ module.exports = {
             }
         }
         
-        // Run MapsetVerifier
+        // Run MapsetVerifier — always runs on the Windows machine at 192.168.1.2
+        // Use the original server (Windows) path, NOT the Linux-remapped beatmap_subfolder
         if (!only_maimod) {
-            const beatmapset_path_full = beatmap_subfolder
+            const beatmapset_path_full = beatmapset_path?.path
+                ? beatmapset_path.path
+                : beatmap_path.path.split(/[/\\]/).slice(0, -1).join('\\')
+            console.log(beatmapset_path_full)
             const mapset_params = {
                 beatmapset_path: beatmapset_path_full,
                 user_id: interaction.user.id,
                 ignore_suggestion: ignore_suggestion,
                 ignore_issue: ignore_issue,
-                request_server_address: server_address,
+                request_server_address: mapset_verifier_address,
                 selected_difficulties: selected_difficulties,
             };
             
