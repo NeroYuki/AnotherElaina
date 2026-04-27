@@ -56,6 +56,9 @@ module.exports = {
                     { name: 'SeedVR2 7B Sharp Q4_K_M', value: 'seedvr2_ema_7b_sharp-Q4_K_M.gguf' },
                 ))
         .addBooleanOption(option =>
+            option.setName('trim_padding')
+                .setDescription('(SeedVR2) Crop transparent padding added to make dimensions divisible by 8 (default is "false")'))
+        .addBooleanOption(option =>
             option.setName('private_mode')
                 .setDescription('Whether to use private mode for this generation (default is "false")'))
         // .addNumberOption(option =>
@@ -92,11 +95,15 @@ module.exports = {
         const codeformer_visibility = clamp(interaction.options.getNumber('codeformer_visibility') || 0, 0, 1)
         const codeformer_weight = clamp(interaction.options.getNumber('codeformer_weight') || 0, 0, 1)
         const seedvr2_model = interaction.options.getString('seedvr2_model') || null
+        const trim_padding = interaction.options.getBoolean('trim_padding') ?? false
         const private_mode = interaction.options.getBoolean('private_mode') != null ?  interaction.options.getBoolean('private_mode') : false
         // const color_enhance_weight = clamp(interaction.options.getNumber('color_enhance_weight') || 0, 0, 1)
 
         //make a temporary reply to not get timeout'd
 		await interaction.deferReply({ephemeral: private_mode});
+
+        const premiumTier = interaction.guild?.premiumTier ?? 0
+        const upload_size_limit = premiumTier >= 3 ? 99_000_000 : premiumTier >= 2 ? 49_000_000 : 9_800_000
 
         //download the image from attachment.proxyURL
         // let attachment = await loadImage(attachment_option.proxyURL,
@@ -137,6 +144,8 @@ module.exports = {
                 await interaction.editReply({ content: "Failed to read image dimensions for SeedVR2" })
                 return
             }
+            const exact_w = Math.round(src_w * upscale_multiplier)
+            const exact_h = Math.round(src_h * upscale_multiplier)
             const out_w = Math.ceil(src_w * upscale_multiplier / 8) * 8
             const out_h = Math.ceil(src_h * upscale_multiplier / 8) * 8
             const target_shortest = Math.round(Math.min(src_w, src_h) * upscale_multiplier)
@@ -182,14 +191,45 @@ module.exports = {
                             img_buffer = Buffer.from(await img_res.arrayBuffer())
                         }
 
-                        const embeded = new MessageEmbed()
-                            .setColor('#22ff77')
-                            .setTitle('Output')
-                            .setDescription(`Here you go (SeedVR2: ${seedvr2_model}, ${out_w}x${out_h}). Generated in ${final_res_obj.duration.toFixed(2)} seconds.`)
-                            .setImage(`attachment://img.png`)
-                            .setFooter({text: `Putting ${Array("my RTX 5060 Ti","plub's RTX 3070")[server_index]} to good use!`})
+                        if (trim_padding && img_buffer && (out_w !== exact_w || out_h !== exact_h)) {
+                            img_buffer = await sharp(img_buffer)
+                                .extract({ left: 0, top: 0, width: exact_w, height: exact_h })
+                                .png().toBuffer()
+                        }
 
-                        await interaction.editReply({ embeds: [embeded], files: [{ attachment: img_buffer, name: 'img.png' }] })
+                        if (img_buffer && img_buffer.length > upload_size_limit) {
+                            const temp_filename = `temp_upscale_${Date.now()}.png`;
+                            const temp_filepath = `./temp/${temp_filename}`;
+
+                            fs.writeFileSync(temp_filepath, img_buffer);
+
+                            let catbox_url = await catboxFileUpload(temp_filepath).catch((err) => {
+                                console.log(err);
+                                return null;
+                            });
+
+                            fs.unlinkSync(temp_filepath);
+
+                            if (!catbox_url) throw 'Failed to upload image to catbox';
+
+                            const embeded = new MessageEmbed()
+                                .setColor('#22ff77')
+                                .setTitle('Output')
+                                .setDescription(`Here you go (SeedVR2: ${seedvr2_model}, ${out_w}x${out_h}). Generated in ${final_res_obj.duration.toFixed(2)} seconds.\n\n[Click here to view full image](${catbox_url})`)
+                                .setImage(catbox_url)
+                                .setFooter({text: `Putting ${Array("my RTX 5060 Ti","plub's RTX 3070")[server_index]} to good use!`})
+
+                            await interaction.editReply({ embeds: [embeded] })
+                        } else {
+                            const embeded = new MessageEmbed()
+                                .setColor('#22ff77')
+                                .setTitle('Output')
+                                .setDescription(`Here you go (SeedVR2: ${seedvr2_model}, ${out_w}x${out_h}). Generated in ${final_res_obj.duration.toFixed(2)} seconds.`)
+                                .setImage(`attachment://img.png`)
+                                .setFooter({text: `Putting ${Array("my RTX 5060 Ti","plub's RTX 3070")[server_index]} to good use!`})
+
+                            await interaction.editReply({ embeds: [embeded], files: [{ attachment: img_buffer, name: 'img.png' }] })
+                        }
                     })
                     .catch(err => { throw err })
             }
@@ -307,11 +347,11 @@ module.exports = {
                         duration: final_res_obj.duration
                     }
 
-                    // check if the image buffer is larger than 10MB
+                    // check if the image buffer is larger than the guild upload limit
                     const fileSizeInBytes = output_data.img.length;
 
-                    if (fileSizeInBytes > 9_800_000) {
-                        // if the image is larger than 10MB, upload it to catbox
+                    if (fileSizeInBytes > upload_size_limit) {
+                        // if the image exceeds the guild upload limit, upload it to catbox
                         const temp_filename = `temp_upscale_${Date.now()}.png`;
                         const temp_filepath = `./temp/${temp_filename}`;
                         

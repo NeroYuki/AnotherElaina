@@ -2,7 +2,7 @@
 // const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 // const { byPassUser } = require('../config.json');
 // const crypt = require('crypto');
-const { server_pool, get_data_controlnet, get_data_controlnet_annotation, model_selection_xl, controlnet_model_selection, controlnet_model_selection_xl, model_selection_inpaint, model_selection_flux, controlnet_model_selection_flux, controlnet_model_selection_sd } = require('../utils/ai_server_config.js');
+const { server_pool, get_data_controlnet, get_data_controlnet_annotation, model_selection_xl, controlnet_model_selection, controlnet_model_selection_xl, model_selection_inpaint, model_selection_flux, controlnet_model_selection_flux, controlnet_model_selection_sd, model_selection_legacy } = require('../utils/ai_server_config.js');
 // const { default: axios } = require('axios');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const { cached_model } = require('./model_change.js');
@@ -58,7 +58,43 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
         const controlnet_threshold_a_3 = controlnet_config_obj.control_net[2].t_a
         const controlnet_threshold_b_3 = controlnet_config_obj.control_net[2].t_b
 
-        if (model_selection_xl.find(x => x.value === cached_model[0]) != null || model_selection_inpaint.find(x => x.inpaint === cached_model[0]) != null) {
+        const translateNoobAI = (model) => {
+            switch (model) {
+                case "controlnet_inpaint": return "NoobAI_Inpainting_ControlNet"
+                case "ipadapter": return "noobIPAMARK1_mark1 [13579d81]"
+                case "controlnet_openpose": return "noobaiXLControlnet_openposeModel"
+                default: return controlnet_model_selection_xl.find(x => x.name === model)?.value || "None"
+            }
+        }
+
+        if (cached_model[0].includes("noobai")) {
+            interaction.channel.send("Detected active NoobAI model, translating specific controlnet model to NoobAI version")
+            // inpaint -> NoobAI_Inpainting_ControlNet
+            // ip-adapter -> noobIPAMARK1_mark1
+            // openpose -> noobaiXLControlnet_openposeModel
+            // The rest fallback to sdxl version since NoobAI models are mostly based on SDXL
+            controlnet_model = translateNoobAI(controlnet_model)
+            controlnet_model_2 = translateNoobAI(controlnet_model_2)
+            controlnet_model_3 = translateNoobAI(controlnet_model_3)
+        }
+        else if (cached_model[0].includes("chenkin_nai_v0_5")) {
+            // union -> Chenkin-UniControl-XL
+            // inpaint, ip-adapter, openpose -> fallback to noobai version since chenkin_nai_v0_5 is based on noobai
+            // The rest fallback to sdxl version
+            const translateChenkin = (model) => {
+                switch (model) {
+                    case "controlnet_union": return "Chenkin-Union-Control-XL"
+                    case "controlnet_inpaint":
+                    case "ipadapter":
+                    case "controlnet_openpose": return translateNoobAI(model)
+                    default: return controlnet_model_selection_xl.find(x => x.name === model)?.value || "None"
+                }
+            }
+            controlnet_model = translateChenkin(controlnet_model)
+            controlnet_model_2 = translateChenkin(controlnet_model_2)
+            controlnet_model_3 = translateChenkin(controlnet_model_3)
+        }
+        else if (model_selection_xl.find(x => x.value === cached_model[0]) != null || model_selection_inpaint.find(x => x.inpaint === cached_model[0]) != null) {
             interaction.channel.send("Detected active XL model, translating controlnet model to XL version")
             // get the value with the same name from the controlnet_model_selection_xl
             controlnet_model = controlnet_model_selection_xl.find(x => x.name === controlnet_model)?.value || "None"

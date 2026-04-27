@@ -496,7 +496,6 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             4,
             false,               // never oom
             false,
-            "Automatic",         // torch.compile
             "m + (M-m)*(1-x)**3",
             false,
             [],
@@ -508,6 +507,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             0.5,
             4,
             0.85,
+            "Automatic",
             modulation_config?.modulation || false,              // modulation guidance
             "anzch_clip_l.safetensors",
             "",
@@ -859,7 +859,6 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             latentmod_config?.dyncfg_augment || "None",
             false,      // never OOM
             false,
-            "Automatic",
             "m + (M-m)*(1-x)**3",
             false,
             [],
@@ -877,6 +876,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             0.5,
             4,
             0.85,
+            "Automatic",
             modulation_config?.modulation || false,                          // modulation guidance
             "anzch_clip_l.safetensors",
             "",
@@ -1051,7 +1051,7 @@ const model_selection_xl = [
     { name: 'IllustriousXL v2.0', value: 'Illustriousxl_v20.safetensors'},
     { name: 'WAI-NSFW-IllustriousXL v12', value: 'wai_nsfw_illustrious_v120.safetensors'},
     { name: 'WAI-NSFW-IllustriousXL v16', value: 'wai_nsfw_illustrious_v160.safetensors'},
-    { name: 'Chenkin NoobAI v0.2', value: 'chenkin_nai_v0_2.safetensors'},
+    { name: 'Chenkin NoobAI v0.5', value: 'chenkin_nai_v0_5.safetensors'},
     { name: 'Chenkin NoobAI v0.3 Rectified Flow', value: 'chenkin_nai_v0_3_rectified.safetensors'},
     { name: 'IllumiyumeXL V-pred v3.1' , value: 'illumiyumexl_vpred_v31.safetensors'},
     { name: 'IllumiyumeXL V-pred v3.2' , value: 'illumiyumexl_vpred_v32.safetensors'},
@@ -1060,6 +1060,7 @@ const model_selection_xl = [
     { name: 'ColorPalette v1' , value: 'colorpalette_v10.safetensors'},
     { name: 'Seele NoobAIXL V-pred v2.0' , value: 'seele_noobaixl_vpred_v2_0.safetensors'},
     { name: 'PVC Model Style v1.1', value: 'PVCStyleModelMovable_epsIll11.safetensors' },
+    { name: 'Mugen - Aesthetic', value: 'mugen_aesthetic.safetensors' },
 ]
 
 const model_selection_inpaint = [
@@ -1094,6 +1095,8 @@ const model_selection_flux_klein_4b = [
 const model_selection_anima = [
     { name: 'Anima Preview', value: 'anima-preview.safetensors'},
     { name: 'Anima Preview 2', value: 'anima-preview2.safetensors'},
+    { name: 'Anima Preview 3', value: 'anima-preview3.safetensors'},
+    { name: 'WAI Anima v1', value: 'wai_anima_v10.safetensors'},
 ]
 
 const model_selection_z_image = [
@@ -1167,43 +1170,49 @@ const controlnet_model_selection = [
 
 const controlnet_model_selection_sd = [
     { name: 'None', value: 'None' },
-    { name: 't2i_canny', value: 't2iadapter_canny_sd14v1 [80bfd79b]' },
-    { name: 't2i_color', value: 't2iadapter_color_sd14v1 [8522029d]' },
-    { name: 't2i_depth', value: 't2iadapter_depth_sd14v1 [fa476002]' },
-    { name: 't2i_openpose', value: 't2iadapter_openpose_sd14v1 [7e267e5e]' },
-    { name: 't2i_segment', value: 't2iadapter_seg_sd14v1 [6387afb5]' },
-    { name: 't2i_sketch', value: 't2iadapter_sketch_sd14v1 [e5d4b846]' },
-    { name: 't2i_style', value: 't2iadapter_style_sd14v1 [202e85cc]' },
-    { name: 'controlnet_openpose', value: 'control_v11p_sd15_openpose [cab727d4]'},
-    { name: 'controlnet_softedge', value: 'control_v11p_sd15_softedge [a8575a2a]'},
-    { name: 'controlnet_lineart_anime', value: 'control_v11p_sd15s2_lineart_anime [3825e83e]'},
-    { name: 'controlnet_tile', value: 'control_v11f1e_sd15_tile [04595688]'},
-    { name: 'ipadapter', value: 'ip-adapter_sd15_plus [32cd8f7f]'},
-    { name: 'controlnet_inpaint', value: 'controlnet11Models_inpaint [be8bc0ed]'},
+    { name: 't2i_canny', value: 't2iadapter_canny_sd14v1' },
+    { name: 't2i_color', value: 't2iadapter_color_sd14v1' },
+    { name: 't2i_depth', value: 't2iadapter_depth_sd14v1' },
+    { name: 't2i_openpose', value: 't2iadapter_openpose_sd14v1' },
+    { name: 't2i_segment', value: 't2iadapter_seg_sd14v1' },
+    { name: 't2i_sketch', value: 't2iadapter_sketch_sd14v1' },
+    { name: 't2i_style', value: 't2iadapter_style_sd14v1' },
+    { name: 'controlnet_openpose', value: 'control_v11p_sd15_openpose'},
+    { name: 'controlnet_softedge', value: 'control_v11p_sd15_softedge'},
+    { name: 'controlnet_lineart_anime', value: 'control_v11p_sd15s2_lineart_anime'},
+    { name: 'controlnet_tile', value: 'control_v11f1e_sd15_tile'},
+    { name: 'ipadapter', value: 'ip-adapter_sd15_plus'},
+    { name: 'controlnet_inpaint', value: 'controlnet11Models_inpaint'},
 ]
 
 const controlnet_model_selection_xl = [
     { name: 'None', value: 'None' },
-    { name: 't2i_canny', value: 'kohya_controllllite_xl_canny [2ed264be]' },
-    { name: 't2i_color', value: 'bdsqlsz_controlllite_xl_t2i-adapter_color_shuffle [8ff329d6]' },
-    { name: 't2i_depth', value: 'kohya_controllllite_xl_depth [9f425a8d]' },
-    { name: 't2i_openpose', value: 't2i-adapter_xl_openpose [18cb12c1]' },
-    { name: 't2i_sketch', value: 't2i-adapter_diffusers_xl_sketch [72b96ab1]' },
-    { name: 'controlnet_openpose', value: 'controlnetxlCNXL_xinsirOpenpose [d0333a45]'},
-    { name: 'controlnet_openpose_accuracy', value: 'controlnetxlCNXL_xinsirOpenposeTwins [590eff90]'},
-    { name: 'controlnet_softedge', value: 'bdsqlsz_controlllite_xl_softedge [c28ff1c4]'},
-    { name: 'controlnet_lineart_anime', value: 't2i-adapter_diffusers_xl_lineart [bae0efef]'},
-    { name: 'controlnet_tile', value: 'controlnetxlCNXL_xinsirTile [4d6257d3]'},
-    //{ name: 'ipadapter', value: 'ip-adapter_xl [4209e9f7]'},
-    { name: 'ipadapter', value: 'noobIPAMARK1_mark1 [13579d81]'},
-    { name: 'instantid_keypoint', value: 'control_instant_id_sdxl [c5c25a50]'},
-    { name: 'instantid_ipadapter', value: 'ip-adapter_instant_id_sdxl [eb2d3ec0]'},
-    { name: 'controlnet_union', value: 'controlnetxlCNXL_xinsirUnion_promax [9460e4db]'},
-    { name: 'controlnet_inpaint', value: 'controlnetxlCNXL_destitechInpaintv2 [e799aa20]'},
+    { name: 't2i_canny', value: 'kohya_controllllite_xl_canny' },
+    { name: 't2i_color', value: 'bdsqlsz_controlllite_xl_t2i-adapter_color_shuffle' },
+    { name: 't2i_depth', value: 'kohya_controllllite_xl_depth' },
+    { name: 't2i_openpose', value: 't2i-adapter_xl_openpose' },
+    { name: 't2i_sketch', value: 't2i-adapter_diffusers_xl_sketch' },
+    { name: 'controlnet_openpose', value: 'controlnetxlCNXL_xinsirOpenpose'},
+    { name: 'controlnet_openpose_accuracy', value: 'controlnetxlCNXL_xinsirOpenposeTwins'},
+    { name: 'controlnet_softedge', value: 'bdsqlsz_controlllite_xl_softedge'},
+    { name: 'controlnet_lineart_anime', value: 't2i-adapter_diffusers_xl_lineart'},
+    { name: 'controlnet_tile', value: 'controlnetxlCNXL_xinsirTile'},
+    //{ name: 'ipadapter', value: 'ip-adapter_xl'},
+    { name: 'ipadapter', value: 'noobIPAMARK1_mark1'},
+    { name: 'instantid_keypoint', value: 'control_instant_id_sdxl'},
+    { name: 'instantid_ipadapter', value: 'ip-adapter_instant_id_sdxl'},
+    { name: 'controlnet_union', value: 'controlnetxlCNXL_xinsirUnion_promax'},
+    { name: 'controlnet_inpaint', value: 'controlnetxlCNXL_destitechInpaintv2'},
 ]
 
 const controlnet_model_selection_flux = [
     { name: 'None', value: 'None' },
+    { name: 't2i_canny', value: 'flux-canny-controlnet-v3' },
+    { name: 't2i_depth', value: 'flux-depth-controlnet-v3' },
+    { name: 't2i_openpose', value: 'flux-cn-openpose'},
+    { name: 'controlnet_softedge', value: 'flux-hed-controlnet-v3'},
+    { name: 'controlnet_openpose', value: 'flux-openpose-controlnet'},
+    { name: 'controlnet_union', value: 'flux-union-controlnet-v2'},
 ]
 
 const upscaler_selection = [
