@@ -88,8 +88,10 @@ async function startInference(url, params) {
 }
 
 // sending a GET request to the `localhost:7050/stream_output` endpoint, the response is text/event-stream, send a callback function to handle the data
-async function streamOutput(url, callback) {
-    const endpoint = `${url}/stream_output`;
+async function streamOutput(url, job_id, callback) {
+    const endpoint = `${url}/stream_output?job_id=${job_id}`;
+
+    console.log(endpoint)
     try {
         const response = await axios.get(endpoint, {
             headers: {

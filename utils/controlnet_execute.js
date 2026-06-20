@@ -17,9 +17,9 @@ function pick_instantid_preprocessor(model, preprocessor) {
     return preprocessor
 }
 
-const FN_OFFSET_TXT2IMG = 47
-const FN_OFFSET_IMG2IMG = 49
-const FN_OFFSET_ANNOTATION = 8
+const FN_OFFSET_TXT2IMG = 40
+const FN_OFFSET_IMG2IMG = 42
+const FN_OFFSET_ANNOTATION = 6
 
 // mode: 0 = txt2img, 1 = img2img
 function load_controlnet(session_hash, server_index, controlnet_input, controlnet_input_2, controlnet_input_3, controlnet_config, interaction, mode = 0, mask = null, controlnet_mask = false, extra_data = {}) {
@@ -39,6 +39,7 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
         let controlnet_preprocessor = controlnet_config_obj.control_net[0].preprocessor
         let controlnet_model = controlnet_config_obj.control_net[0].model
         const controlnet_weight = controlnet_config_obj.control_net[0].weight
+        const controlnet_type = controlnet_config_obj.control_net[0].type
         const controlnet_resolution = controlnet_config_obj.control_net[0].resolution
         const controlnet_mode = controlnet_config_obj.control_net[0].mode
         const controlnet_threshold_a = controlnet_config_obj.control_net[0].t_a
@@ -46,6 +47,7 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
         let controlnet_preprocessor_2 = controlnet_config_obj.control_net[1].preprocessor
         let controlnet_model_2 = controlnet_config_obj.control_net[1].model
         const controlnet_weight_2 = controlnet_config_obj.control_net[1].weight
+        const controlnet_type_2 = controlnet_config_obj.control_net[1].type
         const controlnet_resolution_2 = controlnet_config_obj.control_net[1].resolution
         const controlnet_mode_2 = controlnet_config_obj.control_net[1].mode
         const controlnet_threshold_a_2 = controlnet_config_obj.control_net[1].t_a
@@ -53,6 +55,7 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
         let controlnet_preprocessor_3 = controlnet_config_obj.control_net[2].preprocessor
         let controlnet_model_3 = controlnet_config_obj.control_net[2].model
         const controlnet_weight_3 = controlnet_config_obj.control_net[2].weight
+        const controlnet_type_3 = controlnet_config_obj.control_net[2].type
         const controlnet_resolution_3 = controlnet_config_obj.control_net[2].resolution
         const controlnet_mode_3 = controlnet_config_obj.control_net[2].mode
         const controlnet_threshold_a_3 = controlnet_config_obj.control_net[2].t_a
@@ -126,6 +129,8 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
         const controlnet_data = get_data_controlnet(controlnet_preprocessor, controlnet_model, controlnet_input, controlnet_weight || 1, controlnet_mode, controlnet_resolution, 0, 1, mask, controlnet_threshold_a, controlnet_threshold_b)
         const controlnet_data_2 = get_data_controlnet(controlnet_preprocessor_2, controlnet_model_2, controlnet_input_2, controlnet_weight_2 || 1, controlnet_mode_2, controlnet_resolution_2, 0, 1, null, controlnet_threshold_a_2, controlnet_threshold_b_2)
         const controlnet_data_3 = get_data_controlnet(controlnet_preprocessor_3, controlnet_model_3, controlnet_input_3, controlnet_weight_3 || 1, controlnet_mode_3, controlnet_resolution_3, 0, 1, null, controlnet_threshold_a_3, controlnet_threshold_b_3)
+
+        
 
         const option_controlnet = {
             method: 'POST',
@@ -293,8 +298,29 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
                 }
             }
         }
-
         try {
+            const option_controlnet_type = {
+                method: 'POST',
+                body: JSON.stringify({
+                    fn_index: server_pool[server_index].fn_index_controlnet_type_select[mode],
+                    session_hash: session_hash,
+                    data: [controlnet_type ?? "All"]
+                }),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+
+            console.log('set controlnet type:', controlnet_type)
+            await fetch(`${WORKER_ENDPOINT}/run/predict/`, option_controlnet_type)
+                .then(res => {
+                    if (res.status !== 200) {
+                        throw 'Failed to change controlnet type'
+                    }
+                }
+            )
+            
+            console.log('set controlnet model:', controlnet_model)
             await fetch(`${WORKER_ENDPOINT}/run/predict/`, option_controlnet)
                 .then(res => {
                     if (res.status !== 200) {
@@ -309,6 +335,25 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
         }
 
         if (controlnet_input_2 && controlnet_model_2 != "None") {
+            const option_controlnet_type_2 = {
+                method: 'POST',
+                body: JSON.stringify({
+                    fn_index: server_pool[server_index].fn_index_controlnet_type_select[mode] + ((mode === 0 ? FN_OFFSET_TXT2IMG : FN_OFFSET_IMG2IMG) * 1),
+                    session_hash: session_hash,
+                    data: [controlnet_type_2 ?? "All"]
+                }),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+
+            await fetch(`${WORKER_ENDPOINT}/run/predict/`, option_controlnet_type_2)
+                .then(res => {
+                    if (res.status !== 200) {
+                        throw 'Failed to change controlnet type'
+                    }
+                }
+            )
             const option_controlnet_2 = {
                 method: 'POST',
                 body: JSON.stringify({
@@ -337,6 +382,26 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
         }
 
         if (controlnet_input_3 && controlnet_model_3 != "None") {
+            const option_controlnet_type_3 = {
+                method: 'POST',
+                body: JSON.stringify({
+                    fn_index: server_pool[server_index].fn_index_controlnet_type_select[mode] + ((mode === 0 ? FN_OFFSET_TXT2IMG : FN_OFFSET_IMG2IMG) * 2),
+                    session_hash: session_hash,
+                    data: [controlnet_type_3 ?? "All"]
+                }),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+            
+            await fetch(`${WORKER_ENDPOINT}/run/predict/`, option_controlnet_type_3)
+                .then(res => {
+                    if (res.status !== 200) {
+                        throw 'Failed to change controlnet type'
+                    }
+                }
+            )
+
             const option_controlnet_3 = {
                 method: 'POST',
                 body: JSON.stringify({

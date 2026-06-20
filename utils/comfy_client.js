@@ -21,7 +21,7 @@ const comfyClient = {
     },
     clientId: crypto.randomUUID(),
     promptListener: [],
-    SERVER_ENDPOINT: process.env.BOT_ENV === 'lan' ? '192.168.1.2:8188' : '192.168.196.142:8188',
+    SERVER_ENDPOINT: process.env.BOT_ENV === 'lan' ? '192.168.1.7:8188' : '192.168.196.142:8188',
     init: function() {
         const client = new ws(`ws://${this.SERVER_ENDPOINT}/ws?clientId=${this.clientId}`)
 

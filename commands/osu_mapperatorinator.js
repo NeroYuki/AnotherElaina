@@ -13,7 +13,7 @@ const { all } = require('axios');
 const { clamp } = require('../utils/common_helper');
 const comfyClient = require('../utils/comfy_client');
 
-const server_address = process.env.BOT_ENV === 'lan' ? 'http://192.168.1.2:7050' : 'http://192.168.196.142:7050'
+const server_address = process.env.BOT_ENV === 'lan' ? 'http://192.168.1.7:7050' : 'http://192.168.196.142:7050'
 
 const all_descriptors = {
     "General": [
@@ -171,6 +171,8 @@ module.exports = {
                 .addChoices(
                     { name: 'Mapperatorinator v30', value: 'v30' },
                     { name: 'Mapperatorinator v31', value: 'v31' },
+                    { name: 'Mapperatorinator v32-mini', value: 'v32-mini' },
+                    { name: 'Mapperatorinator v32', value: 'v32' },
                 ))
         .addNumberOption(option =>
             option.setName('difficulty')
@@ -198,10 +200,10 @@ module.exports = {
                 .setDescription('The mapper id for the beatmap, default is None'))
         .addIntegerOption(option =>
             option.setName('year')
-                .setDescription('Override the year style for the beatmap, default is None, only works for v31 model'))
+                .setDescription('Override the year style for the beatmap, default is None, does not work for v30 model'))
         .addStringOption(option =>
             option.setName('gamemode')
-                .setDescription('Override the gamemode for the beatmap, default is standard, only works for v31 model')
+                .setDescription('Override the gamemode for the beatmap, default is standard, does not work for v30 model')
                 .addChoices(
                     { name: 'Standard', value: '0' },
                     { name: 'Taiko', value: '1' },
@@ -236,7 +238,7 @@ module.exports = {
                 .setRequired(false))
         .addStringOption(option =>
             option.setName('descriptor_mode')
-                .setDescription('Use descriptors for the beatmap, default is No Descriptor, only works for v31 model')
+                .setDescription('Use descriptors for the beatmap, default is No Descriptor, does not work for v30 model')
                 .addChoices(
                     { name: 'No Descriptor', value: '0_0' },
                     { name: 'Only Descriptor', value: '1_0' },
@@ -256,7 +258,7 @@ module.exports = {
                 .setDescription('The scroll speed ratio for catch and mania beatmap, value from 0-1, default is 0'))
         .addStringOption(option =>
             option.setName('lora')
-                .setDescription('The LoRA to use for the beatmap generation, default is none')
+                .setDescription('The LoRA to use for the beatmap generation, default is none, only works with v30 model')
                 .addChoices(
                     { name: 'High SR', value: 'high_sr' },
                     { name: 'High SR v1.3', value: 'high_sr_v1_3' },
@@ -500,7 +502,7 @@ BeatmapSetID:-1`);
             return
         })
 
-        const is_using_gpu = ['http://192.168.1.2:7050','http://192.168.196.142:7050'].includes(params.server_address)
+        const is_using_gpu = ['http://192.168.1.7:7050','http://192.168.196.142:7050'].includes(params.server_address)
         const is_gpu_having_enough_vram = (params.model !== 'v30' && comfyClient.comfyStat.gpu_vram_used < 4) || (params.model === 'v30' && comfyClient.comfyStat.gpu_vram_used < 10)
 
         if (!health || (health && is_using_gpu && !is_gpu_having_enough_vram)) {
@@ -538,6 +540,9 @@ BeatmapSetID:-1`);
                 lora_path: params.lora_path || '',
                 enable_bf16: is_using_gpu,
                 enable_flash_attn: is_using_gpu,
+                // enable_compile: false,
+                // enable_parallel: false,
+                // max_batch_size: 32,
                 difficulty: params.difficulty,
                 slider_multiplier: params.sv,
                 slider_tick_rate: params.tick_rate,
@@ -561,6 +566,8 @@ BeatmapSetID:-1`);
                 negative_descriptors: params.negative_descriptors || [],
                 in_context_options: params.in_context_options || [],
             });
+
+
         } catch (err) {
             console.log(err)
             // Check if this is a 409 error and we can offer CPU fallback
@@ -601,8 +608,9 @@ BeatmapSetID:-1`);
         }
 
         const process_msg = await interaction.channel.send({ content: "Beatmap generation started, please wait..." });
+        const job_id = request_res.job_id;
 
-        streamOutput(params.server_address, async (data) => {
+        streamOutput(params.server_address, job_id, async (data) => {
             //console.log(data)
             process_msg.edit({ content: data ? `\`\`\`${data}\`\`\`` : "Beatmap is in progress, please wait..." });
 
@@ -898,7 +906,7 @@ BeatmapSetID:-1`);
         const image_filename = image_file_attachment ? `image_${randomId}.${image_file_attachment.name.split('.').pop()}` : null;
         //console.log("Audio filename: " + audio_filename)
 
-        if (model === 'v31') {
+        if (model !== 'v30') {
             if (use_descriptors) {
                 descriptor = await this.getDescriptor(interaction).catch((err) => {
                     console.log(err)
@@ -915,9 +923,14 @@ BeatmapSetID:-1`);
             }
         }
 
+        if (lora_selection !== 'none' && model !== 'v30') {
+            interaction.editReply({ content: "LoRA is only available for v30, please try again", ephemeral: true });
+            return
+        }
+
         if (beatmap_file) {
             // if the beatmap file is provided, use it for in-context mode
-            in_context_option = await this.getIncontextOption(interaction, model === 'v31').catch((err) => {
+            in_context_option = await this.getIncontextOption(interaction, model !== 'v30').catch((err) => {
                 console.log(err)
                 interaction.editReply({ content: "Failed to get in-context option", ephemeral: true });
                 return

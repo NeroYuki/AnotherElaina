@@ -7,12 +7,13 @@ const { convert_upload_path_to_file_data } = require('./common_helper');
 const server_pool = [
     {
         index: 0,
-        url: process.env.BOT_ENV === 'lan' ? 'http://192.168.1.2:7860' : 'http://192.168.196.142:7860',
-        fn_index_create: 613,
+        url: process.env.BOT_ENV === 'lan' ? 'http://192.168.1.7:7860' : 'http://192.168.196.142:7860',
+        fn_index_create: 616,
         fn_index_abort: 51,
-        fn_index_img2img: 1323,
-        fn_index_controlnet: [466, 1139],        //[txt2img, img2img, 792]  
-        fn_index_controlnet_annotation: [462, 1135],   // 1121 - 1059 = 62
+        fn_index_img2img: 1330,
+        fn_index_controlnet: [466, 1142],        //[txt2img, img2img, 792]  
+        fn_index_controlnet_annotation: [1260, 1278],   // 1121 - 1059 = 62
+        fn_index_controlnet_type_select: [485, 1161],    // 485 - 466 = 19
         // fn_index_controlnet_2: [440, 976], 
         // fn_index_controlnet_annotation_2: [1129, 1091],
         // fn_index_controlnet_3: [487, 1025],
@@ -20,22 +21,22 @@ const server_pool = [
         // fn_index_interrogate: 1250,
         // fn_index_interrogate_deepbooru: 1251,
         // fn_index_use_script: 1138,
-        fn_index_upscale: 1394,
+        fn_index_upscale: 1402,
         fn_index_change_model: 2,
         fn_index_change_support_model: 3,
-        fn_index_coupler_region_preview: [356, 1027],
-        fn_index_change_adetailer_model1: [90, 761],
+        fn_index_coupler_region_preview: [356, 1030],
+        fn_index_change_adetailer_model1: [90, 764],
         // fn_index_change_adetailer_prompt1: [99, 644],       //+3
         // fn_index_change_adetailer_neg_prompt1: [100, 645],  //+4
         // fn_index_change_adetailer_model2: [146, 691],       //+51
         // fn_index_change_adetailer_prompt2: [148, 693],      //+54
         // fn_index_change_adetailer_neg_prompt2: [149, 694],  //+55
-        fn_index_execute_segment_anything: 1085,
+        fn_index_execute_segment_anything: 1088,
         // fn_index_execute_grounding_dino_preview: 877,            // -3
         // fn_index_execute_expand_mask: 881,                       // +1
         // fn_index_unload_segmentation_model: 897,                 // +17
-        fn_index_rembg: 1408,
-        fn_fetch_wildcards: 1409,
+        fn_index_rembg: 1416,
+        fn_fetch_wildcards: 1417,
         is_online: true,
         queue: [],
     },
@@ -51,12 +52,7 @@ const server_pool = [
 
 const get_data_controlnet = (preprocessor = "None", controlnet = "None", input, weight = 1, mode = "Balanced", resolution = 512, guide_start = 0, guide_end = 1, mask = null, t_a = 100, t_b = 200) => {
     return [
-        "simple",
         false,
-        "",
-        "",
-        [],
-        [],
         "",                 // annotated image
         mask || "",                     // mask
         mask ? BLANK_IMG : "",          // mask overlay
@@ -497,8 +493,9 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             false,               // never oom
             false,
             "m + (M-m)*(1-x)**3",
-            false,
+            false,          // image stitch
             [],
+            1024,
             false,               // spectrum guidance
             0.5,
             4,
@@ -508,13 +505,6 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             4,
             0.85,
             "Automatic",
-            modulation_config?.modulation || false,              // modulation guidance
-            "anzch_clip_l.safetensors",
-            "",
-            "",
-            3,
-            0,
-            -1,
             2,
             0.5,
             "Linear",
@@ -860,14 +850,9 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             false,      // never OOM
             false,
             "m + (M-m)*(1-x)**3",
-            false,
+            false,      // image stitch
             [],
-            false,      // seed varience
-            3,
-            0.6,
-            32,
-            "No Decay",     // seed varience decay
-            1,
+            1024,
             false,                          // spectrum guidance
             0.5,
             4,
@@ -877,13 +862,6 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             4,
             0.85,
             "Automatic",
-            modulation_config?.modulation || false,                          // modulation guidance
-            "anzch_clip_l.safetensors",
-            "",
-            "",
-            3,
-            0,
-            -1,
             false,
             false,
             "positive",
@@ -1094,8 +1072,7 @@ const model_selection_flux_klein_4b = [
 
 const model_selection_anima = [
     { name: 'Anima Preview', value: 'anima-preview.safetensors'},
-    { name: 'Anima Preview 2', value: 'anima-preview2.safetensors'},
-    { name: 'Anima Preview 3', value: 'anima-preview3.safetensors'},
+    { name: 'Anima Base v1', value: 'anima-base-v1.safetensors'},
     { name: 'WAI Anima v1', value: 'wai_anima_v10.safetensors'},
 ]
 
@@ -1124,27 +1101,27 @@ const model_selection_curated = [
 ]
 
 const controlnet_preprocessor_selection = [
-    { name: 'None', value: 'None' },
-    { name: 'Canny', value: 'canny' },
-    { name: 'Depth', value: 'depth_anything_v2' },
-    { name: 'Depth (LERes)', value: 'depth_leres++' },
-    { name: 'Depth (MiDaS)', value: 'depth_midas' },
-    { name: 'HED', value: 'softedge_hed' },
-    { name: 'Lineart Anime', value: 'lineart_anime' },
-    { name: 'OpenPose', value: 'dw_openpose' },
-    { name: 'OpenPose (Hand)', value: 'dw_openpose_hand' },
-    { name: 'OpenPose (Full)', value: 'dw_openpose_full' },
-    { name: 'Segmentation', value: 'seg_ufade20k' },
-    { name: 'Tile Resample', value: 'tile_resample' },
-    { name: 'CLIP H (IPAdapter)', value: 'CLIP-ViT-H (IPAdapter)' },
-    { name: 'CLIP Vision', value: 't2ia_style_clipvision' },
-    { name: 'Color', value: 't2ia_color_grid' },
-    { name: 'Sketch', value: 't2ia_sketch_pidi' },
-    { name: 'Threshold', value: 'threshold' },
-    { name: 'Shuffle', value: 'shuffle' },
-    { name: 'Blur (Gaussian)', value: 'blur_gaussian' },
-    { name: 'Fill', value: 'fill'},
-    { name: 'CLIP G (IPAdapter)', value:'CLIP-ViT-bigG (IPAdapter)'}
+    { name: 'None', value: 'None', type: 'All' },
+    { name: 'Canny', value: 'canny', type: 'Canny' },
+    { name: 'Depth', value: 'depth_anything_v2', type: 'Depth' },
+    { name: 'Depth (LERes)', value: 'depth_leres++', type: 'Depth' },
+    { name: 'Depth (MiDaS)', value: 'depth_midas', type: 'Depth' },
+    { name: 'HED', value: 'softedge_hed', type: 'SoftEdge' },
+    { name: 'Lineart Anime', value: 'lineart_anime', type: 'Lineart' },
+    { name: 'OpenPose', value: 'dw_openpose', type: 'OpenPose' },
+    { name: 'OpenPose (Hand)', value: 'dw_openpose_hand', type: 'OpenPose' },
+    { name: 'OpenPose (Full)', value: 'dw_openpose_full', type: 'OpenPose' },
+    { name: 'Segmentation', value: 'seg_ufade20k', type: 'Segmentation' },
+    { name: 'Tile Resample', value: 'tile_resample', type: 'Tile' },
+    { name: 'CLIP H (IPAdapter)', value: 'CLIP-ViT-H (IPAdapter)', type: 'IP-Adapter' },
+    // { name: 'CLIP Vision', value: 't2ia_style_clipvision', type: 'CLIP' },
+    { name: 'Color', value: 't2ia_color_grid', type: 'Color' },
+    { name: 'Sketch', value: 't2ia_sketch_pidi', type: 'Sketch' },
+    { name: 'Threshold', value: 'threshold', type: 'All' },
+    { name: 'Shuffle', value: 'shuffle', type: 'Shuffle' },
+    { name: 'Blur (Gaussian)', value: 'blur_gaussian', type: 'Blur' },
+    { name: 'Fill', value: 'fill', type: 'All' },
+    { name: 'CLIP G (IPAdapter)', value:'CLIP-ViT-bigG (IPAdapter)', type: 'IP-Adapter' }
 ]
 
 const controlnet_model_selection = [

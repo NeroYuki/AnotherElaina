@@ -18,7 +18,7 @@ const beatmapUsers = JSON.parse(fs.readFileSync('./beatmap_users.json', 'utf8'))
 // ============================================
 const CONFIG = {
     // Server configuration
-    server_address: 'http://192.168.1.2:7050',
+    server_address: 'http://192.168.1.7:7050',
     
     // Audio file path (replace with your audio file)
     audio_file_path: "E:\\music_2_trimmed\\09.Fire Beat.mp3",

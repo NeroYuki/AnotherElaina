@@ -425,7 +425,7 @@ const operatingMode2Config = {
     },
     "standard": {
         model: "qwen3.5-35b-a3b-heretic",
-        server: process.env.BOT_ENV === 'lan' ? '192.168.1.2:1234' : '192.168.196.142:1234',    // qwen3.5 35b host on ai server via LM Studio
+        server: process.env.BOT_ENV === 'lan' ? '192.168.1.7:1234' : '192.168.196.142:1234',    // qwen3.5 35b host on ai server via LM Studio
         override_options: {
             num_ctx: 32000,
             num_predict: 400,
@@ -439,7 +439,7 @@ const operatingMode2Config = {
     },
     "uncensored_thinking": {
         model: "qwen3.5-35b-a3b-heretic",
-        server: process.env.BOT_ENV === 'lan' ? '192.168.1.2:1234' : '192.168.196.142:1234',    // qwen3.5 35b (thinking) host on ai server via LM Studio
+        server: process.env.BOT_ENV === 'lan' ? '192.168.1.7:1234' : '192.168.196.142:1234',    // qwen3.5 35b (thinking) host on ai server via LM Studio
         override_options: {
             num_ctx: 32000,
             num_predict: 400,
@@ -453,7 +453,7 @@ const operatingMode2Config = {
     },
     "uncensored": {
         model: "qwen3.5-27b-heretic-v2",
-        server: process.env.BOT_ENV === 'lan' ? '192.168.1.2:1234' : '192.168.196.142:1234',    // qwen3.5 27b (non-thinking) host on ai server via LM Studio
+        server: process.env.BOT_ENV === 'lan' ? '192.168.1.7:1234' : '192.168.196.142:1234',    // qwen3.5 27b (non-thinking) host on ai server via LM Studio
         override_options: {
             num_ctx: 32000,
             num_predict: 400,

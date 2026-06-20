@@ -8,8 +8,8 @@ const mapsetVerifierClient = require('../utils/mapset_verifier_client');
 const { parseMapsetVerifierHTML } = require('../utils/mapset_verifier_parser');
 const fs = require('fs');
 
-const server_address = process.env.BOT_ENV === 'lan' ? 'http://192.168.1.2:7051' : 'http://192.168.196.142:7051'
-const mapset_verifier_address = 'http://192.168.1.2:7052'
+const server_address = process.env.BOT_ENV === 'lan' ? 'http://192.168.1.7:7051' : 'http://192.168.196.142:7051'
+const mapset_verifier_address = 'http://192.168.1.7:7052'
 
 /**
  * The AI server runs on Windows and returns absolute Windows paths.
@@ -122,7 +122,7 @@ module.exports = {
             return null;
         });
 
-        const is_using_gpu = ['http://192.168.1.2:7051', 'http://192.168.196.142:7051'].includes(request_server_address);
+        const is_using_gpu = ['http://192.168.1.7:7051', 'http://192.168.196.142:7051'].includes(request_server_address);
         const is_gpu_having_enough_vram = comfyClient.comfyStat.gpu_vram_used < 8;
 
         if (!health || (health && is_using_gpu && !is_gpu_having_enough_vram)) {
@@ -896,7 +896,7 @@ module.exports = {
             }
         }
         
-        // Run MapsetVerifier — always runs on the Windows machine at 192.168.1.2
+        // Run MapsetVerifier — always runs on the Windows machine at 192.168.1.7
         // Use the original server (Windows) path, NOT the Linux-remapped beatmap_subfolder
         if (!only_maimod) {
             const beatmapset_path_full = beatmapset_path?.path

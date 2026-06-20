@@ -126,6 +126,7 @@ module.exports = {
 
         let controlnet_model = interaction.options.getString('controlnet_model') || "controlnet_openpose";
         const controlnet_preprocessor = interaction.options.getString('controlnet_preprocessor') || "dw_openpose"; 
+        const controlnet_type = controlnet_preprocessor_selection.find(item => item.value === controlnet_preprocessor)?.type || "All";
         const controlnet_weight = interaction.options.getNumber('controlnet_weight') || 1;
         const controlnet_resolution = interaction.options.getNumber('controlnet_resolution') || 512;
         const controlnet_mode = interaction.options.getString('controlnet_mode') || "Balanced";
@@ -133,6 +134,7 @@ module.exports = {
         const controlnet_threshold_b = interaction.options.getNumber('controlnet_threshold_b') || 200;
         let controlnet_model_2 = interaction.options.getString('controlnet_model_2') || "None";
         const controlnet_preprocessor_2 = interaction.options.getString('controlnet_preprocessor_2') || "None";
+        const controlnet_type_2 = controlnet_preprocessor_selection.find(item => item.value === controlnet_preprocessor_2)?.type || "All";
         const controlnet_weight_2 = interaction.options.getNumber('controlnet_weight_2') || 1;
         const controlnet_resolution_2 = interaction.options.getNumber('controlnet_resolution_2') || 512;
         const controlnet_mode_2 = interaction.options.getString('controlnet_mode_2') || "Balanced";
@@ -140,6 +142,7 @@ module.exports = {
         const controlnet_threshold_b_2 = interaction.options.getNumber('controlnet_threshold_b_2') || 200;
         let controlnet_model_3 = interaction.options.getString('controlnet_model_3') || "None";
         const controlnet_preprocessor_3 = interaction.options.getString('controlnet_preprocessor_3') || "None";
+        const controlnet_type_3 = controlnet_preprocessor_selection.find(item => item.value === controlnet_preprocessor_3)?.type || "All";
         const controlnet_weight_3 = interaction.options.getNumber('controlnet_weight_3') || 1;
         const controlnet_resolution_3 = interaction.options.getNumber('controlnet_resolution_3') || 512;
         const controlnet_mode_3 = interaction.options.getString('controlnet_mode_3') || "Balanced";
@@ -152,6 +155,7 @@ module.exports = {
                 {
                     model: controlnet_model,
                     preprocessor: controlnet_preprocessor,
+                    type: controlnet_type,
                     weight: controlnet_weight,
                     mode: controlnet_mode,
                     resolution: controlnet_resolution,
@@ -161,6 +165,7 @@ module.exports = {
                 {
                     model: controlnet_model_2,
                     preprocessor: controlnet_preprocessor_2,
+                    type: controlnet_type_2,
                     weight: controlnet_weight_2,
                     mode: controlnet_mode_2,
                     resolution: controlnet_resolution_2,
@@ -170,6 +175,7 @@ module.exports = {
                 {
                     model: controlnet_model_3,
                     preprocessor: controlnet_preprocessor_3,
+                    type: controlnet_type_3,
                     weight: controlnet_weight_3,
                     mode: controlnet_mode_3,
                     resolution: controlnet_resolution_3,

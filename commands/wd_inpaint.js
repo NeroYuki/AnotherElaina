@@ -112,6 +112,15 @@ module.exports = {
             option.setName('controlnet_input_3')
                 .setDescription('The input image of the controlnet'))
         .addStringOption(option =>
+            option.setName('controlnet_preprocessor_override')
+                .setDescription('Override the preprocessor for inpaint model (default is "Fill")')
+                .addChoices(
+                    { name: 'None - No preprocessor', value: 'None' }, 
+                    { name: 'Fill', value: 'fill' },
+                    { name: 'Inpaint', value: 'inpaint_only' },
+                    { name: 'Inpaint NoobAI', value: 'inpaint_noobai' },
+                ))
+        .addStringOption(option =>
             option.setName('controlnet_config')
                 .setDescription('Config string for the controlnet (use wd_controlnet to generate)'))
         .addIntegerOption(option =>
@@ -264,6 +273,7 @@ module.exports = {
             (client.colorbalance_config.has(interaction.user.id) ? client.colorbalance_config.get(interaction.user.id) : null)
 
         const should_override_1st_controlnet = (interaction.options.getString('controlnet_config') || profile?.controlnet_config)? true : false
+        const controlnet_preprocessor_override = interaction.options.getString('controlnet_preprocessor_override') || null
         const self = this;
         const usersetting_config = client.usersetting_config.has(interaction.user.id) ? client.usersetting_config.get(interaction.user.id) : null
         const usersetting = parse_common_setting(usersetting_config)
@@ -752,16 +762,18 @@ module.exports = {
                 control_net: [
                     {
                         model: is_xl ? "controlnet_inpaint" : "None",
-                        preprocessor: is_xl ? "fill" : "None",
+                        preprocessor: controlnet_preprocessor_override ?? 'fill',
+                        type: (controlnet_preprocessor_override ?? 'fill').includes('inpaint') ? "Inpaint" : "All",
                         weight: 1,
                         mode: "My prompt is more important",
-                        resolution: 512,
+                        resolution: is_xl ? 768 : 512,
                         t_a: 32,
                         t_b: 200
                     },
                     {
                         model: "None",
                         preprocessor: "None",
+                        type: "All",
                         weight: 1,
                         mode: "Balanced",
                         resolution: 512,
@@ -771,6 +783,7 @@ module.exports = {
                     {
                         model: "None",
                         preprocessor: "None",
+                        type: "All",
                         weight: 1,
                         mode: "Balanced",
                         resolution: 512,
@@ -789,6 +802,7 @@ module.exports = {
                     if (controlnet_config_obj_import.control_net[0] && controlnet_config_obj_import.control_net[0].model === "controlnet_inpaint") {
                         controlnet_config_obj.control_net[0].preprocessor = controlnet_config_obj_import.control_net[0].preprocessor || controlnet_config_obj.control_net[0].preprocessor
                         controlnet_config_obj.control_net[0].weight = controlnet_config_obj_import.control_net[0].weight || controlnet_config_obj.control_net[0].weight
+                        controlnet_config_obj.control_net[0].type = controlnet_config_obj_import.control_net[0].type || controlnet_config_obj.control_net[0].type
                         controlnet_config_obj.control_net[0].mode = controlnet_config_obj_import.control_net[0].mode || controlnet_config_obj.control_net[0].mode
                         controlnet_config_obj.control_net[0].resolution = controlnet_config_obj_import.control_net[0].resolution || controlnet_config_obj.control_net[0].resolution
                         controlnet_config_obj.control_net[0].t_a = controlnet_config_obj_import.control_net[0].t_a || controlnet_config_obj.control_net[0].t_a
