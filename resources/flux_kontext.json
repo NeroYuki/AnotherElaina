@@ -1,7 +1,7 @@
 {
   "6": {
     "inputs": {
-      "text": "the anime girl is sitting on a log in the woods biting into a sandwitch beside a beautiful alpine lake",
+      "text": "the anime girl is holding a bottle of wine",
       "clip": [
         "11",
         0
@@ -43,7 +43,7 @@
   },
   "10": {
     "inputs": {
-      "vae_name": "sd\\ae.safetensors"
+      "vae_name": "ae.safetensors"
     },
     "class_type": "VAELoader",
     "_meta": {
@@ -132,7 +132,7 @@
   },
   "25": {
     "inputs": {
-      "noise_seed": 281314422037359
+      "noise_seed": 1004238449294343
     },
     "class_type": "RandomNoise",
     "_meta": {
@@ -209,7 +209,7 @@
   },
   "41": {
     "inputs": {
-      "image": "8_alt.jpg"
+      "image": "GaFVlVcb0AIHbYD.jpg"
     },
     "class_type": "LoadImage",
     "_meta": {
@@ -234,7 +234,7 @@
   },
   "59": {
     "inputs": {
-      "unet_name": "flux1-kontext-dev-Q6_K.gguf"
+      "unet_name": "forge\\comfy_sym\\flux1-kontext-dev-Q6_K.gguf"
     },
     "class_type": "UnetLoaderGGUF",
     "_meta": {
@@ -261,6 +261,7 @@
   "61": {
     "inputs": {
       "sage_attention": "auto",
+      "allow_compile": false,
       "model": [
         "59",
         0

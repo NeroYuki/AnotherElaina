@@ -108,7 +108,7 @@
   },
   "32": {
     "inputs": {
-      "vae_name": "sd\\ae.safetensors"
+      "vae_name": "ae.safetensors"
     },
     "class_type": "VAELoader",
     "_meta": {
@@ -158,6 +158,7 @@
   },
   "39": {
     "inputs": {
+      "strength": 1,
       "model": [
         "50",
         0
@@ -170,7 +171,7 @@
   },
   "45": {
     "inputs": {
-      "unet_name": "flux1-fill-dev-Q6_K.gguf"
+      "unet_name": "forge\\comfy_sym\\flux1-fill-dev-Q6_K.gguf"
     },
     "class_type": "UnetLoaderGGUF",
     "_meta": {
@@ -207,6 +208,7 @@
   "51": {
     "inputs": {
       "sage_attention": "auto",
+      "allow_compile": false,
       "model": [
         "45",
         0

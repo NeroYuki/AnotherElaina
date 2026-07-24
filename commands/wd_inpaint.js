@@ -185,6 +185,9 @@ module.exports = {
             if (data.node !== null) interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] });
         }, (data) => {
             console.log('received success')
+            if (!data.output) {
+                return
+            }
             const filename = data.output.images[0].filename
 
             // fetch video from comfyUI
@@ -192,7 +195,7 @@ module.exports = {
                 // convert arraybuffer to buffer
                 const buffer = Buffer.from(arraybuffer)
 
-                await interaction.editReply({ content: "Generation Success", files: [{ attachment: buffer, name: filename }] });
+                await interaction.channel.send({ content: "Comfy backend returned file", files: [{ attachment: buffer, name: filename }] });
             }).catch((err) => {
                 console.log("Failed to retrieve image", err)
                 interaction.editReply({ content: "Failed to retrieve image" });

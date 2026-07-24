@@ -95,6 +95,9 @@ module.exports = {
             if (comfy_data.node !== null) interaction.editReply({ content: "Processing: " + workflow[comfy_data.node]["_meta"]["title"] });
         }, async (comfy_data) => {
             console.log('received success')
+            if (!comfy_data.output) {
+                return
+            }
 
             if (comfy_data.output.text) {
                 if (['region_caption',
@@ -139,7 +142,7 @@ module.exports = {
             }
 
             if (buffer !== null && output_text !== null) {
-                await interaction.editReply({ content: "Output: " + output_text, files: [{ attachment: buffer, name: output_filename }] });
+                await interaction.channel.send({ content: "Output: " + output_text, files: [{ attachment: buffer, name: output_filename }] });
             }
 
         }, (comfy_data) => {
