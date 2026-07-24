@@ -1,14 +1,14 @@
 {
   "3": {
     "inputs": {
-      "seed": 858207632315886,
+      "seed": 57715807618038,
       "steps": 20,
       "cfg": 1,
       "sampler_name": "euler",
       "scheduler": "normal",
       "denoise": 1,
       "model": [
-        "39",
+        "47",
         0
       ],
       "positive": [
@@ -73,7 +73,7 @@
   },
   "17": {
     "inputs": {
-      "image": "Konachan.com_-_237533_animal_bird_book_bow_dress_glasses_hat_long_hair_patchouli_knowledge_purple_hair_red_eyes_ribbons_tagme_artist_touhou.jpg"
+      "image": "example.png"
     },
     "class_type": "LoadImage",
     "_meta": {
@@ -108,7 +108,7 @@
   },
   "32": {
     "inputs": {
-      "vae_name": "sd\\ae.safetensors"
+      "vae_name": "ae.safetensors"
     },
     "class_type": "VAELoader",
     "_meta": {
@@ -156,18 +156,6 @@
       "title": "InpaintModelConditioning"
     }
   },
-  "39": {
-    "inputs": {
-      "model": [
-        "46",
-        0
-      ]
-    },
-    "class_type": "DifferentialDiffusion",
-    "_meta": {
-      "title": "Differential Diffusion"
-    }
-  },
   "44": {
     "inputs": {
       "left": 256,
@@ -185,43 +173,19 @@
       "title": "Pad Image for Outpainting"
     }
   },
-  "45": {
+  "47": {
     "inputs": {
-      "unet_name": "flux1-fill-dev-Q6_K.gguf"
+      "model_path": "forge\\comfy_sym\\svdq-fp4_r32-flux.1-fill-dev.safetensors",
+      "cache_threshold": 0,
+      "attention": "nunchaku-fp16",
+      "cpu_offload": "auto",
+      "device_id": 0,
+      "data_type": "bfloat16",
+      "i2f_mode": "enabled"
     },
-    "class_type": "UnetLoaderGGUF",
+    "class_type": "NunchakuFluxDiTLoader",
     "_meta": {
-      "title": "Unet Loader (GGUF)"
-    }
-  },
-  "46": {
-    "inputs": {
-      "model_type": "flux",
-      "rel_l1_thresh": 0,
-      "start_percent": 0,
-      "end_percent": 1,
-      "cache_device": "cpu",
-      "model": [
-        "48",
-        0
-      ]
-    },
-    "class_type": "TeaCache",
-    "_meta": {
-      "title": "TeaCache"
-    }
-  },
-  "48": {
-    "inputs": {
-      "sage_attention": "auto",
-      "model": [
-        "45",
-        0
-      ]
-    },
-    "class_type": "PathchSageAttentionKJ",
-    "_meta": {
-      "title": "Patch Sage Attention KJ"
+      "title": "Nunchaku FLUX DiT Loader"
     }
   }
 }
