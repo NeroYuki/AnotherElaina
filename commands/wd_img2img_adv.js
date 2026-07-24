@@ -189,7 +189,6 @@ module.exports = {
         workflow["3"]["inputs"]["sampler_name"] = data.sampler
         workflow["3"]["inputs"]["scheduler"] = data.scheduler
         workflow["3"]["inputs"]["seed"] = Math.floor(Math.random() * 2_000_000_000)
-        workflow["46"]["inputs"]["rel_l1_thresh"] = data.teacache_strength
 
         // extract outpaint config
         const outpaint_config = {
@@ -219,7 +218,7 @@ module.exports = {
             return
         }
 
-        workflow["15"]["inputs"]["image"] = image_info.name
+        workflow["17"]["inputs"]["image"] = image_info.name
 
         // Unload Forge model before using ComfyUI
         const { unloadForgeCheckpoint } = require('../utils/forge_api_execute');

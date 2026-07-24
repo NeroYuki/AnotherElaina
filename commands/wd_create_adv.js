@@ -671,7 +671,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                             console.log('Emergency catbox upload failed:', err)
                         })
                         if (emergency_url) {
-                            reply_content.embeds[0].image = { url: emergency_url }
+                            reply_content.embeds[0].setImage(emergency_url)
                         }
                     }
                     // if completed, only allow edit if the state is completed
