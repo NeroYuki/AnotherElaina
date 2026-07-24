@@ -1,8 +1,28 @@
-const Catbox = require('node-catbox');
 const fs = require('fs');
 require('dotenv').config()
 
-const catboxClient = new Catbox.Catbox(process.env.CATBOX_USER_HASH)
+const FREEIMG_API_KEY = process.env.FREE_IMG_API_KEY
+const FREEIMG_API_URL = 'https://freeimage.host/api/1/upload'
+
+async function freeimgUpload(filePath) {
+    const fileBuffer = fs.readFileSync(filePath)
+    const base64 = fileBuffer.toString('base64')
+
+    const formData = new FormData()
+    formData.set('source', base64)
+    formData.set('format', 'json')
+
+    const response = await fetch(`${FREEIMG_API_URL}?key=${FREEIMG_API_KEY}`, {
+        method: 'POST',
+        body: formData
+    })
+
+    const json = await response.json()
+    if (json.status_code !== 200 || !json.success) {
+        throw new Error(`Freeimage.host upload failed: ${json.error?.message || json.status_txt || 'Unknown error'}`)
+    }
+    return json.image.url
+}
 
 function catboxUpload(image) {
     return new Promise(async (resolve, reject) => {
@@ -11,21 +31,17 @@ function catboxUpload(image) {
         }
 
         const filename = 'temp_' + Date.now() + '.png'
-        
-        // save the image buffer to a temporary file and upload the file to catbox
-        fs.writeFileSync(filename, image, {encoding: 'binary'})
-    
-        await catboxClient.uploadFile({
-            path: filename,
-        })
-            .then((res) => {
-                console.log(res)
-                fs.rmSync(filename, {force: true})
-                resolve(res)
+        fs.writeFileSync(filename, image)
+
+        freeimgUpload(filename)
+            .then((url) => {
+                console.log(url)
+                fs.rmSync(filename, { force: true })
+                resolve(url)
             })
             .catch((err) => {
                 console.log(err)
-                fs.rmSync(filename, {force: true})
+                fs.rmSync(filename, { force: true })
                 reject(err)
             })
     })
@@ -37,19 +53,15 @@ function catboxFileUpload(filename) {
             reject('No filename provided')
         }
 
-        // upload the file with said filename to catbox
-        await catboxClient.uploadFile({
-            path: filename,
-        })
-            .then((res) => {
-                console.log(res)
-                resolve(res)
+        freeimgUpload(filename)
+            .then((url) => {
+                console.log(url)
+                resolve(url)
             })
             .catch((err) => {
                 console.log(err)
                 reject(err)
             })
-
     })
 }
 
@@ -59,20 +71,17 @@ function catboxFileUploadBuffer(buffer, filename) {
             reject('No buffer or filename provided')
         }
 
-        // save the buffer to a temporary file and upload the file to catbox
-        fs.writeFileSync('./temp/' + filename, buffer, {encoding: 'binary'})
+        fs.writeFileSync('./temp/' + filename, buffer)
 
-        await catboxClient.uploadFile({
-            path: './temp/' + filename,
-        })
-            .then((res) => {
-                console.log(res)
-                fs.rmSync('./temp/' + filename, {force: true})
-                resolve(res)
+        freeimgUpload('./temp/' + filename)
+            .then((url) => {
+                console.log(url)
+                fs.rmSync('./temp/' + filename, { force: true })
+                resolve(url)
             })
             .catch((err) => {
                 console.log(err)
-                fs.rmSync('./temp/' + filename, {force: true})
+                fs.rmSync('./temp/' + filename, { force: true })
                 reject(err)
             })
     })
