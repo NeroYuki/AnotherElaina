@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageActionRow, MessageSelectMenu } = require('discord.js');
-const { controlnet_model_selection, controlnet_preprocessor_selection, model_selection_xl, model_selection, model_selection_flux, model_selection_legacy, model_selection_chroma, model_selection_flux_klein_4b, model_selection_flux_klein_9b, model_selection_anima, model_selection_lumina, model_selection_qwen_image, model_selection_z_image, sampler_selection, scheduler_selection } = require('../utils/ai_server_config');
+const { controlnet_model_selection, controlnet_preprocessor_selection, model_selection_xl, model_selection, model_selection_flux, model_selection_legacy, model_selection_chroma, model_selection_flux_klein_4b, model_selection_flux_klein_9b, model_selection_anima, model_selection_lumina, model_selection_qwen_image, model_selection_z_image, model_selection_krea, sampler_selection, scheduler_selection } = require('../utils/ai_server_config');
 const { cached_model } = require('../utils/model_change');
 const { clamp, truncate, try_parse_json_and_return_formated_string } = require('../utils/common_helper');
 const { get_model_family_defaults } = require('../utils/model_defaults');
@@ -154,6 +154,7 @@ module.exports = {
                 .concat(model_selection_lumina)
                 .concat(model_selection_qwen_image)
                 .concat(model_selection_z_image)
+                .concat(model_selection_krea)
                 .filter(x => !model_selection_legacy.map(y => y.value).includes(x.value));
             
             const experimentalSelectMenu = new MessageSelectMenu()

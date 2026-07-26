@@ -2,7 +2,8 @@ const imggen_default = require('../resources/imggen_default_config.json')
 const {
     model_selection, model_selection_xl, model_selection_flux, model_selection_chroma,
     model_selection_flux_klein_4b, model_selection_flux_klein_9b,
-    model_selection_anima, model_selection_lumina, model_selection_qwen_image, model_selection_z_image
+    model_selection_anima, model_selection_lumina, model_selection_qwen_image, model_selection_z_image,
+    model_selection_krea
 } = require('./ai_server_config')
 
 /**
@@ -17,6 +18,7 @@ function get_model_family(modelName) {
     if (model_selection_lumina.find(x => x.value === modelName))      return 'lumina'
     if (model_selection_qwen_image.find(x => x.value === modelName))  return 'qwen'
     if (model_selection_z_image.find(x => x.value === modelName))     return 'zit'
+    if (model_selection_krea.find(x => x.value === modelName))        return 'krea'
     if (model_selection_xl.find(x => x.value === modelName))          return 'xl'
     if (model_selection.find(x => x.value === modelName))             return 'sd'
     return null

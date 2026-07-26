@@ -3,7 +3,20 @@
 // const { byPassUser } = require('../config.json');
 const crypt = require('crypto');
 const { default: axios } = require('axios');
-const { server_pool, model_selection_flux, model_selection_xl, model_selection, model_selection_chroma, model_selection_z_image, model_selection_lumina, model_selection_anima, model_selection_qwen_image, model_selection_flux_klein_4b, model_selection_flux_klein_9b } = require('./ai_server_config');
+const { 
+    server_pool, 
+    model_selection_flux, 
+    model_selection_xl, 
+    model_selection, 
+    model_selection_chroma, 
+    model_selection_z_image, 
+    model_selection_lumina, 
+    model_selection_anima, 
+    model_selection_qwen_image, 
+    model_selection_flux_klein_4b, 
+    model_selection_flux_klein_9b,
+    model_selection_krea,
+} = require('./ai_server_config');
 // const { loadImage } = require('../utils/load_discord_img');
 // const sharp = require('sharp');
 
@@ -54,6 +67,11 @@ const lumina_support_models = [
     "gemma_2_2b_fp16.safetensors"
 ]
 
+const krea_support_models = [
+    "qwen_image_vae.safetensors",
+    "qwen3vl_4b_fp8_scaled.safetensors"
+]
+
 async function support_model_change(models, session_hash, model_type) {
     const server_address = server_pool[0].url;
     return new Promise(async (resolve, reject) => {
@@ -99,7 +117,8 @@ function model_change(modelname, forced = false) {
                     model_selection_qwen_image.find(element => element.value === modelname) ? 'qwen' :
                     model_selection_anima.find(element => element.value === modelname) ? 'anima' :
                     model_selection_lumina.find(element => element.value === modelname) ? 'lumina' :
-                    model_selection_z_image.find(element => element.value === modelname) ? 'zit' : 'sd';
+                    model_selection_z_image.find(element => element.value === modelname) ? 'zit' : 
+                    model_selection_krea.find(element => element.value === modelname) ? 'krea' : 'sd';
     
     return new Promise(async (resolve, reject) => {
         // change model then send the notification to discord channel where the action is executed
@@ -181,6 +200,12 @@ function model_change(modelname, forced = false) {
                         }
                         else if (model_selection_z_image.find(element => element.value === modelname)) {
                             await support_model_change(z_image_support_models, session_hash, model_type).catch(err => {
+                                console.log("support model cannot be changed due to failure")
+                                // rollback the model change?
+                            })
+                        }
+                        else if (model_selection_krea.find(element => element.value === modelname)) {
+                            await support_model_change(krea_support_models, session_hash, model_type).catch(err => {
                                 console.log("support model cannot be changed due to failure")
                                 // rollback the model change?
                             })

@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageActionRow, MessageSelectMenu } = require('discord.js');
 const { model_change, cached_model } = require('../utils/model_change');
 const { byPassUser } = require('../config.json');
-const { check_model_filename, model_selection, model_selection_xl, model_selection_inpaint, model_selection_flux, model_selection_legacy, model_selection_chroma, model_selection_flux_klein_4b, model_selection_flux_klein_9b, model_selection_anima, model_selection_lumina, model_selection_qwen_image, model_selection_z_image} = require('../utils/ai_server_config');
+const { check_model_filename, model_selection, model_selection_xl, model_selection_inpaint, model_selection_flux, model_selection_legacy, model_selection_chroma, model_selection_flux_klein_4b, model_selection_flux_klein_9b, model_selection_anima, model_selection_lumina, model_selection_qwen_image, model_selection_z_image, model_selection_krea} = require('../utils/ai_server_config');
 
 
 // ["362dae27f8", "RefSlave v2"],
@@ -39,6 +39,7 @@ module.exports = {
                         .concat(model_selection_lumina)
                         .concat(model_selection_qwen_image)
                         .concat(model_selection_z_image)
+                        .concat(model_selection_krea)
                         .filter(x => !model_selection_legacy.map(y => y.value).includes(x.value)))
                     )
                 .setRequired(false))

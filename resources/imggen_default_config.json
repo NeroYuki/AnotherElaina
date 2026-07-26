@@ -69,5 +69,18 @@
     "zit_i2i_cfg": 1,
     "zit_t2i_dcfg": 9,
     "zit_t2i_hr_dcfg": 9,
-    "zit_i2i_dcfg": 9
+    "zit_i2i_dcfg": 9,
+    "krea_t2i_sampler": "Euler",
+    "krea_t2i_scheduler": "Simple",
+    "krea_i2i_sampler": "Euler",
+    "krea_i2i_scheduler": "Simple",
+    "krea_t2i_step": 8,
+    "krea_t2i_hr_step": 8,
+    "krea_i2i_step": 8,
+    "krea_t2i_cfg": 1,
+    "krea_t2i_hr_cfg": 1,
+    "krea_i2i_cfg": 1,
+    "krea_t2i_dcfg": 1.15,
+    "krea_t2i_hr_dcfg": 1.15,
+    "krea_i2i_dcfg": 1.15
 }
