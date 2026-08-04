@@ -28,10 +28,10 @@ module.exports = {
                 .setDescription('The negative prompt for the AI to avoid generate art from'))
         .addIntegerOption(option => 
             option.setName('width')
-                .setDescription('The width of the generated image (default is 512, 1024 if XL model is used)'))
+                .setDescription('The width of the generated image (default is 1024, 512 if legacy model is used)'))
         .addIntegerOption(option =>
             option.setName('height')
-                .setDescription('The height of the generated image (default is 512, 1024 if XL model is used)'))
+                .setDescription('The height of the generated image (default is 1024, 512 if legacy model is used)'))
         .addStringOption(option => 
             option.setName('seed')
                 .setDescription('Random seed for AI generate art from (default is "-1 - Random")'))
@@ -184,8 +184,8 @@ module.exports = {
 		let prompt = (profile?.prompt_pre || '') + (interaction.options.getString('prompt') || '') + (profile?.prompt || '')
 		let neg_prompt = (profile?.neg_prompt_pre || '') + (interaction.options.getString('neg_prompt') || '') + (profile?.neg_prompt || '')
 
-        let width = clamp(interaction.options.getInteger('width') || profile?.width || 512, 512, 2048) // this can only end well :)
-        let height = clamp(interaction.options.getInteger('height') || profile?.height || 512, 512, 2048)
+        let width = clamp(interaction.options.getInteger('width') || profile?.width || 1024, 512, 2048) // this can only end well :)
+        let height = clamp(interaction.options.getInteger('height') || profile?.height || 1024, 512, 2048)
 
         let sampler =  profile?.sampler || 'Euler'
         let scheduler = profile?.scheduler || 'Automatic'
@@ -275,18 +275,14 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
 
         //TODO: refactor all forced config
 
-        if (model_selection_xl.find(x => x.value === cached_model[0])) {
-            if (width === 512 && height === 512) {
-                interaction.channel.send('default resolution detected while XL model is selected, changing resolution to 1024x1024')
-                width = 1024
-                height = 1024
+        if (model_selection.find(x => x.value === cached_model[0])) {
+            if (width == 1024) {
+                width = 512
+                interaction.channel.send(`Legacy model detected, setting width to 512`)
             }
-        }
-        else if (model_selection_flux.find(x => x.value === cached_model[0])) {
-            if (width === 512 && height === 512) {
-                interaction.channel.send('default resolution detected while Flux model is selected, changing resolution to 1024x1024, disabling dynamic lora load')
-                width = 1024
-                height = 1024
+            if (height == 1024) {
+                height = 512
+                interaction.channel.send(`Legacy model detected, setting height to 512`)
             }
         }
 
@@ -302,7 +298,13 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         }
 
         // Per-model specific overrides (take priority over family defaults)
-        if (cached_model[0] === 'dreamshaperxl_turbo.safetensors') {
+        if (cached_model[0] === 'anima-turbo-v1_0.safetensors') {
+            sampler = 'ER SDE'
+            scheduler = 'SGM Uniform'
+            cfg_scale = 1
+            sampling_step = 8
+        }
+        else if (cached_model[0] === 'dreamshaperxl_turbo.safetensors') {
             sampler = 'DPM++ SDE'
             scheduler = 'Karras'
             cfg_scale = 2
@@ -430,6 +432,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
 
         const is_xl = model_selection_xl.find(x => x.value === cached_model[0]) != null
         const is_flux = model_selection_flux.find(x => x.value === cached_model[0]) != null
+        const is_sd15 = model_selection.find(x => x.value === cached_model[0]) != null
         const is_vpred = cached_model[0].includes('vpred')
         // Extract DAAM tokens from [DEBUG]#token# syntax and clean prompt
         const debug_res = get_debug_prompt_analyze(prompt, neg_prompt)
@@ -441,7 +444,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         prompt = extra_config.prompt
         prompt = await fetch_user_defined_wildcard(prompt, interaction.user.id)
 
-        if (is_flux ? width * height > 1_800_000 : is_xl ? width * height > 1_200_000 : width * height > 640_000) {
+        if (is_flux ? width * height > 1_800_000 : is_xl ? width * height > 1_200_000 : is_sd15 ? width * height > 640_000 : width * height > 1_440_000) {
             await interaction.channel.send(`:warning: Image size is too large for model's capability and may introduce distorsion, please consider using smaller image size unless you know what you're doing`);
         }
 

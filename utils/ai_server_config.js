@@ -310,7 +310,6 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             "Qwen2.5-VL-7B-Instruct-Q8_0.gguf",
             0,
             true,
-            false,
             is_using_adetailer,
             false,
             null,
@@ -684,8 +683,8 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             "Qwen2.5-VL-7B-Instruct-Q8_0.gguf",
             0,
             true,
-            false,
             is_using_adetailer,
+            false,
             null,
             null,
             null,
@@ -1083,7 +1082,8 @@ const model_selection_chroma = [
 ]
 
 const model_selection_flux_klein_9b = [
-    { name: 'Flux2 Klein 9B FP8', value: 'flux-2-klein-9b-fp8.safetensors'}
+    { name: 'Flux2 Klein 9B NVFP4', value: 'flux-2-klein-9b-nvfp4.safetensors'},
+    { name: 'Flux2 Klein 9B Int8 ConvRot', value: 'flux-2-klein-9b-kv-int8-convrot.safetensors'}
 ]
 
 const model_selection_flux_klein_4b = [
@@ -1091,8 +1091,9 @@ const model_selection_flux_klein_4b = [
 ]
 
 const model_selection_anima = [
-    { name: 'Anima Preview', value: 'anima-preview.safetensors'},
     { name: 'Anima Base v1', value: 'anima-base-v1.safetensors'},
+    { name: 'Anima Aesthetic v1.1', value: 'anima-aesthetic-v1_1.safetensors'},
+    { name: 'Anima Turbo v1.0', value: 'anima-turbo-v1_0.safetensors'},
     { name: 'WAI Anima v1', value: 'wai_anima_v10.safetensors'},
 ]
 
@@ -1117,10 +1118,10 @@ const model_selection_krea = [
 ]
 
 const model_selection_curated = [
-    { name: 'Flux2 Klein 9B FP8', value: 'flux-2-klein-9b-fp8.safetensors'},
+    { name: 'Flux2 Klein 9B NVFP4', value: 'flux-2-klein-9b-nvfp4.safetensors'},
     { name: 'WAI-NSFW-IllustriousXL v16', value: 'wai_nsfw_illustrious_v160.safetensors'},
     { name: 'IllumiyumeXL V-pred v3.1' , value: 'illumiyumexl_vpred_v31.safetensors'},
-    { name: 'Flux Krea.dev Q8_0', value: 'flux1-krea-dev-Q8_0.gguf'},
+    { name: 'Krea 2 Turbo', value: 'krea2_turbo_nvfp4.safetensors'},
     { name: 'Pastel Mix v2.1', value: 'pastelmix.safetensors' },
 ]
 

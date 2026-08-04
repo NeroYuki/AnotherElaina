@@ -40,10 +40,10 @@ module.exports = {
                 .setDescription('How much the image is noised before regen, closer to 0 = closer to original (0 - 1, default 0.7)'))
         .addIntegerOption(option => 
             option.setName('width')
-                .setDescription('The width of the generated image (default is image upload size, recommended max is 768)'))
+                .setDescription('The width of the generated image (default is image upload size, recommended is 1024)'))
         .addIntegerOption(option =>
             option.setName('height')
-                .setDescription('The height of the generated image (default is image upload size, recommended max is 768)'))
+                .setDescription('The height of the generated image (default is image upload size, recommended is 1024)'))
         .addStringOption(option => 
             option.setName('sampler')
                 .setDescription('The sampling method for the AI to generate art from (default is "Euler")')
@@ -465,6 +465,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         let progress_ping_delay = 2000
         const is_xl = model_selection_xl.find(x => x.value === cached_model[0]) != null
         const is_flux = model_selection_flux.find(x => x.value === cached_model[0]) != null
+        const is_sd15 = model_selection.find(x => x.value === cached_model[0]) != null
         const is_vpred = cached_model[0].includes('vpred')
 
         // Apply family defaults when user and profile did not explicitly set the values
@@ -482,7 +483,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             }
         }
 
-        if (is_flux ? width * height > 1_800_000 : is_xl ? width * height > 1_200_000 : width * height > 640_000) {
+        if (is_flux ? width * height > 1_800_000 : is_xl ? width * height > 1_200_000 : is_sd15 ? width * height > 640_000 : width * height > 1_440_000) {
             await interaction.channel.send(`:warning: Image size is too large for model's capability and may introduce distorsion, please consider using smaller image size unless you know what you're doing`);
         }
         if (is_vpred) {

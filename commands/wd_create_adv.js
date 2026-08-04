@@ -38,10 +38,10 @@ module.exports = {
                 .setDescription('The negative prompt for the AI to avoid generate art from'))
         .addIntegerOption(option => 
             option.setName('width')
-                .setDescription('The width of the generated image (default is 512, recommended max is 768)'))
+                .setDescription('The width of the generated image (default is 1024)'))
         .addIntegerOption(option =>
             option.setName('height')
-                .setDescription('The height of the generated image (default is 512, recommended max is 768)'))
+                .setDescription('The height of the generated image (default is 1024)'))
         .addStringOption(option => 
             option.setName('sampler')
                 .setDescription('The sampling method for the AI to generate art from (default is "Euler")')
@@ -239,8 +239,8 @@ module.exports = {
 
 		let prompt = (profile?.prompt_pre || '') + (interaction.options.getString('prompt') || '') + (profile?.prompt || '')
 		let neg_prompt = (profile?.neg_prompt_pre || '') + (interaction.options.getString('neg_prompt') || '') + (profile?.neg_prompt || '')
-        let width = clamp(interaction.options.getInteger('width') || profile?.width || 512, 64, 4096) // this can only end well :)
-        let height = clamp(interaction.options.getInteger('height') || profile?.height || 512, 64, 4096)
+        let width = clamp(interaction.options.getInteger('width') || profile?.width || 1024, 64, 4096) // this can only end well :)
+        let height = clamp(interaction.options.getInteger('height') || profile?.height || 1024, 64, 4096)
         const user_sampler = interaction.options.getString('sampler')
         const user_scheduler = interaction.options.getString('scheduler')
         const user_cfg = interaction.options.getNumber('cfg_scale')
@@ -371,6 +371,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         let progress_ping_delay = 2000
         const is_xl = model_selection_xl.find(x => x.value === cached_model[0]) != null
         const is_flux = model_selection_flux.find(x => x.value === cached_model[0]) != null
+        const is_sd15 = model_selection.find(x => x.value === cached_model[0]) != null
         const is_vpred = cached_model[0].includes('vpred')
 
         // Apply family defaults when user and profile did not explicitly set the values
@@ -388,7 +389,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             }
         }
 
-        if (is_flux ? width * height > 1_800_000 : is_xl ? width * height > 1_200_000 : width * height > 640_000) {
+        if (is_flux ? width * height > 1_800_000 : is_xl ? width * height > 1_200_000 : is_sd15 ? width * height > 640_000 : width * height > 1_440_000) {
             await interaction.channel.send(`:warning: Image size is too large for model's capability and may introduce distorsion, please consider using smaller image size unless you know what you're doing`);
         }
         if (is_vpred) {
