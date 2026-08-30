@@ -217,7 +217,7 @@ module.exports = {
                                 .setTitle('Output')
                                 .setDescription(`Here you go (SeedVR2: ${seedvr2_model}, ${out_w}x${out_h}). Generated in ${final_res_obj.duration.toFixed(2)} seconds.\n\n[Click here to view full image](${catbox_url})`)
                                 .setImage(catbox_url)
-                                .setFooter({text: `Putting ${Array("my RTX 5060 Ti","plub's RTX 3070")[server_index]} to good use!`})
+                                .setFooter({text: `Putting ${Array("my RTX 3090 Ti","plub's RTX 3070")[server_index]} to good use!`})
 
                             await interaction.editReply({ embeds: [embeded] })
                         } else {
@@ -226,7 +226,7 @@ module.exports = {
                                 .setTitle('Output')
                                 .setDescription(`Here you go (SeedVR2: ${seedvr2_model}, ${out_w}x${out_h}). Generated in ${final_res_obj.duration.toFixed(2)} seconds.`)
                                 .setImage(`attachment://img.png`)
-                                .setFooter({text: `Putting ${Array("my RTX 5060 Ti","plub's RTX 3070")[server_index]} to good use!`})
+                                .setFooter({text: `Putting ${Array("my RTX 3090 Ti","plub's RTX 3070")[server_index]} to good use!`})
 
                             await interaction.editReply({ embeds: [embeded], files: [{ attachment: img_buffer, name: 'img.png' }] })
                         }
@@ -375,7 +375,7 @@ module.exports = {
                             .setTitle('Output')
                             .setDescription(`Here you go. Generated in ${output_data.duration.toFixed(2)} seconds.\n\n[Click here to view full image](${catbox_url})`)
                             .setImage(catbox_url)
-                            .setFooter({text: `Putting ${Array("my RTX 5060 Ti","plub's RTX 3070")[server_index]} to good use!`});
+                            .setFooter({text: `Putting ${Array("my RTX 3090 Ti","plub's RTX 3070")[server_index]} to good use!`});
 
                         await interaction.editReply({ 
                             embeds: [embeded]
@@ -393,7 +393,7 @@ module.exports = {
                             .setTitle('Output')
                             .setDescription(`Here you go. Generated in ${output_data.duration.toFixed(2)} seconds.`)
                             .setImage(`attachment://${output_data.img_name}`)
-                            .setFooter({text: `Putting ${Array("my RTX 5060 Ti","plub's RTX 3070")[server_index]} to good use!`});
+                            .setFooter({text: `Putting ${Array("my RTX 3090 Ti","plub's RTX 3070")[server_index]} to good use!`});
 
                         const reply_content = {embeds: [embeded]};
                         if (output_data.img) {

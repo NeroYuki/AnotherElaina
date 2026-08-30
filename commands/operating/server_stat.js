@@ -55,12 +55,12 @@ module.exports = {
             + '**CPU Usage: **' + avg_cpu_percent.toFixed(2) + "%" + "\n"
             + '**RAM Usage: **' + `${ram_used.toFixed(2)}/${ram_total.toFixed(2)}GB (${ram_percent.toFixed(2)}%)` + "\n"
 
-        const aiServerTitle = "AI Server -  Microsoft Windows 10 Education 10.0.19045 (x64)"
+        const aiServerTitle = "AI Server -  Microsoft Windows 11 Education (x64) Build 26200.9168 (25H2)"
         const aiServerStat = '------------------------------------------' + "\n"
             + '**CPU Usage: **' + server_stat.cpu_usage.toFixed(2) + "%" + "\n"
             + '**RAM Usage: **' + `${server_stat.ram_used.toFixed(2)}/${server_stat.ram_total.toFixed(2)}GB (${server_stat.ram_percent.toFixed(2)}%)` + "\n"
             + '------------------------------------------' + "\n"
-            + "**GPU (NVIDIA RTX 5060 Ti): **" + server_stat.gpu_usage.toFixed(2) + "%" + "\n"
+            + "**GPU (NVIDIA RTX 3090 Ti): **" + server_stat.gpu_usage.toFixed(2) + "%" + "\n"
             + '**VRAM Usage: **' + `${server_stat.gpu_vram_used.toFixed(2)}/${server_stat.gpu_vram_total.toFixed(2)}GB (${server_stat.gpu_memory_percent.toFixed(2)}%)` + "\n"
             + "**GPU Temp: **" + server_stat.gpu_temp.toFixed(2) + "°C"
 

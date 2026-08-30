@@ -7,7 +7,7 @@ const { convert_upload_path_to_file_data } = require('./common_helper');
 const server_pool = [
     {
         index: 0,
-        url: process.env.BOT_ENV === 'lan' ? 'http://192.168.1.5:7860' : 'http://192.168.196.142:7860',
+        url: process.env.BOT_ENV === 'lan' ? 'http://192.168.1.6:7860' : 'http://192.168.196.142:7860',
         fn_index_create: 633,
         fn_index_abort: 51,
         fn_index_img2img: 1367,
@@ -1113,7 +1113,7 @@ const model_selection_lumina = [
 ]
 
 const model_selection_krea = [
-    { name: 'Krea 2 Turbo', value: 'krea2_turbo_nvfp4.safetensors'},
+    { name: 'Krea 2 Turbo', value: 'krea2_turbo_int8_convrot.safetensors'},
     { name: 'Krea 2 Raw Int8 ConvRot', value: 'krea2_raw_int8_convrot.safetensors'},
 ]
 
@@ -1121,7 +1121,7 @@ const model_selection_curated = [
     { name: 'Flux2 Klein 9B NVFP4', value: 'flux-2-klein-9b-nvfp4.safetensors'},
     { name: 'WAI-NSFW-IllustriousXL v16', value: 'wai_nsfw_illustrious_v160.safetensors'},
     { name: 'IllumiyumeXL V-pred v3.1' , value: 'illumiyumexl_vpred_v31.safetensors'},
-    { name: 'Krea 2 Turbo', value: 'krea2_turbo_nvfp4.safetensors'},
+    { name: 'Krea 2 Turbo', value: 'krea2_turbo_int8_convrot.safetensors'},
     { name: 'Pastel Mix v2.1', value: 'pastelmix.safetensors' },
 ]
 
