@@ -4,7 +4,14 @@ const { byPassUser } = require('../config.json');
 const crypt = require('crypto');
 const { server_pool, get_prompt, get_negative_prompt, get_worker_server, model_name_hash_mapping, upscaler_selection, get_data_rembg } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
-const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+const { serviceHeaders } = require('../utils/proxy_config');
+const SD_HEADERS = serviceHeaders('sdwebui');
+const _nodeFetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+// Inject the sdwebui proxy routing header on every request in this command.
+const fetch = (url, options = {}) => _nodeFetch(url, {
+    ...options,
+    headers: { ...SD_HEADERS, ...(options.headers || {}) },
+});
 const { loadImage, uploadDiscordImageToGradio } = require('../utils/load_discord_img');
 const { clamp, convert_upload_path_to_file_data } = require('../utils/common_helper');
 
@@ -115,7 +122,7 @@ module.exports = {
             return
         })
     
-        const rembg_data = get_data_rembg(convert_upload_path_to_file_data(attachment_upload_path, WORKER_ENDPOINT), rembg_model, edge_width, edge_color, alpha_mat, alpha_mat_fg, 
+        const rembg_data = get_data_rembg(convert_upload_path_to_file_data(attachment_upload_path, server_pool[server_index].direct_url), rembg_model, edge_width, edge_color, alpha_mat, alpha_mat_fg, 
             alpha_mat_bg, add_shadow, shadow_opacity, shadow_blur, adjust_color, brightness, contrast, saturation)
 
         // make option_init but for axios
@@ -126,6 +133,7 @@ module.exports = {
                 data: rembg_data
             },
             config: {
+                headers: SD_HEADERS,
                 timeout: 900000
             }
         }

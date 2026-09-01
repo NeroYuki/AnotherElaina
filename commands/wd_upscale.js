@@ -4,7 +4,14 @@ const { byPassUser } = require('../config.json');
 const crypt = require('crypto');
 const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, model_name_hash_mapping, upscaler_selection } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
-const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+const { serviceHeaders } = require('../utils/proxy_config');
+const SD_HEADERS = serviceHeaders('sdwebui');
+const _nodeFetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+// Inject the sdwebui proxy routing header on every request in this command.
+const fetch = (url, options = {}) => _nodeFetch(url, {
+    ...options,
+    headers: { ...SD_HEADERS, ...(options.headers || {}) },
+});
 const { loadImage, uploadDiscordImageToGradio } = require('../utils/load_discord_img');
 const { clamp, convert_upload_path_to_file_data } = require('../utils/common_helper');
 const { catboxFileUpload } = require('../utils/catbox_upload');
@@ -170,7 +177,7 @@ module.exports = {
                     session_hash: session_hash,
                     data: create_data
                 },
-                config: { timeout: 900000 }
+                config: { headers: SD_HEADERS, timeout: 900000 }
             }
 
             try {
@@ -253,7 +260,7 @@ module.exports = {
         const upscale_data = [
             `task(${session_hash})`,
             0,
-            convert_upload_path_to_file_data(attachment_upload_path, WORKER_ENDPOINT),
+            convert_upload_path_to_file_data(attachment_upload_path, server_pool[server_index].direct_url),
             null,
             "",
             "",
@@ -306,6 +313,7 @@ module.exports = {
                 data: upscale_data
             },
             config: {
+                headers: SD_HEADERS,
                 timeout: 900000
             }
         }

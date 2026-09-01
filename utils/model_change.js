@@ -17,6 +17,10 @@ const {
     model_selection_flux_klein_9b,
     model_selection_krea,
 } = require('./ai_server_config');
+const { serviceHeaders } = require('./proxy_config');
+
+const SD_HEADERS = serviceHeaders('sdwebui');
+
 // const { loadImage } = require('../utils/load_discord_img');
 // const sharp = require('sharp');
 
@@ -85,6 +89,7 @@ async function support_model_change(models, session_hash, model_type) {
                 ]
             },
             config: {
+                headers: SD_HEADERS,
                 timeout: 900000
             }
         }  
@@ -136,6 +141,7 @@ function model_change(modelname, forced = false) {
                     ]
                 },
                 config: {
+                    headers: SD_HEADERS,
                     timeout: 900000
                 }
             }

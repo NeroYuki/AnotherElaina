@@ -3,8 +3,11 @@ const { queryRecordLimit } = require('../../database/database_interaction');
 const { MessageEmbed, MessageAttachment } = require('discord.js');
 const { truncate } = require('../../utils/common_helper');
 const { server_pool, get_worker_server } = require('../../utils/ai_server_config');
+const { serviceHeaders } = require('../../utils/proxy_config');
 const crypt = require('crypto');
 const { default: axios } = require('axios');
+
+const SD_HEADERS = serviceHeaders('sdwebui');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -65,6 +68,7 @@ module.exports = {
                     data: fetch_list,
                 },
                 config: {
+                    headers: SD_HEADERS,
                     timeout: 900000
                 }
             }

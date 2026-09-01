@@ -12,8 +12,9 @@ const { MessageEmbed } = require('discord.js');
 const { all } = require('axios');
 const { clamp } = require('../utils/common_helper');
 const comfyClient = require('../utils/comfy_client');
+const { PROXY_URL } = require('../utils/proxy_config');
 
-const server_address = process.env.BOT_ENV === 'lan' ? 'http://192.168.1.6:7050' : 'http://192.168.196.142:7050'
+const server_address = PROXY_URL
 
 const all_descriptors = {
     "General": [
@@ -502,7 +503,7 @@ BeatmapSetID:-1`);
             return
         })
 
-        const is_using_gpu = ['http://192.168.1.6:7050','http://192.168.196.142:7050'].includes(params.server_address)
+        const is_using_gpu = params.server_address !== 'http://127.0.0.1:7050'
         const is_gpu_having_enough_vram = (params.model !== 'v30' && comfyClient.comfyStat.gpu_vram_used < 4) || (params.model === 'v30' && comfyClient.comfyStat.gpu_vram_used < 10)
 
         if (!health || (health && is_using_gpu && !is_gpu_having_enough_vram)) {
@@ -571,7 +572,7 @@ BeatmapSetID:-1`);
         } catch (err) {
             console.log(err)
             // Check if this is a 409 error and we can offer CPU fallback
-            const is_non_local_server = !params.server_address.startsWith('http://127.0.0.1') && !params.server_address.startsWith('http://localhost');
+            const is_non_local_server = params.server_address !== 'http://127.0.0.1:7050';
             
             if (err.response && err.response.status === 409 && is_non_local_server && params.model === 'v30') {
                 // Server busy (409), offer CPU fallback for non-local v30 requests

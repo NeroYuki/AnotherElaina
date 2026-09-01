@@ -1,4 +1,7 @@
 const { server_pool } = require('./ai_server_config');
+const { serviceHeaders } = require('./proxy_config');
+
+const SD_HEADERS = serviceHeaders('sdwebui');
 
 /**
  * Get Forge backend memory statistics
@@ -7,7 +10,7 @@ const { server_pool } = require('./ai_server_config');
 async function getForgeMemory() {
 	try {
 		const serverUrl = server_pool[0].url;
-		const response = await fetch(`${serverUrl}/sdapi/v1/memory`);
+		const response = await fetch(`${serverUrl}/sdapi/v1/memory`, { headers: SD_HEADERS });
 		if (!response.ok) throw new Error(`HTTP ${response.status}`);
 		return await response.json();
 	} catch (error) {
@@ -23,7 +26,7 @@ async function getForgeMemory() {
 async function getForgeProgress() {
 	try {
 		const serverUrl = server_pool[0].url;
-		const response = await fetch(`${serverUrl}/sdapi/v1/progress`);
+		const response = await fetch(`${serverUrl}/sdapi/v1/progress`, { headers: SD_HEADERS });
 		if (!response.ok) throw new Error(`HTTP ${response.status}`);
 		return await response.json();
 	} catch (error) {
@@ -41,7 +44,7 @@ async function unloadForgeCheckpoint() {
 		const serverUrl = server_pool[0].url;
 		const response = await fetch(`${serverUrl}/sdapi/v1/unload-checkpoint`, {
 			method: 'POST',
-			headers: { 'Content-Type': 'application/json' }
+			headers: { ...SD_HEADERS, 'Content-Type': 'application/json' }
 		});
 		if (!response.ok) throw new Error(`HTTP ${response.status}`);
 		return await response.json();

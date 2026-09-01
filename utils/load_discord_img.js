@@ -1,5 +1,8 @@
 const { default: axios } = require('axios');
 const sharp = require('sharp');
+const { serviceHeaders } = require('./proxy_config');
+
+const SD_HEADERS = serviceHeaders('sdwebui');
 
 function loadImage(url, getBuffer = false, noDataURIHeader = false, safeLoad = false) {
     // download image from the given url and convert them to base64 dataURI (with proper mime type) or buffer use axios
@@ -91,6 +94,7 @@ function uploadDiscordImageToGradio(url, session_hash, worker_endpoint) {
                 // upload to gradio (use multipart form data, Content-Type: <mime>, followed by the binary data)
                 axios.post(`${worker_endpoint}/upload?upload_id=${session_hash}`, form_data, 
                     { headers: {
+                        ...SD_HEADERS,
                         'Content-Type': 'multipart/form-data',
                     }})
                     .then((res) => {
@@ -117,6 +121,7 @@ function uploadPngBufferToGradio(buffer, session_hash, worker_endpoint) {
         // upload to gradio (use multipart form data, Content-Type: <mime>, followed by the binary data)
         axios.post(`${worker_endpoint}/upload?upload_id=${session_hash}`, form_data, 
             { headers: {
+                ...SD_HEADERS,
                 'Content-Type': 'multipart/form-data',
             }})
             .then((res) => {

@@ -2,11 +2,21 @@
 
 const { server_pool } = require("./ai_server_config")
 const { convert_upload_path_to_file_data } = require("./common_helper")
+const { serviceHeaders } = require("./proxy_config")
+
+const SD_HEADERS = serviceHeaders('sdwebui');
+// All requests in this module target the sdwebui backend, so inject the proxy
+// routing header automatically on every fetch.
+const _nodeFetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+const fetch = (url, options = {}) => _nodeFetch(url, {
+    ...options,
+    headers: { ...SD_HEADERS, ...(options.headers || {}) },
+});
 
 function groundingDino_execute(prompt, image_path, session_hash, useSwinB = false, threshold = 0.3) {
     // should return array of bouding boxes coordinates
     const req_data = [
-        convert_upload_path_to_file_data(image_path, server_pool[0].url),
+        convert_upload_path_to_file_data(image_path, server_pool[0].direct_url),
 		useSwinB ? "GroundingDINO_SwinB (938MB)" : "GroundingDINO_SwinT_OGC (694MB)",
 		prompt,
 		threshold || 0.3            ///threshold
@@ -53,7 +63,7 @@ function segmentAnything_execute(prompt, boundingBoxes, image_path, session_hash
     // should return array of masks
     const req_data = [
         "sam_vit_h_4b8939.pth",
-        convert_upload_path_to_file_data(image_path, server_pool[0].url),
+        convert_upload_path_to_file_data(image_path, server_pool[0].direct_url),
         [], // segment marker
         [],
         true,   //enable grounding dino
@@ -106,7 +116,7 @@ function expandMask(segment_output, image_path, mask_selection, session_hash, ex
         segment_output,
         mask_selection,    //which mask
         extend_by,     //extend by how much
-        convert_upload_path_to_file_data(image_path, server_pool[0].url),   // final result
+        convert_upload_path_to_file_data(image_path, server_pool[0].direct_url),   // final result
     ]
 
     return new Promise(async (resolve, reject) => {

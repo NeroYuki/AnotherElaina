@@ -4,7 +4,14 @@ const { byPassUser, censorGuildIds, optOutGuildIds } = require('../config.json')
 const crypt = require('crypto');
 const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, model_name_hash_mapping, check_model_filename, model_selection, model_selection_xl, upscaler_selection, model_selection_curated, model_selection_inpaint, model_selection_flux, sampler_to_comfy_name_mapping, scheduler_to_comfy_name_mapping } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
-const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+const { serviceHeaders } = require('../utils/proxy_config');
+const SD_HEADERS = serviceHeaders('sdwebui');
+const _nodeFetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+// Inject the sdwebui proxy routing header on every request in this command.
+const fetch = (url, options = {}) => _nodeFetch(url, {
+    ...options,
+    headers: { ...SD_HEADERS, ...(options.headers || {}) },
+});
 const { loadImage } = require('../utils/load_discord_img.js');
 const { cached_model, model_change } = require('../utils/model_change.js');
 const { queryRecordLimit } = require('../database/database_interaction.js');
@@ -738,6 +745,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                 data: create_data
             },
             config: {
+                headers: SD_HEADERS,
                 timeout: 900000
             }
         }

@@ -180,7 +180,7 @@ function unload_model(config) {
     })
 }
 
-function free_up_llm_resource(server_url = server_pool[0].url) {
+function free_up_llm_resource(server_url = server_pool[0].direct_url) {
     return new Promise(async (resolve, reject) => {
         const ip_address_pattern = /(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/;
         const server_address = ip_address_pattern.exec(server_url)

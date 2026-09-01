@@ -10,7 +10,14 @@ const { server_pool, get_data_body, get_negative_prompt, initiate_server_heartbe
     sampler_to_comfy_name_mapping,
     scheduler_to_comfy_name_mapping} = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
-const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+const { serviceHeaders } = require('../utils/proxy_config');
+const SD_HEADERS = serviceHeaders('sdwebui');
+const _nodeFetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+// Inject the sdwebui proxy routing header on every request in this command.
+const fetch = (url, options = {}) => _nodeFetch(url, {
+    ...options,
+    headers: { ...SD_HEADERS, ...(options.headers || {}) },
+});
 const { loadImage } = require('../utils/load_discord_img.js');
 const sharp = require('sharp');
 const { load_controlnet } = require('../utils/controlnet_execute.js');
@@ -596,6 +603,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                 data: create_data
             },
             config: {
+                headers: SD_HEADERS,
                 timeout: 3_600_000, // 1 hour timeout
             }
         }

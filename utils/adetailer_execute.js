@@ -1,6 +1,9 @@
 const { server_pool } = require('../utils/ai_server_config.js');
+const { serviceHeaders } = require('./proxy_config');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const { cached_model } = require('./model_change.js');
+
+const SD_HEADERS = serviceHeaders('sdwebui');
 
 // const config = [
 //     {
@@ -48,6 +51,7 @@ function change_option_adetailer(value, fn_index, session_hash, server_url) {
                 ]
             }),
             headers: {
+                ...SD_HEADERS,
                 'Content-Type': 'application/json'
             }
         }

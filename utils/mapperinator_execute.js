@@ -1,5 +1,8 @@
 const axios = require('axios');
 const FormData = require('form-data');
+const { serviceHeaders } = require('./proxy_config');
+
+const MAP_HEADERS = serviceHeaders('mapperatorinator');
 
 const lora_mapping = {
     'high_sr_v1_3': './lora/Mapperatorinator-v30-LoRA-highSR-v1_3',
@@ -78,7 +81,7 @@ async function startInference(url, params) {
 
     try {
         const response = await axios.post(endpoint, formData, {
-            headers: formData.getHeaders(),
+            headers: { ...formData.getHeaders(), ...MAP_HEADERS },
         });
         return response.data;
     } catch (error) {
@@ -96,6 +99,7 @@ async function streamOutput(url, job_id, callback) {
         const response = await axios.get(endpoint, {
             headers: {
                 'Accept': 'text/event-stream',
+                ...MAP_HEADERS,
             },
             responseType: 'stream',
             adapter: 'fetch', // <- this option can also be set in axios.create()
@@ -128,7 +132,7 @@ async function uploadAudio(url, audioBuffer, filename, subfolder = '') {
     }
 
     try {
-        const response = await axios.post(endpoint, formData);
+        const response = await axios.post(endpoint, formData, { headers: { ...formData.getHeaders(), ...MAP_HEADERS } });
         return response.data;
     } catch (error) {
         console.log('Error uploading audio:', error.message);
@@ -145,7 +149,7 @@ async function uploadBeatmap(url, beatmapData, filename, subfolder = '') {
     }
 
     try {
-        const response = await axios.post(endpoint, formData);
+        const response = await axios.post(endpoint, formData, { headers: { ...formData.getHeaders(), ...MAP_HEADERS } });
         return response.data;
     } catch (error) {
         console.log('Error uploading beatmap:', error.message);
@@ -159,7 +163,7 @@ async function uploadBeatmapSet(url, beatmapSetData, filename) {
 
     formData.append('beatmapset_file', beatmapSetData, { filename: filename });
     try {
-        const response = await axios.post(endpoint, formData);
+        const response = await axios.post(endpoint, formData, { headers: { ...formData.getHeaders(), ...MAP_HEADERS } });
         return response.data;
     }
     catch (error) {
@@ -175,7 +179,7 @@ async function getBeatmap(url, beatmapPath) {
     formData.append('beatmap_path', beatmapPath);
 
     try {
-        const response = await axios.post(endpoint, formData);
+        const response = await axios.post(endpoint, formData, { headers: { ...formData.getHeaders(), ...MAP_HEADERS } });
         return response.data;
     } catch (error) {
         console.log('Error uploading osu file:', error.message);
@@ -187,6 +191,7 @@ async function getServerHealth(url) {
     const endpoint = `${url}/health_check`;
     try {
         const response = await axios.get(endpoint, {
+            headers: MAP_HEADERS,
             timeout: 3000, // Set a timeout for the request
         })
         return response.data;
@@ -212,7 +217,7 @@ async function startInferenceMaiMod(url, params) {
 
     try {
         const response = await axios.post(endpoint, formData, {
-            headers: formData.getHeaders(),
+            headers: { ...formData.getHeaders(), ...MAP_HEADERS },
         });
         return response.data;
     } catch (error) {

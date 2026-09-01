@@ -1,7 +1,7 @@
 const { queryRecordLimit } = require("../database/database_interaction")
 const { server_pool } = require("./ai_server_config")
 
-const default_server_address = server_pool[0].server_address
+const default_server_address = server_pool[0].direct_url
 
 function get_coupler_config_from_prompt(prompt) {
     // check if if prompt contain <=> or ||

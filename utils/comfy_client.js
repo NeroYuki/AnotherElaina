@@ -3,6 +3,10 @@ const crypto = require("crypto");
 const { on } = require('events');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const { default: axios } = require('axios');
+const { PROXY_URL, serviceHeaders } = require('./proxy_config');
+
+// Header used to route HTTP traffic to comfyui through the orchestrator proxy.
+const COMFY_HEADERS = serviceHeaders('comfyui');
 
 // singleton comfy client
 const comfyClient = {
@@ -21,7 +25,10 @@ const comfyClient = {
     },
     clientId: crypto.randomUUID(),
     promptListener: [],
+    // Direct comfyui address — used only for the WebSocket (the proxy does not
+    // proxy WS yet). All HTTP requests go through HTTP_ENDPOINT instead.
     SERVER_ENDPOINT: process.env.BOT_ENV === 'lan' ? '192.168.1.6:8188' : '192.168.196.142:8188',
+    HTTP_ENDPOINT: PROXY_URL,
     init: function() {
         const client = new ws(`ws://${this.SERVER_ENDPOINT}/ws?clientId=${this.clientId}`)
 
@@ -60,10 +67,10 @@ const comfyClient = {
             client_id: this.clientId
         }
 
-        fetch(`http://${this.SERVER_ENDPOINT}/prompt`, {
+        fetch(`${this.HTTP_ENDPOINT}/prompt`, {
             method: 'POST',
             body: JSON.stringify(data),
-            headers: { 'Content-Type': 'application/json' }
+            headers: { ...COMFY_HEADERS, 'Content-Type': 'application/json' }
         })
             .then(async res => {
                 if (res.status !== 200) {
@@ -175,12 +182,12 @@ const comfyClient = {
     },
 
     getImage: function(filename, subfolder, filetype = "output", only_filename = false) {
-        const url = only_filename ? `http://${this.SERVER_ENDPOINT}/view?filename=${filename}` : `http://${this.SERVER_ENDPOINT}/view?filename=${filename}&subfolder=${subfolder}&type=${filetype}`;
+        const url = only_filename ? `${this.HTTP_ENDPOINT}/view?filename=${filename}` : `${this.HTTP_ENDPOINT}/view?filename=${filename}&subfolder=${subfolder}&type=${filetype}`;
 
         console.log('Fetching files:', url);
 
         return new Promise((resolve, reject) => {
-            fetch(url)
+            fetch(url, { headers: COMFY_HEADERS })
                 .then(res => {
                     if (res.status !== 200) {
                         reject('Failed to get image');
@@ -197,7 +204,7 @@ const comfyClient = {
     },
 
     uploadImage: function(buffer, filename, mimetype) {
-        const url = `http://${this.SERVER_ENDPOINT}/api/upload/image`;
+        const url = `${this.HTTP_ENDPOINT}/api/upload/image`;
 
         // with follow form data format
         // -----------------------------45417822730903170364248702972
@@ -211,6 +218,7 @@ const comfyClient = {
 
             axios.post(url, form_data, 
                 { headers: {
+                    ...COMFY_HEADERS,
                     'Content-Type': 'multipart/form-data',
                 }})
                 .then((res) => {
@@ -224,7 +232,7 @@ const comfyClient = {
     },
 
     freeMemory: function(shouldFreeCache) {
-        const url = `http://${this.SERVER_ENDPOINT}/api/free`;
+        const url = `${this.HTTP_ENDPOINT}/api/free`;
         const body = {
             unload_models: true, 
             free_memory: shouldFreeCache
@@ -236,7 +244,7 @@ const comfyClient = {
             fetch(url, {
                 method: 'POST',
                 body: JSON.stringify(body),
-                headers: { 'Content-Type': 'application/json' }
+                headers: { ...COMFY_HEADERS, 'Content-Type': 'application/json' }
             })
 
             resolve("free memory request sent");

@@ -4,7 +4,15 @@
 // const crypt = require('crypto');
 const { server_pool, get_data_controlnet, get_data_controlnet_annotation, model_selection_xl, controlnet_model_selection, controlnet_model_selection_xl, model_selection_inpaint, model_selection_flux, controlnet_model_selection_flux, controlnet_model_selection_sd, model_selection_legacy } = require('../utils/ai_server_config.js');
 // const { default: axios } = require('axios');
-const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+const { serviceHeaders } = require('./proxy_config');
+const SD_HEADERS = serviceHeaders('sdwebui');
+const _nodeFetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+// Every request in this module targets the sdwebui backend, so inject the proxy
+// routing header automatically (avoids repeating it on ~9 request builders).
+const fetch = (url, options = {}) => _nodeFetch(url, {
+    ...options,
+    headers: { ...SD_HEADERS, ...(options.headers || {}) },
+});
 const { cached_model } = require('./model_change.js');
 // const { loadImage } = require('../utils/load_discord_img');
 // const sharp = require('sharp');

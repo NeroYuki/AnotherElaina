@@ -1,5 +1,15 @@
 const { server_pool } = require("./ai_server_config")
 const { operatingMode2Config } = require("./chat_options")
+const { serviceHeaders } = require('./proxy_config');
+
+const LM_HEADERS = serviceHeaders('lmstudio');
+const _nodeFetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+// Route LM Studio requests through the orchestrator proxy with the lmstudio
+// service header (harmless for any local 127.0.0.1 LM Studio instance).
+const fetch = (url, options = {}) => _nodeFetch(url, {
+    ...options,
+    headers: { ...LM_HEADERS, ...(options.headers || {}) },
+});
 
 /// <deprecated>
 function chat_completion(model, context) {
@@ -328,7 +338,7 @@ function unload_model(model) {
     })
 }
 
-function free_up_llm_resource(server_url = server_pool[0].url) {
+function free_up_llm_resource(server_url = server_pool[0].direct_url) {
     const ip_address_pattern = /(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/
     const match = ip_address_pattern.exec(server_url)
     if (!match) {
