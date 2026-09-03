@@ -9,7 +9,7 @@ const { PROXY_URL, serviceHeaders } = require('./proxy_config');
 // the orchestrator proxy, but gradio `file=` references embedded in request
 // payloads must still resolve to the real server (gradio downloads them), so we
 // keep the direct address here.
-const SDWEBUI_DIRECT_URL = process.env.BOT_ENV === 'lan' ? 'http://192.168.1.6:7860' : 'http://192.168.196.142:7860';
+const SDWEBUI_DIRECT_URL = process.env.BOT_ENV === 'lan' ? 'http://192.168.1.2:7860' : 'http://192.168.196.142:7860';
 
 const server_pool = [
     {

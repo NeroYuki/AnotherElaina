@@ -27,7 +27,7 @@ const comfyClient = {
     promptListener: [],
     // Direct comfyui address — used only for the WebSocket (the proxy does not
     // proxy WS yet). All HTTP requests go through HTTP_ENDPOINT instead.
-    SERVER_ENDPOINT: process.env.BOT_ENV === 'lan' ? '192.168.1.6:8188' : '192.168.196.142:8188',
+    SERVER_ENDPOINT: process.env.BOT_ENV === 'lan' ? '192.168.1.2:8188' : '192.168.196.142:8188',
     HTTP_ENDPOINT: PROXY_URL,
     init: function() {
         const client = new ws(`ws://${this.SERVER_ENDPOINT}/ws?clientId=${this.clientId}`)
