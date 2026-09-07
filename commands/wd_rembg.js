@@ -5,6 +5,7 @@ const crypt = require('crypto');
 const { server_pool, get_prompt, get_negative_prompt, get_worker_server, model_name_hash_mapping, upscaler_selection, get_data_rembg } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const { serviceHeaders } = require('../utils/proxy_config');
+const { forgeWorkload, workloadHeaders } = require('../utils/orchestrator_workload');
 const SD_HEADERS = serviceHeaders('sdwebui');
 const _nodeFetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 // Inject the sdwebui proxy routing header on every request in this command.
@@ -133,7 +134,10 @@ module.exports = {
                 data: rembg_data
             },
             config: {
-                headers: SD_HEADERS,
+                headers: workloadHeaders('sdwebui', forgeWorkload({
+                    taskKind: 'rembg', checkpoint: rembg_model, width: 1, height: 1,
+                    features: { alpha_mat, add_shadow, adjust_color },
+                }), SD_HEADERS),
                 timeout: 900000
             }
         }
