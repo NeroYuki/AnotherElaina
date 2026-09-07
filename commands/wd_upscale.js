@@ -5,6 +5,7 @@ const crypt = require('crypto');
 const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, model_name_hash_mapping, upscaler_selection } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const { serviceHeaders } = require('../utils/proxy_config');
+const { forgeWorkload, workloadHeaders } = require('../utils/orchestrator_workload');
 const SD_HEADERS = serviceHeaders('sdwebui');
 const _nodeFetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 // Inject the sdwebui proxy routing header on every request in this command.
@@ -177,7 +178,14 @@ module.exports = {
                     session_hash: session_hash,
                     data: create_data
                 },
-                config: { headers: SD_HEADERS, timeout: 900000 }
+                config: {
+                    headers: workloadHeaders('sdwebui', forgeWorkload({
+                        taskKind: 'upscale', checkpoint: seedvr2_model, width: out_w, height: out_h,
+                        upscaleMultiplier: upscale_multiplier, tiledVae: true,
+                        features: { seedvr2: true },
+                    }), SD_HEADERS),
+                    timeout: 900000
+                }
             }
 
             try {
@@ -313,7 +321,13 @@ module.exports = {
                 data: upscale_data
             },
             config: {
-                headers: SD_HEADERS,
+                // Traditional upscalers do not expose decoded dimensions here;
+                // retain a typed, conservative utility workload for correlation.
+                headers: workloadHeaders('sdwebui', forgeWorkload({
+                    taskKind: 'upscale', checkpoint: upscaler, width: 1, height: 1,
+                    upscaleMultiplier: upscale_multiplier,
+                    features: { traditional_upscaler: true, secondary: upscaler_2 !== 'None' },
+                }), SD_HEADERS),
                 timeout: 900000
             }
         }

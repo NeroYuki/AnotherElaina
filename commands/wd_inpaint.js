@@ -6,6 +6,7 @@ const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_dat
 const { default: axios } = require('axios');
 const sharp = require('sharp');
 const { serviceHeaders } = require('../utils/proxy_config');
+const { forgeWorkload, workloadHeaders } = require('../utils/orchestrator_workload');
 const SD_HEADERS = serviceHeaders('sdwebui');
 const _nodeFetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 // Inject the sdwebui proxy routing header on every request in this command.
@@ -994,7 +995,11 @@ module.exports = {
                     data: create_data
                 },
                 config: {
-                    headers: SD_HEADERS,
+                    headers: workloadHeaders('sdwebui', forgeWorkload({
+                        taskKind: 'inpaint', checkpoint: cached_model[0], width, height,
+                        tiledVae: width * height > 3000000,
+                        features: { inpaint_area },
+                    }), SD_HEADERS),
                     timeout: 900000
                 }
             }
