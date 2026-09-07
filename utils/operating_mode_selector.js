@@ -38,18 +38,10 @@ function getBestOperatingMode(hasImages = false, localOnly = false) {
         //console.log('[Mode Selection] Local only mode - skipping online options')
     }
     
-    // Check if we can use local GPU
-    if (comfyClient.comfyStat.gpu_vram_used < 4 || globalThis.llm_load_timer) {
-        // console.log('[Mode Selection] Using standard mode - local GPU available')
-        return 'standard'
-    } else {
-        if (localOnly) {
-            // console.log('[Mode Selection] Using saving mode - local GPU busy and local-only mode active')
-        } else {
-            // console.log('[Mode Selection] Using saving mode - local GPU busy and online modes rate limited')
-        }
-        return 'saving'
-    }
+    // Local requests are routed through the orchestrator proxy. Do not make a
+    // competing admission decision from ComfyUI's stale, single-GPU telemetry;
+    // the proxy owns the atomic decision when the request is forwarded.
+    return 'standard'
 }
 
 /**
@@ -91,8 +83,7 @@ function getOperatingModeStatus() {
             remaining: onlineRemaining,
             timeUntilNext: timeUntilNext.online
         },
-        local_gpu: {
-            available: comfyClient.comfyStat.gpu_vram_used < 4 || globalThis.llm_load_timer,
+        local_gpu_telemetry: {
             vram_used: comfyClient.comfyStat.gpu_vram_used,
             llm_timer_active: !!globalThis.llm_load_timer
         }
