@@ -1,11 +1,12 @@
 const { server_pool } = require("./ai_server_config")
 const { operatingMode2Config } = require("./chat_options")
-const { serviceHeaders } = require('./proxy_config');
+const { PROXY_URL, serviceHeaders } = require('./proxy_config');
 
 const LM_HEADERS = serviceHeaders('lmstudio');
 const _nodeFetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
-// Route LM Studio requests through the orchestrator proxy with the lmstudio
-// service header (harmless for any local 127.0.0.1 LM Studio instance).
+// Route every normal LM Studio request through the orchestrator proxy. The
+// service header selects LM Studio there; config.server is intentionally not
+// used for request routing on the use-proxy branch.
 const fetch = (url, options = {}) => _nodeFetch(url, {
     ...options,
     headers: { ...LM_HEADERS, ...(options.headers || {}) },
@@ -19,7 +20,7 @@ function chat_completion(model, context) {
             content: msg.content
         }))
 
-        fetch('http://127.0.0.1:1234/v1/chat/completions', {
+        fetch(`${PROXY_URL}/v1/chat/completions`, {
             method: 'POST',
             body: JSON.stringify({
                 model: model,
@@ -83,7 +84,7 @@ function text_completion(config, prompt, callback, images = [] /* list of base64
             }
         }
 
-        fetch('http://' + config.server + '/v1/chat/completions', {
+        fetch(`${PROXY_URL}/v1/chat/completions`, {
             method: 'POST',
             body: JSON.stringify({
                 model: model,
@@ -122,7 +123,7 @@ function text_completion(config, prompt, callback, images = [] /* list of base64
         // No images - use /v1/completions with raw prompt
         // System prompt is already included in the prompt via buildPrompt()
 
-        fetch('http://' + config.server + '/v1/completions', {
+        fetch(`${PROXY_URL}/v1/completions`, {
             method: 'POST',
             body: JSON.stringify({
                 model: model,
@@ -195,7 +196,7 @@ function text_completion_stream(config, prompt, callback, images = [] /* list of
             }
         }
 
-        url = 'http://' + config.server + '/v1/chat/completions'
+        url = `${PROXY_URL}/v1/chat/completions`
         body = {
             model: model,
             stream: true,
@@ -207,7 +208,7 @@ function text_completion_stream(config, prompt, callback, images = [] /* list of
         // Use /v1/completions with raw prompt
         // System prompt is already included via buildPrompt()
 
-        url = 'http://' + config.server + '/v1/completions'
+        url = `${PROXY_URL}/v1/completions`
         body = {
             model: model,
             stream: true,
@@ -318,8 +319,8 @@ function unload_model(model) {
         return Promise.resolve(false)
     }
 
-    console.log(`[LM Studio] Unloading model "${model}" from ${server}`)
-    return fetch(`http://${server}/api/v1/models/unload`, {
+    console.log(`[LM Studio] Unloading model "${model}" through the orchestrator proxy`)
+    return fetch(`${PROXY_URL}/api/v1/models/unload`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ instance_id: model })

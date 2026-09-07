@@ -46,10 +46,12 @@ module.exports = {
             }
             statusMessage += '\n';
             
-            // Local GPU status
-            statusMessage += `**Local GPU** ${status.local_gpu.available ? '✅' : '❌'}\n`;
-            statusMessage += `• VRAM usage: ${status.local_gpu.vram_used.toFixed(1)} GB\n`;
-            statusMessage += `• LLM timer active: ${status.local_gpu.llm_timer_active ? 'Yes' : 'No'}\n\n`;
+            // This is observability only. The orchestrator proxy admits or
+            // rejects each local request using its current multi-GPU state.
+            statusMessage += `**Local GPU telemetry**\n`;
+            statusMessage += `• Observed VRAM usage: ${status.local_gpu_telemetry.vram_used.toFixed(1)} GB\n`;
+            statusMessage += `• LLM timer active: ${status.local_gpu_telemetry.llm_timer_active ? 'Yes' : 'No'}\n`;
+            statusMessage += `• Local admission: orchestrator proxy\n\n`;
             
             // Current recommended mode
             const { getBestOperatingMode } = require('../../utils/operating_mode_selector');

@@ -129,7 +129,7 @@ module.exports = {
         const workflow = JSON.parse(JSON.stringify(workflow_kontext))
 
         workflow["27"]["inputs"]["width"] = workflow["30"]["inputs"]["width"] = data.width
-        workflow["30"]["inputs"]["height"] = workflow["30"]["inputs"]["width"] = data.height
+        workflow["30"]["inputs"]["height"] = data.height
         workflow["6"]["inputs"]["text"] = data.prompt
 
         workflow["16"]["inputs"]["sampler_name"] = data.sampler

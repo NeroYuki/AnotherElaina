@@ -4,9 +4,21 @@ const { on } = require('events');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const { default: axios } = require('axios');
 const { PROXY_URL, serviceHeaders } = require('./proxy_config');
+const { comfyWorkload, workloadHeaders } = require('./orchestrator_workload');
 
 // Header used to route HTTP traffic to comfyui through the orchestrator proxy.
 const COMFY_HEADERS = serviceHeaders('comfyui');
+
+// Completion is sent to the proxy, not ComfyUI. It carries only the opaque
+// job ID and terminal outcome; the proxy already owns the workload manifest.
+function notifyOrchestrator(jobId, outcome) {
+    if (!jobId) return;
+    fetch(`${PROXY_URL}/internal/orchestrator/jobs/${jobId}/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ outcome }),
+    }).catch(err => console.log('Orchestrator completion notification failed:', err));
+}
 
 // singleton comfy client
 const comfyClient = {
@@ -67,10 +79,16 @@ const comfyClient = {
             client_id: this.clientId
         }
 
+        // The workload is generated from the graph topology only. It contains
+        // no prompt text, seed, image URL, filename, or Discord identity.
+        const headers = workloadHeaders('comfyui', comfyWorkload(prompt), {
+            'Content-Type': 'application/json'
+        });
+        const orchestratorJobId = headers['X-AI-Job-ID'];
         fetch(`${this.HTTP_ENDPOINT}/prompt`, {
             method: 'POST',
             body: JSON.stringify(data),
-            headers: { ...COMFY_HEADERS, 'Content-Type': 'application/json' }
+            headers
         })
             .then(async res => {
                 if (res.status !== 200) {
@@ -83,6 +101,7 @@ const comfyClient = {
                 console.log('Prompt sent:', data);
                 this.promptListener.push({
                     prompt_id: data.prompt_id,
+                    orchestrator_job_id: orchestratorJobId,
                     progress_cb: progress_cb,
                     success_cb: success_cb,
                     error_cb: error_cb,
@@ -93,6 +112,7 @@ const comfyClient = {
                 setTimeout(() => {
                     for (let i = 0; i < this.promptListener.length; i++) {
                         if (this.promptListener[i].prompt_id === data.prompt_id) {
+                            notifyOrchestrator(this.promptListener[i].orchestrator_job_id, 'error');
                             this.promptListener[i].error_cb({ error: 'Prompt timed out' });
                             this.promptListener.splice(i, 1);
                         }
@@ -101,6 +121,7 @@ const comfyClient = {
             })
             .catch(err => {
                 console.log('Error:', err);
+                notifyOrchestrator(orchestratorJobId, 'error');
                 error_cb({ error: err});
             });
     },
@@ -156,6 +177,7 @@ const comfyClient = {
             for (let i = 0; i < this.promptListener.length; i++) {
                 if (this.promptListener[i].prompt_id === parsed.data.prompt_id) {
                     // since we already taking all the data we need in executed event, we can just remove the listener here
+                    notifyOrchestrator(this.promptListener[i].orchestrator_job_id, 'success');
                     this.promptListener.splice(i, 1);
                 }
             }
@@ -165,6 +187,7 @@ const comfyClient = {
             console.log('Error:', parsed.data);
             for (let i = 0; i < this.promptListener.length; i++) {
                 if (this.promptListener[i].prompt_id === parsed.data.prompt_id) {
+                    notifyOrchestrator(this.promptListener[i].orchestrator_job_id, 'error');
                     this.promptListener[i].error_cb(parsed.data);
                     this.promptListener.splice(i, 1);
                 }

@@ -5,6 +5,7 @@ const crypt = require('crypto');
 const { server_pool, get_data_body, get_negative_prompt, initiate_server_heartbeat, get_worker_server, get_prompt, model_name_hash_mapping, check_model_filename, model_selection, upscaler_selection, model_selection_xl, model_selection_curated, model_selection_inpaint, model_selection_flux, sampler_to_comfy_name_mapping, scheduler_to_comfy_name_mapping } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const { serviceHeaders } = require('../utils/proxy_config');
+const { forgeWorkload, workloadHeaders } = require('../utils/orchestrator_workload');
 const SD_HEADERS = serviceHeaders('sdwebui');
 const _nodeFetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 // Inject the sdwebui proxy routing header on every request in this command.
@@ -563,7 +564,13 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                 data: create_data
             },
             config: {
-                headers: SD_HEADERS,
+                headers: workloadHeaders('sdwebui', forgeWorkload({
+                    taskKind: 'txt2img', checkpoint: cached_model[0], width, height,
+                    batchSize: batch_size, batchCount: batch_count,
+                    upscaleMultiplier: upscale_multiplier, upscaleSteps: upscale_step,
+                    useAdetailer: use_adetailer,
+                    tiledVae: width * height > 1600000,
+                }), SD_HEADERS),
                 timeout: 900000
             }
         }
