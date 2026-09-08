@@ -272,14 +272,20 @@ const comfyClient = {
 
         console.log('Fetching files:', url);
 
-        return new Promise((resolve, reject) => {
-            fetch(url, {
-                method: 'POST',
-                body: JSON.stringify(body),
-                headers: { ...COMFY_HEADERS, 'Content-Type': 'application/json' }
-            })
-
-            resolve("free memory request sent");
+        return fetch(url, {
+            method: 'POST',
+            body: JSON.stringify(body),
+            headers: { ...COMFY_HEADERS, 'Content-Type': 'application/json' }
+        }).then(async response => {
+            if (!response.ok) {
+                const retryAfter = response.headers.get('retry-after');
+                const detail = await response.text();
+                throw new Error(
+                    `ComfyUI cleanup refused (HTTP ${response.status}` +
+                    `${retryAfter ? `, retry after ${retryAfter}s` : ''}): ${detail}`
+                );
+            }
+            return "free memory request completed";
         });
     }
 }
