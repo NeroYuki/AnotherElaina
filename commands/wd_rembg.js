@@ -153,13 +153,13 @@ module.exports = {
                 .then(async (final_res_obj) => {
                     // if server index == 0, get local image directory, else initiate request to get image from server
                     let img_buffer = null
-                    const file_dir = final_res_obj.data[0].url
-                    //console.dir(final_res_obj.data, {depth: null})
+                    const file_dir = final_res_obj.data[0]?.path
+                    //console.log(final_res_obj.data)
                     if (!file_dir) {
                         throw 'Request return no image'
                     }
                     // all server is remote
-                    const img_res = await fetch(`${file_dir}`).catch(err => {
+                    const img_res = await fetch(`${WORKER_ENDPOINT}/file=${file_dir}`).catch(err => {
                         throw 'Error while fetching image on remote server'
                     })
 

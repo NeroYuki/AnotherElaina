@@ -615,6 +615,11 @@ BeatmapSetID:-1`);
 
         streamOutput(params.server_address, job_id, async (data) => {
             //console.log(data)
+            // skip empty data
+            if (data.trim() === 'data:') {
+                return
+            }
+            
             process_msg.edit({ content: data ? `\`\`\`${data}\`\`\`` : "Beatmap is in progress, please wait..." });
 
             if (data.includes("Generated beatmap saved")) {

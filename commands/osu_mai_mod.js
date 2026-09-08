@@ -199,6 +199,9 @@ module.exports = {
                 // Parse SSE format
                 const lines = data.split('\n');
                 for (const line of lines) {
+                    if (data.trim() === 'data:') {
+                        continue;
+                    }
                     if (line.startsWith('data: ')) {
                         const message = line.substring(6);
                         full_output += message + '\n';
