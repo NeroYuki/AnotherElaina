@@ -616,7 +616,7 @@ BeatmapSetID:-1`);
         streamOutput(params.server_address, job_id, async (data) => {
             //console.log(data)
             // skip empty data
-            if (data === 'data: ') {
+            if (data.trim() === 'data:') {
                 return
             }
             
