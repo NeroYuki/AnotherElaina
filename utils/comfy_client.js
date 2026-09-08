@@ -23,6 +23,7 @@ function notifyOrchestrator(jobId, outcome) {
 // singleton comfy client
 const comfyClient = {
     client: null,
+    clients: [],
     comfyStat: {
         is_running: false,
         cpu_usage: 0,
@@ -37,39 +38,41 @@ const comfyClient = {
     },
     clientId: crypto.randomUUID(),
     promptListener: [],
-    // Direct comfyui address — used only for the WebSocket (the proxy does not
-    // proxy WS yet). All HTTP requests go through HTTP_ENDPOINT instead.
-    SERVER_ENDPOINT: process.env.BOT_ENV === 'lan' ? '192.168.1.2:8188' : '192.168.196.142:8188',
+    // Keep one socket open to each routable ComfyUI instance. HTTP submission
+    // may land on either instance, and only that instance emits its prompt
+    // events. Both sockets use the same client ID so the matching event reaches
+    // the shared prompt listener below.
+    SERVER_ENDPOINTS: process.env.BOT_ENV === 'lan'
+        ? ['192.168.1.2:8188', '192.168.1.2:8189']
+        : ['192.168.196.142:8188', '192.168.196.142:8189'],
     HTTP_ENDPOINT: PROXY_URL,
     init: function() {
-        const client = new ws(`ws://${this.SERVER_ENDPOINT}/ws?clientId=${this.clientId}`)
-
-        client.on('open', () => {
-            console.log('Connected to ComfyUI server');
+        this.clients = this.SERVER_ENDPOINTS.map(endpoint => {
+            const client = new ws(`ws://${endpoint}/ws?clientId=${this.clientId}`)
+            client.on('open', () => {
+                console.log(`Connected to ComfyUI server ${endpoint}`);
+                this.comfyStat.is_running = true;
+            });
+            client.on('message', data => {
+                this.updateOnMessage(data);
+                this.comfyStat.is_running = true;
+            });
+            client.on('close', () => {
+                console.log(`Disconnected from ComfyUI server ${endpoint}`);
+                this.comfyStat.is_running = this.clients.some(item => item.readyState === ws.OPEN);
+            });
+            client.on('error', error => {
+                console.log(`ComfyUI ${endpoint} error:`, error);
+                this.comfyStat.is_running = this.clients.some(item => item.readyState === ws.OPEN);
+            });
+            return client;
         });
-
-        client.on('message', (data) => {
-            this.updateOnMessage(data);
-            this.comfyStat.is_running = true;
-        });
-
-        client.on('close', () => {
-            console.log('Disconnected from server');
-            this.comfyStat.is_running = false;
-        });
-
-        client.on('error', (error) => {
-            console.log('Error:', error);
-            this.comfyStat.is_running = false;
-        });
-
-        this.client = client;
-
-        return this.client;
+        this.client = this.clients[0] || null;
+        return this.clients;
     },
 
     sendPrompt: function(prompt, progress_cb = () => {}, success_cb = () => {}, error_cb = () => {}, subprogress_cb = () => {}) {
-        if (!this.client || this.client.readyState !== ws.OPEN) {
+        if (!this.clients.some(client => client.readyState === ws.OPEN)) {
             console.log('Client is not connected');
             return;
         }

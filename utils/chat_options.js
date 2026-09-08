@@ -409,62 +409,50 @@ Keep the response short and concise and must be in English, unless requested oth
 }
 
 const { PROXY_URL } = require('./proxy_config');
-// LM Studio proxy host:port (scheme stripped to match the existing server format).
+// Orchestrator proxy host:port (scheme stripped to match the existing server format).
 const LMSTUDIO_PROXY = PROXY_URL.replace(/^https?:\/\//, '');
 
 const operatingMode2Config = {
     "saving": {
-        model: "qwen3-vl-8b-instruct-heretic",        // qwen3 vl 8b host locally via LM Studio
+        model: "unsloth/gemma-4-12B-it-qat-GGUF",
         server: "127.0.0.1:1234",
         override_options: {
             num_ctx: 8192,
             num_predict: 400,
-            stop: [
-                "<|im_start|>",
-                "<|im_end|>",
-            ],
+            stop: [],
         },
         prompt_config: qwen,
         prompt_template: 'saving'
     },
     "standard": {
-        model: "qwen3.5-35b-a3b-heretic",
-        server: LMSTUDIO_PROXY,    // qwen3.5 35b host on ai server via LM Studio (routed through orchestrator proxy)
+        model: "unsloth/gemma-4-12B-it-qat-GGUF",
+        server: LMSTUDIO_PROXY,
         override_options: {
-            num_ctx: 32000,
+            num_ctx: 8192,
             num_predict: 400,
-            stop: [
-                "<|im_start|>",
-                "<|im_end|>",
-            ],
+            stop: [],
         },
         prompt_config: qwen,
         prompt_template: 'standard'
     },
     "uncensored_thinking": {
-        model: "qwen3.5-35b-a3b-heretic",
-        server: LMSTUDIO_PROXY,    // qwen3.5 35b (thinking) host on ai server via LM Studio (routed through orchestrator proxy)
+        model: "unsloth/gemma-4-12B-it-qat-GGUF",
+        server: LMSTUDIO_PROXY,
         override_options: {
-            num_ctx: 32000,
+            num_ctx: 8192,
             num_predict: 400,
-            stop: [
-                "<|im_start|>",
-                "<|im_end|>",
-            ],
+            stop: [],
         },
         prompt_config: qwen,
         prompt_template: 'standard'
     },
     "uncensored": {
-        model: "qwen3.5-27b-heretic-v2",
-        server: LMSTUDIO_PROXY,    // qwen3.5 27b (non-thinking) host on ai server via LM Studio (routed through orchestrator proxy)
+        model: "unsloth/gemma-4-12B-it-qat-GGUF",
+        server: LMSTUDIO_PROXY,
         override_options: {
-            num_ctx: 32000,
+            num_ctx: 8192,
             num_predict: 400,
-            stop: [
-                "<|im_start|>",
-                "<|im_end|>",
-            ],
+            stop: [],
         },
         prompt_config: qwen,
         prompt_template: 'non_thinking'

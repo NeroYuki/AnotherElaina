@@ -1,12 +1,10 @@
-const { server_pool } = require("./ai_server_config")
-const { operatingMode2Config } = require("./chat_options")
 const { PROXY_URL, serviceHeaders } = require('./proxy_config');
 const { lmstudioWorkload, workloadHeaders } = require('./orchestrator_workload');
 
-const LM_HEADERS = serviceHeaders('lmstudio');
+const LM_HEADERS = serviceHeaders('unsloth');
 const _nodeFetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
-// Route every normal LM Studio request through the orchestrator proxy. The
-// service header selects LM Studio there; config.server is intentionally not
+// Route local LLM requests through the orchestrator proxy. The service header
+// selects Unsloth there; config.server is intentionally not
 // used for request routing on the use-proxy branch.
 const fetch = (url, options = {}) => _nodeFetch(url, {
     ...options,
@@ -16,13 +14,61 @@ const fetch = (url, options = {}) => _nodeFetch(url, {
 function completionHeaders(config, { vision = false, stream = false } = {}) {
     const contextLength = config?.override_options?.num_ctx || 8192;
     const maxTokens = config?.override_options?.num_predict || 400;
-    return workloadHeaders('lmstudio', lmstudioWorkload({
+    return workloadHeaders('unsloth', lmstudioWorkload({
         model: config?.model,
         contextLength,
         maxTokens,
         vision,
         stream,
     }), { 'Content-Type': 'application/json' });
+}
+
+function openAIMessages(config, context = [], images = [], fallbackPrompt = '') {
+    const messages = []
+    const systemPrompt = config?.prompt_config?.system_prompt
+    if (systemPrompt) messages.push({ role: 'system', content: systemPrompt })
+
+    for (const msg of context) {
+        if (msg.role === 'bot') {
+            messages.push({ role: 'assistant', content: msg.content || '' })
+        } else if (msg.role === 'tool') {
+            messages.push({ role: 'user', content: `[Tool result]\n${msg.content || ''}` })
+        } else {
+            // OpenAI-compatible servers disagree on `name` for user messages.
+            // Keep the Discord speaker label in content instead.
+            messages.push({ role: 'user', content: `${msg.role}: ${msg.content || ''}` })
+        }
+    }
+
+    if (!messages.some(message => message.role === 'user') && fallbackPrompt) {
+        messages.push({ role: 'user', content: fallbackPrompt })
+    }
+
+    if (messages.at(-1)?.role === 'assistant') {
+        messages.push({
+            role: 'user',
+            content: 'Continue your previous response seamlessly. Do not repeat earlier text.'
+        })
+    }
+
+    if (images.length > 0) {
+        const lastUserIdx = messages.findLastIndex(m => m.role === 'user')
+        if (lastUserIdx !== -1) {
+            const text = typeof messages[lastUserIdx].content === 'string'
+                ? messages[lastUserIdx].content : ''
+            messages[lastUserIdx] = {
+                role: 'user',
+                content: [
+                    { type: 'text', text },
+                    ...images.map(img => ({
+                        type: 'image_url',
+                        image_url: { url: `data:image/jpeg;base64,${img}` }
+                    }))
+                ]
+            }
+        }
+    }
+    return messages
 }
 
 /// <deprecated>
@@ -67,44 +113,17 @@ function text_completion(config, prompt, callback, images = [] /* list of base64
     const start_time = Date.now()
     const model = config.model
 
-    // If images are provided and we have context, use /v1/chat/completions with multimodal messages
-    if (images.length > 0 && context.length > 0) {
-        const messages = [
-            { role: "system", content: config.prompt_config.system_prompt },
-            ...context.map(msg => ({
-                role: msg.role === "bot" ? "assistant" : "user",
-                ...(msg.role !== "bot" ? { name: msg.role.replace(/[^a-zA-Z0-9_-]/g, '_') } : {}),
-                content: msg.content
-            }))
-        ]
-
-        // Attach images to the last user message
-        const lastUserIdx = messages.findLastIndex(m => m.role === "user")
-        if (lastUserIdx !== -1) {
-            const lastMsg = messages[lastUserIdx]
-            messages[lastUserIdx] = {
-                role: lastMsg.role,
-                ...(lastMsg.name ? { name: lastMsg.name } : {}),
-                content: [
-                    { type: "text", text: typeof lastMsg.content === 'string' ? lastMsg.content : '' },
-                    ...images.map(img => ({
-                        type: "image_url",
-                        image_url: { url: `data:image/jpeg;base64,${img}` }
-                    }))
-                ]
-            }
-        }
-
-        fetch(`${PROXY_URL}/v1/chat/completions`, {
+    const messages = openAIMessages(config, context, images, prompt)
+    fetch(`${PROXY_URL}/v1/chat/completions`, {
             method: 'POST',
             body: JSON.stringify({
                 model: model,
                 stream: false,
-                messages: messages,
+                messages,
                 max_tokens: config.override_options?.num_predict || 400,
                 stop: config.override_options?.stop || [],
             }),
-            headers: completionHeaders(config, { vision: true })
+            headers: completionHeaders(config, { vision: images.length > 0 })
         }).then(async res => {
             if (res.ok) {
                 const json = await res.json()
@@ -123,112 +142,29 @@ function text_completion(config, prompt, callback, images = [] /* list of base64
             }
             else {
                 let txt = await res.text()
-                console.log(`[LM Studio API Error] ${txt}`)
+                console.log(`[Unsloth API Error] ${txt}`)
             }
-        }).catch(err => {
-            console.log(err)
-        })
-    } else {
-        // No images - use /v1/completions with raw prompt
-        // System prompt is already included in the prompt via buildPrompt()
-
-        fetch(`${PROXY_URL}/v1/completions`, {
-            method: 'POST',
-            body: JSON.stringify({
-                model: model,
-                stream: false,
-                prompt: prompt,
-                max_tokens: config.override_options?.num_predict || 400,
-                stop: config.override_options?.stop || [],
-            }),
-            headers: completionHeaders(config)
-        }).then(async res => {
-            if (res.ok) {
-                const json = await res.json()
-                const end_time = Date.now()
-                callback({
-                    response: json.choices?.[0]?.text || '',
-                    done: true,
-                    model: json.model || model,
-                    total_duration: (end_time - start_time) * 1_000_000,
-                    load_duration: 0,
-                    prompt_eval_count: json.usage?.prompt_tokens || 0,
-                    prompt_eval_duration: 0,
-                    eval_count: json.usage?.completion_tokens || 0,
-                    eval_duration: (end_time - start_time) * 1_000_000,
-                })
-            }
-            else {
-                let txt = await res.text()
-                console.log(`[LM Studio API Error] ${txt}`)
-            }
-        }).catch(err => {
-            console.log(err)
-        })
-    }
+        }).catch(err => console.log(err))
 }
 
 function text_completion_stream(config, prompt, callback, images = [] /* list of base64 encoded images */, should_think = false, context = []) {
     const model = config.model
     const start_time = Date.now()
 
-    const useChat = images.length > 0 && context.length > 0
-    let url, body
-
-    if (useChat) {
-        // Use /v1/chat/completions for multimodal (image) requests
-        const messages = [
-            { role: "system", content: config.prompt_config.system_prompt },
-            ...context.map(msg => ({
-                role: msg.role === "bot" ? "assistant" : "user",
-                ...(msg.role !== "bot" ? { name: msg.role.replace(/[^a-zA-Z0-9_-]/g, '_') } : {}),
-                content: msg.content
-            }))
-        ]
-
-        // Attach images to the last user message
-        const lastUserIdx = messages.findLastIndex(m => m.role === "user")
-        if (lastUserIdx !== -1) {
-            const lastMsg = messages[lastUserIdx]
-            messages[lastUserIdx] = {
-                role: lastMsg.role,
-                ...(lastMsg.name ? { name: lastMsg.name } : {}),
-                content: [
-                    { type: "text", text: typeof lastMsg.content === 'string' ? lastMsg.content : '' },
-                    ...images.map(img => ({
-                        type: "image_url",
-                        image_url: { url: `data:image/jpeg;base64,${img}` }
-                    }))
-                ]
-            }
-        }
-
-        url = `${PROXY_URL}/v1/chat/completions`
-        body = {
-            model: model,
-            stream: true,
-            messages: messages,
-            max_tokens: config.override_options?.num_predict || 400,
-            stop: config.override_options?.stop || [],
-        }
-    } else {
-        // Use /v1/completions with raw prompt
-        // System prompt is already included via buildPrompt()
-
-        url = `${PROXY_URL}/v1/completions`
-        body = {
-            model: model,
-            stream: true,
-            prompt: prompt,
-            max_tokens: config.override_options?.num_predict || 400,
-            stop: config.override_options?.stop || [],
-        }
+    const useVision = images.length > 0
+    const url = `${PROXY_URL}/v1/chat/completions`
+    const body = {
+        model,
+        stream: true,
+        messages: openAIMessages(config, context, images, prompt),
+        max_tokens: config.override_options?.num_predict || 400,
+        stop: config.override_options?.stop || [],
     }
 
     fetch(url, {
         method: 'POST',
         body: JSON.stringify(body),
-        headers: completionHeaders(config, { vision: useChat, stream: true })
+        headers: completionHeaders(config, { vision: useVision, stream: true })
     }).then(async res => {
         if (res.ok) {
             const reader = res.body.getReader()
@@ -274,9 +210,7 @@ function text_completion_stream(config, prompt, callback, images = [] /* list of
 
                     try {
                         const obj = JSON.parse(jsonStr)
-                        let deltaText = useChat
-                            ? (obj.choices?.[0]?.delta?.content || '')
-                            : (obj.choices?.[0]?.text || '')
+                        let deltaText = obj.choices?.[0]?.delta?.content || ''
 
                         // Capture usage data if provided by the server
                         if (obj.usage) {
@@ -302,7 +236,7 @@ function text_completion_stream(config, prompt, callback, images = [] /* list of
         }
         else {
             let txt = await res.text()
-            console.log(`[LM Studio Streaming API Error] ${txt}`)
+            console.log(`[Unsloth Streaming API Error] ${txt}`)
         }
     }).catch(err => {
         console.log(err)
@@ -310,85 +244,55 @@ function text_completion_stream(config, prompt, callback, images = [] /* list of
 }
 
 function unload_model(model) {
-    // Find which server hosts this model from operatingMode2Config
-    const { operatingMode2Config } = require('./chat_options')
-    let server = null
-    for (const config of Object.values(operatingMode2Config)) {
-        if (config.model === model && config.server && !config.server.startsWith('https://')) {
-            server = config.server
-            break
-        }
-    }
-    if (!server) {
-        console.log(`[LM Studio] No local server found for model "${model}", skipping unload`)
-        return Promise.resolve(false)
-    }
-
-    console.log(`[LM Studio] Unloading model "${model}" through the orchestrator proxy`)
-    return fetch(`${PROXY_URL}/api/v1/models/unload`, {
+    console.log(`[Unsloth] Unloading model "${model}" through the orchestrator proxy`)
+    return fetch(`${PROXY_URL}/api/inference/unload`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ instance_id: model })
+        body: JSON.stringify({ model_path: model, force_cancel_active: false })
     }).then(res => {
         if (res.ok) {
-            console.log(`[LM Studio] Model "${model}" unloaded successfully`)
+            console.log(`[Unsloth] Model "${model}" unloaded successfully`)
             return true
         }
         return res.text().then(txt => {
-            console.log(`[LM Studio] Failed to unload model "${model}": ${txt}`)
+            console.log(`[Unsloth] Failed to unload model "${model}": ${txt}`)
             return false
         })
     }).catch(err => {
-        console.log(`[LM Studio] Error unloading model "${model}": ${err}`)
+        console.log(`[Unsloth] Error unloading model "${model}": ${err}`)
         return false
     })
 }
 
-function free_up_llm_resource(server_url = server_pool[0].direct_url) {
-    const ip_address_pattern = /(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/
-    const match = ip_address_pattern.exec(server_url)
-    if (!match) {
-        return Promise.reject(new Error('[LM Studio] Invalid server address for free_up_llm_resource'))
-    }
-    const lm_server = `http://${match[0]}:1234`
-
-    return fetch(`${lm_server}/api/v1/models`, {
+function free_up_llm_resource() {
+    return fetch(`${PROXY_URL}/api/inference/status`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
     }).then(res => {
         if (!res.ok) throw new Error(`Failed to list models: ${res.status}`)
         return res.json()
     }).then(data => {
-        const unload_promises = []
-        for (const model of data.models) {
-            for (const instance of model.loaded_instances) {
-                console.log(`[LM Studio] Unloading instance: ${instance.id}`)
-                unload_promises.push(
-                    fetch(`${lm_server}/api/v1/models/unload`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ instance_id: instance.id })
-                    })
-                )
-            }
-        }
-        if (unload_promises.length === 0) {
-            console.log(`[LM Studio] No loaded models to unload on ${lm_server}`)
+        const model = data.active_model || data.loaded?.[0]
+        if (!model) {
+            console.log('[Unsloth] No loaded model to unload')
             return true
         }
-        return Promise.all(unload_promises).then(results => {
-            const all_ok = results.every(r => r.ok)
-            if (!all_ok) throw new Error('Some models failed to unload')
-            console.log(`[LM Studio] All models unloaded from ${lm_server}`)
+        return fetch(`${PROXY_URL}/api/inference/unload`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model_path: model, force_cancel_active: false })
+        }).then(res => {
+            if (!res.ok) throw new Error(`Failed to unload model: ${res.status}`)
             return true
         })
     }).catch(err => {
-        console.log(`[LM Studio] free_up_llm_resource error: ${err}`)
+        console.log(`[Unsloth] free_up_llm_resource error: ${err}`)
         throw err
     })
 }
 
 module.exports = {
+    openAIMessages,
     chat_completion,
     unload_model,
     free_up_llm_resource,
