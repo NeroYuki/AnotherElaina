@@ -143,6 +143,12 @@ function text_completion(config, prompt, callback, images = [] /* list of base64
             else {
                 let txt = await res.text()
                 console.log(`[Unsloth API Error] ${txt}`)
+                callback({
+                    response: '',
+                    done: true,
+                    error: `HTTP ${res.status}: ${txt}`,
+                    retry_after: res.headers.get('retry-after'),
+                })
             }
         }).catch(err => console.log(err))
 }
@@ -237,6 +243,12 @@ function text_completion_stream(config, prompt, callback, images = [] /* list of
         else {
             let txt = await res.text()
             console.log(`[Unsloth Streaming API Error] ${txt}`)
+            callback({
+                response: '',
+                done: true,
+                error: `HTTP ${res.status}: ${txt}`,
+                retry_after: res.headers.get('retry-after'),
+            }, true)
         }
     }).catch(err => {
         console.log(err)
