@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { byPassUser, censorGuildIds, optOutGuildIds } = require('../config.json');
 const crypt = require('crypto');
-const { server_pool, get_data_body, get_negative_prompt, initiate_server_heartbeat, get_worker_server, get_prompt, model_name_hash_mapping, check_model_filename, model_selection, upscaler_selection, model_selection_xl, model_selection_curated, model_selection_inpaint, model_selection_flux, sampler_to_comfy_name_mapping, scheduler_to_comfy_name_mapping } = require('../utils/ai_server_config.js');
+const { server_pool, get_data_body, get_negative_prompt, initiate_server_heartbeat, get_worker_server, get_prompt, model_name_hash_mapping, check_model_filename, model_selection, upscaler_selection, model_selection_xl, model_selection_curated, model_selection_inpaint, model_selection_flux, sampler_to_comfy_name_mapping, scheduler_to_comfy_name_mapping, resolve_hires_models } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const { serviceHeaders } = require('../utils/proxy_config');
 const { forgeWorkload, workloadHeaders } = require('../utils/orchestrator_workload');
@@ -556,6 +556,8 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             booru_gen_config_obj, cached_model[0], colorbalance_config_obj, usersetting, extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config_obj,
             extra_config.mahiro_config, extra_config.teacache_config, batch_count, batch_size, extra_config.modulation_config, daam_config)
 
+        const hires_models = resolve_hires_models(usersetting, cached_model[0])
+
         // make option_init but for axios
         const option_init_axios = {
             data: {
@@ -567,7 +569,12 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                 headers: workloadHeaders('sdwebui', forgeWorkload({
                     taskKind: 'txt2img', checkpoint: cached_model[0], width, height,
                     batchSize: batch_size, batchCount: batch_count,
-                    upscaleMultiplier: upscale_multiplier, upscaleSteps: upscale_step,
+                    baseSteps: sampling_step,
+                    upscaleMultiplier: upscale_multiplier, hiresSteps: upscale_step,
+                    hiresCheckpoint: hires_models.checkpoint,
+                    hiresSupportModels: hires_models.support_models,
+                    seedvr2Model: usersetting?.seedvr2_model,
+                    seedvr2Resolution: usersetting?.seedvr2_resolution,
                     useAdetailer: use_adetailer,
                     tiledVae: width * height > 1600000,
                 }), SD_HEADERS),

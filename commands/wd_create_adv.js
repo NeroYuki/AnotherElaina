@@ -8,7 +8,7 @@ const { server_pool, get_data_body, get_negative_prompt, initiate_server_heartbe
     model_name_hash_mapping, get_data_controlnet, get_data_controlnet_annotation, check_model_filename, model_selection, upscaler_selection, model_selection_xl, model_selection_legacy,
     sampler_selection, model_selection_inpaint, model_selection_flux, scheduler_selection, 
     sampler_to_comfy_name_mapping,
-    scheduler_to_comfy_name_mapping} = require('../utils/ai_server_config.js');
+    scheduler_to_comfy_name_mapping, resolve_hires_models} = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const { serviceHeaders } = require('../utils/proxy_config');
 const { forgeWorkload, workloadHeaders } = require('../utils/orchestrator_workload');
@@ -596,6 +596,8 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             }
         }
 
+        const hires_models = resolve_hires_models(usersetting, cached_model[0])
+
         // make option_init but for axios
         const option_init_axios = {
             data: {
@@ -607,7 +609,12 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                 headers: workloadHeaders('sdwebui', forgeWorkload({
                     taskKind: 'txt2img', checkpoint: cached_model[0], width, height,
                     batchSize: batch_size, batchCount: batch_count,
-                    upscaleMultiplier: upscale_multiplier, upscaleSteps: upscale_step,
+                    baseSteps: sampling_step,
+                    upscaleMultiplier: upscale_multiplier, hiresSteps: upscale_step,
+                    hiresCheckpoint: hires_models.checkpoint,
+                    hiresSupportModels: hires_models.support_models,
+                    seedvr2Model: usersetting?.seedvr2_model,
+                    seedvr2Resolution: usersetting?.seedvr2_resolution,
                     useAdetailer: do_adetailer, tiledVae: width * height > 1600000,
                 }), SD_HEADERS),
                 timeout: 3_600_000, // 1 hour timeout

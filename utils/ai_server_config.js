@@ -583,6 +583,24 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
     }
 }
 
+function resolve_hires_models(usersetting, current_model = '') {
+    const requested_checkpoint = usersetting?.hires_checkpoint ?? "Use same checkpoint";
+    const checkpoint = requested_checkpoint === "Use same checkpoint" ? current_model : requested_checkpoint;
+    const support_models =
+        requested_checkpoint === "Use same checkpoint" ? [] :
+        model_selection_flux.find(x => x.value === requested_checkpoint)          ? ["ae.safetensors", "clip_l.safetensors", "t5-v1_1-xxl-encoder-Q8_0.gguf"] :
+        model_selection_chroma.find(x => x.value === requested_checkpoint)        ? ["ae.safetensors", "t5-v1_1-xxl-encoder-Q8_0.gguf"] :
+        model_selection_flux_klein_9b.find(x => x.value === requested_checkpoint) ? ["flux2-vae.safetensors", "Qwen3-8B-Q8_0.gguf"] :
+        model_selection_flux_klein_4b.find(x => x.value === requested_checkpoint) ? ["flux2-vae.safetensors", "qwen_3_4b.safetensors"] :
+        model_selection_qwen_image.find(x => x.value === requested_checkpoint)    ? ["qwen_image_vae.safetensors", "qwen_2.5_vl_7b_fp8_scaled.safetensors"] :
+        model_selection_anima.find(x => x.value === requested_checkpoint)         ? ["qwen_image_vae.safetensors", "qwen_3_06b_base.safetensors"] :
+        model_selection_z_image.find(x => x.value === requested_checkpoint)       ? ["ae.safetensors", "qwen_3_4b.safetensors"] :
+        model_selection_lumina.find(x => x.value === requested_checkpoint)        ? ["ae.safetensors", "gemma_2_2b_fp16.safetensors"] :
+        model_selection_krea.find(x => x.value === requested_checkpoint)          ? ["qwen_image_vae.safetensors", "qwen3vl_4b_fp8_scaled.safetensors"] :
+        [];
+    return { requested_checkpoint, checkpoint, support_models };
+}
+
 const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed, sampler, scheduler, session_hash,
     height, width, upscale_multiplier, upscaler, upscale_denoise_strength, upscale_step, face_restore = false, is_using_adetailer = false, 
     coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, 
@@ -624,19 +642,10 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
     // Determine support models for hires based on the hires checkpoint's architecture.
     // When the user picks a different arch as hires checkpoint, "Use same choices" won't load
     // the correct VAE/text encoder — so we resolve the right support model list explicitly.
-    const hires_ckpt_value = usersetting?.hires_checkpoint ?? "Use same checkpoint";
-    const hires_support_models =
-        hires_ckpt_value === "Use same checkpoint" ? ["Use same choices"] :
-        model_selection_flux.find(x => x.value === hires_ckpt_value)           ? ["ae.safetensors", "clip_l.safetensors", "t5-v1_1-xxl-encoder-Q8_0.gguf"] :
-        model_selection_chroma.find(x => x.value === hires_ckpt_value)         ? ["ae.safetensors", "t5-v1_1-xxl-encoder-Q8_0.gguf"] :
-        model_selection_flux_klein_9b.find(x => x.value === hires_ckpt_value)  ? ["flux2-vae.safetensors", "Qwen3-8B-Q8_0.gguf"] :
-        model_selection_flux_klein_4b.find(x => x.value === hires_ckpt_value)  ? ["flux2-vae.safetensors", "qwen_3_4b.safetensors"] :
-        model_selection_qwen_image.find(x => x.value === hires_ckpt_value)     ? ["qwen_image_vae.safetensors", "qwen_2.5_vl_7b_fp8_scaled.safetensors"] :
-        model_selection_anima.find(x => x.value === hires_ckpt_value)          ? ["qwen_image_vae.safetensors", "qwen_3_06b_base.safetensors"] :
-        model_selection_z_image.find(x => x.value === hires_ckpt_value)        ? ["ae.safetensors", "qwen_3_4b.safetensors"] :
-        model_selection_lumina.find(x => x.value === hires_ckpt_value)         ? ["ae.safetensors", "gemma_2_2b_fp16.safetensors"] :
-        model_selection_krea.find(x => x.value === hires_ckpt_value)           ? ["qwen_image_vae.safetensors", "qwen3vl_4b_fp8_scaled.safetensors"] :
-        [];  // SD/XL requires no special support models
+    const hires_models = resolve_hires_models(usersetting, current_model);
+    const hires_ckpt_value = hires_models.requested_checkpoint;
+    const hires_support_models = hires_ckpt_value === "Use same checkpoint"
+        ? ["Use same choices"] : hires_models.support_models;
 
     console.log(upscale_multiplier, upscaler, upscale_denoise_strength, upscale_step)
 
@@ -1462,6 +1471,7 @@ module.exports = {
     server_pool,
     get_negative_prompt,
     get_data_body,
+    resolve_hires_models,
     get_data_controlnet,
     get_data_controlnet_annotation,
     get_data_rembg,
