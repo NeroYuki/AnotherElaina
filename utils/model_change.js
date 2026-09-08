@@ -30,6 +30,51 @@ const cached_model = [
     "wai_nsfw_illustrious_v100.safetensors",
 ]
 
+function normalize_checkpoint_name(value) {
+    if (typeof value !== 'string' || value.trim() === '') return null
+    return value.trim().replaceAll('\\', '/').split('/').pop()
+}
+
+function mark_model_active(modelname) {
+    const normalized = normalize_checkpoint_name(modelname)
+    if (!normalized) return cached_model[0]
+
+    const index = cached_model.findIndex(
+        model => model.toLowerCase() === normalized.toLowerCase()
+    )
+    if (index !== -1) cached_model.splice(index, 1)
+    else if (cached_model.length >= 3) cached_model.pop()
+
+    cached_model.unshift(normalized)
+    return normalized
+}
+
+/**
+ * Reconcile the consumer's model pointer with Forge's authoritative active
+ * checkpoint.  This prevents a bot restart from resetting cached_model[0] to
+ * a checkpoint that is different from the already-running Forge instance.
+ * A failed probe is non-fatal: callers retain the last known model.
+ */
+async function sync_active_model() {
+    const server_address = server_pool[0].url
+    try {
+        const response = await axios.get(`${server_address}/sdapi/v1/options`, {
+            headers: SD_HEADERS,
+            timeout: 5000,
+        })
+        const active = normalize_checkpoint_name(response.data?.sd_model_checkpoint)
+        if (!active) {
+            console.warn('Forge model sync returned no active checkpoint; keeping', cached_model[0])
+            return cached_model[0]
+        }
+        return mark_model_active(active)
+    }
+    catch (err) {
+        console.warn('Unable to sync active Forge checkpoint; keeping', cached_model[0], err?.message || err)
+        return cached_model[0]
+    }
+}
+
 const flux_support_models = [
     "ae.safetensors",
     "clip_l.safetensors",
@@ -152,15 +197,7 @@ function model_change(modelname, forced = false) {
                         // if model name is in the cache, remove it and unshift the new model name
                         // else, pop the last model name and unshift the new model name
                         
-                        if (cached_model.length >= 3) {
-                            if (cached_model.includes(modelname)) {
-                                cached_model.splice(cached_model.indexOf(modelname), 1)
-                            }
-                            else {
-                                cached_model.pop()
-                            }
-                        }
-                        cached_model.unshift(modelname)
+                        mark_model_active(modelname)
 
                         if (model_selection_flux.find(element => element.value === modelname)) {
                             await support_model_change(flux_support_models, session_hash, model_type).catch(err => {
@@ -243,5 +280,6 @@ function model_change(modelname, forced = false) {
 
 module.exports = {
     model_change,
-    cached_model
+    cached_model,
+    sync_active_model,
 }

@@ -33,20 +33,34 @@ function stableGraphHash(workflow) {
 function comfyWorkload(workflow) {
     const nodes = Object.values(workflow || {});
     let width = 1024, height = 1024, checkpoint = 'unknown';
+    let checkpointPriority = -1;
     const nodeTypes = [];
+    const modelKeys = ['ckpt_name', 'unet_name', 'diffusion_model', 'model_name', 'model_path'];
+    const modelPriority = { ckpt_name: 3, unet_name: 2, diffusion_model: 2, model_name: 1, model_path: 1 };
+    const modelIds = [];
     for (const node of nodes) {
         const inputs = node?.inputs || {};
         if (Number.isInteger(inputs.width)) width = integer(inputs.width, width);
         if (Number.isInteger(inputs.height)) height = integer(inputs.height, height);
-        if (typeof inputs.ckpt_name === 'string') checkpoint = inputs.ckpt_name.slice(0, 160);
+        for (const key of modelKeys) {
+            if (typeof inputs[key] === 'string' && inputs[key]) {
+                const modelId = inputs[key].slice(0, 160);
+                modelIds.push(modelId);
+                if (modelPriority[key] > checkpointPriority) {
+                    checkpoint = modelId;
+                    checkpointPriority = modelPriority[key];
+                }
+            }
+        }
         nodeTypes.push(String(node?.class_type || '').slice(0, 120));
     }
+    const supportModels = [...new Set(modelIds)].filter(id => id !== checkpoint).slice(0, 40);
     return {
         schema_version: SCHEMA_VERSION,
         task_kind: 'comfy_workflow',
         model: { family: modelFamily(checkpoint), checkpoint },
         shape: { width, height, batch_size: 1, batch_count: 1 },
-        stages: [{ kind: 'graph', node_count: nodes.length, template_hash: stableGraphHash(workflow) }],
+        stages: [{ kind: 'graph', node_count: nodes.length, template_hash: stableGraphHash(workflow), support_models: supportModels }],
         features: { node_types: [...new Set(nodeTypes)].sort().slice(0, 80) },
     };
 }

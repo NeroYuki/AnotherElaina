@@ -16,7 +16,7 @@ const fetch = (url, options = {}) => _nodeFetch(url, {
 });
 const { loadImage, uploadDiscordImageToGradio, uploadPngBufferToGradio } = require('../utils/load_discord_img');
 const { load_controlnet } = require('../utils/controlnet_execute');
-const { cached_model, model_change } = require('../utils/model_change');
+const { cached_model, model_change, sync_active_model } = require('../utils/model_change');
 const { segmentAnything_execute, groundingDino_execute, expandMask, unloadAllModel } = require('../utils/segment_execute.js');
 const { full_prompt_analyze, fetch_user_defined_wildcard, preview_coupler_setting, get_teacache_config_from_prompt } = require('../utils/prompt_analyzer.js');
 const { queryRecordLimit } = require('../database/database_interaction.js');
@@ -230,6 +230,8 @@ module.exports = {
 
         //make a temporary reply to not get timeout'd
 		await interaction.deferReply();
+
+        await sync_active_model()
 
         const profile_option = interaction.options.getString('profile') || null
         let profile = null

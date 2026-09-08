@@ -14,7 +14,7 @@ const fetch = (url, options = {}) => _nodeFetch(url, {
     headers: { ...SD_HEADERS, ...(options.headers || {}) },
 });
 const { loadImage } = require('../utils/load_discord_img.js');
-const { cached_model, model_change } = require('../utils/model_change.js');
+const { cached_model, model_change, sync_active_model } = require('../utils/model_change.js');
 const { queryRecordLimit } = require('../database/database_interaction.js');
 const { full_prompt_analyze, preview_coupler_setting, fetch_user_defined_wildcard, get_teacache_config_from_prompt, get_debug_prompt_analyze } = require('../utils/prompt_analyzer.js');
 const { load_profile } = require('../utils/profile_helper.js');
@@ -233,6 +233,8 @@ module.exports = {
 
         //make a temporary reply to not get timeout'd
 		await interaction.deferReply();
+
+        await sync_active_model()
 
         const profile_option = interaction.options.getString('profile') || null
         let profile = null
