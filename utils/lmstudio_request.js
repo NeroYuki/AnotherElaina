@@ -1,6 +1,7 @@
 const { server_pool } = require("./ai_server_config")
 const { operatingMode2Config } = require("./chat_options")
 const { PROXY_URL, serviceHeaders } = require('./proxy_config');
+const { lmstudioWorkload, workloadHeaders } = require('./orchestrator_workload');
 
 const LM_HEADERS = serviceHeaders('lmstudio');
 const _nodeFetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
@@ -11,6 +12,18 @@ const fetch = (url, options = {}) => _nodeFetch(url, {
     ...options,
     headers: { ...LM_HEADERS, ...(options.headers || {}) },
 });
+
+function completionHeaders(config, { vision = false, stream = false } = {}) {
+    const contextLength = config?.override_options?.num_ctx || 8192;
+    const maxTokens = config?.override_options?.num_predict || 400;
+    return workloadHeaders('lmstudio', lmstudioWorkload({
+        model: config?.model,
+        contextLength,
+        maxTokens,
+        vision,
+        stream,
+    }), { 'Content-Type': 'application/json' });
+}
 
 /// <deprecated>
 function chat_completion(model, context) {
@@ -27,9 +40,7 @@ function chat_completion(model, context) {
                 stream: false,
                 messages: messages
             }),
-            headers: {
-                'Content-Type': 'application/json'
-            }
+            headers: completionHeaders({ model, override_options: { num_ctx: 8192, num_predict: 400 } })
         }).then(res => {
             if (res.ok) {
                 return res.json()
@@ -93,9 +104,7 @@ function text_completion(config, prompt, callback, images = [] /* list of base64
                 max_tokens: config.override_options?.num_predict || 400,
                 stop: config.override_options?.stop || [],
             }),
-            headers: {
-                'Content-Type': 'application/json'
-            }
+            headers: completionHeaders(config, { vision: true })
         }).then(async res => {
             if (res.ok) {
                 const json = await res.json()
@@ -132,9 +141,7 @@ function text_completion(config, prompt, callback, images = [] /* list of base64
                 max_tokens: config.override_options?.num_predict || 400,
                 stop: config.override_options?.stop || [],
             }),
-            headers: {
-                'Content-Type': 'application/json'
-            }
+            headers: completionHeaders(config)
         }).then(async res => {
             if (res.ok) {
                 const json = await res.json()
@@ -221,9 +228,7 @@ function text_completion_stream(config, prompt, callback, images = [] /* list of
     fetch(url, {
         method: 'POST',
         body: JSON.stringify(body),
-        headers: {
-            'Content-Type': 'application/json'
-        }
+        headers: completionHeaders(config, { vision: useChat, stream: true })
     }).then(async res => {
         if (res.ok) {
             const reader = res.body.getReader()

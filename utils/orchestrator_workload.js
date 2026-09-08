@@ -6,12 +6,14 @@ const { serviceHeaders } = require('./proxy_config');
 const SCHEMA_VERSION = 1;
 const MAX_DIMENSION = 16384;
 
-function integer(value, fallback = 1) {
-    return Number.isInteger(value) && value > 0 && value <= MAX_DIMENSION ? value : fallback;
+function integer(value, fallback = 1, maximum = MAX_DIMENSION) {
+    return Number.isInteger(value) && value > 0 && value <= maximum ? value : fallback;
 }
 
 function modelFamily(name) {
     const value = String(name || '').toLowerCase();
+    if (value.includes('seedvr') || value.includes('upscale')) return 'upscale';
+    if (value.includes('qwen') || value.includes('llama') || value.includes('gemma')) return 'llm';
     if (value.includes('flux')) return 'flux';
     if (value.includes('sdxl') || value.includes('xl')) return 'sdxl';
     if (value.includes('wan') || value.includes('hunyuan') || value.includes('video')) return 'video';
@@ -50,15 +52,78 @@ function comfyWorkload(workflow) {
 }
 
 function forgeWorkload({ taskKind, checkpoint, width, height, batchSize = 1, batchCount = 1,
-    upscaleMultiplier = 1, upscaleSteps = 0, useAdetailer = false, tiledVae = false, features = {} }) {
+    baseSteps = 1, upscaleMultiplier = 1, hiresSteps = 1, hiresCheckpoint,
+    hiresSupportModels = [], seedvr2Model, seedvr2Resolution = 1600,
+    useAdetailer = false, tiledVae = false, features = {} }) {
     const safeCheckpoint = String(checkpoint || 'unknown').slice(0, 160);
+    const resolvedHires = !hiresCheckpoint || hiresCheckpoint === 'Use same checkpoint'
+        ? safeCheckpoint : String(hiresCheckpoint).slice(0, 160);
+    const stages = [{
+        kind: 'base',
+        steps: integer(baseSteps, 1),
+        model: { family: modelFamily(safeCheckpoint), checkpoint: safeCheckpoint },
+    }];
+    if (upscaleMultiplier > 1) {
+        stages.push({
+            kind: 'hires',
+            scale: Math.min(Number(upscaleMultiplier) || 1, 8),
+            steps: integer(hiresSteps, 1),
+            model: { family: modelFamily(resolvedHires), checkpoint: resolvedHires },
+            support_models: [...new Set(hiresSupportModels.map(String))].filter(x => x && x !== 'Use same choices').slice(0, 12),
+        });
+    }
+    if (seedvr2Model) {
+        const model = String(seedvr2Model).slice(0, 160);
+        stages.push({
+            kind: 'seedvr2',
+            model: { family: 'upscale', checkpoint: model },
+            target_shortest_side: integer(seedvr2Resolution, 1600),
+        });
+    }
     return {
         schema_version: SCHEMA_VERSION,
         task_kind: taskKind,
         model: { family: modelFamily(safeCheckpoint), checkpoint: safeCheckpoint },
         shape: { width: integer(width, 1024), height: integer(height, 1024), batch_size: integer(batchSize), batch_count: integer(batchCount) },
-        stages: [{ kind: 'base', steps: integer(upscaleSteps, 1) }].concat(upscaleMultiplier > 1 ? [{ kind: 'hires', scale: Math.min(Number(upscaleMultiplier) || 1, 8) }] : []),
-        features: { adetailer: Boolean(useAdetailer), tiled_vae: Boolean(tiledVae), ...features },
+        stages,
+        features: { adetailer: Boolean(useAdetailer), tiled_vae: Boolean(tiledVae), seedvr2: Boolean(seedvr2Model), ...features },
+    };
+}
+
+function mapperatorinatorWorkload(params = {}) {
+    const checkpoint = String(params.model || 'v30').slice(0, 160);
+    const stages = [{ kind: 'inference', model: { family: 'mapper', checkpoint } }];
+    if (params.lora_path) {
+        const lora = String(params.lora_path).replace(/\\/g, '/').split('/').pop().slice(0, 160);
+        stages.push({ kind: 'lora', model: { family: 'lora', checkpoint: lora } });
+    }
+    return {
+        schema_version: SCHEMA_VERSION,
+        task_kind: 'beatmap_generation',
+        model: { family: 'mapper', checkpoint },
+        shape: { width: 1, height: 1, batch_size: integer(Number(params.max_batch_size), 1), batch_count: 1 },
+        stages,
+        features: {
+            bf16: Boolean(params.enable_bf16), flash_attention: Boolean(params.enable_flash_attn),
+            compile: Boolean(params.enable_compile), parallel: Boolean(params.enable_parallel),
+            gamemode: Number.isInteger(params.gamemode) ? params.gamemode : 0,
+        },
+    };
+}
+
+function lmstudioWorkload({ model, contextLength, maxTokens, vision = false, stream = false }) {
+    const checkpoint = String(model || 'unknown').slice(0, 160);
+    return {
+        schema_version: SCHEMA_VERSION,
+        task_kind: vision ? 'vision_completion' : 'text_completion',
+        model: { family: 'llm', checkpoint },
+        shape: { width: 1, height: 1, batch_size: 1, batch_count: 1 },
+        stages: [{ kind: 'inference', model: { family: 'llm', checkpoint } }],
+        features: {
+            context_length: integer(Number(contextLength), 8192, 2_000_000),
+            max_output_tokens: integer(Number(maxTokens), 400),
+            vision: Boolean(vision), stream: Boolean(stream), context_source: 'consumer',
+        },
     };
 }
 
@@ -70,4 +135,4 @@ function workloadHeaders(service, workload, extra = {}) {
     });
 }
 
-module.exports = { SCHEMA_VERSION, comfyWorkload, forgeWorkload, workloadHeaders };
+module.exports = { SCHEMA_VERSION, comfyWorkload, forgeWorkload, mapperatorinatorWorkload, lmstudioWorkload, workloadHeaders };

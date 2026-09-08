@@ -504,9 +504,11 @@ BeatmapSetID:-1`);
         })
 
         const is_using_gpu = params.server_address !== 'http://127.0.0.1:7050'
-        const is_gpu_having_enough_vram = (params.model !== 'v30' && comfyClient.comfyStat.gpu_vram_used < 4) || (params.model === 'v30' && comfyClient.comfyStat.gpu_vram_used < 10)
 
-        if (!health || (health && is_using_gpu && !is_gpu_having_enough_vram)) {
+        // GPU admission is owned by the orchestrator on the proxied branch.
+        // Keep only service health handling here; a second consumer-side VRAM
+        // gate would race the observer and reject work using stale Comfy stats.
+        if (!health) {
             const row = this.createActionButtons(interaction, params.model === 'v30');
 
             const message_content = { content: `<@${params.user_id}> The server is currently under heavy load, generation will be retried after 5 minutes`, components: [row]}

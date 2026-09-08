@@ -1,8 +1,21 @@
 const axios = require('axios');
 const FormData = require('form-data');
-const { serviceHeaders } = require('./proxy_config');
+const { PROXY_URL, serviceHeaders } = require('./proxy_config');
+const { mapperatorinatorWorkload, workloadHeaders } = require('./orchestrator_workload');
 
 const MAP_HEADERS = serviceHeaders('mapperatorinator');
+const orchestratorJobs = new Map();
+
+async function completeOrchestratorJob(serviceJobId, outcome) {
+    const orchestratorJobId = orchestratorJobs.get(String(serviceJobId));
+    if (!orchestratorJobId) return;
+    orchestratorJobs.delete(String(serviceJobId));
+    try {
+        await axios.post(`${PROXY_URL}/internal/orchestrator/jobs/${orchestratorJobId}/complete`, { outcome });
+    } catch (error) {
+        console.log(`Failed to complete orchestrator job ${orchestratorJobId}:`, error.message);
+    }
+}
 
 const lora_mapping = {
     'high_sr_v1_3': './lora/Mapperatorinator-v30-LoRA-highSR-v1_3',
@@ -80,9 +93,16 @@ async function startInference(url, params) {
     }
 
     try {
+        const proxied = url.replace(/\/$/, '') === PROXY_URL.replace(/\/$/, '');
+        const headers = proxied
+            ? workloadHeaders('mapperatorinator', mapperatorinatorWorkload(params), formData.getHeaders())
+            : { ...formData.getHeaders(), ...MAP_HEADERS };
         const response = await axios.post(endpoint, formData, {
-            headers: { ...formData.getHeaders(), ...MAP_HEADERS },
+            headers,
         });
+        if (proxied && response.data?.job_id) {
+            orchestratorJobs.set(String(response.data.job_id), headers['X-AI-Job-ID']);
+        }
         return response.data;
     } catch (error) {
         console.log('Error sending request to start_inference:', error.message);
@@ -96,7 +116,7 @@ async function streamOutput(url, job_id, callback) {
 
     console.log(endpoint)
     try {
-        const response = await axios.get(endpoint, {
+        await axios.get(endpoint, {
             headers: {
                 'Accept': 'text/event-stream',
                 ...MAP_HEADERS,
@@ -116,7 +136,9 @@ async function streamOutput(url, job_id, callback) {
                 callback(value);
             }
         })
+        await completeOrchestratorJob(job_id, 'success');
     } catch (error) {
+        await completeOrchestratorJob(job_id, 'error');
         console.log('Error sending request to stream_output:', error.message);
         throw error;
     }
