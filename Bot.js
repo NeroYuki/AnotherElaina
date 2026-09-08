@@ -6,7 +6,6 @@ const { responseToMessage } = require('./event/on_message');
 const databaseConnection = require('./database/database_connection');
 const { listAllFiles } = require('./utils/common_helper');
 const ComfyClient = require('./utils/comfy_client');
-const { free_up_llm_resource } = require('./utils/lmstudio_request');
 const { context_storage } = require('./utils/text_gen_store');
 const { rateLimiter } = require('./utils/rate_limiter');
 const { getForgeMemory, getForgeProgress, unloadForgeCheckpoint } = require('./utils/forge_api_execute');
@@ -182,21 +181,6 @@ client.on('interactionCreate', async interaction => {
     ]
 
     try {
-        if ([
-            ...forge_backend_require,
-            ...comfy_backend_require,
-            ...mapperatorinator_backend_require,
-        ].includes(interaction.commandName)) {
-
-            // In saving mode the LLM is loaded on the bot server, not the AI server,
-            // so it doesn't compete for AI server VRAM and must not be unloaded.
-            if (globalThis.operating_mode !== 'saving') {
-                free_up_llm_resource().catch(err => {
-                    console.log("free up llm resource error: ", err)
-                });
-            }
-        }
-
         if ([
             ...comfy_backend_require,
             ...mapperatorinator_backend_require
