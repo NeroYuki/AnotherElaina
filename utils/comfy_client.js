@@ -92,7 +92,13 @@ const comfyClient = {
         })
             .then(async res => {
                 if (res.status !== 200) {
-                    let err_data = await res.json();
+                    const reason = res.headers.get('x-ai-admission-reason');
+                    const retry = res.headers.get('x-ai-retry-after') || res.headers.get('retry-after');
+                    let err_data = null;
+                    try { err_data = await res.json(); } catch (_) { /* plain proxy error */ }
+                    if (reason) {
+                        throw `GPU orchestrator: ${reason}${retry ? `. Try again in ${retry}s.` : ''}`;
+                    }
                     throw (err_data?.error) ? (err_data.error?.message || "Unknown server error") : "Unknown connection error";
                 }
                 return res.json();

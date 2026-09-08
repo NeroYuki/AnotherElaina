@@ -241,17 +241,9 @@ client.on('interactionCreate', async interaction => {
             ...no_backend_require,
             ...mapperatorinator_backend_require,
         ].includes(interaction.commandName)) {
-            const isComfyRunning = ComfyClient.comfyStat.is_running
-
-            const isEstimatedNotEnoughResource = ([...forge_backend_require, ...mapperatorinator_backend_require].includes(interaction.commandName) && ComfyClient.promptListener.length > 0) ||
-                (["wd_txt2vid", "wd_img2vid"].includes(interaction.commandName) && ComfyClient.promptListener.length == 0 && ComfyClient.comfyStat.gpu_vram_used > 3.5) ||
-                (interaction.commandName === "wd_img2model" && ComfyClient.promptListener.length == 0 && ComfyClient.comfyStat.gpu_vram_used > 6)
-
-            if (isComfyRunning && isEstimatedNotEnoughResource) {
-                await interaction.channel.send({ content: 'Not enough resource can be allocated to finish this command, please try again later' });
-                return;
-            } 
-
+            // Forge, ComfyUI, LM Studio, and Mapperatorinator submit through
+            // the orchestrator proxy. Its admission decision is atomic at
+            // dispatch time; consumer-side VRAM/busy checks are stale races.
             await command.execute(interaction, client)
         }
         else {
