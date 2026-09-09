@@ -13,10 +13,10 @@ Generation models use an exact allowlist and fixed GGUF variants:
 | `/chat_config` mode | `CHAT_MODEL` | Quantization | Gate |
 | --- | --- | --- | --- |
 | `gemma` | `unsloth/gemma-4-12B-it-qat-GGUF` | `UD-Q4_K_XL` | none |
-| `qwen_27b` | `unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_M` | `UD-Q4_K_M` | sufficient local VRAM/RAM |
-| `qwen_flash_next` | `unsloth/Qwen3.8-Flash-Next-GGUF:UD-IQ3_XXS` | `UD-IQ3_XXS` | `CHAT_ALLOW_EXTREME_MODEL=true` plus sufficient resources |
+| `qwen_27b` | `unsloth/Qwen3.8-27B-GGUF` | `UD-Q4_K_M` | sufficient local VRAM/RAM |
+| `qwen_flash_next` | `unsloth/Qwen3.8-Flash-Next-GGUF` | `UD-IQ3_XXS` | `CHAT_ALLOW_EXTREME_MODEL=true` plus sufficient resources |
 
-Leave `CHAT_MODEL_QUANTIZATION` empty to select the profile variant automatically. If set, it acts as an assertion and startup fails when it does not match the selected profile. The workload manifest carries both `CHAT_CONTEXT_TOKENS` and the GGUF variant. `npm run chat:smoke:local` performs a completion, reads `/api/inference/status`, and fails if the loaded context is smaller than configured. `/chat_config mode:Status` reports the runtime model, quantization, and context. Re-register the development-guild slash commands after upgrading because the Qwen choices changed.
+Leave `CHAT_MODEL_QUANTIZATION` empty to select the profile variant automatically. If set, it acts as an assertion and startup fails when it does not match the selected profile. Keep `CHAT_MODEL` as the bare Hugging Face repository ID: the Unsloth UI displays `repo:variant`, but its load API expects `model_path=repo` and `gguf_variant=variant`. The workload manifest carries both `CHAT_CONTEXT_TOKENS` and the GGUF variant. `npm run chat:smoke:local` performs a completion, reads `/api/inference/status`, and fails if the loaded context is smaller than configured. `/chat_config mode:Status` reports the runtime model, quantization, and context. Re-register the development-guild slash commands after upgrading because the Qwen choices changed.
 
 `CHAT_EPISODE_INPUT_TOKENS` bounds background episode-summary input separately from ordinary chat context. The summarizer strips Mongo IDs and operational metadata, keeps only the canonical speaker/message/assistant transcript, and retries once with half the budget if the backend still reports a context overflow.
 

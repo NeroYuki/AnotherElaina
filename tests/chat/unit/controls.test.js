@@ -80,7 +80,7 @@ test('/chat_config selects the fixed Qwen profile and persists its quantization'
         options: { getString: name => name === 'mode' ? 'qwen_27b' : null, getBoolean: () => null }
     })
     await chatConfigCommand.execute(current)
-    assert.equal(chatService.provider.model, 'unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_M')
+    assert.equal(chatService.provider.model, 'unsloth/Qwen3.8-27B-GGUF')
     assert.equal(chatService.provider.quantization, 'UD-Q4_K_M')
     assert.equal(update.$set.quantization, 'UD-Q4_K_M')
 })

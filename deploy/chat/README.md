@@ -42,7 +42,7 @@ CHAT_EPISODE_INPUT_TOKENS=6000
 CHAT_ALLOW_EXTREME_MODEL=false
 ```
 
-The empty quantization value selects the fixed variant from `chat/model_profiles.js`. The alternatives are `unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_M` and, only after setting `CHAT_ALLOW_EXTREME_MODEL=true`, `unsloth/Qwen3.8-Flash-Next-GGUF:UD-IQ3_XXS`.
+The empty quantization value selects the fixed variant from `chat/model_profiles.js`. The alternatives are repository `unsloth/Qwen3.8-27B-GGUF` with variant `UD-Q4_K_M` and, only after setting `CHAT_ALLOW_EXTREME_MODEL=true`, repository `unsloth/Qwen3.8-Flash-Next-GGUF` with variant `UD-IQ3_XXS`. Do not put the UI's `repo:variant` display form in `CHAT_MODEL`; Unsloth's API expects these as separate fields.
 
 SearXNG JSON output is explicitly enabled in `searxng-settings.yml`. Search quality and availability still depend on enabled upstream engines. Verify both services before enabling chat:
 
