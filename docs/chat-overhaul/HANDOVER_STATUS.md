@@ -31,7 +31,7 @@ Implemented:
 - Discord source URLs are always rendered inside `<...>`, including resolved inline citations and the source appendix, to suppress link-preview embed spam.
 - Episode summaries no longer serialize raw Mongo records. They receive a compact canonical transcript under `CHAT_EPISODE_INPUT_TOKENS` and retry once at half that budget after a context-size rejection.
 - A live synthetic reproduction with 12 oversized Mongo-like turn records compacted to 8,719 input bytes and completed a valid episode summary under the 16,384-token model context.
-- Explicit local profiles are available for Gemma `UD-Q4_K_XL`, `unsloth/Qwen3.8-27B-GGUF` at `UD-Q4_K_M`, and gated `unsloth/Qwen3.8-Flash-Next-GGUF` at `UD-IQ3_XXS`.
+- Explicit local profiles are available for Gemma `UD-Q4_K_XL`, `unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_M`, and gated `unsloth/Qwen3.8-Flash-Next-GGUF:UD-IQ3_XXS`.
 - No Gemini/cloud inference path is referenced by the new runtime entry path.
 
 ## Release State

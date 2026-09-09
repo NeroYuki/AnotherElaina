@@ -17,13 +17,13 @@ test('chat config is local-only with a pinned embedding revision', () => {
 })
 
 test('chat config supports the explicit Qwen profiles and gates the extreme model', () => {
-    const qwen = loadConfig({ CHAT_MODEL: 'unsloth/Qwen3.8-27B-GGUF' }, { rootDir: process.cwd() })
+    const qwen = loadConfig({ CHAT_MODEL: 'unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_M' }, { rootDir: process.cwd() })
     assert.equal(qwen.modelAlias, 'qwen_27b')
     assert.equal(qwen.modelQuantization, 'UD-Q4_K_M')
-    assert.throws(() => loadConfig({ CHAT_MODEL: 'unsloth/Qwen3.8-Flash-Next-GGUF' }), /CHAT_ALLOW_EXTREME_MODEL/)
-    const flash = loadConfig({ CHAT_MODEL: 'unsloth/Qwen3.8-Flash-Next-GGUF', CHAT_ALLOW_EXTREME_MODEL: 'true' })
+    assert.throws(() => loadConfig({ CHAT_MODEL: 'unsloth/Qwen3.8-Flash-Next-GGUF:UD-IQ3_XXS' }), /CHAT_ALLOW_EXTREME_MODEL/)
+    const flash = loadConfig({ CHAT_MODEL: 'unsloth/Qwen3.8-Flash-Next-GGUF:UD-IQ3_XXS', CHAT_ALLOW_EXTREME_MODEL: 'true' })
     assert.equal(flash.modelQuantization, 'UD-IQ3_XXS')
-    assert.throws(() => loadConfig({ CHAT_MODEL: 'unsloth/Qwen3.8-27B-GGUF', CHAT_MODEL_QUANTIZATION: 'UD-IQ3_XXS' }), /UD-Q4_K_M/)
+    assert.throws(() => loadConfig({ CHAT_MODEL: 'unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_M', CHAT_MODEL_QUANTIZATION: 'UD-IQ3_XXS' }), /UD-Q4_K_M/)
 })
 
 test('chat config rejects cloud inference and non-local models', () => {
