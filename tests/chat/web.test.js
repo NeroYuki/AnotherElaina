@@ -103,6 +103,9 @@ test('source renderer resolves known markers, removes invented URLs, and appends
     const sources = [{ id: 'web-real', title: 'Real source', url: 'https://example.com/fact' }];
     const output = renderSources('Fact [[source:web-real]]. Fake [claim](https://evil.example/x) https://invented.example', sources);
     assert.match(output, /https:\/\/example\.com\/fact/);
+    assert.match(output, /<https:\/\/example\.com\/fact>/);
+    assert.doesNotMatch(output, /\]\(https?:\/\//);
+    assert.doesNotMatch(output, /(?<!<)https?:\/\//);
     assert.doesNotMatch(output, /evil\.example|invented\.example/);
     assert.match(output, /Sources consulted:/);
 });

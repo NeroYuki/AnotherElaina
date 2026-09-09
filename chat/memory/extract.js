@@ -133,7 +133,7 @@ class MemoryExtractor {
                 scope: structuredClone(input.scope),
                 derivationKey,
                 derivationVersion: this.promptVersion,
-                extractionModel: input.model || this.model || null,
+                extractionModel: input.model || this.provider.model || this.model || null,
                 deletionEpoch: input.expectedEpoch,
                 createdAt: now,
                 updatedAt: now

@@ -56,6 +56,8 @@ async function main() {
     const strict = process.argv.includes('--strict');
     const remote = process.argv.includes('--remote');
     const model = process.env.CHAT_MODEL || 'unsloth/gemma-4-12B-it-qat-GGUF';
+    const quantization = process.env.CHAT_MODEL_QUANTIZATION || undefined;
+    const contextTokens = Number(process.env.CHAT_CONTEXT_TOKENS || 8192);
     if (/(gemini|openai|gpt-|claude|anthropic)/i.test(model)) throw new Error('Cloud inference model rejected');
 
     const proxy = serviceUrl('AI_PROXY_URL', process.env.AI_PROXY_URL || 'http://127.0.0.1:11230');
@@ -78,7 +80,7 @@ async function main() {
     checks.push(await timed('local inference', async () => {
         const body = await fetchJson(new URL('/v1/chat/completions', proxy), {
             method: 'POST',
-            headers: workloadHeaders('unsloth', lmstudioWorkload({ model, contextLength: 8192, maxTokens: 24 }), {
+            headers: workloadHeaders('unsloth', lmstudioWorkload({ model, quantization, contextLength: contextTokens, maxTokens: 24 }), {
                 'content-type': 'application/json'
             }),
             body: JSON.stringify({
@@ -91,7 +93,18 @@ async function main() {
         }, Number(process.env.CHAT_COLD_TIMEOUT_MS || 180000));
         const text = String(body.choices?.[0]?.message?.content || '').trim();
         if (!text) throw new Error('no visible completion text');
-        return { model: body.model || model, visibleText: text.slice(0, 100) };
+        const status = await fetchJson(new URL('/api/inference/status', proxy), { headers: { 'X-AI-Service': 'unsloth' } });
+        const loadedContext = Number(status.context_length ?? status.contextLength);
+        const loadedModel = status.active_model ?? status.model ?? null;
+        const loadedQuantization = status.gguf_variant ?? status.quantization ?? null;
+        if (loadedModel && loadedModel !== model) throw new Error(`loaded model ${loadedModel} does not match CHAT_MODEL=${model}`);
+        if (Number.isFinite(loadedContext) && loadedContext < contextTokens) {
+            throw new Error(`loaded context ${loadedContext} is smaller than CHAT_CONTEXT_TOKENS=${contextTokens}`);
+        }
+        if (quantization && loadedQuantization && loadedQuantization !== quantization) {
+            throw new Error(`loaded quantization ${loadedQuantization} does not match CHAT_MODEL_QUANTIZATION=${quantization}`);
+        }
+        return { model: body.model || model, quantization: loadedQuantization || quantization, requestedContext: contextTokens, loadedContext: loadedContext || null, visibleText: text.slice(0, 100) };
     }));
     checks.push(await timed('qdrant', async () => {
         const body = await fetchJson(new URL('/collections', qdrant), process.env.QDRANT_API_KEY ? { headers: { 'api-key': process.env.QDRANT_API_KEY } } : undefined);

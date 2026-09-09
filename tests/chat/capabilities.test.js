@@ -11,9 +11,11 @@ test('capability probe understands the live orchestrator status field names', as
         supports_reasoning: true,
         context_length: 8192
     }), { headers: { 'content-type': 'application/json' } })
-    const result = await probeCapabilities({ endpoint: 'http://127.0.0.1:11230', model: 'unsloth/gemma-4-12B-it-qat-GGUF', fetchImpl })
+    const result = await probeCapabilities({ endpoint: 'http://127.0.0.1:11230', model: 'unsloth/gemma-4-12B-it-qat-GGUF', expectedContextTokens: 16384, fetchImpl })
     assert.equal(result.nativeTools, true)
     assert.equal(result.vision, true)
     assert.equal(result.thinking, true)
     assert.equal(result.contextTokens, 8192)
+    assert.equal(result.contextSufficient, false)
+    assert.equal(result.degraded, true)
 })

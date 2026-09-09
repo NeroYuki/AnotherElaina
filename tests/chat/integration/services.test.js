@@ -118,6 +118,8 @@ test('a live current-data turn searches, hides control labels, delivers, and com
         assert.ok(result.text.length > 0)
         assert.doesNotMatch(result.text, /^\s*(?:OOC|IC):/im)
         assert.match(result.text, /Sources consulted:/)
+        assert.match(result.text, /<https?:\/\/[^>]+>/)
+        assert.doesNotMatch(result.text, /(?<!<)https?:\/\//)
         assert.ok(deliveries.some(item => item.operation === 'send' && item.payload.content === 'Thinking...'))
         assert.ok(deliveries.some(item => item.operation === 'edit' && item.payload.content === result.text))
         assert.equal(deliveries.some(item => /^\s*(?:OOC|IC):/im.test(item.payload.content || '')), false)

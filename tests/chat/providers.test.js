@@ -26,7 +26,7 @@ test('local provider sends workload, job and thinking controls and retries Retry
     const requests = [];
     let attempt = 0;
     const provider = new LocalOpenAIProvider({
-        endpoint: 'http://127.0.0.1:11230', model: 'gemma-local',
+        endpoint: 'http://127.0.0.1:11230', model: 'gemma-local', contextTokens: 16384, quantization: 'UD-Q4_K_XL',
         sleepImpl: async ms => assert.equal(ms, 0),
         fetchImpl: async (url, options) => {
             requests.push({ url, options });
@@ -43,6 +43,22 @@ test('local provider sends workload, job and thinking controls and retries Retry
     assert.equal(requests[1].options.headers['X-AI-Job-ID'], 'turn-7');
     assert.equal(requests[1].options.headers['X-AI-Service'], 'unsloth');
     assert.ok(requests[1].options.headers['X-AI-Workload']);
+    const workload = JSON.parse(Buffer.from(requests[1].options.headers['X-AI-Workload'], 'base64url').toString());
+    assert.equal(workload.features.context_length, 16384);
+    assert.equal(workload.features.gguf_variant, 'UD-Q4_K_XL');
+});
+
+test('provider classifies context-size errors with loaded and configured limits', async () => {
+    const provider = new LocalOpenAIProvider({
+        endpoint: 'http://127.0.0.1:11230', model: 'gemma-local', contextTokens: 16384, maxRetries: 0,
+        fetchImpl: async () => Response.json({ error: { type: 'exceed_context_size_error', n_prompt_tokens: 12356, n_ctx: 8192 } }, { status: 400 })
+    });
+    await assert.rejects(provider.generate({ messages: [] }), error => {
+        assert.equal(error.code, 'CHAT_CONTEXT_EXCEEDED');
+        assert.equal(error.loadedContextTokens, 8192);
+        assert.equal(error.configuredContextTokens, 16384);
+        return true;
+    });
 });
 
 test('thinking-only length response gets one fresh thinking-disabled retry', async () => {

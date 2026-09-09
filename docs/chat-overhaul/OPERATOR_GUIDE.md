@@ -6,9 +6,23 @@ This guide covers the integrated local-only chat runtime described by `IMPLEMENT
 
 Start from `.env.chat.example` and merge the required values into the deployment environment. Do not commit credentials. Load dotenv before requiring any `chat/` module.
 
-The initial tested generation model is `unsloth/gemma-4-12B-it-qat-GGUF`, with an 8,192-token context and thinking disabled by default. `CHAT_LOCAL_ONLY` must remain `true`. The embedding artifact is pinned to `Xenova/multilingual-e5-small` revision `761b726dd34fb83930e26aab4e9ac3899aa1fa78`; this revision was read from the Hugging Face model API on 2026-09-09. Runtime remote model loading remains disabled after explicit setup.
+The initial tested generation model is `unsloth/gemma-4-12B-it-qat-GGUF`; deployment now requests and verifies a 16,384-token context, with thinking disabled by default. `CHAT_LOCAL_ONLY` must remain `true`. The embedding artifact is pinned to `Xenova/multilingual-e5-small` revision `761b726dd34fb83930e26aab4e9ac3899aa1fa78`; this revision was read from the Hugging Face model API on 2026-09-09. Runtime remote model loading remains disabled after explicit setup.
+
+Generation models use an exact allowlist and fixed GGUF variants:
+
+| `/chat_config` mode | `CHAT_MODEL` | Quantization | Gate |
+| --- | --- | --- | --- |
+| `gemma` | `unsloth/gemma-4-12B-it-qat-GGUF` | `UD-Q4_K_XL` | none |
+| `qwen_27b` | `unsloth/Qwen3.8-27B-GGUF` | `UD-Q4_K_M` | sufficient local VRAM/RAM |
+| `qwen_flash_next` | `unsloth/Qwen3.8-Flash-Next-GGUF` | `UD-IQ3_XXS` | `CHAT_ALLOW_EXTREME_MODEL=true` plus sufficient resources |
+
+Leave `CHAT_MODEL_QUANTIZATION` empty to select the profile variant automatically. If set, it acts as an assertion and startup fails when it does not match the selected profile. The workload manifest carries both `CHAT_CONTEXT_TOKENS` and the GGUF variant. `npm run chat:smoke:local` performs a completion, reads `/api/inference/status`, and fails if the loaded context is smaller than configured. `/chat_config mode:Status` reports the runtime model, quantization, and context. Re-register the development-guild slash commands after upgrading because the Qwen choices changed.
+
+`CHAT_EPISODE_INPUT_TOKENS` bounds background episode-summary input separately from ordinary chat context. The summarizer strips Mongo IDs and operational metadata, keeps only the canonical speaker/message/assistant transcript, and retries once with half the budget if the backend still reports a context overflow.
 
 `CHAT_RESPONSE_STYLE` controls Discord response density. `compact` is the default and bounds ordinary replies to `CHAT_COMPACT_MAX_OUTPUT_TOKENS` plus `CHAT_COMPACT_MAX_WORDS` while preserving citation appendices. `emoji` applies the same bounds, asks the model to avoid narrated body language, and replaces recognized standalone action prose with at most one fitting emoji. `expressive` restores longer roleplay prose up to `CHAT_MAX_OUTPUT_TOKENS`. The owner can change the active style with `/chat_config`; the selection is persisted in `chat-runtime-config` and restored on restart.
+
+All web source URLs are rendered as `<https://...>` so Discord does not create one embed preview per citation.
 
 Run `npm run chat:setup:embedding` once during explicit setup. That command alone permits the pinned artifact download, verifies the 384-dimensional output, and stores it under `CHAT_EMBEDDING_CACHE`; normal runtime loading remains offline-only.
 

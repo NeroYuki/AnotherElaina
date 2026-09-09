@@ -8,7 +8,7 @@ The legacy generation handler has been replaced by the local-only `chat/` subsys
 
 Implemented:
 
-- Local Gemma generation, robust SSE, thinking controls, orchestrator admission headers, cancellation/retry, native tools, and tool-result continuation.
+- Local Gemma/Qwen model profiles, robust SSE, thinking controls, context/quantization-aware orchestrator admission headers, cancellation/retry, native tools, and tool-result continuation.
 - Stable Discord identity, IC/OOC segments, reply/image provenance, continuity queues, fenced leases, durable turns, bounded context, and long-response delivery.
 - Persistent scenes, characters, directional relationships/promises, evidence-backed memory, correction lineage, episodes, lore, retention, deletion epochs, and reconciliation jobs.
 - Lexical/E5/Qdrant retrieval with ACL revalidation; SearXNG search and SSRF-safe page fetching with application-rendered citations.
@@ -19,20 +19,24 @@ Implemented:
 
 - Mongo migration created and verified all chat collections/indexes.
 - Pinned E5 revision `761b726dd34fb83930e26aab4e9ac3899aa1fa78` produced a normalized 384-dimensional vector; runtime downloads are disabled.
-- Local Gemma smoke passed; live capability probe confirmed 8,192 context, vision, native tools, and optional reasoning.
+- Local Gemma smoke passed and now asserts the post-admission context. The live service loaded the configured 16,384-token context with `UD-Q4_K_XL`; capability status also exposes a degraded flag if a loaded model is smaller than `CHAT_CONTEXT_TOKENS`.
 - Docker-backed Qdrant and SearXNG are healthy. Strict local and subsystem smoke passed, including a real SearXNG query and the rebuilt Qdrant alias.
 - Live lore ingestion/reindex and an ACL-scoped E5 semantic round-trip passed against Qdrant.
 - A fake-Discord end-to-end turn passed against real Mongo, Gemma, E5/Qdrant, and the background job queue: scene creation, placeholder delivery, streamed edits, durable commit, selected scene head, and memory-extraction admission were verified without connecting to Discord.
 - Replay completed 40/40 local transport runs, 81 samples, median 1,201 ms and p95 2,193 ms.
-- Current deterministic result: 87 passing tests and three skipped opt-in live integration tests. With `CHAT_INTEGRATION=true`, all three live tests pass, for 90 total.
+- Current deterministic result: 93 passing tests and three skipped opt-in live integration tests. With `CHAT_INTEGRATION=true`, all three live tests pass, for 96 total.
 - Current-data routing is application-enforced for exchange rates, prices, weather, scores/schedules, officeholders, recent news, and explicit current/latest requests. The exact reported USD/JPY Discord prompt completed three consecutive integrated runs with a persisted web search and cited sources.
 - Model-visible segment JSON was removed. Persona examples no longer teach response-side `OOC:` labels, and both streamed and final delivery remove leaked `IC:`/`OOC:` control labels.
 - Response style is configurable as `compact` (default), `emoji`, or `expressive` through environment and `/chat_config`, with restart persistence. Compact/emoji responses have token and visible-word bounds while citation appendices remain intact. A live reproduction of the reported long-action pattern returned 33 words in compact mode and 22 words in emoji mode.
+- Discord source URLs are always rendered inside `<...>`, including resolved inline citations and the source appendix, to suppress link-preview embed spam.
+- Episode summaries no longer serialize raw Mongo records. They receive a compact canonical transcript under `CHAT_EPISODE_INPUT_TOKENS` and retry once at half that budget after a context-size rejection.
+- A live synthetic reproduction with 12 oversized Mongo-like turn records compacted to 8,719 input bytes and completed a valid episode summary under the 16,384-token model context.
+- Explicit local profiles are available for Gemma `UD-Q4_K_XL`, `unsloth/Qwen3.8-27B-GGUF` at `UD-Q4_K_M`, and gated `unsloth/Qwen3.8-Flash-Next-GGUF` at `UD-IQ3_XXS`.
 - No Gemini/cloud inference path is referenced by the new runtime entry path.
 
 ## Release State
 
-The local subsystem is operational and its automated release checks pass. Docker containers currently provide Qdrant on `127.0.0.1:6333` and SearXNG on `127.0.0.1:8088`.
+The local subsystem is operational and its automated release checks pass. Docker containers currently provide Qdrant on `192.168.1.2:6333` and SearXNG on `192.168.1.2:8088` under the source-restricted firewall rule described below.
 
 The production topology uses a separate Linux bot host at current DHCP address `192.168.1.9`; MongoDB runs locally on that Linux host. Qdrant and SearXNG now bind only to the Windows Ethernet address at `192.168.1.2:6333` and `:8088`. A Private-profile Windows firewall rule permits those ports only from `192.168.1.9` and the service host itself, and Qdrant also requires a generated API key stored in ignored deployment/runtime environment files. The existing AI proxy at `192.168.1.2:11230` remains separately managed. `npm run chat:smoke:remote` rejects loopback remote-service endpoints while allowing Linux-local MongoDB.
 
@@ -65,4 +69,4 @@ The Windows-side LAN bind, firewall scope, and full local integration suite pass
 4. Record the host and guild evidence in `IMPLEMENTATION_REPORT.md`.
 5. Do not broaden rollout until the `OPERATOR_GUIDE.md` release gates pass.
 
-The worktree was already dirty. Unrelated user files and `temp/rate_limit_data.json` were not reverted. `data/chat-models/` is intentionally ignored.
+The worktree was already dirty. Unrelated user files remain untouched; test-generated changes to `temp/rate_limit_data.json` were cleaned after verification. `data/chat-models/` is intentionally ignored.

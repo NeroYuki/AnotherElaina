@@ -71,6 +71,32 @@ test('/chat_config applies the persisted stream preference to the running servic
     assert.equal(persisted[1].$set.responseStyle, 'emoji');
 });
 
+test('/chat_config selects the fixed Qwen profile and persists its quantization', async () => {
+    let update
+    const chatService = { provider: { model: 'old', quantization: 'old', contextTokens: 16384 }, config: { allowExtremeModel: false }, streamEnabled: true, responseStyle: 'compact' }
+    chatConfigCommand.configure({ ownerIds: ['owner'], chatService, repository: { collection: () => ({ updateOne: async (...args) => { update = args[1] } }) } })
+    const current = interaction({
+        user: { id: 'owner', username: 'Owner' },
+        options: { getString: name => name === 'mode' ? 'qwen_27b' : null, getBoolean: () => null }
+    })
+    await chatConfigCommand.execute(current)
+    assert.equal(chatService.provider.model, 'unsloth/Qwen3.8-27B-GGUF')
+    assert.equal(chatService.provider.quantization, 'UD-Q4_K_M')
+    assert.equal(update.$set.quantization, 'UD-Q4_K_M')
+})
+
+test('/chat_config keeps Flash-Next disabled until the resource gate is enabled', async () => {
+    const chatService = { provider: { model: 'old', quantization: 'old' }, config: { allowExtremeModel: false } }
+    chatConfigCommand.configure({ ownerIds: ['owner'], chatService, repository: { collection: () => ({ updateOne: async () => { throw new Error('must not persist') } }) } })
+    const current = interaction({
+        user: { id: 'owner', username: 'Owner' },
+        options: { getString: name => name === 'mode' ? 'qwen_flash_next' : null, getBoolean: () => null }
+    })
+    await chatConfigCommand.execute(current)
+    assert.equal(chatService.provider.model, 'old')
+    assert.match(current.replies.at(-1)[1], /CHAT_ALLOW_EXTREME_MODEL=true/)
+})
+
 test('audience compatibility never broadens source users or crosses guilds', () => {
     assert.equal(permissions.audienceIsCompatible(
         { guildId: 'g', allowedUserIds: ['1', '2'], allowedRoleIds: ['r', 'x'] },

@@ -41,7 +41,7 @@ async function request(body, suffix = '') {
   const record={case:selected+suffix,model,startedAt:new Date().toISOString(),request:payload};
   try {
     const r=await fetch(PROXY_URL+'/v1/chat/completions',{
-      method:'POST',headers:workloadHeaders('unsloth',lmstudioWorkload({model,contextLength:8192,maxTokens:payload.max_tokens,vision:false,stream:false}),{'Content-Type':'application/json'}),
+      method:'POST',headers:workloadHeaders('unsloth',lmstudioWorkload({model,quantization:process.env.CHAT_MODEL_QUANTIZATION,contextLength:Number(process.env.CHAT_CONTEXT_TOKENS||8192),maxTokens:payload.max_tokens,vision:false,stream:false}),{'Content-Type':'application/json'}),
       body:JSON.stringify(payload),signal:AbortSignal.timeout(240000)
     });
     record.status=r.status;record.retryAfter=r.headers.get('retry-after');

@@ -13,6 +13,18 @@ const {
 
 const RETRYABLE_STATUS = new Set([408, 409, 425, 429, 500, 502, 503, 504]);
 
+function contextSizeError(text) {
+    try {
+        const parsed = JSON.parse(text);
+        const detail = parsed?.error || parsed;
+        const loaded = Number(detail?.n_ctx);
+        if (detail?.type === 'exceed_context_size_error' || Number.isFinite(loaded)) {
+            return { loadedContextTokens: Number.isFinite(loaded) ? loaded : null, promptTokens: Number(detail?.n_prompt_tokens) || null };
+        }
+    } catch {}
+    return /exceeds the available context size/i.test(text) ? { loadedContextTokens: null, promptTokens: null } : null;
+}
+
 function retryAfterMs(value, now = Date.now()) {
     if (!value) return null;
     const seconds = Number(value);
@@ -91,7 +103,7 @@ function parseCompletion(json, fallbackModel) {
 
 class LocalOpenAIProvider {
     constructor({ endpoint = PROXY_URL, model = 'unsloth/gemma-4-12B-it-qat-GGUF',
-        contextTokens = 8192, fetchImpl = globalThis.fetch, maxRetries = 1,
+        contextTokens = 8192, quantization, fetchImpl = globalThis.fetch, maxRetries = 1,
         maxRetryDelayMs = 10_000, sleepImpl = sleep, service = 'unsloth' } = {}) {
         if (typeof fetchImpl !== 'function') throw new TypeError('Native fetch is required');
         const parsed = new URL(endpoint);
@@ -100,6 +112,7 @@ class LocalOpenAIProvider {
         this.endpoint = parsed.toString().replace(/\/$/, '');
         this.model = model;
         this.contextTokens = contextTokens;
+        this.quantization = quantization || null;
         this.fetch = fetchImpl;
         this.maxRetries = Math.max(0, Math.min(1, maxRetries));
         this.maxRetryDelayMs = maxRetryDelayMs;
@@ -130,6 +143,7 @@ class LocalOpenAIProvider {
     _headers(request, stream, body) {
         const workload = lmstudioWorkload({
             model: body.model,
+            quantization: request.quantization || this.quantization,
             contextLength: request.contextTokens || this.contextTokens,
             maxTokens: body.max_tokens,
             vision: request.vision === true,
@@ -156,12 +170,16 @@ class LocalOpenAIProvider {
                 });
                 if (response.ok) return response;
                 const text = (await response.text()).slice(0, 4096);
+                const contextFailure = response.status === 400 ? contextSizeError(text) : null;
                 const wait = retryAfterMs(response.headers.get('retry-after'));
-                const error = new ProviderHttpError(`Local inference failed with HTTP ${response.status}`, {
-                    code: 'INFERENCE_HTTP_ERROR', status: response.status,
+                const error = new ProviderHttpError(contextFailure
+                    ? `Local inference context is too small (loaded ${contextFailure.loadedContextTokens || 'unknown'}, configured ${request.contextTokens || this.contextTokens})`
+                    : `Local inference failed with HTTP ${response.status}`, {
+                    code: contextFailure ? 'CHAT_CONTEXT_EXCEEDED' : 'INFERENCE_HTTP_ERROR', status: response.status,
                     retryable: RETRYABLE_STATUS.has(response.status), retryAfterMs: wait,
                     cause: text ? new Error(text) : null,
                 });
+                if (contextFailure) Object.assign(error, contextFailure, { configuredContextTokens: request.contextTokens || this.contextTokens });
                 if (!error.retryable || attempt === this.maxRetries) throw error;
                 lastError = error;
                 await this.sleep(Math.min(wait ?? 250 * (attempt + 1), this.maxRetryDelayMs), request.signal);
@@ -287,4 +305,5 @@ module.exports = {
     createLocalOpenAIProvider,
     parseCompletion,
     retryAfterMs,
+    contextSizeError,
 };

@@ -4,6 +4,7 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const { validateCandidate, validateExtraction } = require('../../chat/memory/validate')
 const { MemoryExtractor } = require('../../chat/memory/extract')
+const { EpisodeSummarizer, compactSummarySource } = require('../../chat/memory/summarize')
 const { activeWithLineage, projectRelationships, projectScene } = require('../../chat/memory/project')
 
 const turns = [
@@ -119,4 +120,33 @@ test('extraction redacts a derived write if deletion wins the commit race', asyn
     assert.equal(result.stale, true)
     assert.equal(saved.length, 1)
     assert.deepEqual(redacted, ['race-memory'])
+})
+
+test('episode summary input excludes persistence metadata and stays within its byte budget', () => {
+    const source = compactSummarySource({
+        participants: [{ userId: 'u1', ownerUserId: 'u1', characterId: 'ren', displayName: 'Ren', secret: 'omit' }],
+        turns: Array.from({ length: 12 }, (_, index) => ({
+            _id: `mongo-${index}`, eventId: `t${index}`, requestId: `request-${index}`, content: 'user '.repeat(1000),
+            response: { text: 'assistant '.repeat(1000), model: 'internal' }
+        }))
+    }, 1000)
+    const json = JSON.stringify(source)
+    assert.ok(Buffer.byteLength(json) <= 2000)
+    assert.doesNotMatch(json, /mongo-|request-|"model"|"ownerUserId"|"secret"/)
+    assert.match(json, /assistantResponse/)
+})
+
+test('episode summarizer retries once with a smaller transcript after a context rejection', async () => {
+    const payloadSizes = []
+    const summarizer = new EpisodeSummarizer({
+        provider: { async generate(request) {
+            payloadSizes.push(request.messages[1].content.length)
+            if (payloadSizes.length === 1) throw Object.assign(new Error('too large'), { code: 'CHAT_CONTEXT_EXCEEDED' })
+            return { text: JSON.stringify({ summary: 'done', locationTime: '', significantEvents: [], unresolvedThreads: [], relationshipChanges: [], topicTags: [] }) }
+        } }
+    })
+    const output = await summarizer.summarize({ turns: [{ eventId: 't1', content: 'x'.repeat(10000) }], participants: [], inputTokenBudget: 2000 })
+    assert.equal(output.summary, 'done')
+    assert.equal(payloadSizes.length, 2)
+    assert.ok(payloadSizes[1] < payloadSizes[0])
 })

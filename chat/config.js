@@ -2,6 +2,7 @@
 
 const path = require('node:path')
 const net = require('node:net')
+const { profileForModel } = require('./model_profiles')
 
 const DEFAULT_EMBEDDING_REVISION = '761b726dd34fb83930e26aab4e9ac3899aa1fa78'
 
@@ -68,13 +69,18 @@ function privateServiceUrl(raw, name, allowedHosts = []) {
     return url.toString().replace(/\/$/, '')
 }
 
-function validateLocalModel(model) {
-    const gemma = model === 'unsloth/gemma-4-12B-it-qat-GGUF'
-    const qwen = /^qwen[-_/.:a-z0-9]+$/i.test(model)
-    if (!gemma && !qwen) {
-        throw new ChatConfigError('CHAT_MODEL must be the tested local Gemma identifier or an explicit local Qwen identifier')
+function resolveModel(env) {
+    const model = env.CHAT_MODEL || 'unsloth/gemma-4-12B-it-qat-GGUF'
+    const profile = profileForModel(model)
+    if (!profile) throw new ChatConfigError('CHAT_MODEL must be one of the configured local Gemma or Qwen model identifiers')
+    if (profile.resourceTier === 'extreme' && !boolean(env, 'CHAT_ALLOW_EXTREME_MODEL', false)) {
+        throw new ChatConfigError('CHAT_ALLOW_EXTREME_MODEL=true is required for the Qwen Flash-Next profile')
     }
-    return model
+    const quantization = env.CHAT_MODEL_QUANTIZATION || profile.quantization
+    if (quantization !== profile.quantization) {
+        throw new ChatConfigError(`CHAT_MODEL_QUANTIZATION must be ${profile.quantization} for ${profile.model}`)
+    }
+    return { ...profile, quantization }
 }
 
 function loadConfig(env = process.env, options = {}) {
@@ -93,12 +99,18 @@ function loadConfig(env = process.env, options = {}) {
 
     const inferenceHosts = String(env.CHAT_ALLOWED_INFERENCE_HOSTS || '').split(',')
     const serviceHosts = String(env.CHAT_ALLOWED_SERVICE_HOSTS || '').split(',')
+    const modelProfile = resolveModel(env)
+    const contextTokens = integer(env, 'CHAT_CONTEXT_TOKENS', 8192, { min: 4096, max: 262144 })
     const config = {
         engine: env.CHAT_ENGINE || 'overhaul',
         localOnly,
-        model: validateLocalModel(env.CHAT_MODEL || 'unsloth/gemma-4-12B-it-qat-GGUF'),
+        model: modelProfile.model,
+        modelAlias: modelProfile.alias,
+        modelQuantization: modelProfile.quantization,
+        modelResourceTier: modelProfile.resourceTier,
+        allowExtremeModel: boolean(env, 'CHAT_ALLOW_EXTREME_MODEL', false),
         inferenceUrl: privateServiceUrl(env.AI_PROXY_URL || 'http://192.168.1.2:11230', 'AI_PROXY_URL', inferenceHosts),
-        contextTokens: integer(env, 'CHAT_CONTEXT_TOKENS', 8192, { min: 4096, max: 262144 }),
+        contextTokens,
         maxOutputTokens: integer(env, 'CHAT_MAX_OUTPUT_TOKENS', 512, { min: 64, max: 1024 }),
         responseStyle: responseStyle(env),
         compactMaxOutputTokens: integer(env, 'CHAT_COMPACT_MAX_OUTPUT_TOKENS', 192, { min: 64, max: 512 }),
@@ -125,7 +137,8 @@ function loadConfig(env = process.env, options = {}) {
             maxTokens: 512
         },
         episodeTurnThreshold: integer(env, 'CHAT_EPISODE_TURN_THRESHOLD', 12, { min: 2, max: 100 }),
-        episodeTokenThreshold: integer(env, 'CHAT_EPISODE_TOKEN_THRESHOLD', 2000, { min: 256, max: 16000 })
+        episodeTokenThreshold: integer(env, 'CHAT_EPISODE_TOKEN_THRESHOLD', 2000, { min: 256, max: 16000 }),
+        episodeInputTokens: integer(env, 'CHAT_EPISODE_INPUT_TOKENS', Math.min(6000, contextTokens - 1800), { min: 512, max: contextTokens - 1200 })
     }
 
     if (config.engine !== 'overhaul') throw new ChatConfigError('CHAT_ENGINE must be overhaul')
@@ -140,5 +153,6 @@ module.exports = {
     ChatConfigError,
     DEFAULT_EMBEDDING_REVISION,
     isPrivateHost,
+    resolveModel,
     loadConfig
 }

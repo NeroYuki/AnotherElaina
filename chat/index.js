@@ -27,6 +27,7 @@ const { ChatStatus } = require('./observability/metrics')
 const { COLLECTIONS } = require('./persistence/collections')
 const { validateSchema } = require('./tools/schema_validator')
 const { configuredOwnerIds } = require('./discord/permissions')
+const { profileForModel } = require('./model_profiles')
 
 async function createChatSubsystem(options = {}) {
     const config = options.config || loadConfig()
@@ -34,7 +35,7 @@ async function createChatSubsystem(options = {}) {
     const repository = new ChatRepository({ db })
     const leases = new ContinuityLeases({ db, durationMs: Math.min(config.turnTimeoutMs + 30000, 210000) })
     const jobs = new JobQueue({ db })
-    const provider = options.provider || new LocalOpenAIProvider({ endpoint: config.inferenceUrl, model: config.model, contextTokens: config.contextTokens })
+    const provider = options.provider || new LocalOpenAIProvider({ endpoint: config.inferenceUrl, model: config.model, quantization: config.modelQuantization, contextTokens: config.contextTokens })
     const embedder = options.embedder || new E5Embedder(config.embedding)
     const vectorIndex = options.vectorIndex || new QdrantVectorIndex({ url: config.qdrantUrl, apiKey: config.qdrantApiKey, ...config.embedding })
     const lexical = new MongoLexicalRetriever({ db })
@@ -79,7 +80,11 @@ async function createChatSubsystem(options = {}) {
     const persistedConfig = await repository.collection(COLLECTIONS.migrations).findOne({ migrationId: 'chat-runtime-config' })
     if (persistedConfig) {
         globalThis.operating_mode = persistedConfig.mode === 'disabled' ? 'disabled' : 'auto_local'
-        if (persistedConfig.model) provider.model = persistedConfig.model
+        const persistedProfile = profileForModel(persistedConfig.model)
+        if (persistedProfile && (persistedProfile.resourceTier !== 'extreme' || config.allowExtremeModel)) {
+            provider.model = persistedProfile.model
+            provider.quantization = persistedProfile.quantization
+        }
         service.streamEnabled = persistedConfig.stream !== false
         if (persistedConfig.responseStyle) service.responseStyle = normalizeResponseStyle(persistedConfig.responseStyle)
     }
@@ -122,7 +127,7 @@ async function createChatSubsystem(options = {}) {
             if (!scene || !continuity || continuity.deletionEpoch !== job.expectedEpoch) return { stale: true }
             const turns = await repository.collection(COLLECTIONS.turns).find({ sceneId: scene.sceneId, branchId: job.payload.branchId, lifecycle: { $in: ['committed', 'finalized'] } }).sort({ ordinal: -1 }).limit(config.episodeTurnThreshold).toArray()
             turns.reverse()
-            const result = await episodeSummarizer.runJob({ continuityId: continuity.continuityId, expectedEpoch: continuity.deletionEpoch, expectedRevision: continuity.revision, guildId: continuity.guildId, sceneId: scene.sceneId, branchId: scene.branchId, participants: scene.participants || [], audienceUserIds: continuity.allowedAudienceUserIds || [], turns, jobId: job.jobId })
+            const result = await episodeSummarizer.runJob({ continuityId: continuity.continuityId, expectedEpoch: continuity.deletionEpoch, expectedRevision: continuity.revision, guildId: continuity.guildId, sceneId: scene.sceneId, branchId: scene.branchId, participants: scene.participants || [], audienceUserIds: continuity.allowedAudienceUserIds || [], turns, inputTokenBudget: config.episodeInputTokens, jobId: job.jobId })
             if (!result.stale) await jobs.enqueue({ type: 'index_episode', entityId: result.episode.episodeId, continuityId: continuity.continuityId, expectedEpoch: continuity.deletionEpoch, idempotencyKey: `index-episode:${result.episode.episodeId}:${result.episode.derivationVersion}`, payload: { episodeId: result.episode.episodeId } })
             return result
         },
@@ -131,7 +136,7 @@ async function createChatSubsystem(options = {}) {
             if (!episode) return { stale: true }
             const turns = await repository.collection(COLLECTIONS.turns).find({ eventId: { $in: episode.sourceTurnIds }, lifecycle: { $in: ['committed', 'finalized'] } }).sort({ ordinal: 1 }).toArray()
             if (!turns.length) return { stale: true }
-            return episodeSummarizer.runJob({ ...episode, turns, expectedEpoch: job.expectedEpoch, expectedRevision: episode.projectionRevision, jobId: job.jobId })
+            return episodeSummarizer.runJob({ ...episode, turns, expectedEpoch: job.expectedEpoch, expectedRevision: episode.projectionRevision, inputTokenBudget: config.episodeInputTokens, jobId: job.jobId })
         },
         index_episode: async job => {
             const episode = await repository.collection(COLLECTIONS.episodes).findOne({ episodeId: job.payload.episodeId, lifecycle: 'active' })
@@ -172,7 +177,7 @@ async function createChatSubsystem(options = {}) {
         embedder.init().then(() => status.set('embeddings', { enabled: true, reachable: true, exercised: true })).catch(error => status.set('embeddings', { enabled: true, reachable: false, degraded: true, error: error.code || error.message })),
         vectorIndex.ensureCollection().then(() => vectorIndex.ensureAlias()).then(activeCollection => status.set('qdrant', { enabled: true, reachable: true, exercised: true, activeCollection })).catch(error => status.set('qdrant', { enabled: true, reachable: false, degraded: true, error: error.code || error.message })),
         searxng.search({ query: 'Node.js documentation', limit: 1 }).then(result => status.set('searxng', { enabled: true, reachable: true, exercised: true, resultCount: result.results.length })).catch(error => status.set('searxng', { enabled: true, reachable: false, degraded: true, error: error.code || error.message })),
-        probeCapabilities({ endpoint: config.inferenceUrl, model: provider.model }).then(capabilities => { service.nativeTools = capabilities.nativeTools; status.set('provider', { enabled: true, ...capabilities, exercised: true }) }).catch(error => status.set('provider', { enabled: true, reachable: false, degraded: true, model: provider.model, error: error.code || error.message }))
+        probeCapabilities({ endpoint: config.inferenceUrl, model: provider.model, expectedContextTokens: config.contextTokens }).then(capabilities => { service.nativeTools = capabilities.nativeTools; status.set('provider', { enabled: true, ...capabilities, exercised: true }) }).catch(error => status.set('provider', { enabled: true, reachable: false, degraded: true, model: provider.model, error: error.code || error.message }))
     ])
     const day = new Date().toISOString().slice(0, 10)
     await jobs.enqueue({ type: 'retention_cleanup', idempotencyKey: `retention:${day}`, priority: -100, payload: {} })

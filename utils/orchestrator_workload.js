@@ -125,18 +125,20 @@ function mapperatorinatorWorkload(params = {}) {
     };
 }
 
-function lmstudioWorkload({ model, contextLength, maxTokens, vision = false, stream = false }) {
+function lmstudioWorkload({ model, quantization, contextLength, maxTokens, vision = false, stream = false }) {
     const checkpoint = String(model || 'unknown').slice(0, 160);
+    const variant = quantization ? String(quantization).slice(0, 80) : undefined;
     return {
         schema_version: SCHEMA_VERSION,
         task_kind: vision ? 'vision_completion' : 'text_completion',
-        model: { family: 'llm', checkpoint },
+        model: { family: 'llm', checkpoint, ...(variant ? { quantization: variant } : {}) },
         shape: { width: 1, height: 1, batch_size: 1, batch_count: 1 },
-        stages: [{ kind: 'inference', model: { family: 'llm', checkpoint } }],
+        stages: [{ kind: 'inference', model: { family: 'llm', checkpoint, ...(variant ? { quantization: variant } : {}) } }],
         features: {
             context_length: integer(Number(contextLength), 8192, 2_000_000),
             max_output_tokens: integer(Number(maxTokens), 400),
             vision: Boolean(vision), stream: Boolean(stream), context_source: 'consumer',
+            ...(variant ? { gguf_variant: variant } : {}),
         },
     };
 }

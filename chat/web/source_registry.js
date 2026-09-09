@@ -44,18 +44,18 @@ function stripUnknownCitations(text, known) {
     let output = String(text || '');
     output = output.replace(/\[\[(?:source:)?([a-z0-9_-]+)\]\]/gi, (match, id) => {
         const source = byId.get(id);
-        return source ? `[${source.title}](${source.url})` : '';
+        return source ? `${source.title} (<${source.url}>)` : '';
     });
-    output = output.replace(/【(?:source:)?([a-z0-9_-]+)】/gi, (match, id) => byId.has(id) ? `[${id}](${byId.get(id).url})` : '');
+    output = output.replace(/【(?:source:)?([a-z0-9_-]+)】/gi, (match, id) => byId.has(id) ? `${id} (<${byId.get(id).url}>)` : '');
 
     const allowedUrls = new Set(known.map(source => canonicalUrl(source.url)));
     output = output.replace(/\[([^\]]+)]\((https?:\/\/[^\s)]+)\)/gi, (match, label, url) => {
-        try { return allowedUrls.has(canonicalUrl(url)) ? match : label; } catch { return label; }
+        try { return allowedUrls.has(canonicalUrl(url)) ? `${label} (<${canonicalUrl(url)}>)` : label; } catch { return label; }
     });
-    output = output.replace(/(?<!\()https?:\/\/[^\s<>)]+/gi, match => {
+    output = output.replace(/(?<![<(])https?:\/\/[^\s<>)]+/gi, match => {
         const suffix = match.match(/[.,;:!?]+$/)?.[0] || '';
         const raw = suffix ? match.slice(0, -suffix.length) : match;
-        try { return allowedUrls.has(canonicalUrl(raw)) ? match : ''; } catch { return ''; }
+        try { return allowedUrls.has(canonicalUrl(raw)) ? `<${canonicalUrl(raw)}>${suffix}` : ''; } catch { return ''; }
     });
     return output.replace(/[ \t]+\n/g, '\n').trim();
 }
@@ -65,7 +65,7 @@ function renderSources(text, sources, { limit = 3, label = 'Sources consulted' }
         .map(source => [source.id || sourceIdForUrl(source.url), { ...source, id: source.id || sourceIdForUrl(source.url) }])).values()];
     const clean = stripUnknownCitations(text, known);
     if (known.length === 0) return clean;
-    const lines = known.slice(0, limit).map(source => `- [${String(source.title || source.url).replace(/[\[\]]/g, '')}](${canonicalUrl(source.url)})`);
+    const lines = known.slice(0, limit).map(source => `- ${String(source.title || source.url).replace(/[\[\]<>]/g, '')} — <${canonicalUrl(source.url)}>`);
     return `${clean}\n\n${label}:\n${lines.join('\n')}`.trim();
 }
 
