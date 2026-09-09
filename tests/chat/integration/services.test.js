@@ -64,7 +64,7 @@ test('pinned local embeddings round-trip through the live Qdrant alias', { skip:
     }
 })
 
-test('a live addressed Discord turn is generated, delivered, and committed', { skip: !enabled, timeout: 180000 }, async () => {
+test('a live current-data turn searches, hides control labels, delivers, and commits', { skip: !enabled, timeout: 180000 }, async () => {
     const databaseName = `another_elaina_chat_smoke_${process.pid}_${Date.now()}`
     const mongo = await openMongo({ dbName: databaseName })
     let subsystem
@@ -102,7 +102,7 @@ test('a live addressed Discord turn is generated, delivered, and committed', { s
         channel,
         author: { id: userId, username: 'IntegrationPlayer', globalName: 'Integration Player', bot: false },
         member: { displayName: 'Integration Player', permissions: { has: () => false } },
-        content: `<@${botUserId}> IC: We meet beneath the old observatory. Greet me briefly and stay in character.`,
+        content: `<@${botUserId}> i think you have the power to access it, can you tell me how much a dollar is in japanese yen`,
         createdAt: new Date(),
         mentions: { users: new Map([[botUserId, { id: botUserId }]]), roles: new Map(), channels: new Map() },
         attachments: new Map(),
@@ -116,14 +116,20 @@ test('a live addressed Discord turn is generated, delivered, and committed', { s
 
         assert.ok(result.turnId)
         assert.ok(result.text.length > 0)
+        assert.doesNotMatch(result.text, /^\s*(?:OOC|IC):/im)
+        assert.match(result.text, /Sources consulted:/)
         assert.ok(deliveries.some(item => item.operation === 'send' && item.payload.content === 'Thinking...'))
         assert.ok(deliveries.some(item => item.operation === 'edit' && item.payload.content === result.text))
+        assert.equal(deliveries.some(item => /^\s*(?:OOC|IC):/im.test(item.payload.content || '')), false)
 
         const turn = await subsystem.repository.getTurn(result.turnId)
         assert.equal(turn.lifecycle, 'finalized')
         assert.equal(turn.requestId, `discord:${message.guildId}:${message.channelId}:${message.id}`)
         assert.equal(turn.delivery.status, 'delivered')
         assert.equal(turn.response.model, subsystem.service.provider.model)
+        const webRun = await mongo.db.collection(COLLECTIONS.toolRuns).findOne({ turnId: result.turnId, tool: 'web_search', status: 'completed' })
+        assert.ok(webRun)
+        assert.ok(webRun.result.data.results.length > 0)
 
         const binding = await mongo.db.collection(COLLECTIONS.bindings).findOne({ guildId: message.guildId, channelId: message.channelId, threadId: null })
         const continuity = await subsystem.repository.getContinuity(binding.continuityId)

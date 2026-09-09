@@ -10,12 +10,16 @@ test('chat config is local-only with a pinned embedding revision', () => {
     assert.equal(config.model, 'unsloth/gemma-4-12B-it-qat-GGUF')
     assert.equal(config.embedding.revision, DEFAULT_EMBEDDING_REVISION)
     assert.equal(config.thinkingDefault, false)
+    assert.equal(config.responseStyle, 'compact')
+    assert.equal(config.compactMaxOutputTokens, 192)
+    assert.equal(config.compactMaxWords, 90)
 })
 
 test('chat config rejects cloud inference and non-local models', () => {
     assert.throws(() => loadConfig({ AI_PROXY_URL: 'https://api.example.com', CHAT_LOCAL_ONLY: 'true' }), ChatConfigError)
     assert.throws(() => loadConfig({ CHAT_MODEL: 'gemini-2.5-flash' }), ChatConfigError)
     assert.throws(() => loadConfig({ CHAT_LOCAL_ONLY: 'false' }), ChatConfigError)
+    assert.throws(() => loadConfig({ CHAT_RESPONSE_STYLE: 'novel' }), ChatConfigError)
 })
 
 test('private host classification covers local IPv4 and IPv6', () => {

@@ -46,8 +46,29 @@ async function runToolLoop(options) {
             thinking: options.thinking,
             signal: options.signal,
             jobId: options.turnId,
-            vision: options.vision
-        }, { onDelta: options.onDelta, onToolStart: options.onToolStart })
+            vision: options.vision,
+            toolChoice: round === 0 && options.requiredTool ? {
+                type: 'function', function: { name: options.requiredTool.name }
+            } : undefined
+        }, {
+            onDelta: round === 0 && options.requiredTool ? undefined : options.onDelta,
+            onToolStart: options.onToolStart
+        })
+        if (!result.toolCalls.length && round === 0 && options.requiredTool) {
+            result = {
+                ...result,
+                text: '',
+                toolCalls: [{
+                    id: `${options.turnId || 'turn'}-required-web`,
+                    type: 'function',
+                    function: {
+                        name: options.requiredTool.name,
+                        arguments: JSON.stringify(options.requiredTool.arguments)
+                    }
+                }]
+            }
+            await options.onToolStart?.()
+        }
         if (!result.toolCalls.length) return { ...result, messages, sources, toolCallCount: calls }
         if (round === options.maxRounds) break
         messages.push({ role: 'assistant', content: result.text || null, tool_calls: result.toolCalls })

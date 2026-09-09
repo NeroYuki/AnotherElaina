@@ -30,6 +30,14 @@ function boolean(env, name, fallback) {
     throw new ChatConfigError(`${name} must be true or false`)
 }
 
+function responseStyle(env) {
+    const style = String(env.CHAT_RESPONSE_STYLE || 'compact').trim().toLowerCase()
+    if (!['compact', 'emoji', 'expressive'].includes(style)) {
+        throw new ChatConfigError('CHAT_RESPONSE_STYLE must be compact, emoji, or expressive')
+    }
+    return style
+}
+
 function isPrivateHost(hostname) {
     const host = hostname.replace(/^\[|\]$/g, '').toLowerCase()
     if (host === 'localhost' || host.endsWith('.localhost')) return true
@@ -92,6 +100,9 @@ function loadConfig(env = process.env, options = {}) {
         inferenceUrl: privateServiceUrl(env.AI_PROXY_URL || 'http://192.168.1.2:11230', 'AI_PROXY_URL', inferenceHosts),
         contextTokens: integer(env, 'CHAT_CONTEXT_TOKENS', 8192, { min: 4096, max: 262144 }),
         maxOutputTokens: integer(env, 'CHAT_MAX_OUTPUT_TOKENS', 512, { min: 64, max: 1024 }),
+        responseStyle: responseStyle(env),
+        compactMaxOutputTokens: integer(env, 'CHAT_COMPACT_MAX_OUTPUT_TOKENS', 192, { min: 64, max: 512 }),
+        compactMaxWords: integer(env, 'CHAT_COMPACT_MAX_WORDS', 90, { min: 30, max: 250 }),
         thinkingDefault: boolean(env, 'CHAT_THINKING_DEFAULT', false),
         inferenceConcurrency: integer(env, 'CHAT_INFERENCE_CONCURRENCY', 1, { min: 1, max: 8 }),
         turnTimeoutMs: integer(env, 'CHAT_TURN_TIMEOUT_MS', 90000, { min: 1000, max: 180000 }),

@@ -8,6 +8,8 @@ Start from `.env.chat.example` and merge the required values into the deployment
 
 The initial tested generation model is `unsloth/gemma-4-12B-it-qat-GGUF`, with an 8,192-token context and thinking disabled by default. `CHAT_LOCAL_ONLY` must remain `true`. The embedding artifact is pinned to `Xenova/multilingual-e5-small` revision `761b726dd34fb83930e26aab4e9ac3899aa1fa78`; this revision was read from the Hugging Face model API on 2026-09-09. Runtime remote model loading remains disabled after explicit setup.
 
+`CHAT_RESPONSE_STYLE` controls Discord response density. `compact` is the default and bounds ordinary replies to `CHAT_COMPACT_MAX_OUTPUT_TOKENS` plus `CHAT_COMPACT_MAX_WORDS` while preserving citation appendices. `emoji` applies the same bounds, asks the model to avoid narrated body language, and replaces recognized standalone action prose with at most one fitting emoji. `expressive` restores longer roleplay prose up to `CHAT_MAX_OUTPUT_TOKENS`. The owner can change the active style with `/chat_config`; the selection is persisted in `chat-runtime-config` and restored on restart.
+
 Run `npm run chat:setup:embedding` once during explicit setup. That command alone permits the pinned artifact download, verifies the 384-dimensional output, and stores it under `CHAT_EMBEDDING_CACHE`; normal runtime loading remains offline-only.
 
 Private DNS names used for inference or service smoke checks must be listed in `CHAT_ALLOWED_INFERENCE_HOSTS` or `CHAT_ALLOWED_SERVICE_HOSTS`. Literal loopback and RFC 1918 addresses are accepted automatically. This allowlist is for operator-selected infrastructure only; it is not an inference-provider fallback list.

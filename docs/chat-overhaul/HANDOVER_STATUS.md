@@ -24,7 +24,10 @@ Implemented:
 - Live lore ingestion/reindex and an ACL-scoped E5 semantic round-trip passed against Qdrant.
 - A fake-Discord end-to-end turn passed against real Mongo, Gemma, E5/Qdrant, and the background job queue: scene creation, placeholder delivery, streamed edits, durable commit, selected scene head, and memory-extraction admission were verified without connecting to Discord.
 - Replay completed 40/40 local transport runs, 81 samples, median 1,201 ms and p95 2,193 ms.
-- Current deterministic result: 80 passing tests and three skipped opt-in live integration tests. With `CHAT_INTEGRATION=true`, all three live tests pass.
+- Current deterministic result: 87 passing tests and three skipped opt-in live integration tests. With `CHAT_INTEGRATION=true`, all three live tests pass, for 90 total.
+- Current-data routing is application-enforced for exchange rates, prices, weather, scores/schedules, officeholders, recent news, and explicit current/latest requests. The exact reported USD/JPY Discord prompt completed three consecutive integrated runs with a persisted web search and cited sources.
+- Model-visible segment JSON was removed. Persona examples no longer teach response-side `OOC:` labels, and both streamed and final delivery remove leaked `IC:`/`OOC:` control labels.
+- Response style is configurable as `compact` (default), `emoji`, or `expressive` through environment and `/chat_config`, with restart persistence. Compact/emoji responses have token and visible-word bounds while citation appendices remain intact. A live reproduction of the reported long-action pattern returned 33 words in compact mode and 22 words in emoji mode.
 - No Gemini/cloud inference path is referenced by the new runtime entry path.
 
 ## Release State

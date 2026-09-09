@@ -19,12 +19,14 @@ Date: 2026-09-09
 
 ## Evaluation Results
 
-- Deterministic suite: 80 passing tests plus three opt-in live integration tests.
+- Deterministic suite: 87 passing tests plus three opt-in live integration tests, 90 total when enabled.
 - Local embedding: `Xenova/multilingual-e5-small` at revision `761b726dd34fb83930e26aab4e9ac3899aa1fa78`, 384 dimensions, loaded from the local cache with runtime downloads disabled.
 - Mongo: migration succeeded and all chat collections/indexes were created.
 - Local Gemma smoke: visible thinking-disabled response succeeded.
 - Docker-backed services: strict local and subsystem smoke passed. SearXNG returned real results, and Qdrant retained the verified rebuilt collection behind `chat_active`.
 - Live integration: all three opt-in tests passed with `CHAT_INTEGRATION=true`: service reachability, ACL-scoped E5/Qdrant retrieval, and a complete synthetic Discord turn through scene creation, local generation, streamed/final delivery, Mongo commit, scene-head selection, and derivation-job admission.
+- Reported current-data regression: the exact “how much a dollar is in Japanese yen” Discord prompt passed three consecutive integrated runs. Each run persisted `web_search`, returned current source-backed evidence, rendered citations, and emitted no `IC:`/`OOC:` label in streaming or final output. Current-data categories now receive deterministic application-level web-tool admission even if the model initially refuses or omits a tool call.
+- Real-time response density: runtime styles now include `compact` (default), `emoji`, and `expressive`, persisted through `/chat_config`. Compact and emoji use lower generation/word bounds without truncating citations; emoji also converts recognized action-only prose into one reaction emoji. Against the reported flying-target/thermal-vision input, live Gemma produced a 33-word compact reply and a 22-word emoji reply.
 - Replay: 40/40 direct local-provider transport runs passed, covering all 30 fixtures and three runs of each correction/deletion fixture; 81 samples, median 1,201 ms, p95 2,193 ms.
 - Human-review caveat: the direct-provider harness deliberately does not execute persistence and controls. Its outputs demonstrated unsupported behavior in several synthetic deletion/authority scenarios; application validation and deterministic controls address those boundaries, but this is not a Discord end-to-end semantic pass.
 

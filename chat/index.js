@@ -22,6 +22,7 @@ const { SourceRegistry } = require('./web/source_registry')
 const { createDefaultToolRegistry, ToolRunner } = require('./tools')
 const { SceneControls } = require('./conversation/scene_controls')
 const { ConversationService } = require('./conversation/service')
+const { normalizeResponseStyle } = require('./conversation/response_style')
 const { ChatStatus } = require('./observability/metrics')
 const { COLLECTIONS } = require('./persistence/collections')
 const { validateSchema } = require('./tools/schema_validator')
@@ -80,6 +81,7 @@ async function createChatSubsystem(options = {}) {
         globalThis.operating_mode = persistedConfig.mode === 'disabled' ? 'disabled' : 'auto_local'
         if (persistedConfig.model) provider.model = persistedConfig.model
         service.streamEnabled = persistedConfig.stream !== false
+        if (persistedConfig.responseStyle) service.responseStyle = normalizeResponseStyle(persistedConfig.responseStyle)
     }
 
     const handlers = {

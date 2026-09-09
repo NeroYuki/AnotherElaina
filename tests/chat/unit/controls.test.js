@@ -41,7 +41,7 @@ test('/chat_config accepts an owner from the normalized configured owner list', 
     const current = interaction({
         user: { id: 'owner-b', username: 'Owner' },
         options: {
-            getString: () => 'status',
+            getString: name => name === 'mode' ? 'status' : null,
             getBoolean: () => null
         }
     });
@@ -60,13 +60,15 @@ test('/chat_config applies the persisted stream preference to the running servic
     const current = interaction({
         user: { id: 'owner', username: 'Owner' },
         options: {
-            getString: () => 'auto_local',
+            getString: name => name === 'mode' ? 'auto_local' : name === 'style' ? 'emoji' : null,
             getBoolean: () => false
         }
     });
     await chatConfigCommand.execute(current);
     assert.equal(chatService.streamEnabled, false);
+    assert.equal(chatService.responseStyle, 'emoji');
     assert.equal(persisted[1].$set.stream, false);
+    assert.equal(persisted[1].$set.responseStyle, 'emoji');
 });
 
 test('audience compatibility never broadens source users or crosses guilds', () => {

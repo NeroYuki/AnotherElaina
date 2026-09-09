@@ -15,7 +15,7 @@
     {
       "purpose": "OOC factual tone",
       "user": "OOC: What does a 404 response mean?",
-      "assistant": "OOC: HTTP 404 means the server could not find the requested resource. It does not necessarily mean the whole server is unavailable."
+      "assistant": "HTTP 404 means the server could not find the requested resource. It does not necessarily mean the whole server is unavailable."
     },
     {
       "purpose": "uncertain memory",
@@ -25,7 +25,7 @@
     {
       "purpose": "multilingual matching",
       "user": "OOC: Jawab singkat dalam bahasa Indonesia. Kamu ingat payungnya?",
-      "assistant": "OOC: Ya. Payung itu milikmu; warnanya biru tua."
+      "assistant": "Ya. Payung itu milikmu; warnanya biru tua."
     }
   ]
 }

@@ -11,6 +11,7 @@ const { runToolLoop } = require('./turn_state')
 const { runFallbackToolLoop } = require('../tools/controller')
 const { KeyedQueue, Semaphore } = require('./queue')
 const { isModerator } = require('../discord/permissions')
+const { formatResponseForChat, normalizeResponseStyle } = require('./response_style')
 
 function actorFromEvent(event) {
     return {
@@ -27,6 +28,30 @@ function composeDeadline(signal, timeoutMs) {
     return signal ? AbortSignal.any([signal, timeout]) : timeout
 }
 
+function needsFreshWebSearch(value) {
+    const text = String(value || '').toLowerCase()
+    if (/\b(?:today|latest|right now|up[- ]to[- ]date|breaking news)\b/.test(text)) return true
+    if (/\b(?:current|live)\s+(?:price|rate|value|weather|forecast|score|schedule|result|exchange rate)\b/.test(text)) return true
+    if (/\b(?:weather|forecast)\s+(?:in|for|at)\b/.test(text)) return true
+    if (/\b(?:news|headlines|sports? scores?|fixtures?|game schedule)\b/.test(text)) return true
+    if (/\bwho(?:'s| is)\s+(?:the\s+)?(?:president|prime minister|governor|mayor|ceo)\b/.test(text)) return true
+    if (/\bwhen\s+is\s+(?:the\s+)?next\b.{0,60}\b(?:game|match|race|election|release|launch)\b/.test(text)) return true
+    if (/\b(?:price|value)\s+of\s+(?:bitcoin|btc|ethereum|eth|gold|oil|stock|shares?)\b/.test(text)) return true
+    const currencies = new Set(text.match(/\b(?:usd|u\.?s\.? dollars?|dollars?|jpy|japanese yen|yen|eur|euros?|gbp|pounds? sterling|pounds?|thb|thai baht|baht|cny|rmb|yuan|cad|aud)\b/g) || [])
+    return currencies.size >= 2 && /\b(?:how much|worth|convert|conversion|exchange|rate)\b/.test(text)
+}
+
+function stripRoleplayControlLabels(value) {
+    return String(value || '').replace(/^[ \t]*(?:OOC|IC):[ \t]*/gim, '').trim()
+}
+
+function visibleStreamingText(value) {
+    const text = String(value || '')
+    const leading = text.trimStart().toUpperCase()
+    if (leading && ['OOC:', 'IC:'].some(label => label.startsWith(leading))) return ''
+    return stripRoleplayControlLabels(text)
+}
+
 class ConversationService {
     constructor(options) {
         this.config = options.config
@@ -40,6 +65,7 @@ class ConversationService {
         this.jobs = options.jobs
         this.ownerIds = new Set((options.ownerIds || []).map(String))
         this.streamEnabled = options.streamEnabled !== false
+        this.responseStyle = normalizeResponseStyle(options.responseStyle || this.config.responseStyle || 'compact')
         this.imageLoader = options.imageLoader || null
         this.queue = options.queue || new KeyedQueue()
         this.inference = options.inference || new Semaphore(this.config.inferenceConcurrency)
@@ -141,10 +167,19 @@ class ConversationService {
             await this.repository.updateTurn(activeEventId, { delivery: { status: 'placeholder', messageIds: placeholder?.id ? [placeholder.id] : [] } }, 'pending')
             const result = await this.inference.run(() => this._generate({
                 event, resolved, continuity, eventId: activeEventId, signal: turnSignal, actor,
-                onDelta: this.streamEnabled ? text => responder.update(text) : null,
+                onDelta: this.streamEnabled ? text => {
+                    const visible = formatResponseForChat(visibleStreamingText(text), {
+                        style: this.responseStyle,
+                        maxWords: this.config.compactMaxWords
+                    })
+                    return visible ? responder.update(visible) : undefined
+                } : null,
                 onToolStart: this.streamEnabled ? () => responder.update('Looking that up...') : null
             }), turnSignal)
-            const text = renderSources(result.text, result.sources)
+            const text = formatResponseForChat(stripRoleplayControlLabels(renderSources(result.text, result.sources)), {
+                style: this.responseStyle,
+                maxWords: this.config.compactMaxWords
+            })
             responseText = text
             if (!text) throw Object.assign(new Error('Elaina produced an empty response'), { code: 'CHAT_EMPTY_RESPONSE' })
             await this.repository.updateTurn(activeEventId, {
@@ -212,13 +247,20 @@ class ConversationService {
             this.retriever.search(`${event.content} ${(event.reply?.target?.content || '').slice(0, 500)}`, scope, { limit: 6, signal }).catch(error => ({ results: [], degraded: true, semanticError: error }))
         ])
         const images = await this._images(event.attachments, signal)
-        const messages = buildContext({ event, scene: resolved.scene, relationships, retrieval: retrieval.results, turns, images })
+        const messages = buildContext({
+            event, scene: resolved.scene, relationships, retrieval: retrieval.results, turns, images,
+            responseStyle: this.responseStyle,
+            compactMaxWords: this.config.compactMaxWords
+        })
         const trustedContext = {
             ...scope,
             turnId: eventId,
             externalSearchEnabled: !resolved.binding.offline,
             userProvidedUrls: (event.content.match(/https?:\/\/[^\s<>]+/gi) || []).slice(0, 3)
         }
+        const requiredTool = trustedContext.externalSearchEnabled && needsFreshWebSearch(event.content)
+            ? { name: 'web_search', arguments: { query: event.content.slice(0, 300) } }
+            : null
         const loopOptions = {
             provider: this.provider,
             messages,
@@ -227,13 +269,16 @@ class ConversationService {
             trustedContext,
             maxRounds: this.config.toolMaxRounds,
             maxCalls: this.config.toolMaxCalls,
-            maxOutputTokens: event.content.includes('<think>') ? Math.min(1024, this.config.maxOutputTokens * 2) : this.config.maxOutputTokens,
+            maxOutputTokens: this.responseStyle === 'expressive'
+                ? (event.content.includes('<think>') ? Math.min(1024, this.config.maxOutputTokens * 2) : this.config.maxOutputTokens)
+                : Math.min(this.config.maxOutputTokens, this.config.compactMaxOutputTokens),
             thinking: event.content.includes('<think>'),
             vision: images.length > 0,
             signal,
             turnId: eventId,
             onDelta,
-            onToolStart
+            onToolStart,
+            requiredTool
         }
         if (this.nativeTools === false) {
             const result = await runFallbackToolLoop({
@@ -369,4 +414,4 @@ class ConversationService {
     }
 }
 
-module.exports = { ConversationService, actorFromEvent, composeDeadline }
+module.exports = { ConversationService, actorFromEvent, composeDeadline, needsFreshWebSearch, stripRoleplayControlLabels, visibleStreamingText }

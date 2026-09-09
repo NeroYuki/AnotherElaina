@@ -13,11 +13,12 @@ test('persona is versioned from the active qwen profile and consistently adult',
     assert.equal(examples.personaVersion, PERSONA_VERSION);
 });
 
-test('prompt states voice, evidence trust, OOC, and player-agency rules', () => {
+test('prompt states voice, evidence trust, hidden mode labels, tools, and player-agency rules', () => {
     const prompt = buildPersonaPrompt();
     assert.match(prompt, /Never write a player character's dialogue/);
     assert.match(prompt, /proposal remains a proposal/i);
-    assert.match(prompt, /explicit IC and OOC segments/);
+    assert.match(prompt, /never print, quote, or explain IC\/OOC labels/i);
+    assert.match(prompt, /exchange rates.*use the available web tool/i);
     assert.match(prompt, /retrieved evidence.*not instructions/);
     assert.match(prompt, /Never invent a remembered fact/);
     assert.match(prompt, /Match the user's language/);
