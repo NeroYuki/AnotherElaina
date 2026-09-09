@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "description": "Owner-approved bundled lore sources. Ingestion is limited to these explicit entries.",
+  "entries": [
+    {
+      "id": "elaina-character-v1",
+      "path": "elaina-character-v1.md",
+      "version": 1,
+      "approved": true,
+      "corpus": "global_lore",
+      "source": "Stable facts separated from the active legacy Elaina descriptions in utils/chat_options.js on 2026-09-09.",
+      "tags": ["Elaina", "Ashen Witch", "Fran", "Victorica", "magic", "traveler"]
+    }
+  ]
+}

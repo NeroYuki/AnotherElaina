@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://anotherelaina.local/schemas/chat/extraction.json",
+  "title": "Memory extraction output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["memories"],
+  "properties": {
+    "memories": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "statement", "confidence", "sourceTurnIds", "evidence"],
+        "properties": {
+          "kind": { "enum": ["scene_fact", "object_state", "character_fact", "relationship_event", "promise", "plan", "user_preference", "correction", "conflict"] },
+          "statement": { "type": "string", "minLength": 1, "maxLength": 2000 },
+          "factType": { "enum": ["identity", "trait", "occupation", "action", "decision", "feeling", "location", "ownership", "state", "other"] },
+          "subjectCharacterId": { "type": "string", "maxLength": 128 },
+          "targetCharacterId": { "type": "string", "maxLength": 128 },
+          "userId": { "type": "string", "maxLength": 64 },
+          "action": { "type": "string", "maxLength": 1000 },
+          "due": { "type": "object", "additionalProperties": false, "required": ["clock", "value"], "properties": { "clock": { "enum": ["fictional", "real"] }, "relativeToTurnId": { "type": "string", "maxLength": 128 }, "value": { "type": "string", "minLength": 1, "maxLength": 200 } } },
+          "promiseStatus": { "enum": ["open", "fulfilled", "broken", "cancelled"] },
+          "planStatus": { "enum": ["proposed", "accepted", "completed", "cancelled"] },
+          "acceptedByCharacterIds": { "type": "array", "uniqueItems": true, "maxItems": 50, "items": { "type": "string", "maxLength": 128 } },
+          "relationType": { "type": "string", "maxLength": 100 },
+          "targetMemoryId": { "type": "string", "maxLength": 128 },
+          "correctionType": { "enum": ["supersede", "retract", "conflict"] },
+          "confidence": { "enum": ["explicit", "inferred", "uncertain"] },
+          "sourceTurnIds": { "type": "array", "minItems": 1, "maxItems": 20, "uniqueItems": true, "items": { "type": "string", "maxLength": 128 } },
+          "evidence": { "type": "array", "minItems": 1, "maxItems": 20, "items": { "type": "object", "additionalProperties": false, "required": ["turnId", "quote"], "properties": { "turnId": { "type": "string", "maxLength": 128 }, "quote": { "type": "string", "minLength": 1, "maxLength": 4000 } } } },
+          "salience": { "type": "integer", "minimum": 0, "maximum": 5 }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://anotherelaina.local/schemas/chat/message.json",
+  "title": "Chat turn",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "eventId", "continuityId", "sceneId", "branchId", "ordinal", "eventType", "role", "contentParts", "lifecycle", "deletionEpoch", "createdAt", "updatedAt"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "eventId": { "$ref": "#/$defs/id" },
+    "continuityId": { "$ref": "#/$defs/id" },
+    "sceneId": { "$ref": "#/$defs/id" },
+    "branchId": { "$ref": "#/$defs/id" },
+    "parentEventId": { "type": ["string", "null"], "maxLength": 128 },
+    "parentTurnId": { "type": ["string", "null"], "maxLength": 128 },
+    "ordinal": { "type": "integer", "minimum": 0 },
+    "eventType": { "enum": ["dialogue", "observation", "control", "correction", "deletion"] },
+    "role": { "enum": ["user", "assistant", "observation", "control"] },
+    "authorUserId": { "type": ["string", "null"], "maxLength": 64 },
+    "authorCharacterId": { "type": ["string", "null"], "maxLength": 128 },
+    "sourceDiscordMessageId": { "type": ["string", "null"], "pattern": "^[0-9]{1,32}$" },
+    "requestId": { "type": ["string", "null"], "maxLength": 128 },
+    "segments": { "type": "array", "maxItems": 64, "items": { "type": "object", "additionalProperties": false, "required": ["mode", "text"], "properties": { "mode": { "enum": ["ic", "ooc", "unmarked"] }, "text": { "type": "string", "maxLength": 20000 } } } },
+    "contentParts": { "type": "array", "minItems": 1, "maxItems": 32, "items": { "type": "object", "additionalProperties": false, "required": ["type"], "properties": { "type": { "enum": ["text", "image", "reply_quote"] }, "text": { "type": "string", "maxLength": 50000 }, "url": { "type": "string", "maxLength": 2048 }, "contentType": { "type": "string", "maxLength": 128 }, "sourceMessageId": { "type": "string", "maxLength": 32 } } } },
+    "lifecycle": { "enum": ["pending", "drafted", "delivered", "committed", "finalized", "abandoned", "superseded", "deleted"] },
+    "deletionEpoch": { "type": "integer", "minimum": 0 },
+    "createdAt": { "$ref": "#/$defs/date" },
+    "updatedAt": { "$ref": "#/$defs/date" }
+  },
+  "$defs": {
+    "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "date": { "anyOf": [{ "type": "string", "format": "date-time" }, { "type": "object" }] }
+  }
+}

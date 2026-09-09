@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://anotherelaina.local/schemas/chat/scene.json",
+  "title": "Chat scene",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "sceneId", "continuityId", "branchId", "status", "participants", "projectedState", "projectionRevision", "deletionEpoch", "createdAt", "updatedAt"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "sceneId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "continuityId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "branchId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "title": { "type": "string", "maxLength": 200 },
+    "status": { "enum": ["active", "ended", "deleted"] },
+    "participants": { "type": "array", "maxItems": 100, "items": { "type": "object", "additionalProperties": false, "required": ["userId", "characterId"], "properties": { "userId": { "type": "string", "maxLength": 64 }, "characterId": { "type": "string", "maxLength": 128 }, "displayName": { "type": "string", "maxLength": 100 } } } },
+    "projectedState": { "type": "object", "additionalProperties": false, "properties": { "location": { "type": ["string", "null"], "maxLength": 500 }, "fictionalTime": { "type": ["string", "null"], "maxLength": 500 }, "facts": { "type": "array", "maxItems": 200, "items": { "type": "object" } }, "openPlans": { "type": "array", "maxItems": 50, "items": { "type": "object" } }, "mood": { "type": ["string", "null"], "maxLength": 200 }, "goals": { "type": "array", "maxItems": 20, "items": { "type": "string", "maxLength": 500 } } } },
+    "snapshotWatermark": { "type": ["string", "null"], "maxLength": 128 },
+    "selectedHeadTurnId": { "type": ["string", "null"], "maxLength": 128 },
+    "projectionRevision": { "type": "integer", "minimum": 0 },
+    "deletionEpoch": { "type": "integer", "minimum": 0 },
+    "createdAt": { "anyOf": [{ "type": "string", "format": "date-time" }, { "type": "object" }] },
+    "updatedAt": { "anyOf": [{ "type": "string", "format": "date-time" }, { "type": "object" }] }
+  }
+}

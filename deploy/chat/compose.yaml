@@ -1,0 +1,42 @@
+name: anotherelaina-chat
+
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.19.0@sha256:057ee3a8da769fe7310dd3537b4dc7583bf87a95ce8ac43c0af5a46bc580d1fc
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6333:6333"
+    volumes:
+      - qdrant-data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 3 bash -c ':> /dev/tcp/127.0.0.1/6333'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    security_opt:
+      - no-new-privileges:true
+
+  searxng:
+    image: searxng/searxng:2026.9.8-3fdc6d753@sha256:3547509b419cd6a67333d6d68bd1ffad8d46d3669d82e7a7bd538f7b45827432
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8088:8080"
+    environment:
+      SEARXNG_BASE_URL: http://127.0.0.1:8088/
+      SEARXNG_SECRET: ${SEARXNG_SECRET:?Set SEARXNG_SECRET to a random value}
+    volumes:
+      - ./searxng-settings.yml:/etc/searxng/settings.yml:ro
+      - searxng-cache:/var/cache/searxng
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  qdrant-data:
+  searxng-cache:

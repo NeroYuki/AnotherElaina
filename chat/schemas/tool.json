@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://anotherelaina.local/schemas/chat/tool.json",
+  "title": "Native tool call",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "type", "function"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "type": { "const": "function" },
+    "function": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "arguments"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$" },
+        "arguments": { "type": "string", "maxLength": 20000 }
+      }
+    }
+  }
+}

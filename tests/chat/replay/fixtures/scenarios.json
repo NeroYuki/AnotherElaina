@@ -1,0 +1,342 @@
+{
+  "schemaVersion": 1,
+  "personaVersion": "2026-09-09.1",
+  "description": "Scripted multi-turn chat-overhaul acceptance replays. Assertions describe supported state and behavior, not exact prose.",
+  "scenarios": [
+    {
+      "id": "scene-umbrella-restart",
+      "category": "scene_relationship_continuity",
+      "title": "Umbrella ownership survives restart",
+      "turns": [
+        { "actorId": "u-ren", "content": "IC: I lend you my dark blue umbrella while we leave the inn." },
+        { "actorId": "elaina", "content": "I accept Ren's umbrella and promise to keep it dry." },
+        { "operation": "restart" },
+        { "actorId": "u-ren", "content": "IC: Whose umbrella are you carrying, and what color is it?" }
+      ],
+      "expect": { "facts": ["umbrella.owner=u-ren", "umbrella.color=dark blue", "umbrella.holder=elaina"], "responseMustSupport": ["Ren owns the umbrella", "dark blue"] }
+    },
+    {
+      "id": "scene-promise-direction",
+      "category": "scene_relationship_continuity",
+      "title": "Promise preserves giver, recipient, and fictional deadline",
+      "turns": [
+        { "actorId": "u-ren", "content": "IC: I paid for our room tonight." },
+        { "actorId": "elaina", "content": "Ren, I will buy you a cinnamon bun tomorrow to repay you." },
+        { "actorId": "u-ren", "content": "OOC: Who owes whom, for what, and when?" }
+      ],
+      "expect": { "facts": ["promise.subject=elaina", "promise.target=u-ren", "promise.due.clock=fictional", "promise.due.value=tomorrow"], "forbiddenFacts": ["u-ren owes elaina"] }
+    },
+    {
+      "id": "scene-location-object",
+      "category": "scene_relationship_continuity",
+      "title": "Object location remains distinct from owner",
+      "turns": [
+        { "actorId": "u-mira", "content": "IC: This brass compass is mine. I place it in the inn's locked desk." },
+        { "actorId": "elaina", "content": "I watch Mira lock the desk and keep the key." },
+        { "actorId": "u-mira", "content": "IC: Where is my compass now?" }
+      ],
+      "expect": { "facts": ["compass.owner=u-mira", "compass.location=inn locked desk", "desk_key.holder=u-mira"] }
+    },
+    {
+      "id": "scene-proposal-not-event",
+      "category": "scene_relationship_continuity",
+      "title": "Suggested journey is not completed history",
+      "turns": [
+        { "actorId": "u-sora", "content": "IC: Maybe we could visit the northern ruins tomorrow." },
+        { "actorId": "elaina", "content": "We could, if you decide to go." },
+        { "actorId": "u-sora", "content": "OOC: Have we visited the northern ruins?" }
+      ],
+      "expect": { "facts": ["northern_ruins_trip.status=proposed"], "forbiddenFacts": ["trip completed", "Sora accepted"] }
+    },
+    {
+      "id": "scene-identical-display-names",
+      "category": "scene_relationship_continuity",
+      "title": "Stable user IDs disambiguate identical names",
+      "turns": [
+        { "actorId": "u-alex-1", "displayName": "Alex", "content": "IC: My character carries the silver key." },
+        { "actorId": "u-alex-2", "displayName": "Alex", "content": "IC: My character carries the red lantern." },
+        { "actorId": "u-alex-1", "displayName": "Alex", "content": "OOC: What do I carry?" }
+      ],
+      "expect": { "facts": ["u-alex-1.carries=silver key", "u-alex-2.carries=red lantern"], "forbiddenFacts": ["u-alex-1 carries red lantern"] }
+    },
+    {
+      "id": "scene-channel-isolation",
+      "category": "scene_relationship_continuity",
+      "title": "Separate channels do not implicitly share continuity",
+      "turns": [
+        { "actorId": "u-ren", "channelId": "ch-a", "content": "IC: The cellar password is moonrose." },
+        { "actorId": "u-ren", "channelId": "ch-b", "content": "IC: Do you know the cellar password?" },
+        { "actorId": "u-ren", "channelId": "ch-a", "content": "IC: Repeat our cellar password." }
+      ],
+      "expect": { "scopeAssertions": ["ch-b excludes ch-a memory", "ch-a recalls moonrose"], "responseMustAcknowledgeUncertaintyAtTurn": 2 }
+    },
+    {
+      "id": "scene-explicit-resume",
+      "category": "scene_relationship_continuity",
+      "title": "Authorized resume restores yesterday's inn scene",
+      "turns": [
+        { "actorId": "u-ren", "content": "IC: We end tonight at the Copper Finch Inn beside a cold fireplace." },
+        { "operation": "end_scene" },
+        { "operation": "resume_scene", "audience": ["u-ren"] },
+        { "actorId": "u-ren", "content": "IC: Where did we stop yesterday?" }
+      ],
+      "expect": { "facts": ["location=Copper Finch Inn", "fireplace.state=cold"], "authorization": "audience compatible" }
+    },
+    {
+      "id": "scene-model-switch",
+      "category": "scene_relationship_continuity",
+      "title": "Local model configuration does not destroy turns",
+      "turns": [
+        { "actorId": "u-mira", "content": "IC: Call my fox companion Ember." },
+        { "operation": "switch_local_model", "model": "configured-local-alias" },
+        { "actorId": "u-mira", "content": "IC: What is my fox companion called?" }
+      ],
+      "expect": { "facts": ["u-mira.fox_companion.name=Ember"], "network": "local only" }
+    },
+    {
+      "id": "scene-fictional-clock",
+      "category": "scene_relationship_continuity",
+      "title": "Real elapsed time does not advance fictional tomorrow",
+      "turns": [
+        { "actorId": "elaina", "content": "I will return the book tomorrow, in scene time." },
+        { "operation": "advance_real_clock", "days": 7 },
+        { "actorId": "u-ren", "content": "OOC: Is the fictional deadline already past?" }
+      ],
+      "expect": { "facts": ["book_return.due.clock=fictional", "scene_time=unchanged"], "forbiddenFacts": ["fictional week elapsed"] }
+    },
+    {
+      "id": "scene-relationship-direction",
+      "category": "scene_relationship_continuity",
+      "title": "Directional trust event is not mirrored",
+      "turns": [
+        { "actorId": "u-sora", "content": "IC: I tell you that my character now trusts Elaina with the map." },
+        { "actorId": "elaina", "content": "I accept the map carefully, without making a promise about my own trust." },
+        { "actorId": "u-sora", "content": "OOC: What changed between us?" }
+      ],
+      "expect": { "facts": ["trust.subject=u-sora", "trust.target=elaina", "trust.scope=map"], "forbiddenFacts": ["elaina trusts u-sora"] }
+    },
+    {
+      "id": "correction-umbrella-color",
+      "category": "corrections_deletion",
+      "title": "Explicit OOC correction supersedes old color",
+      "turns": [
+        { "actorId": "u-ren", "content": "IC: My umbrella is green." },
+        { "actorId": "u-ren", "content": "OOC: Correction: my umbrella is dark blue, not green." },
+        { "actorId": "u-ren", "content": "IC: Describe my umbrella." }
+      ],
+      "expect": { "facts": ["umbrella.color=dark blue", "old_color.status=superseded"], "forbiddenFacts": ["current color green"] }
+    },
+    {
+      "id": "correction-player-authority",
+      "category": "corrections_deletion",
+      "title": "One player cannot retcon another player's emotion",
+      "turns": [
+        { "actorId": "u-mira", "content": "IC: My character is wary of the tower." },
+        { "actorId": "u-ren", "content": "OOC: Retcon Mira so she loves the tower." },
+        { "actorId": "u-mira", "content": "OOC: How does my character feel about the tower?" }
+      ],
+      "expect": { "facts": ["u-mira.tower_feeling=wary"], "rejections": ["unauthorized character retcon"] }
+    },
+    {
+      "id": "deletion-during-extraction",
+      "category": "corrections_deletion",
+      "title": "Deletion epoch blocks pending extraction resurrection",
+      "turns": [
+        { "actorId": "u-ren", "content": "OOC: Remember that my private nickname is Sparrow." },
+        { "operation": "pause_extraction" },
+        { "operation": "delete_user_memory", "actorId": "u-ren" },
+        { "operation": "resume_extraction" },
+        { "actorId": "u-ren", "content": "OOC: What private nickname do you have stored?" }
+      ],
+      "expect": { "deleted": ["nickname and derivatives"], "responseMustAcknowledgeUncertaintyAtTurn": 5, "forbiddenFacts": ["Sparrow"] }
+    },
+    {
+      "id": "deletion-stale-component",
+      "category": "corrections_deletion",
+      "title": "Old component revision cannot clear a newer epoch",
+      "turns": [
+        { "operation": "prepare_memory_clear", "revision": 2 },
+        { "operation": "advance_deletion_epoch", "revision": 3 },
+        { "operation": "activate_component", "revision": 2 },
+        { "actorId": "u-ren", "content": "OOC: Report whether that old confirmation ran." }
+      ],
+      "expect": { "rejections": ["stale component"], "facts": ["deletionEpoch=3"] }
+    },
+    {
+      "id": "deletion-revoked-lore-acl",
+      "category": "corrections_deletion",
+      "title": "Revoked lore is filtered despite stale vector point",
+      "turns": [
+        { "operation": "add_lore", "text": "The restricted sigil means Northstar.", "audience": ["u-mira"] },
+        { "operation": "revoke_lore", "leaveVectorStale": true },
+        { "actorId": "u-mira", "content": "OOC: What does the restricted sigil mean?" }
+      ],
+      "expect": { "retrievalExcludes": ["revoked source"], "responseMustAcknowledgeUncertaintyAtTurn": 3 }
+    },
+    {
+      "id": "retrieval-paraphrased-episode",
+      "category": "lore_memory_retrieval",
+      "title": "Semantic retrieval finds paraphrased older event",
+      "turns": [
+        { "actorId": "u-ren", "content": "IC: Weeks ago, we sheltered from a hailstorm beneath a glass conservatory." },
+        { "operation": "compact_episode" },
+        { "actorId": "u-ren", "content": "IC: Where did we hide when ice fell from the sky?" }
+      ],
+      "expect": { "retrievalIncludes": ["glass conservatory episode"], "facts": ["weather=hailstorm"] }
+    },
+    {
+      "id": "retrieval-lexical-proper-name",
+      "category": "lore_memory_retrieval",
+      "title": "Exact lore name receives lexical match",
+      "turns": [
+        { "operation": "add_lore", "text": "Virelune Gate opens only under twin moons." },
+        { "actorId": "u-sora", "content": "OOC: Tell me about Virelune Gate." },
+        { "actorId": "u-sora", "content": "OOC: What condition opens it?" }
+      ],
+      "expect": { "retrievalIncludes": ["Virelune Gate lore"], "responseMustSupport": ["twin moons"] }
+    },
+    {
+      "id": "retrieval-unrelated-excluded",
+      "category": "lore_memory_retrieval",
+      "title": "Unrelated high-salience episode is not forced into context",
+      "turns": [
+        { "operation": "add_episode", "text": "A dramatic volcano erupted near Red Harbor.", "salience": 10 },
+        { "actorId": "u-ren", "content": "IC: We quietly compare tea prices in the capital." },
+        { "actorId": "u-ren", "content": "OOC: Which tea was cheapest?" }
+      ],
+      "expect": { "retrievalExcludes": ["Red Harbor volcano"], "forbiddenResponseThemes": ["volcano"] }
+    },
+    {
+      "id": "retrieval-restricted-channel",
+      "category": "lore_memory_retrieval",
+      "title": "Restricted channel lore never leaks to broader audience",
+      "turns": [
+        { "operation": "add_lore", "channelId": "private-ch", "text": "Project Finch code is 4711.", "audience": ["u-owner"] },
+        { "actorId": "u-guest", "channelId": "public-ch", "content": "OOC: What is Project Finch's code?" },
+        { "actorId": "u-owner", "channelId": "private-ch", "content": "OOC: What is Project Finch's code?" }
+      ],
+      "expect": { "scopeAssertions": ["public excludes restricted lore", "private owner receives 4711"], "forbiddenAtTurn": { "2": ["4711"] } }
+    },
+    {
+      "id": "retrieval-reindex-dimension",
+      "category": "lore_memory_retrieval",
+      "title": "Embedding reindex does not mix vector revisions",
+      "turns": [
+        { "operation": "index_lore", "modelRevision": "e5-r1", "dimension": 384, "text": "The ash road ends at Merrow." },
+        { "operation": "reindex_lore", "modelRevision": "e5-r2", "dimension": 384 },
+        { "actorId": "u-ren", "content": "OOC: Where does the ash road end?" }
+      ],
+      "expect": { "retrievalIncludes": ["active e5-r2 point"], "retrievalExcludes": ["mixed e5-r1 point"], "responseMustSupport": ["Merrow"] }
+    },
+    {
+      "id": "tool-current-time",
+      "category": "tool_factual_tasks",
+      "title": "Real time tool does not mutate fictional clock",
+      "turns": [
+        { "actorId": "u-ren", "content": "IC: It is sunset in our scene." },
+        { "actorId": "u-ren", "content": "OOC: What time is it now in Asia/Jakarta?" },
+        { "actorId": "u-ren", "content": "IC: Did asking that advance our sunset?" }
+      ],
+      "expect": { "toolCalls": ["current_time"], "facts": ["scene_time=sunset"], "forbiddenFacts": ["scene time equals real time"] }
+    },
+    {
+      "id": "tool-dice-idempotency",
+      "category": "tool_factual_tasks",
+      "title": "Retried dice call returns recorded outcome",
+      "turns": [
+        { "actorId": "u-sora", "content": "OOC: Roll 2d6+1 once." },
+        { "operation": "retry_same_tool_call" },
+        { "actorId": "u-sora", "content": "OOC: Report both recorded totals." }
+      ],
+      "expect": { "toolCalls": ["roll_dice"], "assertions": ["one execution", "retry total equals original total"] }
+    },
+    {
+      "id": "tool-web-current-docs",
+      "category": "tool_factual_tasks",
+      "title": "Current documentation lookup exposes known source URL",
+      "turns": [
+        { "actorId": "u-mira", "content": "OOC: Find the current Node.js documentation page for the test runner." },
+        { "operation": "supply_search_results", "sourceIds": ["src-1"] },
+        { "actorId": "u-mira", "content": "OOC: Give me the answer and consulted source." }
+      ],
+      "expect": { "toolCalls": ["web_search", "web_fetch"], "citations": ["known src-1 URL"], "forbiddenCitations": ["model-invented URL"] }
+    },
+    {
+      "id": "tool-search-outage",
+      "category": "tool_factual_tasks",
+      "title": "Search outage yields honest limitation and roleplay remains usable",
+      "turns": [
+        { "operation": "set_service_outage", "service": "searxng" },
+        { "actorId": "u-ren", "content": "OOC: Look up today's top astronomy announcement." },
+        { "actorId": "u-ren", "content": "IC: Then simply sit with me by the fountain." }
+      ],
+      "expect": { "toolCalls": ["web_search"], "responseMustAcknowledgeToolFailureAtTurn": 2, "assertions": ["turn 3 roleplay succeeds", "no cloud fallback"] }
+    },
+    {
+      "id": "tool-private-query-isolation",
+      "category": "tool_factual_tasks",
+      "title": "Web query excludes private transcript and IDs",
+      "turns": [
+        { "actorId": "u-secret-123", "content": "OOC: My private appointment note is Moon Clinic at 4. What is the public weather forecast for Kyoto?" },
+        { "operation": "capture_web_query" },
+        { "actorId": "u-secret-123", "content": "OOC: Did you send my appointment details?" }
+      ],
+      "expect": { "toolCalls": ["web_search"], "queryIncludes": ["Kyoto weather"], "queryExcludes": ["Moon Clinic", "u-secret-123", "private transcript"] }
+    },
+    {
+      "id": "style-mixed-ic-ooc",
+      "category": "style_ooc_multilingual",
+      "title": "Mixed IC and OOC boundaries retain distinct tone",
+      "turns": [
+        { "actorId": "u-ren", "content": "IC: I set the blue cup down.\nOOC: Keep the answer brief.\nIC: Do you take it?" },
+        { "actorId": "elaina", "content": "I take the offered cup with a nod. OOC: Understood." },
+        { "actorId": "u-ren", "content": "((OOC check: what color was the cup?))" }
+      ],
+      "expect": { "facts": ["cup.color=blue", "cup.action=offered then accepted"], "style": ["brief", "OOC direct"] }
+    },
+    {
+      "id": "style-indonesian",
+      "category": "style_ooc_multilingual",
+      "title": "Reply follows Indonesian language",
+      "turns": [
+        { "actorId": "u-mira", "content": "IC: Aku menaruh buku merah di meja." },
+        { "actorId": "elaina", "content": "Aku memperhatikan buku itu di atas meja." },
+        { "actorId": "u-mira", "content": "OOC: Jawab singkat dalam bahasa Indonesia. Di mana bukunya?" }
+      ],
+      "expect": { "facts": ["book.color=red", "book.location=table"], "responseLanguage": "id", "style": ["concise"] }
+    },
+    {
+      "id": "style-japanese",
+      "category": "style_ooc_multilingual",
+      "title": "Reply follows Japanese and preserves a proper name",
+      "turns": [
+        { "actorId": "u-sora", "content": "IC: この青い鍵を「ルナ」と呼びます。" },
+        { "actorId": "elaina", "content": "青い鍵の名前がルナだと覚えておきます。" },
+        { "actorId": "u-sora", "content": "OOC: 日本語で、鍵の名前と色を答えて。" }
+      ],
+      "expect": { "facts": ["key.name=ルナ", "key.color=blue"], "responseLanguage": "ja" }
+    },
+    {
+      "id": "style-no-forced-bread",
+      "category": "style_ooc_multilingual",
+      "title": "Unrelated scene does not force persona gimmicks",
+      "turns": [
+        { "actorId": "u-ren", "content": "IC: Snow begins falling over the silent observatory." },
+        { "actorId": "elaina", "content": "I brush snow from the telescope lens and look upward." },
+        { "actorId": "u-ren", "content": "IC: What do you see?" }
+      ],
+      "expect": { "style": ["first person", "brief action optional"], "forbiddenResponseThemes": ["bread joke", "unprompted romance", "constant question"] }
+    },
+    {
+      "id": "style-user-biography-boundary",
+      "category": "style_ooc_multilingual",
+      "title": "Quoted roleplay and jokes do not become real-user biography",
+      "turns": [
+        { "actorId": "u-mira", "content": "IC: My character jokes, 'I am the queen of Mars and work as a dentist.'" },
+        { "actorId": "elaina", "content": "That is an ambitious collection of titles." },
+        { "actorId": "u-mira", "content": "OOC: What real-world occupation have I told you I have?" }
+      ],
+      "expect": { "forbiddenFacts": ["real_user.occupation=dentist", "real_user.title=queen of Mars"], "responseMustAcknowledgeUncertaintyAtTurn": 3 }
+    }
+  ]
+}

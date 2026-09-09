@@ -6,6 +6,9 @@ module.exports = (function() {
     var maindb = '';
     var extdb = '';
     var elainadb = '';
+    var mainClient = null;
+    var mainPromise = null;
+    var elainaClient = null;
   
     return { // public interface
         async initElainaDB() {
@@ -18,22 +21,28 @@ module.exports = (function() {
             console.log("Connection to Elaina DB established");
 
             elainadb = client.db("ElainaDB");
+            elainaClient = client;
+            return elainadb;
         },
-        initConnection: function (cb) {
+        initConnection: function (cb = () => {}) {
+            if (mainPromise) return mainPromise.then(db => { cb(); return db; });
             let uri = process.env.MONGODB_CONNECTION_STRING
-            mongodb.MongoClient.connect(uri, {
+            if (!uri) return Promise.reject(new Error('MONGODB_CONNECTION_STRING is required'));
+            mainPromise = new mongodb.MongoClient(uri, {
                 connectTimeoutMS: 30000,
                 socketTimeoutMS: 30000
-            }, function(err, db) {
-                if (err) {
-                    console.log(err)
-                    throw err;
-                }
-                maindb = db.db('another_elaina');
-                extdb = db.db('kansen_index');
+            }).connect().then(client => {
+                mainClient = client;
+                maindb = client.db('another_elaina');
+                extdb = client.db('kansen_index');
                 console.log("db connection established");
-                cb()
-            })
+                cb();
+                return maindb;
+            }).catch(error => {
+                mainPromise = null;
+                throw error;
+            });
+            return mainPromise;
         },
         getConnection: function (use_ext = false) {
             if (use_ext) {
@@ -46,6 +55,15 @@ module.exports = (function() {
         },
         getElainaConnection: function () {
             return elainadb
+        },
+        async close() {
+            await Promise.allSettled([mainClient?.close(), elainaClient?.close()]);
+            mainClient = null;
+            elainaClient = null;
+            mainPromise = null;
+            maindb = '';
+            extdb = '';
+            elainadb = '';
         }
     };
 }) ();

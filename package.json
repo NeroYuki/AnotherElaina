@@ -8,7 +8,16 @@
 		"start-lan": "set BOT_ENV=lan && node Bot.js",
 		"start-vpn": "set BOT_ENV=vpn && node Bot.js",
 		"start-lan-linux": "export BOT_ENV=lan && node Bot.js",
-		"start-vpn-linux": "export BOT_ENV=vpn && node Bot.js"
+		"start-vpn-linux": "export BOT_ENV=vpn && node Bot.js",
+		"test:chat": "node --test tests/chat/**/*.test.js tests/chat/*.test.js",
+		"test:chat:integration": "node --test tests/chat/integration/**/*.test.js",
+		"chat:eval:local": "node scripts/chat/evaluate.cjs",
+		"chat:smoke:local": "node scripts/chat/smoke_local.cjs",
+		"chat:smoke:subsystem": "node scripts/chat/smoke_subsystem.cjs",
+		"chat:migrate": "node scripts/chat/migrate.cjs",
+		"chat:reindex": "node scripts/chat/reindex.cjs",
+		"chat:ingest": "node scripts/chat/ingest_lore.cjs",
+		"chat:setup:embedding": "node scripts/chat/setup_embedding.cjs"
 	},
 	"keywords": [],
 	"author": "",
@@ -16,6 +25,8 @@
 	"dependencies": {
 		"@discordjs/builders": "^0.13.0",
 		"@discordjs/rest": "^0.4.1",
+		"@huggingface/transformers": "4.2.0",
+		"ajv": "8.20.0",
 		"archiver": "^7.0.1",
 		"axios": "^1.3.4",
 		"cheerio": "^1.1.2",
@@ -35,6 +46,7 @@
 		"sharp": "^0.30.6",
 		"systeminformation": "^5.25.5",
 		"transliteration": "^2.3.5",
+		"undici": "7.29.0",
 		"unzipper": "^0.10.14",
 		"ws": "^8.14.1",
 		"zlib": "^1.0.5"

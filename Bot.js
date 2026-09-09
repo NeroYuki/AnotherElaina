@@ -1,24 +1,29 @@
+require('dotenv').config()
+
 const fs = require('fs');
 const path = require('path');
 const { Client, Collection, Intents } = require('discord.js');
-const { byPassUser} = require('./config.json');
-const { responseToMessage } = require('./event/on_message');
+const { configuredOwnerIds } = require('./chat/discord/permissions');
+const { configureConversationService } = require('./event/on_message');
 const databaseConnection = require('./database/database_connection');
 const { listAllFiles } = require('./utils/common_helper');
 const ComfyClient = require('./utils/comfy_client');
-const { context_storage } = require('./utils/text_gen_store');
 const { rateLimiter } = require('./utils/rate_limiter');
 const { getForgeMemory, getForgeProgress, unloadForgeCheckpoint } = require('./utils/forge_api_execute');
-
-require('dotenv').config()
+const { createChatSubsystem } = require('./chat');
+const chatComponents = require('./chat/discord/components');
+const { loadImage } = require('./utils/load_discord_img');
 
 const token = process.env.DISCORD_BOT_TOKEN
-globalThis.operating_mode = "auto" // disabled, 
+globalThis.operating_mode = "auto_local"
 globalThis.llm_load_timer = null
 globalThis.sd_available = true
 globalThis.can_change_model = true
 
-const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES] });
+const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.MESSAGE_CONTENT].filter(Boolean) });
+let chatSubsystem = null;
+let presenceTimer = null;
+let shuttingDown = false;
 
 client.commands = new Collection();
 // recursively filter all js files in the commands folder (including file in subfolders)
@@ -70,7 +75,7 @@ for (const file of commandFiles) {
 
 client.once('ready', () => {
     console.log('I\'m here');
-    setInterval(() => {
+    presenceTimer = setInterval(() => {
         client.user.setPresence({
             activities: [{
                 name: `Drawing: ${sd_available ? '✔' : '✖'} | Chatting: ${operating_mode !== 'disabled' ? '✔' : '✖'}`,
@@ -82,43 +87,23 @@ client.once('ready', () => {
 });
 
 client.on('messageCreate', async message => {
-    // ignore if it is in direct message
-    if (!message.guild) return;
+    if (!chatSubsystem || !message.guild) return;
+    await chatSubsystem.service.intake(client, message).catch(error => {
+        console.error('[Chat] Message handling failed:', error);
+    });
+});
 
-    // if message doesnt mention the bot or if that mention is from a reply or message is from a bot, add to existing channel context
-    if (!message.mentions.has(client.user) || message.reference || message.author.bot) {
-        if (context_storage.has(message.channel.id)) {
-            if (!message.author.bot || message.author.id === client.user.id && (message.content !== '...')) {
-                // if the message is not from a bot, or from this bot itself, add it to the context storage
-                if (context_storage.get(message.channel.id).messages) {
-                    context_storage.get(message.channel.id).messages.push({
-                        role: message.author.id === client.user.id ? 'assistant' : message.author.username,
-                        content: message.content.replace(/<@!?\d+>/g, '').trim(),
-                    })
-                }
-                else {
-                    context_storage.get(message.channel.id).messages = [{
-                        role: message.author.id === client.user.id ? 'assistant' : message.author.username,
-                        content: message.content.replace(/<@!?\d+>/g, '').trim(),
-                    }]
-                }
-            }
-        }
-    }
-    else {
-        // remove the mention to the bot
-        let content = message.content.replace(/<@!?\d+>/, '').trim();
+client.on('messageDelete', message => {
+    chatSubsystem?.service.invalidateDiscordMessage(message, 'discord_message_deleted').catch(error => console.error('[Chat] Message deletion invalidation failed:', error));
+});
 
-        // if message is empty, return
-        if (content.trim().length === 0) return;
-
-        responseToMessage(client, message, content)
-    }
-
+client.on('messageUpdate', (oldMessage, newMessage) => {
+    chatSubsystem?.service.invalidateDiscordMessage(oldMessage.id ? oldMessage : newMessage, 'discord_message_edited').catch(error => console.error('[Chat] Message edit invalidation failed:', error));
 });
 
 
 client.on('interactionCreate', async interaction => {
+    if ((interaction.isButton?.() || interaction.isSelectMenu?.()) && await chatComponents.handle(interaction)) return;
     if (interaction.isAutocomplete()) {
         const command = client.commands.get(interaction.commandName);
         if (command && command.autocomplete) {
@@ -242,26 +227,38 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
-client.login(token);
+async function start() {
+    if (!token) throw new Error('DISCORD_BOT_TOKEN is required');
+    const ownerIds = configuredOwnerIds();
+    const db = await databaseConnection.initConnection();
+    chatSubsystem = await createChatSubsystem({
+        db,
+        ownerIds,
+        imageLoader: url => loadImage(url, false, true)
+    });
+    configureConversationService(chatSubsystem.service);
+    chatComponents.configure({ chatService: chatSubsystem.service, repository: chatSubsystem.repository, ownerIds });
+    for (const name of ['scene', 'memory', 'lore', 'chat_config', 'remove_channel_context']) {
+        client.commands.get(name)?.configure?.({ chatService: chatSubsystem.service, repository: chatSubsystem.repository, ownerIds, status: chatSubsystem.status });
+    }
+    await client.login(token);
+    databaseConnection.initElainaDB().catch(err => console.error('Failed to connect to Elaina DB:', err));
+}
 
-databaseConnection.initConnection(() => {
-    console.log('database connection established');
-})
-databaseConnection.initElainaDB().catch(err => {
-    console.error('Failed to connect to Elaina DB:', err)
-})
-// Graceful shutdown handling to save rate limit data
-process.on('SIGINT', () => {
-    console.log('\n[Bot] Received SIGINT, shutting down gracefully...');
+async function shutdown(signal) {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`\n[Bot] Received ${signal}, shutting down gracefully...`);
+    clearInterval(presenceTimer);
+    await chatSubsystem?.stop().catch(error => console.error('[Chat] Shutdown failed:', error));
     rateLimiter.destroy();
-    process.exit(0);
-});
+    client.destroy();
+    await databaseConnection.close();
+}
 
-process.on('SIGTERM', () => {
-    console.log('\n[Bot] Received SIGTERM, shutting down gracefully...');
-    rateLimiter.destroy();
-    process.exit(0);
-});
+for (const signal of ['SIGINT', 'SIGTERM']) {
+    process.once(signal, () => shutdown(signal).finally(() => process.exit(0)));
+}
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
@@ -271,3 +268,7 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 console.log('[Bot] Rate limiting system initialized with persistent storage');
+start().catch(error => {
+    console.error('[Bot] Startup failed:', error);
+    shutdown('startup failure').finally(() => process.exit(1));
+});

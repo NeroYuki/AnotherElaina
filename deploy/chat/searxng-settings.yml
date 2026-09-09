@@ -1,0 +1,27 @@
+use_default_settings: true
+
+general:
+  instance_name: AnotherElaina Search
+  debug: false
+
+search:
+  safe_search: 1
+  autocomplete: ""
+  formats:
+    - html
+    - json
+
+server:
+  bind_address: 0.0.0.0
+  port: 8080
+  limiter: false
+  image_proxy: false
+
+ui:
+  static_use_hash: true
+
+outgoing:
+  request_timeout: 8.0
+  max_request_timeout: 12.0
+  pool_connections: 20
+  pool_maxsize: 10

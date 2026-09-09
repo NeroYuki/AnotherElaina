@@ -1,28 +1,35 @@
-var { operating_mode, context_storage } = require('../../utils/text_gen_store');
-const { SlashCommandBuilder } = require('@discordjs/builders');
-const { byPassUser } = require('../../config.json');
-const { unload_model } = require('../../utils/lmstudio_request');
-const { operatingMode2Config } = require('../../utils/chat_options');
+'use strict'
 
-module.exports = {
-	data: new SlashCommandBuilder()
-		.setName('remove_channel_context')
-		.setDescription('Allow bot owner to reset the context of the channel')
-        .addChannelOption(option =>
-            option.setName('channel')
-                .setDescription('The channel to reset the context')
-                .setRequired(true)
-        )
-    ,
+const { SlashCommandBuilder } = require('@discordjs/builders')
+const { actorFromInteraction } = require('../../chat/discord/permissions')
 
-	async execute(interaction) {
-		// parse the option
-        const channel = interaction.options.getChannel('channel');
-        await interaction.deferReply();
+let dependencies = null
 
-        // remove context_storage entry of channel.id
-        context_storage.delete(channel.id)
+const data = new SlashCommandBuilder()
+    .setName('remove_channel_context')
+    .setDescription('Delete stored chat context for a channel (owner only)')
+    .addChannelOption(option => option.setName('channel').setDescription('Channel whose active scene should be cleared').setRequired(true))
 
-        await interaction.editReply(`Channel context has been removed`);
-	},
-};
+function configure(next) {
+    dependencies = next
+    return module.exports
+}
+
+async function execute(interaction) {
+    await interaction.deferReply({ ephemeral: true })
+    const actor = actorFromInteraction(interaction, dependencies?.ownerIds)
+    if (!actor.isOwner || !dependencies?.chatService) {
+        await interaction.editReply('You are not authorized to clear this channel context.')
+        return
+    }
+    const channel = interaction.options.getChannel('channel')
+    const result = await dependencies.chatService.executeControl({
+        action: 'memory.clear.channel',
+        actor,
+        scope: { guildId: interaction.guildId, channelId: channel.id, threadId: channel.isThread?.() ? channel.id : null },
+        input: {}
+    })
+    await interaction.editReply(result.message)
+}
+
+module.exports = { data, configure, execute }
