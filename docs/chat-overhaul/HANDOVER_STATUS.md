@@ -31,6 +31,8 @@ Implemented:
 
 The local subsystem is operational and its automated release checks pass. Docker containers currently provide Qdrant on `127.0.0.1:6333` and SearXNG on `127.0.0.1:8088`.
 
+The production topology uses a separate Linux bot host at current DHCP address `192.168.1.9`; MongoDB runs locally on that Linux host. Qdrant and SearXNG now bind only to the Windows Ethernet address at `192.168.1.2:6333` and `:8088`. A Private-profile Windows firewall rule permits those ports only from `192.168.1.9` and the service host itself, and Qdrant also requires a generated API key stored in ignored deployment/runtime environment files. The existing AI proxy at `192.168.1.2:11230` remains separately managed. `npm run chat:smoke:remote` rejects loopback remote-service endpoints while allowing Linux-local MongoDB.
+
 Repeat the live gate with:
 
 ```powershell
@@ -40,7 +42,7 @@ npm run chat:smoke:local -- --strict
 npm run chat:smoke:subsystem -- --strict
 ```
 
-The only environment-specific release gate still open is the designated private Discord guild demo, including real channel/thread permission visibility and restart/deletion behavior. Do not use a production guild for that gate.
+The Windows-side LAN bind, firewall scope, and full local integration suite pass. The Linux-origin remote smoke remains open because SSH authentication was unavailable to this session. The designated private Discord guild demo also remains open, including real channel/thread permission visibility and restart/deletion behavior. Do not use a production guild for that gate.
 
 ## Remaining Risks
 
@@ -54,9 +56,10 @@ The only environment-specific release gate still open is the designated private 
 
 ## Next Steps
 
-1. Register commands only in a development guild after checking `config.json` guild IDs.
-2. Run the private-guild restart, promise, correction, RAG, search, outage, and deletion demo.
-3. Record the guild-specific evidence in `IMPLEMENTATION_REPORT.md`.
-4. Do not broaden rollout until the `OPERATOR_GUIDE.md` release gates pass.
+1. Copy the runtime endpoints and Qdrant key to the Linux deployment environment and run `npm run chat:smoke:remote` there. Update the `/32` firewall source when the Linux DHCP lease changes, or reserve `192.168.1.9` in DHCP.
+2. Register commands only in a development guild after checking `config.json` guild IDs.
+3. Run the private-guild restart, promise, correction, RAG, search, outage, and deletion demo.
+4. Record the host and guild evidence in `IMPLEMENTATION_REPORT.md`.
+5. Do not broaden rollout until the `OPERATOR_GUIDE.md` release gates pass.
 
 The worktree was already dirty. Unrelated user files and `temp/rate_limit_data.json` were not reverted. `data/chat-models/` is intentionally ignored.

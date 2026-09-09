@@ -15,6 +15,11 @@ function privateHost(hostname, allowlisted = '') {
     return host.startsWith('fc') || host.startsWith('fd') || /^fe[89ab]/.test(host) || allowlisted.split(',').map(item => item.trim().toLowerCase()).includes(host);
 }
 
+function loopbackHost(hostname) {
+    const host = hostname.toLowerCase().replace(/^\[|\]$/g, '');
+    return host === 'localhost' || host === '::1' || host.startsWith('127.');
+}
+
 function serviceUrl(name, raw, options = {}) {
     const url = new URL(raw);
     if (!['http:', 'https:', ...(options.mongo ? ['mongodb:', 'mongodb+srv:'] : [])].includes(url.protocol)) throw new Error(`${name} uses an unsupported protocol`);
@@ -49,12 +54,26 @@ async function fetchJson(url, init, timeoutMs = 12000) {
 async function main() {
     if (String(process.env.CHAT_LOCAL_ONLY || 'true').toLowerCase() !== 'true') throw new Error('CHAT_LOCAL_ONLY=true is required');
     const strict = process.argv.includes('--strict');
+    const remote = process.argv.includes('--remote');
     const model = process.env.CHAT_MODEL || 'unsloth/gemma-4-12B-it-qat-GGUF';
     if (/(gemini|openai|gpt-|claude|anthropic)/i.test(model)) throw new Error('Cloud inference model rejected');
 
     const proxy = serviceUrl('AI_PROXY_URL', process.env.AI_PROXY_URL || 'http://127.0.0.1:11230');
     const qdrant = serviceUrl('QDRANT_URL', process.env.QDRANT_URL || 'http://127.0.0.1:6333');
     const searxng = serviceUrl('SEARXNG_URL', process.env.SEARXNG_URL || 'http://127.0.0.1:8088');
+    const remoteEndpointUrls = [
+        ['AI_PROXY_URL', proxy],
+        ['QDRANT_URL', qdrant],
+        ['SEARXNG_URL', searxng]
+    ];
+    let mongoUrl = null;
+    if (process.env.MONGODB_CONNECTION_STRING) {
+        mongoUrl = serviceUrl('MONGODB_CONNECTION_STRING', process.env.MONGODB_CONNECTION_STRING, { mongo: true });
+    }
+    if (remote) {
+        const loopback = remoteEndpointUrls.filter(([, url]) => loopbackHost(url.hostname)).map(([name]) => name);
+        if (loopback.length) throw new Error(`--remote rejects loopback endpoints: ${loopback.join(', ')}`);
+    }
     const checks = [];
     checks.push(await timed('local inference', async () => {
         const body = await fetchJson(new URL('/v1/chat/completions', proxy), {
@@ -75,7 +94,7 @@ async function main() {
         return { model: body.model || model, visibleText: text.slice(0, 100) };
     }));
     checks.push(await timed('qdrant', async () => {
-        const body = await fetchJson(new URL('/collections', qdrant));
+        const body = await fetchJson(new URL('/collections', qdrant), process.env.QDRANT_API_KEY ? { headers: { 'api-key': process.env.QDRANT_API_KEY } } : undefined);
         return { collections: body.result?.collections?.length ?? null };
     }));
     checks.push(await timed('searxng json', async () => {
@@ -89,7 +108,6 @@ async function main() {
 
     if (process.env.MONGODB_CONNECTION_STRING) {
         checks.push(await timed('mongo', async () => {
-            const mongoUrl = serviceUrl('MONGODB_CONNECTION_STRING', process.env.MONGODB_CONNECTION_STRING, { mongo: true });
             const client = new MongoClient(mongoUrl.toString(), { serverSelectionTimeoutMS: 5000 });
             try {
                 const result = await client.db(process.env.CHAT_MONGODB_DATABASE || 'another_elaina').command({ ping: 1 });
@@ -104,7 +122,7 @@ async function main() {
 
     const requiredFailure = checks.find(item => item.name === 'local inference' && !item.ok);
     const anyFailure = checks.some(item => !item.ok);
-    const report = { ok: !requiredFailure && !(strict && anyFailure), strict, localOnly: true, checkedAt: new Date().toISOString(), checks };
+    const report = { ok: !requiredFailure && !(strict && anyFailure), strict, remote, localOnly: true, checkedAt: new Date().toISOString(), checks };
     console.log(JSON.stringify(report, null, 2));
     if (!report.ok) process.exitCode = 1;
 }

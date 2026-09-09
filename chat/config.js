@@ -103,6 +103,7 @@ function loadConfig(env = process.env, options = {}) {
         observeParticipants: boolean(env, 'CHAT_OBSERVE_PARTICIPANTS', true),
         followupWindowSeconds: integer(env, 'CHAT_FOLLOWUP_WINDOW_SECONDS', 0, { min: 0, max: 90 }),
         qdrantUrl: privateServiceUrl(env.QDRANT_URL || 'http://127.0.0.1:6333', 'QDRANT_URL', serviceHosts),
+        qdrantApiKey: env.QDRANT_API_KEY || null,
         searxngUrl: privateServiceUrl(env.SEARXNG_URL || 'http://127.0.0.1:8088', 'SEARXNG_URL', serviceHosts),
         embedding: {
             model: embeddingModel,

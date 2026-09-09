@@ -12,6 +12,8 @@ Run `npm run chat:setup:embedding` once during explicit setup. That command alon
 
 Private DNS names used for inference or service smoke checks must be listed in `CHAT_ALLOWED_INFERENCE_HOSTS` or `CHAT_ALLOWED_SERVICE_HOSTS`. Literal loopback and RFC 1918 addresses are accepted automatically. This allowlist is for operator-selected infrastructure only; it is not an inference-provider fallback list.
 
+When the bot runs on a separate Linux host, AI, Qdrant, and SearXNG URLs use the Windows service machine's stable LAN address or private DNS name. MongoDB runs locally on Linux and remains at `127.0.0.1:27017`. Configure `CHAT_SERVICE_BIND_ADDRESS` to the Windows machine's concrete LAN address before starting Qdrant/SearXNG, and run `npm run chat:smoke:remote` on Linux. Remote smoke rejects loopback AI, Qdrant, and SearXNG endpoints while permitting Linux-local MongoDB. Restrict Windows ports 6333 and 8088 to the Linux bot host; the existing AI proxy and Mongo deployments remain separately managed.
+
 ## Initialization order
 
 1. Load environment variables and validate local-only configuration.

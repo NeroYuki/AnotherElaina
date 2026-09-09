@@ -13,6 +13,7 @@
 		"test:chat:integration": "node --test tests/chat/integration/**/*.test.js",
 		"chat:eval:local": "node scripts/chat/evaluate.cjs",
 		"chat:smoke:local": "node scripts/chat/smoke_local.cjs",
+		"chat:smoke:remote": "node scripts/chat/smoke_local.cjs --strict --remote",
 		"chat:smoke:subsystem": "node scripts/chat/smoke_subsystem.cjs",
 		"chat:migrate": "node scripts/chat/migrate.cjs",
 		"chat:reindex": "node scripts/chat/reindex.cjs",

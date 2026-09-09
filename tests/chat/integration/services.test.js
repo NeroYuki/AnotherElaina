@@ -21,7 +21,7 @@ test('configured local chat services are reachable', { skip: !enabled }, async (
     const mongo = await openMongo({ dbName: process.env.CHAT_MONGODB_DATABASE || 'another_elaina' })
     try {
         assert.equal((await mongo.db.command({ ping: 1 })).ok, 1)
-        const vector = new QdrantVectorIndex({ url: config.qdrantUrl, ...config.embedding })
+        const vector = new QdrantVectorIndex({ url: config.qdrantUrl, apiKey: config.qdrantApiKey, ...config.embedding })
         await vector.ensureCollection()
         await vector.ensureAlias()
         const search = createSearxngClient({ endpoint: config.searxngUrl })
@@ -41,7 +41,7 @@ test('pinned local embeddings round-trip through the live Qdrant alias', { skip:
     const userId = 'integration-user'
     const repository = new ChatRepository({ db: mongo.db })
     const embedder = new E5Embedder(config.embedding)
-    const vector = new QdrantVectorIndex({ url: config.qdrantUrl, ...config.embedding })
+    const vector = new QdrantVectorIndex({ url: config.qdrantUrl, apiKey: config.qdrantApiKey, ...config.embedding })
     const ingestor = new LoreIngestor({ repository, embedder, vectorIndex: vector })
     try {
         await vector.ensureCollection()
