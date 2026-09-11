@@ -39,6 +39,14 @@ function responseStyle(env) {
     return style
 }
 
+function structuredOutputMode(env) {
+    const mode = String(env.CHAT_STRUCTURED_OUTPUT_MODE || 'auto').trim().toLowerCase()
+    if (!['auto', 'server', 'prompt'].includes(mode)) {
+        throw new ChatConfigError('CHAT_STRUCTURED_OUTPUT_MODE must be auto, server, or prompt')
+    }
+    return mode
+}
+
 function isPrivateHost(hostname) {
     const host = hostname.replace(/^\[|\]$/g, '').toLowerCase()
     if (host === 'localhost' || host.endsWith('.localhost')) return true
@@ -116,6 +124,7 @@ function loadConfig(env = process.env, options = {}) {
         compactMaxOutputTokens: integer(env, 'CHAT_COMPACT_MAX_OUTPUT_TOKENS', 192, { min: 64, max: 512 }),
         compactMaxWords: integer(env, 'CHAT_COMPACT_MAX_WORDS', 90, { min: 30, max: 250 }),
         thinkingDefault: boolean(env, 'CHAT_THINKING_DEFAULT', false),
+        structuredOutputMode: structuredOutputMode(env),
         inferenceConcurrency: integer(env, 'CHAT_INFERENCE_CONCURRENCY', 1, { min: 1, max: 8 }),
         turnTimeoutMs: integer(env, 'CHAT_TURN_TIMEOUT_MS', 90000, { min: 1000, max: 180000 }),
         coldTimeoutMs: integer(env, 'CHAT_COLD_TIMEOUT_MS', 180000, { min: 1000, max: 300000 }),

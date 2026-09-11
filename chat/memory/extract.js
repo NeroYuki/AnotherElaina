@@ -84,6 +84,10 @@ class MemoryExtractor {
                 })
                 output = parseOutput(response)
             } catch (error) {
+                // There is no model output to repair after an HTTP, transport, or
+                // context failure. Preserve the provider error for job backoff/logging.
+                if (error?.status || error?.retryable || error?.code === 'CHAT_CONTEXT_EXCEEDED' ||
+                    String(error?.code || '').startsWith('INFERENCE_')) throw error
                 lastFailure = { code: error.code || 'CHAT_EXTRACTION_INVALID', errors: [error.message] }
                 repair = lastFailure.errors
                 continue

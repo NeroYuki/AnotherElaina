@@ -61,6 +61,65 @@ test('provider classifies context-size errors with loaded and configured limits'
     });
 });
 
+test('provider falls back from a broken llama grammar to prompt-constrained JSON', async () => {
+    const bodies = [];
+    const schema = {
+        type: 'object', additionalProperties: false, required: ['memories'],
+        properties: { memories: { type: 'array', items: {} } },
+    };
+    const provider = new LocalOpenAIProvider({
+        endpoint: 'http://127.0.0.1:11230', model: 'qwen-local', maxRetries: 0,
+        structuredOutputMode: 'server',
+        fetchImpl: async (_url, options) => {
+            const body = JSON.parse(options.body);
+            bodies.push(body);
+            if (bodies.length === 1) {
+                return Response.json({ error: { code: 500, message: 'got exception: Unexpected empty grammar stack after accepting piece: / (14)' } }, { status: 500 });
+            }
+            return Response.json({ choices: [{ message: { content: '{"memories":[]}' }, finish_reason: 'stop' }] });
+        },
+    });
+    const result = await provider.generate({
+        messages: [{ role: 'system', content: 'Extract memories.' }, { role: 'user', content: '{}' }],
+        responseSchema: schema,
+    });
+    assert.equal(result.text, '{"memories":[]}');
+    assert.ok(bodies[0].response_format);
+    assert.equal(bodies[1].response_format, undefined);
+    assert.match(bodies[1].messages[0].content, /Return only valid JSON matching this schema/);
+    assert.match(bodies[1].messages[0].content, /"memories"/);
+});
+
+test('Qwen 3.8 auto mode avoids server grammar on the first request', async () => {
+    let body;
+    const provider = new LocalOpenAIProvider({
+        endpoint: 'http://127.0.0.1:11230', model: 'unsloth/Qwen3.8-27B-GGUF', maxRetries: 0,
+        fetchImpl: async (_url, options) => {
+            body = JSON.parse(options.body);
+            return Response.json({ choices: [{ message: { content: '```json\n{"memories":[]}\n```' }, finish_reason: 'stop' }] });
+        },
+    });
+    const result = await provider.generate({
+        messages: [{ role: 'system', content: 'Extract memories.' }],
+        responseSchema: { type: 'object', properties: { memories: { type: 'array' } } },
+    });
+    assert.equal(body.response_format, undefined);
+    assert.match(body.messages[0].content, /Return only valid JSON matching this schema/);
+    assert.equal(result.text, '{"memories":[]}');
+});
+
+test('provider rejects a corrupted repeated-punctuation generation', async () => {
+    const provider = new LocalOpenAIProvider({
+        endpoint: 'http://127.0.0.1:11230', model: 'qwen-local', maxRetries: 0,
+        fetchImpl: async () => Response.json({
+            choices: [{ message: { content: '/'.repeat(64) }, finish_reason: 'length' }],
+        }),
+    });
+    await assert.rejects(provider.generate({ messages: [] }), {
+        code: 'INFERENCE_DEGENERATE_OUTPUT', retryable: true,
+    });
+});
+
 test('thinking-only length response gets one fresh thinking-disabled retry', async () => {
     const bodies = [];
     const provider = new LocalOpenAIProvider({

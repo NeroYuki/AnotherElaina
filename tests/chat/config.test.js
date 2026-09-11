@@ -11,6 +11,7 @@ test('chat config is local-only with a pinned embedding revision', () => {
     assert.equal(config.modelQuantization, 'UD-Q4_K_XL')
     assert.equal(config.embedding.revision, DEFAULT_EMBEDDING_REVISION)
     assert.equal(config.thinkingDefault, false)
+    assert.equal(config.structuredOutputMode, 'auto')
     assert.equal(config.responseStyle, 'compact')
     assert.equal(config.compactMaxOutputTokens, 192)
     assert.equal(config.compactMaxWords, 90)
@@ -31,6 +32,7 @@ test('chat config rejects cloud inference and non-local models', () => {
     assert.throws(() => loadConfig({ CHAT_MODEL: 'gemini-2.5-flash' }), ChatConfigError)
     assert.throws(() => loadConfig({ CHAT_LOCAL_ONLY: 'false' }), ChatConfigError)
     assert.throws(() => loadConfig({ CHAT_RESPONSE_STYLE: 'novel' }), ChatConfigError)
+    assert.throws(() => loadConfig({ CHAT_STRUCTURED_OUTPUT_MODE: 'broken' }), ChatConfigError)
 })
 
 test('private host classification covers local IPv4 and IPv6', () => {

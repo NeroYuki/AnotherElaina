@@ -71,6 +71,42 @@ function responseFormat(responseSchema) {
     };
 }
 
+function grammarStackError(text) {
+    return /unexpected empty grammar stack|grammar stack/i.test(String(text || ''));
+}
+
+function schemaOnly(responseSchema) {
+    if (!responseSchema) return null;
+    if (responseSchema.type === 'json_schema') return responseSchema.json_schema?.schema || null;
+    if (responseSchema.type === 'json_object') return null;
+    return responseSchema.schema || responseSchema;
+}
+
+function promptConstrainedMessages(messages, responseSchema) {
+    const schema = schemaOnly(responseSchema);
+    const instruction = schema
+        ? `Return only valid JSON matching this schema: ${JSON.stringify(schema)}`
+        : 'Return only one valid JSON object with no Markdown or commentary.';
+    const result = (messages || []).map(message => ({ ...message }));
+    if (result[0]?.role === 'system') {
+        result[0].content = `${String(result[0].content || '')}\n\n${instruction}`;
+    } else {
+        result.unshift({ role: 'system', content: instruction });
+    }
+    return result;
+}
+
+function normalizeStructuredText(text) {
+    const value = String(text || '').trim();
+    const fenced = value.match(/^```(?:json)?\s*\r?\n([\s\S]*?)\r?\n```$/i);
+    return fenced ? fenced[1].trim() : text;
+}
+
+function degenerateOutput(text) {
+    const value = String(text || '').trim();
+    return value.length >= 16 && /^([^\p{L}\p{N}\s])\1+$/u.test(value);
+}
+
 function normalizeToolCall(call, index = 0) {
     return {
         id: String(call?.id || `call-${index}`),
@@ -104,7 +140,8 @@ function parseCompletion(json, fallbackModel) {
 class LocalOpenAIProvider {
     constructor({ endpoint = PROXY_URL, model = 'unsloth/gemma-4-12B-it-qat-GGUF',
         contextTokens = 8192, quantization, fetchImpl = globalThis.fetch, maxRetries = 1,
-        maxRetryDelayMs = 10_000, sleepImpl = sleep, service = 'unsloth' } = {}) {
+        maxRetryDelayMs = 10_000, sleepImpl = sleep, service = 'unsloth',
+        structuredOutputMode = 'auto' } = {}) {
         if (typeof fetchImpl !== 'function') throw new TypeError('Native fetch is required');
         const parsed = new URL(endpoint);
         if (!['http:', 'https:'].includes(parsed.protocol)) throw new TypeError('Invalid inference endpoint');
@@ -118,6 +155,18 @@ class LocalOpenAIProvider {
         this.maxRetryDelayMs = maxRetryDelayMs;
         this.sleep = sleepImpl;
         this.service = service;
+        if (!['auto', 'server', 'prompt'].includes(structuredOutputMode)) {
+            throw new TypeError('structuredOutputMode must be auto, server, or prompt');
+        }
+        this.structuredOutputMode = structuredOutputMode;
+    }
+
+    _serverGrammarEnabled(model) {
+        if (this.structuredOutputMode === 'server') return true;
+        if (this.structuredOutputMode === 'prompt') return false;
+        // Qwen 3.8's thinking-aware template currently conflicts with llama.cpp
+        // grammars and can leave the server producing a repeated slash token.
+        return !/Qwen3\.8/i.test(String(model || ''));
     }
 
     _body(request, stream) {
@@ -135,7 +184,11 @@ class LocalOpenAIProvider {
             body.tool_choice = request.toolChoice || 'auto';
         }
         const format = responseFormat(request.responseSchema);
-        if (format) body.response_format = format;
+        if (format && this._serverGrammarEnabled(body.model)) {
+            body.response_format = format;
+        } else if (format) {
+            body.messages = promptConstrainedMessages(body.messages, request.responseSchema);
+        }
         if (stream) body.stream_options = { include_usage: true };
         return body;
     }
@@ -157,7 +210,8 @@ class LocalOpenAIProvider {
     }
 
     async _request(request, stream) {
-        const body = this._body(request, stream);
+        let body = this._body(request, stream);
+        let grammarFallbackUsed = false;
         let lastError;
         for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
             if (request.signal?.aborted) throw request.signal.reason || new DOMException('Aborted', 'AbortError');
@@ -170,6 +224,19 @@ class LocalOpenAIProvider {
                 });
                 if (response.ok) return response;
                 const text = (await response.text()).slice(0, 4096);
+                // llama.cpp can accept a JSON schema but crash its grammar stack while
+                // decoding particular token sequences. Retry once with the same schema
+                // expressed in the trusted prompt, leaving validation to the caller.
+                if (body.response_format && !grammarFallbackUsed && grammarStackError(text)) {
+                    body = {
+                        ...body,
+                        messages: promptConstrainedMessages(body.messages, request.responseSchema),
+                    };
+                    delete body.response_format;
+                    grammarFallbackUsed = true;
+                    attempt -= 1;
+                    continue;
+                }
                 const contextFailure = response.status === 400 ? contextSizeError(text) : null;
                 const wait = retryAfterMs(response.headers.get('retry-after'));
                 const error = new ProviderHttpError(contextFailure
@@ -213,6 +280,14 @@ class LocalOpenAIProvider {
             });
         }
         let result = parseCompletion(json, request.model || this.model);
+        if (request.responseSchema && result.text) {
+            result = { ...result, text: normalizeStructuredText(result.text) };
+        }
+        if (degenerateOutput(result.text)) {
+            throw new ProviderError('Local inference entered a repeated-token state; restart the loaded model', {
+                code: 'INFERENCE_DEGENERATE_OUTPUT', retryable: true,
+            });
+        }
         if (!result.text && result.toolCalls.length === 0) {
             if (request.thinking === true && result.finishReason === 'length' && request.retryWithoutThinking !== false) {
                 result = await this.generate({ ...request, thinking: false, retryWithoutThinking: false });
@@ -306,4 +381,8 @@ module.exports = {
     parseCompletion,
     retryAfterMs,
     contextSizeError,
+    grammarStackError,
+    promptConstrainedMessages,
+    normalizeStructuredText,
+    degenerateOutput,
 };

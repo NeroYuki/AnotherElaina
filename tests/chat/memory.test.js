@@ -80,6 +80,21 @@ test('extractor repairs once and application supplies trusted scope', async () =
     assert.equal(result[0].memoryId, 'm1')
 })
 
+test('extractor preserves provider failures instead of attempting output repair', async () => {
+    let calls = 0
+    const upstream = Object.assign(new Error('Local inference failed with HTTP 500'), {
+        code: 'INFERENCE_HTTP_ERROR', status: 500, retryable: true
+    })
+    const extractor = new MemoryExtractor({
+        provider: { async generate() { calls += 1; throw upstream } }
+    })
+    await assert.rejects(extractor.extract({
+        turns, participants, existingMemories: [],
+        scope: { guildId: 'g1', continuityId: 'c1', sceneId: 's1', corpus: 'memory' }, expectedEpoch: 2
+    }), error => error === upstream)
+    assert.equal(calls, 1)
+})
+
 test('correction lineage removes displaced facts and relationships remain directional', () => {
     const old = { memoryId: 'old', kind: 'scene_fact', statement: 'The umbrella is blue.', status: 'active', salience: 2, sourceTurnIds: ['t1'], createdAt: new Date(0) }
     const correction = { memoryId: 'new', kind: 'correction', statement: 'The umbrella is green.', targetMemoryId: 'old', correctionType: 'supersede', status: 'active', salience: 3, sourceTurnIds: ['t3'], createdAt: new Date(1) }
