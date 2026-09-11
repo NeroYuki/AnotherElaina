@@ -433,11 +433,19 @@ BeatmapSetID:-1`);
 
     cancelMapperTask(params, client, msgRef) {
         msgRef.edit({ content: `<@${params.user_id}> Beatmap generation cancelled by user` });
-        // dequeue the current task
-        client.mapperatorinator_queue.shift();
-        // check if there is another task in the queue
-        console.log("Cancelled task, Current queue length: " + client.mapperatorinator_queue.length)
-        if (client.mapperatorinator_queue.length > 0) {
+        this.finishMapperTask(params, client);
+    },
+
+    finishMapperTask(params, client) {
+        const queueIndex = client.mapperatorinator_queue.findIndex(
+            task => task.params === params
+        );
+        if (queueIndex === -1) return;
+
+        const wasActive = queueIndex === 0;
+        client.mapperatorinator_queue.splice(queueIndex, 1);
+        console.log("Removed Mapperatorinator task, Current queue length: " + client.mapperatorinator_queue.length)
+        if (wasActive && client.mapperatorinator_queue.length > 0) {
             this.execute_inference(client.mapperatorinator_queue[0].interaction, client.mapperatorinator_queue[0].params, client);
         }
     },
@@ -603,10 +611,12 @@ BeatmapSetID:-1`);
             else {
                 interaction.channel.send({ content: `<@${params.user_id}> Failed to start inference: ` + err.message});
             }
+            this.finishMapperTask(params, client);
             return;
         }
 
         if (!request_res) {
+            this.finishMapperTask(params, client);
             return
         }
 
