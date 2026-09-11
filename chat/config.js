@@ -109,7 +109,7 @@ function loadConfig(env = process.env, options = {}) {
         modelQuantization: modelProfile.quantization,
         modelResourceTier: modelProfile.resourceTier,
         allowExtremeModel: boolean(env, 'CHAT_ALLOW_EXTREME_MODEL', false),
-        inferenceUrl: privateServiceUrl(env.AI_PROXY_URL || 'http://192.168.1.2:11230', 'AI_PROXY_URL', inferenceHosts),
+        inferenceUrl: privateServiceUrl(env.AI_PROXY_URL || 'http://192.168.1.3:11230', 'AI_PROXY_URL', inferenceHosts),
         contextTokens,
         maxOutputTokens: integer(env, 'CHAT_MAX_OUTPUT_TOKENS', 512, { min: 64, max: 1024 }),
         responseStyle: responseStyle(env),

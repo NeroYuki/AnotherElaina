@@ -12,8 +12,8 @@ Generate a secret and start the services in PowerShell:
 ```powershell
 $env:SEARXNG_SECRET = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
 $env:QDRANT_API_KEY = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
-$env:CHAT_SERVICE_BIND_ADDRESS = '192.168.1.2'
-$env:SEARXNG_BASE_URL = 'http://192.168.1.2:8088/'
+$env:CHAT_SERVICE_BIND_ADDRESS = '192.168.1.3'
+$env:SEARXNG_BASE_URL = 'http://192.168.1.3:8088/'
 docker compose -f deploy/chat/compose.yaml pull
 docker compose -f deploy/chat/compose.yaml up -d
 docker compose -f deploy/chat/compose.yaml ps
@@ -22,7 +22,7 @@ docker compose -f deploy/chat/compose.yaml ps
 Before the LAN bind, run the source restriction once from an **Administrator PowerShell** window. The rule permits the Linux `/32` plus the Windows service address itself so local maintenance smoke remains possible:
 
 ```powershell
-.\deploy\chat\configure-windows-lan.ps1 -BotHostAddress 192.168.1.9 -ServiceBindAddress 192.168.1.2
+.\deploy\chat\configure-windows-lan.ps1 -BotHostAddress 192.168.1.9 -ServiceBindAddress 192.168.1.3
 ```
 
 Run the same command with the new Linux address whenever DHCP changes it; the named rule is replaced with the new `/32` source. A DHCP reservation for the Linux host avoids that operational failure mode.
@@ -30,11 +30,11 @@ Run the same command with the new Linux address whenever DHCP changes it; the na
 Configure the application with:
 
 ```dotenv
-AI_PROXY_URL=http://192.168.1.2:11230
+AI_PROXY_URL=http://192.168.1.3:11230
 MONGODB_CONNECTION_STRING=mongodb://127.0.0.1:27017
-QDRANT_URL=http://192.168.1.2:6333
+QDRANT_URL=http://192.168.1.3:6333
 QDRANT_API_KEY=<same value configured on the service host>
-SEARXNG_URL=http://192.168.1.2:8088
+SEARXNG_URL=http://192.168.1.3:8088
 CHAT_MODEL=unsloth/gemma-4-12B-it-qat-GGUF
 CHAT_MODEL_QUANTIZATION=
 CHAT_CONTEXT_TOKENS=16384
@@ -47,8 +47,8 @@ The empty quantization value selects the fixed variant from `chat/model_profiles
 SearXNG JSON output is explicitly enabled in `searxng-settings.yml`. Search quality and availability still depend on enabled upstream engines. Verify both services before enabling chat:
 
 ```powershell
-Invoke-RestMethod http://192.168.1.2:6333/healthz
-Invoke-RestMethod 'http://192.168.1.2:8088/search?q=Node.js&format=json'
+Invoke-RestMethod http://192.168.1.3:6333/healthz
+Invoke-RestMethod 'http://192.168.1.3:8088/search?q=Node.js&format=json'
 ```
 
 On the Linux bot host, merge `.env.chat.example` into its private runtime environment and run `npm run chat:smoke:remote`. The command is strict and rejects loopback endpoints, so it verifies the same network path the bot process will use.

@@ -43,7 +43,7 @@ const comfyClient = {
     // events. Both sockets use the same client ID so the matching event reaches
     // the shared prompt listener below.
     SERVER_ENDPOINTS: process.env.BOT_ENV === 'lan'
-        ? ['192.168.1.2:8188', '192.168.1.2:8189']
+        ? ['192.168.1.3:8188', '192.168.1.3:8189']
         : ['192.168.196.142:8188', '192.168.196.142:8189'],
     HTTP_ENDPOINT: PROXY_URL,
     init: function() {

@@ -10,7 +10,7 @@
 
 // Base URL of the orchestrator proxy. Override with `AI_PROXY_URL` if needed
 // (e.g. the LAN IP when running the consumer on a different machine).
-const PROXY_URL = process.env.AI_PROXY_URL || 'http://192.168.1.2:11230';
+const PROXY_URL = process.env.AI_PROXY_URL || 'http://192.168.1.3:11230';
 
 // Service identifiers understood by the proxy's `X-AI-Service` header routing.
 const SERVICES = {

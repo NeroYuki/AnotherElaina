@@ -10,7 +10,7 @@ const { createSearxngClient } = require('../../chat/web/searxng');
 const dispatcherFactory = addresses => ({ addresses, close: async () => {} });
 
 test('public IP validation blocks private, mapped, documentation, multicast, and loopback ranges', () => {
-    for (const address of ['127.0.0.1', '10.1.2.3', '169.254.1.2', '192.168.1.2', '224.0.0.1', '::1', '::ffff:8.8.8.8', 'fc00::1', 'fe80::1', '2001:db8::1']) {
+    for (const address of ['127.0.0.1', '10.1.2.3', '169.254.1.2', '192.168.1.3', '224.0.0.1', '::1', '::ffff:8.8.8.8', 'fc00::1', 'fe80::1', '2001:db8::1']) {
         assert.equal(isPublicIp(address), false, address);
     }
     assert.equal(isPublicIp('8.8.8.8'), true);

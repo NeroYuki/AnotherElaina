@@ -37,9 +37,9 @@ Implemented:
 
 ## Release State
 
-The local subsystem is operational and its automated release checks pass. Docker containers currently provide Qdrant on `192.168.1.2:6333` and SearXNG on `192.168.1.2:8088` under the source-restricted firewall rule described below.
+The local subsystem is operational and its automated release checks pass. Docker containers currently provide Qdrant on `192.168.1.3:6333` and SearXNG on `192.168.1.3:8088` under the source-restricted firewall rule described below.
 
-The production topology uses a separate Linux bot host at current DHCP address `192.168.1.9`; MongoDB runs locally on that Linux host. Qdrant and SearXNG now bind only to the Windows Ethernet address at `192.168.1.2:6333` and `:8088`. A Private-profile Windows firewall rule permits those ports only from `192.168.1.9` and the service host itself, and Qdrant also requires a generated API key stored in ignored deployment/runtime environment files. The existing AI proxy at `192.168.1.2:11230` remains separately managed. `npm run chat:smoke:remote` rejects loopback remote-service endpoints while allowing Linux-local MongoDB.
+The production topology uses a separate Linux bot host at current DHCP address `192.168.1.9`; MongoDB runs locally on that Linux host. Qdrant and SearXNG now bind only to the Windows Ethernet address at `192.168.1.3:6333` and `:8088`. A Private-profile Windows firewall rule permits those ports only from `192.168.1.9` and the service host itself, and Qdrant also requires a generated API key stored in ignored deployment/runtime environment files. The existing AI proxy at `192.168.1.3:11230` remains separately managed. `npm run chat:smoke:remote` rejects loopback remote-service endpoints while allowing Linux-local MongoDB.
 
 Repeat the live gate with:
 

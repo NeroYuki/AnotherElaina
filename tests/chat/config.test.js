@@ -34,7 +34,7 @@ test('chat config rejects cloud inference and non-local models', () => {
 })
 
 test('private host classification covers local IPv4 and IPv6', () => {
-    assert.equal(isPrivateHost('192.168.1.2'), true)
+    assert.equal(isPrivateHost('192.168.1.3'), true)
     assert.equal(isPrivateHost('127.0.0.1'), true)
     assert.equal(isPrivateHost('::1'), true)
     assert.equal(isPrivateHost('8.8.8.8'), false)
