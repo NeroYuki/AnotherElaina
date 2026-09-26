@@ -9,7 +9,6 @@ const databaseConnection = require('./database/database_connection');
 const { listAllFiles } = require('./utils/common_helper');
 const ComfyClient = require('./utils/comfy_client');
 const { rateLimiter } = require('./utils/rate_limiter');
-const { getForgeMemory, getForgeProgress, unloadForgeCheckpoint } = require('./utils/forge_api_execute');
 const { createChatSubsystem } = require('./chat');
 const chatComponents = require('./chat/discord/components');
 const { loadImage } = require('./utils/load_discord_img');
@@ -166,44 +165,6 @@ client.on('interactionCreate', async interaction => {
     ]
 
     try {
-        if ([
-            ...comfy_backend_require,
-            ...mapperatorinator_backend_require
-        ].includes(interaction.commandName)) {
-            const forgeMemory = await getForgeMemory();
-            
-            if (forgeMemory && forgeMemory.cuda && forgeMemory.cuda.system) {
-                const freeCudaMemory = forgeMemory.cuda.system.free;
-                const allocatedCudaMemory = forgeMemory.cuda.allocated.current;
-                const GB = 1024 * 1024 * 1024;
-                
-                // Different VRAM requirements: Comfy needs 12GB, Mapperatorinator needs 6GB
-                const requiredFreeVram = mapperatorinator_backend_require.includes(interaction.commandName) ? 6 * GB : 12 * GB;
-                
-                // If free CUDA memory < required and allocated > 2GB, attempt to unload
-                if (freeCudaMemory < requiredFreeVram && allocatedCudaMemory > 2 * GB) {
-                    const forgeProgress = await getForgeProgress();
-                    
-                    // Check if there's an active job
-                    if (forgeProgress && forgeProgress.state && forgeProgress.state.job_count > 0) {
-                        await interaction.channel.send({ 
-                            content: 'Active forge backend job is running, cannot unload model to free up VRAM, please try again later'
-                        });
-                        return;
-                    }
-                    
-                    // Attempt to unload checkpoint
-                    console.log('[Bot] Attempting to unload Forge checkpoint to free VRAM...');
-                    const unloadResult = await unloadForgeCheckpoint();
-                    if (unloadResult !== null) {
-                        console.log('[Bot] Forge checkpoint unloaded successfully');
-                        // Wait a bit for VRAM to be freed
-                        await new Promise(resolve => setTimeout(resolve, 2000));
-                    }
-                }
-            }
-        }
-        
         if ([
             ...forge_backend_require,
             ...comfy_backend_require,
