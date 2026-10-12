@@ -206,6 +206,7 @@ class LocalOpenAIProvider {
             'Content-Type': 'application/json', Accept: stream ? 'text/event-stream' : 'application/json',
         });
         if (request.jobId) headers['X-AI-Job-ID'] = String(request.jobId);
+        if (request.instanceId) headers['X-AI-Instance'] = String(request.instanceId);
         return headers;
     }
 
@@ -280,6 +281,7 @@ class LocalOpenAIProvider {
             });
         }
         let result = parseCompletion(json, request.model || this.model);
+        result.providerMeta.instanceId = response.headers.get('x-ai-instance');
         if (request.responseSchema && result.text) {
             result = { ...result, text: normalizeStructuredText(result.text) };
         }

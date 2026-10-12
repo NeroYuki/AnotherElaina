@@ -35,8 +35,8 @@ function buildH3Workflow({ prompt, shape, seed = crypto.randomInt(0, 2_000_000_0
     if (!Number.isSafeInteger(seed) || seed < 0) throw new Error('Seed must be a non-negative safe integer.');
     if (!Number.isInteger(steps) || steps < 1 || steps > 50) throw new Error('Steps must be between 1 and 50.');
     const workflow = JSON.parse(JSON.stringify(h3Template));
-    // Use the supplied prompt directly. The desktop template's LM Studio
-    // load/unload and preview nodes are unnecessary dependencies for a bot job.
+    // The bot enriches the prompt and unloads its LLM before submission, so the
+    // desktop template's LM Studio and preview nodes are unnecessary here.
     for (const id of ['115', '142', '143', '144', '145', '146', '148', '105:107', '105:111']) delete workflow[id];
     Object.assign(workflow['105:104'].inputs, { prompt, width: shape.width, height: shape.height, length: shape.length });
     workflow['105:15'].inputs.noise_seed = seed;

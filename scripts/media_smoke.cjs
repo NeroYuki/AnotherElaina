@@ -8,6 +8,36 @@ const { PROXY_URL } = require('../utils/proxy_config');
 const { comfyWorkload, workloadHeaders } = require('../utils/orchestrator_workload');
 const { buildH3Workflow, buildPostProcessWorkflow, videoShape, videoOutput } = require('../utils/comfy_media');
 const comfy = require('../utils/comfy_client');
+const { enrichVideoPrompt, QUALITIES } = require('../utils/video_prompt');
+
+async function enrich(quality = 'standard', imagePaths = []) {
+    if (!QUALITIES[quality]) throw new Error('Choose standard or high enrichment.');
+    const shape = videoShape(768, 448, 5);
+    const profile = QUALITIES[quality];
+    const headers = { 'X-AI-Service': 'unsloth', 'X-AI-Instance': profile.instanceId };
+    const images = await Promise.all(imagePaths.map(async imagePath => sharp(await fs.readFile(imagePath))
+        .rotate().resize({ width: 768, height: 768, fit: 'inside' }).jpeg().toBuffer()));
+    const prompt = images.length ? 'Slowly orbit the camera shown in the opening image, preserving its appearance. No dialogue or music.'
+        : 'A small blue bird lands on a branch and turns its head. No dialogue or music.';
+    const result = await enrichVideoPrompt({ prompt, shape, requestedSeconds: 5, quality, images, onProgress: console.log }, {
+        async fetchImpl(url, options) {
+            const response = await fetch(url, options);
+            if (url.endsWith('/v1/chat/completions') && response.ok) {
+                const status = (await axios.get(`${PROXY_URL}/api/inference/status`, { headers })).data;
+                const gpu = quality === 'standard' ? 1 : 0;
+                if (JSON.stringify(status.gpu_ids) !== JSON.stringify([gpu])) throw new Error(`Wrong LLM placement: ${JSON.stringify(status.gpu_ids)}`);
+                console.log(`Verified ${profile.model} on physical GPU ${gpu}.`);
+            }
+            return response;
+        },
+    });
+    const status = (await axios.get(`${PROXY_URL}/api/inference/status`, { headers })).data;
+    if (status.active_model === profile.model || status.loaded?.includes(profile.model)) throw new Error('Enrichment model remained loaded.');
+    await fs.mkdir('temp', { recursive: true });
+    await fs.writeFile(`temp/video-prompt-${quality}.txt`, result);
+    console.log(`Live ${quality} enrichment passed; model unloaded. temp/video-prompt-${quality}.txt`);
+    return result;
+}
 
 async function validate() {
     const png = await sharp({ create: { width: 64, height: 64, channels: 3, background: '#84a9cc' } }).png().toBuffer();
@@ -76,9 +106,11 @@ async function model(input) {
     await orbit('temp/model-generation-smoke.glb');
 }
 
-async function generateVideo() {
+async function generateVideo(quality) {
     const shape = videoShape(768, 448, 5);
-    const workflow = buildH3Workflow({ prompt: 'integrated_multimodal_description: [Shot 1] A small blue bird sits on a branch and turns its head. The camera holds a static shot.\n\noverall_soundscape: Soft wind rustles leaves and the bird chirps.\n\nnon_diegetic_music: N/A',
+    const prompt = quality ? await enrich(quality) : 'integrated_multimodal_description: [Shot 1] A small blue bird sits on a branch and turns its head. The camera holds a static shot.\n\noverall_soundscape: Soft wind rustles leaves and the bird chirps.\n\nnon_diegetic_music: N/A';
+    // This check uses the enriched text; --enrich separately exercises vision.
+    const workflow = buildH3Workflow({ prompt,
         shape, seed: 0, steps: 4 });
     console.log('Running a five-second H3 generation with four sampling steps for a runtime smoke check.');
     const result = await comfy.runPrompt(workflow, { timeoutMs: 20 * 60 * 1000 });
@@ -93,11 +125,12 @@ async function generateVideo() {
 }
 
 (async () => {
-    const [flag, input] = process.argv.slice(2);
+    const [flag, input, ...imagePaths] = process.argv.slice(2);
     if (flag === '--validate') await validate();
     else if (flag === '--postprocess') await postprocess();
     else if (flag === '--orbit' && input) await orbit(input);
     else if (flag === '--model' && input) await model(input);
-    else if (flag === '--generate') await generateVideo();
-    else throw new Error('Usage: node scripts/media_smoke.cjs --validate | --postprocess | --orbit MODEL.glb | --model IMAGE.png | --generate');
+    else if (flag === '--enrich') await enrich(input, imagePaths);
+    else if (flag === '--generate') await generateVideo(input);
+    else throw new Error('Usage: node scripts/media_smoke.cjs --validate | --postprocess | --orbit MODEL.glb | --model IMAGE.png | --enrich [standard|high] | --generate [standard|high]');
 })().catch(error => { console.error(error.response?.data || error); process.exitCode = 1; });

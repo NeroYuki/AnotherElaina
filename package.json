@@ -9,7 +9,7 @@
 		"start-vpn": "set BOT_ENV=vpn && node Bot.js",
 		"start-lan-linux": "export BOT_ENV=lan && node Bot.js",
 		"start-vpn-linux": "export BOT_ENV=vpn && node Bot.js",
-		"test:media": "node --test tests/media.test.js",
+		"test:media": "node --test tests/media.test.js tests/video_prompt.test.js",
 		"test:chat": "node --test tests/chat/**/*.test.js tests/chat/*.test.js",
 		"test:chat:integration": "node --test tests/chat/integration/**/*.test.js",
 		"chat:eval:local": "node scripts/chat/evaluate.cjs",
