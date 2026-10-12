@@ -1,345 +1,42 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const og_workflow = require('../resources/comfy_txt2vid.json')
-const wan_workflow = require('../resources/wan_txt2vid.json')
-const sf_workflow = require('../resources/wan_sf_txt2vid.json')
-const ComfyClient = require('../utils/comfy_client');
-const { get_teacache_config_from_prompt } = require('../utils/prompt_analyzer');
-const { clamp } = require('../utils/common_helper');
-const { sampler_selection, scheduler_selection, sampler_to_comfy_name_mapping, scheduler_to_comfy_name_mapping } = require('../utils/ai_server_config');
+const { buildH3Workflow, videoShape, runVideo, errorMessage } = require('../utils/comfy_media');
 
 module.exports = {
-	data: new SlashCommandBuilder()
-		.setName('wd_txt2vid')
-            .setDescription('Generate a video from a text prompt')
-            .addStringOption(option =>
-                option.setName('prompt')
-                    .setDescription('The text prompt to generate the video')
-                    .setRequired(true))
-            .addStringOption(option =>
-                option.setName('neg_prompt')
-                    .setDescription('The negative text prompt to generate the video')
-                    .setRequired(false))
-            .addStringOption(option => 
-                option.setName('preset')
-                    .setDescription('The preset to use for the generation')
-                    .addChoices(
-                        { name: '512x320 - 3 secs', value: 'fast' },
-                        { name: '640x480 - 3 secs', value: 'sd' },
-                        { name: '512x320 - 5 secs', value: 'long' },
-                        { name: 'Custom', value: 'custom' }
-                    ))
-            .addIntegerOption(option =>
-                option.setName('custom_width')
-                    .setDescription('The width of the video in pixels (max 1280, default 512)')
-                    .setRequired(false))
-            .addIntegerOption(option =>
-                option.setName('custom_height')
-                    .setDescription('The height of the video in pixels (max 1280, default 320)')
-                    .setRequired(false))
-            .addIntegerOption(option =>
-                option.setName('custom_length')
-                    .setDescription('The length of the video in seconds (max 5 seconds, deafult 3)')
-                    .setRequired(false))
-            .addIntegerOption(option =>
-                option.setName('custom_fps')
-                    .setDescription('The frame rate of the video (default 16, recommend max 24)')
-                    .setRequired(false))
-            .addBooleanOption(option =>
-                option.setName('portrait')
-                    .setDescription('Generate a portrait video, no effect on custom preset')
-                    .setRequired(false))
-            .addNumberOption(option =>
-                option.setName('seed')
-                    .setDescription('The seed for the video generation (default is random, 0 to disable)')
-                    .setRequired(false))
-            .addBooleanOption(option =>
-                option.setName('no_optimize')
-                    .setDescription('Do not use fast video LoRA, generation time will be doubled')
-                    .setRequired(false))
-            // .addBooleanOption(option =>
-            //     option.setName('do_upscale')
-            //         .setDescription('Upscale the video to quadruple the resolution')
-            //         .setRequired(false))
-            // .addBooleanOption(option =>
-            //     option.setName('do_frame_interpolation')
-            //         .setDescription('Use frame interpolation to double the frame rate')
-            //         .setRequired(false))
-            // .addStringOption(option => 
-            //     option.setName('sampler')
-            //         .setDescription('The sampling method for the AI to generate art from (default is "Euler")')
-            //         .addChoices(...sampler_selection))
-            // .addStringOption(option => 
-            //     option.setName('scheduler')
-            //         .setDescription('The scheduling method for the AI to generate art from (default is "Normal")')
-            //         .addChoices(...scheduler_selection))
-            .addNumberOption(option => 
-                option.setName('cfg_scale')
-                    .setDescription('Lower value = more creative freedom (default is 1)'))
-            .addIntegerOption(option =>
-                option.setName('shift')
-                    .setDescription('The shift rate for the video generation (default 5, higher shift = more motion)')
-                    .setRequired(false))
-            .addStringOption(option =>
-                option.setName('model')
-                    .setDescription('The model to use for the generation')
-                    .addChoices(
-                        { name: 'Hunyuan T2V Q5_K_M - Legacy', value: 'hunyuan-video-t2v-720p-Q5_K_M.gguf' },
-                        { name: 'Wan v2.1 T2V Q8', value: 'wan2.1-t2v-14b-Q8_0.gguf' },
-                        { name: 'Skyreels v2 T2V Q8', value: 'Skywork-SkyReels-V2-T2V-14B-720P-Q8_0.gguf' },
-                        { name: 'AniWan v2.1 T2V fp8', value: 'aniWan2114BFp8E4m3fn_t2v.safetensors' },
-                        { name: 'Wan v2.1 T2V Self-forcing - Fast', value: 'self_forcing_dmd.pt' }
-                    ))
+    data: new SlashCommandBuilder()
+        .setName('wd_txt2vid')
+        .setDescription('Generate a video with audio using MiniMax H3')
+        .addStringOption(option => option.setName('prompt').setDescription('Describe the scene, motion, dialogue, and sound').setRequired(true))
+        .addStringOption(option => option.setName('preset').setDescription('Video size and duration (default Standard)').addChoices(
+            { name: 'Fast — 768×448, 5 seconds', value: 'fast' },
+            { name: 'Standard — 1024×768, 5 seconds', value: 'sd' },
+            { name: 'Long — 1024×768, 10 seconds', value: 'long' },
+            { name: 'Custom', value: 'custom' }))
+        .addIntegerOption(option => option.setName('custom_width').setDescription('Custom width, rounded to 32 pixels (default 1024)').setMinValue(32).setMaxValue(1344))
+        .addIntegerOption(option => option.setName('custom_height').setDescription('Custom height, rounded to 32 pixels (default 768)').setMinValue(32).setMaxValue(1344))
+        .addIntegerOption(option => option.setName('custom_length').setDescription('Custom duration in seconds (default 5, snapped to H3 frame grid)').setMinValue(1).setMaxValue(15))
+        .addBooleanOption(option => option.setName('portrait').setDescription('Swap width and height'))
+        .addNumberOption(option => option.setName('seed').setDescription('Generation seed (omit for random; 0 is a valid seed)').setMinValue(0).setMaxValue(Number.MAX_SAFE_INTEGER))
+        .addIntegerOption(option => option.setName('steps').setDescription('Sampling steps (default 20)').setMinValue(1).setMaxValue(50))
+        .addBooleanOption(option => option.setName('do_upscale').setDescription('Use RTX video super resolution at 2× (default true)'))
+        .addBooleanOption(option => option.setName('no_optimize').setDescription('Disable EasyCache optimization')),
 
-    ,
-
-    get_video_dimension(preset, custom_width, custom_height, custom_length, custom_fps, portrait) {
-        let width = 512;
-        let height = 320;
-        let length = 51;
-        let fps = 16;
-
-        if (preset === 'fast') {
-            width = 512;
-            height = 320;
-            length = 3 * 16; // 3 seconds
-            fps = 16;
-        } else if (preset === 'sd') {
-            width = 640;
-            height = 480;
-            length = 3 * 16; // 3 seconds
-            fps = 16;
-        } else if (preset === 'long') {
-            width = 512;
-            height = 320;
-            length = 5 * 16; // 5 seconds
-            fps = 16;
-        } else if (preset === 'custom') {
-            width = custom_width || width;
-            height = custom_height || height;
-            fps = custom_fps || fps;
-            length = custom_length * fps || length; // custom length in seconds
-        }
-
-        if (portrait) {
-            // swap width and height
-            [width, height] = [height, width];
-        }
-
-        return { width, height, length, fps };
-    },
-
-	async execute(interaction, client) {
+    async execute(interaction) {
         await interaction.deferReply();
-
-        // Deprecated, waiting for reimplementation with WAN2GP
-        await interaction.editReply('This command is currently under maintenance and will be re-enabled in the future with the new WAN2GP workflow. Stay tuned!');
-
-        // let prompt = interaction.options.getString('prompt');
-        // let neg_prompt = interaction.options.getString('neg_prompt') || '';
-        // const preset = interaction.options.getString('preset') || 'fast';
-        // const custom_width = clamp(interaction.options.getInteger('custom_width') || 512, 64, 1280);
-        // const custom_height = clamp(interaction.options.getInteger('custom_height') || 320, 64, 1280);
-        // const custom_length = clamp(interaction.options.getInteger('custom_length') || 3, 1, 5);
-        // const custom_fps = clamp(interaction.options.getInteger('custom_fps') || 16, 5, 24);
-        // const portrait = interaction.options.getBoolean('portrait') || false;
-        // const no_optimize = interaction.options.getBoolean('no_optimize') || false;
-        // const do_upscale = interaction.options.getBoolean('do_upscale') || false;
-        // const do_frame_interpolation = interaction.options.getBoolean('do_frame_interpolation') || false;
-        // const seed = interaction.options.getNumber('seed') || 0
-        // const sampler = interaction.options.getString('sampler') || 'Euler';
-        // const scheduler = interaction.options.getString('scheduler') || 'Normal'
-        // const cfg_scale = clamp(interaction.options.getNumber('cfg_scale') || 1, 1, 10);
-        // const model = interaction.options.getString('model') || 'wan2.1-t2v-14b-Q8_0.gguf';
-        // const shift = clamp(interaction.options.getInteger('shift') || 5, 1, 10);
-
-        // let workflow = JSON.parse(JSON.stringify(og_workflow))
-
-        // let dimensions = this.get_video_dimension(preset, custom_width, custom_height, custom_length, custom_fps, portrait);
-        // const budget = dimensions.width * dimensions.height * dimensions.length;
-
-        // if (model === 'hunyuan-video-t2v-720p-Q5_K_M.gguf') {
-        //     interaction.channel.send({ content: "neg_prompt, seed, shift will be ignored for this workflow" });
-
-        //     if (budget > 24_000_000) {
-        //         interaction.editReply({ content: "Budget exceeded 24M pixels! My PC cannot handle this xd" });
-        //         return
-        //     }
-        //     else if (budget > 16_000_000) {
-        //         interaction.channel.send({ content: "Budget exceeded 16M pixels, generation may take quite a while" });
-        //     }
-
-        //     workflow["12"]["inputs"]["width"] = dimensions.width;
-        //     workflow["12"]["inputs"]["height"] = dimensions.height;
-        //     workflow["12"]["inputs"]["length"] = dimensions.length;
-        //     workflow["41"]["inputs"]["frame_rate"] = dimensions.fps;
-
-        //     if (no_optimize) {
-        //         delete workflow["51"]
-        //         workflow["8"]["inputs"]["model"] = ["45", 0]
-        //         workflow["8"]["inputs"]["steps"] = 30
-        //     }
-
-        //     if (!do_upscale) {
-        //         delete workflow["55"]
-        //         delete workflow["56"]
-        //         workflow["46"]["inputs"]["frames"] = ["37", 0]
-        //     }
-
-        //     if (do_frame_interpolation) {
-        //         workflow["47"]["inputs"]["Value"] = 2
-        //         workflow["41"]["inputs"]["frame_rate"] = preset == 'custom' ? custom_fps * 2 : 32
-        //     }
-
-        //     await interaction.deferReply();
-
-        //     // check if user want to use teacache
-        //     const teacache_check = get_teacache_config_from_prompt(prompt)
-        //     if (teacache_check.teacache_config) {
-        //         workflow["45"]["inputs"]["rel_l1_thresh"] = teacache_check.teacache_config.threshold
-        //     }
-        //     prompt = teacache_check.prompt
-
-        //     workflow["15"]["inputs"]["text"] = prompt
-
-        //     workflow["8"]["inputs"]["sampler_name"] = sampler_to_comfy_name_mapping[sampler] ?? "euler"
-        //     workflow["8"]["inputs"]["scheduler"] = scheduler_to_comfy_name_mapping[scheduler] ?? "normal"
-        //     workflow["8"]["inputs"]["cfg"] = cfg_scale
-
-        //     if (dimensions.length > 81) {
-        //         interaction.editReply({ content: "Warning: Frame count is greater than 81 on legacy workflow, generated result can be looped unexpectedly" });
-        //     }
-        // }
-        // else if (model === 'self_forcing_dmd.pt') {
-        //     // self-forcing workflow
-        //     workflow = JSON.parse(JSON.stringify(sf_workflow))
-        //     interaction.channel.send({ content: "cfg_scale, neg_prompt, sampler, scheduler will be ignored for this workflow" });
-
-        //     if (budget > 80_000_000) {
-        //         interaction.editReply({ content: "Budget exceeded 80M pixels! My PC cannot handle this xd" });
-        //         return
-        //     }
-        //     else if (budget > 50_000_000) {
-        //         interaction.channel.send({ content: "Budget exceeded 50M pixels, generation may take quite a while" });
-        //     }
-
-        //     workflow["40"]["inputs"]["width"] = dimensions.width;
-        //     workflow["40"]["inputs"]["height"] = dimensions.height;
-        //     workflow["40"]["inputs"]["length"] = dimensions.length;
-        //     workflow["49"]["inputs"]["frame_rate"] = dimensions.fps;
-
-        //     workflow["48"]["inputs"]["shift"] = shift;
-        //     workflow["3"]["inputs"]["seed"] = seed > 0 ? seed : Math.floor(Math.random() * 2_000_000_000);
-        //     workflow["6"]["inputs"]["text"] = prompt;
-
-        //     if (dimensions.length > 81) {
-        //         interaction.editReply({ content: "Warning: Frame count is greater than 81 on fast workflow, generated result can be looped unexpectedly" });
-        //     }
-        // }
-        // else {
-        //     // wan workflow
-        //     workflow = JSON.parse(JSON.stringify(wan_workflow))
-        //     interaction.channel.send({ content: "cfg_scale, sampler, scheduler will be ignored for this workflow" });
-
-        //     if (budget > 50_000_000) {
-        //         interaction.editReply({ content: "Budget exceeded 50M pixels! My PC cannot handle this xd" });
-        //         return
-        //     }
-        //     else if (budget > 36_000_000) {
-        //         interaction.channel.send({ content: "Budget exceeded 36M pixels, generation may take quite a while" });
-        //     }
-
-        //     workflow["40"]["inputs"]["width"] = dimensions.width;
-        //     workflow["40"]["inputs"]["height"] = dimensions.height;
-        //     workflow["40"]["inputs"]["length"] = dimensions.length;
-        //     workflow["30"]["inputs"]["frame_rate"] = dimensions.fps;
-
-        //     workflow["48"]["inputs"]["shift"] = shift;
-
-        //     /// prompt
-        //     workflow["6"]["inputs"]["text"] = prompt;
-        //     workflow["7"]["inputs"]["text"] = neg_prompt;
-
-        //     // model selection
-        //     workflow["291"]["inputs"]["unet_name"] = model;
-        //     if (model === 'aniWan2114BFp8E4m3fn_t2v.safetensors') {
-        //         workflow["291"] = {
-        //             "inputs": {
-        //                 "unet_name": 'aniWan2114BFp8E4m3fn_t2v.safetensors',
-        //                 "weight_dtype": "default"
-        //             },
-        //             "class_type": "UNETLoader",
-        //             "_meta": {
-        //                 "title": "Load Diffusion Model"
-        //             }
-        //         }
-        //     }
-
-        //     // sampler
-        //     workflow["295"]["inputs"]["seed"] = seed > 0 ? seed : Math.floor(Math.random() * 2_000_000_000);
-        //     workflow["295"]["inputs"]["nag_scale"] = neg_prompt !== '' ? 8.0 : 1.0;
-
-        //     if (dimensions.length > 81) {
-        //         if (dimensions.length > 128) {
-        //             interaction.editReply({ content: "Warning: Frame count is greater than 128, generated result can be looped unexpectedly" });
-        //         }
-        //         else {
-        //             interaction.channel.send({ content: "Frame count is greater than 81, use RifleXRoPE" });
-        //         }
-        //         workflow["900"] = {
-        //             "inputs": {
-        //                 "k": 6,
-        //                 "model": [
-        //                     "292",
-        //                     0
-        //                 ],
-        //                 "latent": [
-        //                     "40",
-        //                     2
-        //                 ]
-        //             },
-        //             "class_type": "ApplyRifleXRoPE_WanVideo",
-        //             "_meta": {
-        //                 "title": "Apply RifleXRoPE WanVideo"
-        //             }
-        //         }
-
-        //         // connect RifleXRoPE output to shift node
-        //         workflow["48"]["inputs"]["model"] = ["900", 0];
-        //     }
-        // }
-
-        // ComfyClient.sendPrompt(workflow, (data) => {
-        //     if (data.node !== null) interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] });
-        // }, (data) => {
-        //     console.log('received success')
-        //     const filename = data.output.gifs[0].filename
-
-        //     // fetch video from comfyUI
-        //     ComfyClient.getImage(filename, '', '', /*only_filename*/ true).then(async (arraybuffer) => {
-        //         // convert arraybuffer to buffer
-        //         const buffer = Buffer.from(arraybuffer)
-
-        //         await interaction.editReply({ content: "Generation Success", files: [{ attachment: buffer, name: filename }] });
-        //     }).catch((err) => {
-        //         console.log("Failed to retrieve video", err)
-        //         interaction.editReply({ content: "Failed to retrieve video" });
-        //     }).finally(() => {
-        //         ComfyClient.freeMemory(true)
-        //     })
-
-        // }, (data) => {
-        //     console.log('received error')
-        //     interaction.editReply({ content: data.error });
-        //     ComfyClient.freeMemory(true)
-        // }, (data) => {
-        //     console.log('received progress')
-
-        //     // skip video combine node update progress (too spammy)
-        //     if (workflow[data.node]["_meta"]["title"] === "Video Combine 🎥🅥🅗🅢") return
-
-        //     interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] + ` (${data.value}/${data.max})` });
-        // });
-
-        // // await interaction.editReply('This command is not implemented yet');
-	},
+        try {
+            const options = interaction.options;
+            const preset = options.getString('preset') || 'sd';
+            let [width, height, seconds] = preset === 'fast' ? [768, 448, 5] : [1024, 768, preset === 'long' ? 10 : 5];
+            if (preset === 'custom') {
+                width = options.getInteger('custom_width') ?? width;
+                height = options.getInteger('custom_height') ?? height;
+                seconds = options.getInteger('custom_length') ?? seconds;
+            }
+            if (options.getBoolean('portrait')) [width, height] = [height, width];
+            const shape = videoShape(width, height, seconds);
+            const workflow = buildH3Workflow({ prompt: options.getString('prompt'), shape,
+                seed: options.getNumber('seed') ?? undefined, steps: options.getInteger('steps') ?? 20,
+                upscale: options.getBoolean('do_upscale') ?? true, optimize: !options.getBoolean('no_optimize') });
+            await runVideo(interaction, workflow, shape);
+        } catch (error) { await interaction.editReply({ content: `Video failed: ${errorMessage(error)}` }); }
+    },
 };

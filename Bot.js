@@ -72,6 +72,8 @@ for (const file of commandFiles) {
     }
 }
 
+ComfyClient.init();
+
 client.once('ready', () => {
     console.log('I\'m here');
     presenceTimer = setInterval(() => {
@@ -142,6 +144,7 @@ client.on('interactionCreate', async interaction => {
         'wd_img2model',
         'wd_txt2vid',
         'wd_img2vid',
+        'wd_vid_upscale',
     ]
 
     const mapperatorinator_backend_require = [

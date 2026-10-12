@@ -47,13 +47,18 @@ const comfyClient = {
         : ['192.168.196.142:8188', '192.168.196.142:8189'],
     HTTP_ENDPOINT: PROXY_URL,
     init: function() {
-        this.clients = this.SERVER_ENDPOINTS.map(endpoint => {
+        const active = client => client && [ws.OPEN, ws.CONNECTING].includes(client.readyState);
+        if (this.clients.length === this.SERVER_ENDPOINTS.length && this.clients.every(active)) return this.clients;
+        const previousClients = this.clients;
+        this.clients = this.SERVER_ENDPOINTS.map((endpoint, index) => {
+            if (active(previousClients[index])) return previousClients[index];
             const client = new ws(`ws://${endpoint}/ws?clientId=${this.clientId}`)
             client.on('open', () => {
                 console.log(`Connected to ComfyUI server ${endpoint}`);
                 this.comfyStat.is_running = true;
             });
-            client.on('message', data => {
+            client.on('message', (data, isBinary) => {
+                if (isBinary) return; // ComfyUI also sends binary preview frames.
                 this.updateOnMessage(data);
                 this.comfyStat.is_running = true;
             });
@@ -69,6 +74,10 @@ const comfyClient = {
         });
         this.client = this.clients[0] || null;
         return this.clients;
+    },
+
+    runPrompt: function(prompt, options = {}) {
+        return require('./comfy_prompt').runComfyPrompt(this, prompt, { ...options, notify: notifyOrchestrator });
     },
 
     sendPrompt: function(prompt, progress_cb = () => {}, success_cb = () => {}, error_cb = () => {}, subprogress_cb = () => {}) {
@@ -136,11 +145,12 @@ const comfyClient = {
     },
 
     updateOnMessage: function(data) {
-        const parsed = JSON.parse(data);
+        let parsed;
+        try { parsed = JSON.parse(data); } catch (_) { return; }
         //console.log("ws message: ", parsed.type);
 
         if (parsed.type === 'crystools.monitor') {
-            input_stat = parsed.data;
+            const input_stat = parsed.data;
             if (!input_stat) {
                 console.log('No stat data');
                 return;
@@ -150,11 +160,11 @@ const comfyClient = {
             this.comfyStat.ram_total = (input_stat.ram_total ?? 0) / (1024 * 1024 * 1024);
             this.comfyStat.ram_used = (input_stat.ram_used ?? 0) / (1024 * 1024 * 1024);
             this.comfyStat.ram_percent = (input_stat.ram_used_percent ?? 0);
-            this.comfyStat.gpu_usage = (input_stat.gpus[0].gpu_utilization ?? 0);
-            this.comfyStat.gpu_temp = (input_stat.gpus[0].gpu_temperature ?? 0);
-            this.comfyStat.gpu_vram_total = (input_stat.gpus[0].vram_total ?? 0) / (1024 * 1024 * 1024);
-            this.comfyStat.gpu_vram_used = (input_stat.gpus[0].vram_used ?? 0) / (1024 * 1024 * 1024);
-            this.comfyStat.gpu_memory_percent = (input_stat.gpus[0].vram_used_percent ?? 0);
+            this.comfyStat.gpu_usage = (input_stat.gpus?.[0]?.gpu_utilization ?? 0);
+            this.comfyStat.gpu_temp = (input_stat.gpus?.[0]?.gpu_temperature ?? 0);
+            this.comfyStat.gpu_vram_total = (input_stat.gpus?.[0]?.vram_total ?? 0) / (1024 * 1024 * 1024);
+            this.comfyStat.gpu_vram_used = (input_stat.gpus?.[0]?.vram_used ?? 0) / (1024 * 1024 * 1024);
+            this.comfyStat.gpu_memory_percent = (input_stat.gpus?.[0]?.vram_used_percent ?? 0);
         }
 
         if (parsed.type === 'status') {
@@ -187,12 +197,13 @@ const comfyClient = {
                 if (this.promptListener[i].prompt_id === parsed.data.prompt_id) {
                     // since we already taking all the data we need in executed event, we can just remove the listener here
                     notifyOrchestrator(this.promptListener[i].orchestrator_job_id, 'success');
+                    this.promptListener[i].completed_cb?.();
                     this.promptListener.splice(i, 1);
                 }
             }
         }
 
-        if (parsed.type === 'execution_error') {
+        if (parsed.type === 'execution_error' || parsed.type === 'execution_interrupted') {
             console.log('Error:', parsed.data);
             for (let i = 0; i < this.promptListener.length; i++) {
                 if (this.promptListener[i].prompt_id === parsed.data.prompt_id) {
@@ -214,7 +225,9 @@ const comfyClient = {
     },
 
     getImage: function(filename, subfolder, filetype = "output", only_filename = false) {
-        const url = only_filename ? `${this.HTTP_ENDPOINT}/view?filename=${filename}` : `${this.HTTP_ENDPOINT}/view?filename=${filename}&subfolder=${subfolder}&type=${filetype}`;
+        const query = new URLSearchParams({ filename });
+        if (!only_filename) { query.set('subfolder', subfolder || ''); query.set('type', filetype || 'output'); }
+        const url = `${this.HTTP_ENDPOINT}/view?${query}`;
 
         console.log('Fetching files:', url);
 
@@ -222,7 +235,7 @@ const comfyClient = {
             fetch(url, { headers: COMFY_HEADERS })
                 .then(res => {
                     if (res.status !== 200) {
-                        reject('Failed to get image');
+                        throw new Error(`Failed to retrieve ComfyUI output (HTTP ${res.status})`);
                     }
                     return res.arrayBuffer();
                 })
@@ -236,6 +249,7 @@ const comfyClient = {
     },
 
     uploadImage: function(buffer, filename, mimetype) {
+        if (!buffer?.length) return Promise.reject(new Error('Input attachment is empty.'));
         const url = `${this.HTTP_ENDPOINT}/api/upload/image`;
 
         // with follow form data format

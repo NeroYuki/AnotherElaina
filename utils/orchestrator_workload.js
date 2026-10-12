@@ -16,7 +16,7 @@ function modelFamily(name) {
     if (value.includes('qwen') || value.includes('llama') || value.includes('gemma')) return 'llm';
     if (value.includes('flux')) return 'flux';
     if (value.includes('sdxl') || value.includes('xl')) return 'sdxl';
-    if (value.includes('wan') || value.includes('hunyuan') || value.includes('video')) return 'video';
+    if (value.includes('wan') || value.includes('hunyuan') || value.includes('minimax') || value.includes('video')) return 'video';
     if (value.includes('sd') || value.includes('anime')) return 'sd15';
     return 'unknown';
 }
