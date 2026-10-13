@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const sharp = require('sharp');
 const ComfyClient = require('../utils/comfy_client');
 const { loadImage } = require('../utils/load_discord_img');
-const { buildH3Workflow, imageVideoShape, runVideo, errorMessage } = require('../utils/comfy_media');
+const { buildH3Workflow, imageVideoShape, runVideo, errorMessage, H3_MAX_SECONDS } = require('../utils/comfy_media');
 const { addPromptQualityOption, enrichVideoPrompt } = require('../utils/video_prompt');
 const { prepareVideoReference } = require('../utils/video_reference');
 
@@ -17,7 +17,7 @@ module.exports = {
         .addStringOption(option => option.setName('preset').setDescription('Resolution, preserving image aspect ratio (default Standard)').addChoices(
             { name: 'Fast — 0.4 megapixels', value: 'fast' }, { name: 'Standard — 0.8 megapixels', value: 'std' },
             { name: 'High — 1.0 megapixels', value: 'high' }))
-        .addIntegerOption(option => option.setName('length').setDescription('Duration in seconds (default 5, snapped to H3 frame grid)').setMinValue(1).setMaxValue(15))
+        .addIntegerOption(option => option.setName('length').setDescription('Duration in seconds (default 5); over 15 uses H3 Extender').setMinValue(1).setMaxValue(H3_MAX_SECONDS))
         .addNumberOption(option => option.setName('seed').setDescription('Generation seed (omit for random; 0 is a valid seed)').setMinValue(0).setMaxValue(Number.MAX_SAFE_INTEGER))
         .addIntegerOption(option => option.setName('steps').setDescription('Sampling steps (default 8 Turbo; 20 with ref or no_optimize)').setMinValue(1).setMaxValue(50))
         .addBooleanOption(option => option.setName('do_upscale').setDescription('Use RTX video super resolution at 2× (default true)'))

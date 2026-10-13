@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { buildH3Workflow, videoShape, runVideo, errorMessage } = require('../utils/comfy_media');
+const { buildH3Workflow, videoShape, runVideo, errorMessage, H3_MAX_SECONDS } = require('../utils/comfy_media');
 const { addPromptQualityOption, enrichVideoPrompt } = require('../utils/video_prompt');
 const { prepareVideoReference } = require('../utils/video_reference');
 
@@ -16,7 +16,7 @@ module.exports = {
             { name: 'Custom', value: 'custom' }))
         .addIntegerOption(option => option.setName('custom_width').setDescription('Custom width, rounded to 32 pixels (default 1024)').setMinValue(32).setMaxValue(1344))
         .addIntegerOption(option => option.setName('custom_height').setDescription('Custom height, rounded to 32 pixels (default 768)').setMinValue(32).setMaxValue(1344))
-        .addIntegerOption(option => option.setName('custom_length').setDescription('Custom duration in seconds (default 5, snapped to H3 frame grid)').setMinValue(1).setMaxValue(15))
+        .addIntegerOption(option => option.setName('custom_length').setDescription('Duration in seconds; over 15 uses H3 Extender (works with any preset)').setMinValue(1).setMaxValue(H3_MAX_SECONDS))
         .addBooleanOption(option => option.setName('portrait').setDescription('Swap width and height'))
         .addNumberOption(option => option.setName('seed').setDescription('Generation seed (omit for random; 0 is a valid seed)').setMinValue(0).setMaxValue(Number.MAX_SAFE_INTEGER))
         .addIntegerOption(option => option.setName('steps').setDescription('Sampling steps (default 8 Turbo; 20 with ref or no_optimize)').setMinValue(1).setMaxValue(50))
@@ -32,8 +32,8 @@ module.exports = {
             if (preset === 'custom') {
                 width = options.getInteger('custom_width') ?? width;
                 height = options.getInteger('custom_height') ?? height;
-                seconds = options.getInteger('custom_length') ?? seconds;
             }
+            seconds = options.getInteger('custom_length') ?? seconds;
             if (options.getBoolean('portrait')) [width, height] = [height, width];
             const shape = videoShape(width, height, seconds);
             const quality = options.getString('prompt_quality') || 'standard';

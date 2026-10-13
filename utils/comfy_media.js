@@ -3,18 +3,32 @@ const axios = require('axios');
 const postTemplate = require('../resources/video_post_process.json');
 
 const H3_FPS = 24;
+const H3_MAX_SECONDS = 60;
 const MAX_PIXELS = 1344 * 768;
 
 function videoShape(width, height, seconds = 5) {
-    if (![width, height, seconds].every(Number.isFinite) || width < 32 || height < 32 || seconds < 1 || seconds > 15) {
-        throw new Error('Video dimensions must be at least 32 pixels and duration must be 1–15 seconds.');
+    if (![width, height, seconds].every(Number.isFinite) || width < 32 || height < 32 || seconds < 1 || seconds > H3_MAX_SECONDS) {
+        throw new Error(`Video dimensions must be at least 32 pixels and duration must be 1–${H3_MAX_SECONDS} seconds.`);
     }
     width = Math.max(32, Math.round(width / 32) * 32);
     height = Math.max(32, Math.round(height / 32) * 32);
     if (width * height > MAX_PIXELS) throw new Error('MiniMax H3 supports at most 1.03 megapixels per frame.');
     const requested = Math.max(5, Math.round(seconds * H3_FPS));
     const length = requested + (5 - requested % 17 + 17) % 17;
-    return { width, height, length, fps: H3_FPS, seconds: length / H3_FPS };
+    const shape = { width, height, length, fps: H3_FPS, seconds: length / H3_FPS };
+    if (seconds > 15) {
+        shape.segments = [];
+        let written = 0;
+        while (written < length) {
+            const trim = written ? 22 : 0;
+            const frames = Math.min(124, length - written + trim);
+            const visibleFrames = frames - trim;
+            shape.segments.push({ length: frames, trim, seconds: frames / H3_FPS, visibleFrames,
+                startSeconds: written / H3_FPS, endSeconds: (written + visibleFrames) / H3_FPS });
+            written += visibleFrames;
+        }
+    }
+    return shape;
 }
 
 function imageVideoShape(width, height, megapixels = 0.8, seconds = 5) {
@@ -39,6 +53,7 @@ const H3_MODELS = Object.freeze({
 
 function buildH3Workflow({ prompt, shape, seed = crypto.randomInt(0, 2_000_000_000), image, lastImage,
     reference, referenceOnly = false, steps, upscale = true, optimize = true }) {
+    if (shape?.segments) return buildH3ExtendedWorkflow({ prompt, shape, seed, image, lastImage, reference, referenceOnly, steps, upscale, optimize });
     if (!prompt?.trim()) throw new Error('A video prompt is required.');
     if (!Number.isSafeInteger(seed) || seed < 0) throw new Error('Seed must be a non-negative safe integer.');
     const turbo = optimize && !reference;
@@ -120,6 +135,75 @@ function buildH3Workflow({ prompt, shape, seed = crypto.randomInt(0, 2_000_000_0
     return workflow;
 }
 
+function buildH3ExtendedWorkflow({ prompt, shape, seed, image, lastImage, reference, referenceOnly, steps, upscale, optimize }) {
+    if (!Number.isSafeInteger(seed) || seed < 0) throw new Error('Seed must be a non-negative safe integer.');
+    if (Array.isArray(prompt) && prompt.length !== shape.segments.length) throw new Error('Every extended clip needs a prompt.');
+    const workflow = {};
+    const shared = new Set(['105:6', '105:13', '105:11', '105:24', '105:120', '105:9', '105:17', 'turbo', 'shift', 'reference']);
+    const removed = new Set(['105:10', '105:23', '105:91', '92']);
+    let previous;
+    for (const [index, segment] of shape.segments.entries()) {
+        const prefix = `clip${index + 1}_`;
+        const id = key => shared.has(key) ? key : prefix + key;
+        const clipPrompt = Array.isArray(prompt) ? prompt[index] : prompt;
+        const graph = buildH3Workflow({ prompt: clipPrompt, shape: { width: shape.width, height: shape.height, ...segment },
+            seed: Number((BigInt(seed) + BigInt(index)) % (BigInt(Number.MAX_SAFE_INTEGER) + 1n)),
+            image: index === 0 ? image : undefined, reference, referenceOnly, steps, optimize, upscale: false });
+        for (const [key, node] of Object.entries(graph)) {
+            if (removed.has(key) || (shared.has(key) && workflow[key])) continue;
+            workflow[id(key)] = { ...node, inputs: Object.fromEntries(Object.entries(node.inputs)
+                .map(([name, value]) => [name, Array.isArray(value) ? [id(value[0]), value[1]] : value])) };
+        }
+        const latent = [id('105:104'), 1];
+        let conditioning = workflow[id('105:16')].inputs.conditioning;
+        const context = prefix + 'motion';
+        if (previous) {
+            workflow[context] = { class_type: 'MiniMaxH3MotionContextRAM', inputs: { conditioning, latent,
+                context_latent: [previous, 1], context_length: '22', audio_context_length: 0 },
+                _meta: { title: `Clip ${index + 1}/${shape.segments.length}: motion and audio continuity` } };
+            conditioning = [context, 0];
+        }
+        // Add the final guide AFTER motion context, which replaces keyframes.
+        if (lastImage && index === shape.segments.length - 1) {
+            workflow.last_image = { class_type: 'LoadImage', inputs: { image: inputPath(lastImage) } };
+            workflow.last_image_guide = { class_type: 'MiniMaxH3AddGuide', inputs: { positive: conditioning, latent,
+                vae: ['105:11', 0], image: ['last_image', 0], frame_idx: -1 } };
+            conditioning = ['last_image_guide', 0];
+        }
+        if (reference?.kind === 'audio') {
+            // Long audio follows the generated timeline. Short audio remains a
+            // reusable sound/voice reference; exhausted timeline audio is omitted.
+            const start = reference.duration > 5.2 ? Math.max(0, segment.startSeconds - segment.trim / H3_FPS) : 0;
+            const input = workflow[id('105:104')].inputs;
+            if (start >= reference.duration - 0.1) delete input['ref_audios.ref_audio_0'];
+            else {
+                const audio = prefix + 'audio_window';
+                workflow[audio] = { class_type: 'TrimAudioDuration', inputs: { audio: ['reference', 0],
+                    start_index: start, duration: Math.min(segment.seconds, reference.duration - start) } };
+                input['ref_audios.ref_audio_0'] = [audio, 0];
+            }
+        }
+        workflow[id('105:16')].inputs.conditioning = conditioning;
+        workflow[id('105:14')]._meta = { title: `Clip ${index + 1}/${shape.segments.length}: H3 sampling` };
+        const join = index === 0 ? `h3_cache_${crypto.randomUUID().replaceAll('-', '')}` : prefix + 'cache';
+        workflow[join] = { class_type: 'MiniMaxH3MotionContextDiskJoin', inputs: { samples: [id('105:14'), 0],
+            validated: false, run_mode: 'full_batch', fps: H3_FPS,
+            ...(previous ? { previous_cache: [previous, 0], trim_frames: [context, 1] } : {}) } };
+        previous = join;
+    }
+    if (reference?.kind === 'video') workflow.reference.inputs.frame_load_cap = Math.min(shape.length, 360);
+    workflow.final_decode = { class_type: 'MiniMaxH3MotionContextDiskFinalDecode', inputs: {
+        cache: [previous, 0], vae: ['105:11', 0], audio_vae: ['105:24', 0], fps: H3_FPS,
+        filename_prefix: 'AnotherElaina_H3_extended', output_directory: '', codec: 'H.264', crf: 17, preset: 'fast',
+        audio_bitrate: '192k', autoplay: false, auto_save_project: false, save_individual_clips: false,
+    }, _meta: { title: 'Decode clips and join synchronized video/audio' } };
+    if (upscale) workflow.stream_upscale = { class_type: 'ElainaRTXVideoUpscale', inputs: { video: ['final_decode', 0] },
+        _meta: { title: 'Streaming RTX video super resolution at 2×' } };
+    workflow['92'] = { class_type: 'SaveVideo', inputs: { video: [upscale ? 'stream_upscale' : 'final_decode', 0],
+        filename_prefix: 'video/AnotherElaina_H3_extended', format: 'mp4', codec: 'h264', 'format.codec': 'h264' } };
+    return workflow;
+}
+
 function buildPostProcessWorkflow({ video, reference, color = 'None', strength = 1, upscaler = 'None', interpolation = 'None', multiplier = 2 }) {
     if (!Number.isInteger(multiplier) || multiplier < 1 || multiplier > 10) throw new Error('FPS multiplier must be a whole number from 1 to 10.');
     if (color !== 'None' && !reference) throw new Error('Reference image is required for color correction.');
@@ -163,7 +247,7 @@ function buildPostProcessWorkflow({ video, reference, color = 'None', strength =
 }
 
 function videoOutput(outputs) {
-    for (const output of Object.values(outputs || {})) {
+    for (const output of [outputs?.['92'], ...Object.entries(outputs || {}).filter(([id]) => id !== '92').map(([, value]) => value)]) {
         for (const key of ['images', 'gifs', 'videos']) {
             const file = output?.[key]?.find(item => /\.(mp4|webm|mkv|mov)$/i.test(item.filename || ''));
             if (file) return file;
@@ -227,8 +311,9 @@ async function runVideo(interaction, workflow, shape) {
     const comfy = require('./comfy_client');
     const reply = mediaReply(interaction);
     try {
-        reply.progress('Submitting video workflow…');
+        reply.progress(shape?.segments ? `Submitting ${shape.segments.length} H3 clips for ${shape.seconds.toFixed(2)}s video…` : 'Submitting video workflow…');
         const result = await comfy.runPrompt(workflow, {
+            ...(shape?.segments ? { timeoutMs: 4 * 60 * 60 * 1000 } : {}),
             onProgress(data) {
                 const title = workflow[data.node]?._meta?.title || workflow[data.node]?.class_type;
                 if (title) reply.progress(`Processing: ${title}${data.max ? ` (${data.value}/${data.max})` : ''}`);
@@ -243,5 +328,5 @@ async function runVideo(interaction, workflow, shape) {
     }
 }
 
-module.exports = { H3_FPS, H3_MODELS, videoShape, imageVideoShape, inputPath, buildH3Workflow, buildPostProcessWorkflow,
+module.exports = { H3_FPS, H3_MAX_SECONDS, H3_MODELS, videoShape, imageVideoShape, inputPath, buildH3Workflow, buildPostProcessWorkflow,
     videoOutput, errorMessage, mediaReply, deliverFile, runVideo };

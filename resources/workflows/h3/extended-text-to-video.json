@@ -1,0 +1,694 @@
+{
+  "92": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "video": [
+        "final_decode",
+        0
+      ],
+      "filename_prefix": "video/AnotherElaina_H3_extended",
+      "format": "mp4",
+      "codec": "h264",
+      "format.codec": "h264"
+    }
+  },
+  "105:6": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    },
+    "_meta": {
+      "title": "UNETLoader"
+    }
+  },
+  "105:13": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "type": "minimax",
+      "device": "default"
+    },
+    "_meta": {
+      "title": "CLIPLoader"
+    }
+  },
+  "105:11": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "minimax_h3_video_vae_fp16.safetensors"
+    },
+    "_meta": {
+      "title": "Video VAE"
+    }
+  },
+  "105:24": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+    },
+    "_meta": {
+      "title": "Audio VAE"
+    }
+  },
+  "105:120": {
+    "class_type": "ModelAttentionBackend",
+    "inputs": {
+      "model": [
+        "shift",
+        0
+      ],
+      "attention": "comfy kitchen attention"
+    },
+    "_meta": {
+      "title": "Kitchen INT8 attention"
+    }
+  },
+  "clip1_105:104": {
+    "class_type": "MiniMaxH3ImageToVideo",
+    "inputs": {
+      "clip": [
+        "105:13",
+        0
+      ],
+      "vae": [
+        "105:11",
+        0
+      ],
+      "prompt": "integrated_multimodal_description: [Shot 1] Cinematic, a small blue bird lands on a branch, folds its wings, then looks toward the camera. The camera slowly pushes in.\n\noverall_soundscape: Leaves rustle in a light breeze. The bird chirps softly.\n\nnon_diegetic_music: N/A",
+      "width": 1024,
+      "height": 768,
+      "length": 124
+    },
+    "_meta": {
+      "title": "MiniMaxH3ImageToVideo"
+    }
+  },
+  "clip1_105:15": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": 123
+    },
+    "_meta": {
+      "title": "RandomNoise"
+    }
+  },
+  "105:17": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "euler"
+    },
+    "_meta": {
+      "title": "KSamplerSelect"
+    }
+  },
+  "105:9": {
+    "class_type": "BasicScheduler",
+    "inputs": {
+      "model": [
+        "105:120",
+        0
+      ],
+      "scheduler": "simple",
+      "steps": 8,
+      "denoise": 1
+    },
+    "_meta": {
+      "title": "BasicScheduler"
+    }
+  },
+  "clip1_105:16": {
+    "class_type": "BasicGuider",
+    "inputs": {
+      "model": [
+        "105:120",
+        0
+      ],
+      "conditioning": [
+        "clip1_105:104",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "BasicGuider"
+    }
+  },
+  "clip1_105:14": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "clip1_105:15",
+        0
+      ],
+      "guider": [
+        "clip1_105:16",
+        0
+      ],
+      "sampler": [
+        "105:17",
+        0
+      ],
+      "sigmas": [
+        "105:9",
+        0
+      ],
+      "latent_image": [
+        "clip1_105:104",
+        1
+      ]
+    },
+    "_meta": {
+      "title": "Clip 1/5: H3 sampling"
+    }
+  },
+  "turbo": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "model": [
+        "105:6",
+        0
+      ],
+      "lora_name": "minimax_h3_fl2v_turbo_8step_v1.0_768p_comfyui_bf16.safetensors",
+      "strength_model": 1
+    },
+    "_meta": {
+      "title": "LoraLoaderModelOnly"
+    }
+  },
+  "shift": {
+    "class_type": "MiniMaxH3SigmaShift",
+    "inputs": {
+      "model": [
+        "turbo",
+        0
+      ],
+      "shift_video": 6,
+      "shift_audio": 3
+    },
+    "_meta": {
+      "title": "MiniMaxH3SigmaShift"
+    }
+  },
+  "h3_cache_2bb8724d3c8647c9aaf8562af245f3ff": {
+    "class_type": "MiniMaxH3MotionContextDiskJoin",
+    "inputs": {
+      "samples": [
+        "clip1_105:14",
+        0
+      ],
+      "validated": false,
+      "run_mode": "full_batch",
+      "fps": 24
+    }
+  },
+  "clip2_105:104": {
+    "class_type": "MiniMaxH3ImageToVideo",
+    "inputs": {
+      "clip": [
+        "105:13",
+        0
+      ],
+      "vae": [
+        "105:11",
+        0
+      ],
+      "prompt": "integrated_multimodal_description: [Shot 1] Cinematic, a small blue bird lands on a branch, folds its wings, then looks toward the camera. The camera slowly pushes in.\n\noverall_soundscape: Leaves rustle in a light breeze. The bird chirps softly.\n\nnon_diegetic_music: N/A",
+      "width": 1024,
+      "height": 768,
+      "length": 124
+    },
+    "_meta": {
+      "title": "MiniMaxH3ImageToVideo"
+    }
+  },
+  "clip2_105:15": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": 124
+    },
+    "_meta": {
+      "title": "RandomNoise"
+    }
+  },
+  "clip2_105:16": {
+    "class_type": "BasicGuider",
+    "inputs": {
+      "model": [
+        "105:120",
+        0
+      ],
+      "conditioning": [
+        "clip2_motion",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "BasicGuider"
+    }
+  },
+  "clip2_105:14": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "clip2_105:15",
+        0
+      ],
+      "guider": [
+        "clip2_105:16",
+        0
+      ],
+      "sampler": [
+        "105:17",
+        0
+      ],
+      "sigmas": [
+        "105:9",
+        0
+      ],
+      "latent_image": [
+        "clip2_105:104",
+        1
+      ]
+    },
+    "_meta": {
+      "title": "Clip 2/5: H3 sampling"
+    }
+  },
+  "clip2_motion": {
+    "class_type": "MiniMaxH3MotionContextRAM",
+    "inputs": {
+      "conditioning": [
+        "clip2_105:104",
+        0
+      ],
+      "latent": [
+        "clip2_105:104",
+        1
+      ],
+      "context_latent": [
+        "h3_cache_2bb8724d3c8647c9aaf8562af245f3ff",
+        1
+      ],
+      "context_length": "22",
+      "audio_context_length": 0
+    },
+    "_meta": {
+      "title": "Clip 2/5: motion and audio continuity"
+    }
+  },
+  "clip2_cache": {
+    "class_type": "MiniMaxH3MotionContextDiskJoin",
+    "inputs": {
+      "samples": [
+        "clip2_105:14",
+        0
+      ],
+      "validated": false,
+      "run_mode": "full_batch",
+      "fps": 24,
+      "previous_cache": [
+        "h3_cache_2bb8724d3c8647c9aaf8562af245f3ff",
+        0
+      ],
+      "trim_frames": [
+        "clip2_motion",
+        1
+      ]
+    }
+  },
+  "clip3_105:104": {
+    "class_type": "MiniMaxH3ImageToVideo",
+    "inputs": {
+      "clip": [
+        "105:13",
+        0
+      ],
+      "vae": [
+        "105:11",
+        0
+      ],
+      "prompt": "integrated_multimodal_description: [Shot 1] Cinematic, a small blue bird lands on a branch, folds its wings, then looks toward the camera. The camera slowly pushes in.\n\noverall_soundscape: Leaves rustle in a light breeze. The bird chirps softly.\n\nnon_diegetic_music: N/A",
+      "width": 1024,
+      "height": 768,
+      "length": 124
+    },
+    "_meta": {
+      "title": "MiniMaxH3ImageToVideo"
+    }
+  },
+  "clip3_105:15": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": 125
+    },
+    "_meta": {
+      "title": "RandomNoise"
+    }
+  },
+  "clip3_105:16": {
+    "class_type": "BasicGuider",
+    "inputs": {
+      "model": [
+        "105:120",
+        0
+      ],
+      "conditioning": [
+        "clip3_motion",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "BasicGuider"
+    }
+  },
+  "clip3_105:14": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "clip3_105:15",
+        0
+      ],
+      "guider": [
+        "clip3_105:16",
+        0
+      ],
+      "sampler": [
+        "105:17",
+        0
+      ],
+      "sigmas": [
+        "105:9",
+        0
+      ],
+      "latent_image": [
+        "clip3_105:104",
+        1
+      ]
+    },
+    "_meta": {
+      "title": "Clip 3/5: H3 sampling"
+    }
+  },
+  "clip3_motion": {
+    "class_type": "MiniMaxH3MotionContextRAM",
+    "inputs": {
+      "conditioning": [
+        "clip3_105:104",
+        0
+      ],
+      "latent": [
+        "clip3_105:104",
+        1
+      ],
+      "context_latent": [
+        "clip2_cache",
+        1
+      ],
+      "context_length": "22",
+      "audio_context_length": 0
+    },
+    "_meta": {
+      "title": "Clip 3/5: motion and audio continuity"
+    }
+  },
+  "clip3_cache": {
+    "class_type": "MiniMaxH3MotionContextDiskJoin",
+    "inputs": {
+      "samples": [
+        "clip3_105:14",
+        0
+      ],
+      "validated": false,
+      "run_mode": "full_batch",
+      "fps": 24,
+      "previous_cache": [
+        "clip2_cache",
+        0
+      ],
+      "trim_frames": [
+        "clip3_motion",
+        1
+      ]
+    }
+  },
+  "clip4_105:104": {
+    "class_type": "MiniMaxH3ImageToVideo",
+    "inputs": {
+      "clip": [
+        "105:13",
+        0
+      ],
+      "vae": [
+        "105:11",
+        0
+      ],
+      "prompt": "integrated_multimodal_description: [Shot 1] Cinematic, a small blue bird lands on a branch, folds its wings, then looks toward the camera. The camera slowly pushes in.\n\noverall_soundscape: Leaves rustle in a light breeze. The bird chirps softly.\n\nnon_diegetic_music: N/A",
+      "width": 1024,
+      "height": 768,
+      "length": 124
+    },
+    "_meta": {
+      "title": "MiniMaxH3ImageToVideo"
+    }
+  },
+  "clip4_105:15": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": 126
+    },
+    "_meta": {
+      "title": "RandomNoise"
+    }
+  },
+  "clip4_105:16": {
+    "class_type": "BasicGuider",
+    "inputs": {
+      "model": [
+        "105:120",
+        0
+      ],
+      "conditioning": [
+        "clip4_motion",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "BasicGuider"
+    }
+  },
+  "clip4_105:14": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "clip4_105:15",
+        0
+      ],
+      "guider": [
+        "clip4_105:16",
+        0
+      ],
+      "sampler": [
+        "105:17",
+        0
+      ],
+      "sigmas": [
+        "105:9",
+        0
+      ],
+      "latent_image": [
+        "clip4_105:104",
+        1
+      ]
+    },
+    "_meta": {
+      "title": "Clip 4/5: H3 sampling"
+    }
+  },
+  "clip4_motion": {
+    "class_type": "MiniMaxH3MotionContextRAM",
+    "inputs": {
+      "conditioning": [
+        "clip4_105:104",
+        0
+      ],
+      "latent": [
+        "clip4_105:104",
+        1
+      ],
+      "context_latent": [
+        "clip3_cache",
+        1
+      ],
+      "context_length": "22",
+      "audio_context_length": 0
+    },
+    "_meta": {
+      "title": "Clip 4/5: motion and audio continuity"
+    }
+  },
+  "clip4_cache": {
+    "class_type": "MiniMaxH3MotionContextDiskJoin",
+    "inputs": {
+      "samples": [
+        "clip4_105:14",
+        0
+      ],
+      "validated": false,
+      "run_mode": "full_batch",
+      "fps": 24,
+      "previous_cache": [
+        "clip3_cache",
+        0
+      ],
+      "trim_frames": [
+        "clip4_motion",
+        1
+      ]
+    }
+  },
+  "clip5_105:104": {
+    "class_type": "MiniMaxH3ImageToVideo",
+    "inputs": {
+      "clip": [
+        "105:13",
+        0
+      ],
+      "vae": [
+        "105:11",
+        0
+      ],
+      "prompt": "integrated_multimodal_description: [Shot 1] Cinematic, a small blue bird lands on a branch, folds its wings, then looks toward the camera. The camera slowly pushes in.\n\noverall_soundscape: Leaves rustle in a light breeze. The bird chirps softly.\n\nnon_diegetic_music: N/A",
+      "width": 1024,
+      "height": 768,
+      "length": 73
+    },
+    "_meta": {
+      "title": "MiniMaxH3ImageToVideo"
+    }
+  },
+  "clip5_105:15": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": 127
+    },
+    "_meta": {
+      "title": "RandomNoise"
+    }
+  },
+  "clip5_105:16": {
+    "class_type": "BasicGuider",
+    "inputs": {
+      "model": [
+        "105:120",
+        0
+      ],
+      "conditioning": [
+        "clip5_motion",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "BasicGuider"
+    }
+  },
+  "clip5_105:14": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "clip5_105:15",
+        0
+      ],
+      "guider": [
+        "clip5_105:16",
+        0
+      ],
+      "sampler": [
+        "105:17",
+        0
+      ],
+      "sigmas": [
+        "105:9",
+        0
+      ],
+      "latent_image": [
+        "clip5_105:104",
+        1
+      ]
+    },
+    "_meta": {
+      "title": "Clip 5/5: H3 sampling"
+    }
+  },
+  "clip5_motion": {
+    "class_type": "MiniMaxH3MotionContextRAM",
+    "inputs": {
+      "conditioning": [
+        "clip5_105:104",
+        0
+      ],
+      "latent": [
+        "clip5_105:104",
+        1
+      ],
+      "context_latent": [
+        "clip4_cache",
+        1
+      ],
+      "context_length": "22",
+      "audio_context_length": 0
+    },
+    "_meta": {
+      "title": "Clip 5/5: motion and audio continuity"
+    }
+  },
+  "clip5_cache": {
+    "class_type": "MiniMaxH3MotionContextDiskJoin",
+    "inputs": {
+      "samples": [
+        "clip5_105:14",
+        0
+      ],
+      "validated": false,
+      "run_mode": "full_batch",
+      "fps": 24,
+      "previous_cache": [
+        "clip4_cache",
+        0
+      ],
+      "trim_frames": [
+        "clip5_motion",
+        1
+      ]
+    }
+  },
+  "final_decode": {
+    "class_type": "MiniMaxH3MotionContextDiskFinalDecode",
+    "inputs": {
+      "cache": [
+        "clip5_cache",
+        0
+      ],
+      "vae": [
+        "105:11",
+        0
+      ],
+      "audio_vae": [
+        "105:24",
+        0
+      ],
+      "fps": 24,
+      "filename_prefix": "AnotherElaina_H3_extended",
+      "output_directory": "",
+      "codec": "H.264",
+      "crf": 17,
+      "preset": "fast",
+      "audio_bitrate": "192k",
+      "autoplay": false,
+      "auto_save_project": false,
+      "save_individual_clips": false
+    },
+    "_meta": {
+      "title": "Decode clips and join synchronized video/audio"
+    }
+  }
+}

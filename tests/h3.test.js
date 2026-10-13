@@ -21,6 +21,92 @@ test('Turbo selects matching adapter shifts; base and hybrid sampling never use 
     assert.equal(base['105:9'].inputs.steps, 20);
 });
 
+test('extended clips preserve the total frame grid, bound each sampler, and trim context exactly once', () => {
+    for (let seconds = 16; seconds <= 60; seconds++) {
+        const shape = videoShape(768, 448, seconds);
+        assert.equal(shape.length % 17, 5);
+        assert.ok(shape.seconds >= seconds && shape.seconds < seconds + 17 / 24);
+        assert.equal(shape.segments.reduce((sum, segment) => sum + segment.visibleFrames, 0), shape.length);
+        for (const [index, segment] of shape.segments.entries()) {
+            assert.equal(segment.length % 17, 5);
+            assert.ok(segment.length <= 124);
+            assert.equal(segment.trim, index ? 22 : 0);
+            assert.equal(segment.length - segment.trim, segment.visibleFrames);
+        }
+    }
+    assert.throws(() => videoShape(768, 448, 61), /1–60/);
+});
+
+test('extended reference workflows retain hybrid models, both boundary anchors, native audio, and streaming upscale', () => {
+    for (const kind of ['image', 'video', 'audio']) {
+        const shape = videoShape(768, 448, 20);
+        const graph = buildH3Workflow({ prompt: shape.segments.map((_, i) => `Clip ${i + 1}`), shape, seed: Number.MAX_SAFE_INTEGER,
+            image: { name: 'first.png' }, lastImage: { name: 'last.png' },
+            reference: { kind, duration: 20, hasAudio: kind === 'video', upload: { name: 'ref' } } });
+        assert.equal(graph['105:6'].inputs.unet_name, H3_MODELS.hybrid);
+        assert.equal(graph.turbo, undefined);
+        assert.equal(graph['105:120'].inputs.attention, 'comfy kitchen attention');
+        assert.ok(graph.clip1_input_image_guide);
+        assert.ok(!graph.clip2_input_image_guide);
+        assert.deepEqual(graph.last_image_guide.inputs.positive, [`clip${shape.segments.length}_motion`, 0]);
+        assert.equal(graph.last_image_guide.inputs.frame_idx, -1);
+        assert.equal(graph['clip2_105:15'].inputs.noise_seed, 0);
+        assert.equal(graph.final_decode.inputs.audio_vae[0], '105:24');
+        assert.equal(graph.stream_upscale.class_type, 'ElainaRTXVideoUpscale');
+        assert.deepEqual(graph['92'].inputs.video, ['stream_upscale', 0]);
+        if (kind === 'video') {
+            assert.equal(graph.reference.inputs.frame_load_cap, 360);
+            assert.deepEqual(graph['clip2_105:104'].inputs['ref_video_audios.ref_video_audio_0'], ['reference', 2]);
+        }
+        if (kind === 'audio') {
+            assert.equal(graph.clip2_audio_window.inputs.start_index, (124 - 22) / 24);
+            assert.deepEqual(graph['clip2_105:104'].inputs['ref_audios.ref_audio_0'], ['clip2_audio_window', 0]);
+        }
+        for (const node of Object.values(graph)) for (const value of Object.values(node.inputs)) {
+            if (Array.isArray(value)) assert.ok(graph[value[0]], `Missing ${value[0]}`);
+        }
+    }
+});
+
+test('extended standalone audio omits exhausted windows and reuses short sound references', () => {
+    const shape = videoShape(768, 448, 20);
+    for (const duration of [2, 7]) {
+        const graph = buildH3Workflow({ prompt: 'Bird flying', shape, upscale: false,
+            reference: { kind: 'audio', duration, upload: { name: 'audio.wav' } } });
+        for (const [index, segment] of shape.segments.entries()) {
+            const start = Math.max(0, segment.startSeconds - segment.trim / 24);
+            const conditioning = graph[`clip${index + 1}_105:104`].inputs;
+            if (duration === 7 && start >= duration) assert.equal(conditioning['ref_audios.ref_audio_0'], undefined);
+            else assert.equal(graph[`clip${index + 1}_audio_window`].inputs.start_index, duration === 2 ? 0 : start);
+        }
+    }
+});
+
+test('extended enrichment scripts each clip separately, preserves boundary guides, and verifies LLM unload', async () => {
+    const shape = videoShape(768, 448, 20);
+    let unloaded = false;
+    const profile = QUALITIES.standard;
+    const result = await enrichVideoPrompt({ prompt: 'A bird flies for twenty seconds', shape, quality: 'standard',
+        images: [Buffer.from('first'), Buffer.from('last')] }, {
+        provider: { async generate(options) {
+            assert.match(options.messages[1].content[0].text, /exactly 5 audiovisual scripts/);
+            assert.equal(options.responseSchema.properties.clips.minItems, shape.segments.length);
+            return { providerMeta: { instanceId: profile.instanceId }, text: JSON.stringify({ clips: shape.segments.map(() => ({
+                integrated_multimodal_description: '[Shot 1] A blue bird flies forward.', overall_soundscape: 'Wind.', non_diegetic_music: 'N/A',
+            })) }) };
+        } },
+        fetchImpl: async (_url, options) => {
+            if (options?.method === 'POST') unloaded = true;
+            return Response.json({ loaded: unloaded ? [] : [profile.model], loading: [] });
+        },
+    });
+    assert.equal(result.length, shape.segments.length);
+    assert.match(result[0], /opening frame/);
+    assert.doesNotMatch(result[1], /opening frame|ending frame/);
+    assert.match(result.at(-1), /ending frame/);
+    assert.equal(unloaded, true);
+});
+
 test('all reference types select hybrid, wire native autogrow sockets, and preserve both independent frame guides', () => {
     for (const [kind, hasAudio, key, output] of [['image', false, 'ref_images.ref_image_0', 0],
         ['video', false, 'ref_videos.ref_video_0', 0], ['video', true, 'ref_videos.ref_video_0', 0], ['audio', false, 'ref_audios.ref_audio_0', 0]]) {
@@ -84,6 +170,23 @@ test('CPU reference preparation bounds duration by the actual stream, samples pr
         assert.equal(args.includes('-an'), kind === 'video' && !sound);
         if (sound) assert.ok(args.includes('32000'));
         await assert.rejects(fs.stat(calls[0].at(-1)), { code: 'ENOENT' });
+    }
+});
+
+test('long audio preparation retains the full timeline while video references retain their existing cap', async () => {
+    const fs = require('fs/promises');
+    for (const kind of ['audio', 'video']) {
+        const result = await prepareVideoReference({ name: kind === 'audio' ? 'ref.wav' : 'ref.mp4' }, videoShape(768, 448, 30), {
+            vision: false, buffer: Buffer.from('source'), upload: async () => ({ name: 'ref' }),
+            execute: async (_program, args) => {
+                if (args.includes('-show_streams')) return { stdout: JSON.stringify({ streams: [
+                    { codec_type: 'video', duration: '45' }, { codec_type: 'audio', duration: '45' },
+                ] }) };
+                await fs.writeFile(args.at(-1), 'normalized');
+                return { stdout: '' };
+            },
+        });
+        assert.equal(result.duration, kind === 'audio' ? videoShape(768, 448, 30).seconds : 15);
     }
 });
 

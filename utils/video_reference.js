@@ -58,7 +58,7 @@ async function prepareVideoReference(attachment, shape, { vision = true, buffer,
         if (kind === 'video' ? !video : !audio) throw new Error(`Reference contains no decodable ${kind} stream.`);
         const streamDuration = Number((kind === 'video' ? video : audio).duration);
         const sourceDuration = Number.isFinite(streamDuration) && streamDuration > 0 ? streamDuration : Number(probe.format?.duration);
-        const duration = Math.min(15, shape.seconds, sourceDuration);
+        const duration = Math.min(kind === 'audio' && shape.segments ? shape.seconds : 15, shape.seconds, sourceDuration);
         if (!Number.isFinite(duration) || duration < (kind === 'video' ? 5 / 24 : 0.1)) {
             throw new Error('Reference is too short or its duration could not be read. Video needs at least five frames.');
         }

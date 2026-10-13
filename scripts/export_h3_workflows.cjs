@@ -15,9 +15,13 @@ for (const [name, options] of [
     ['reference-video-to-video', { referenceOnly: true, reference: { kind: 'video', hasAudio: true, upload: { name: 'reference.mp4' } } }],
     ['reference-audio-to-video', { referenceOnly: true, reference: { kind: 'audio', upload: { name: 'reference.wav' } } }],
     ['hybrid-frames-and-reference', { image, lastImage: { name: 'ending.png' }, reference: { kind: 'image', upload: { name: 'reference.png' } } }],
+    ['extended-text-to-video', { seconds: 20 }],
+    ['extended-image-to-video', { seconds: 20, image, lastImage: { name: 'ending.png' } }],
+    ['extended-hybrid-frames-and-reference', { seconds: 20, image, lastImage: { name: 'ending.png' }, reference: { kind: 'image', upload: { name: 'reference.png' } } }],
+    ['extended-reference-audio-to-video', { seconds: 20, referenceOnly: true, reference: { kind: 'audio', duration: 20, upload: { name: 'reference.wav' } } }],
 ]) {
-    const graph = buildH3Workflow({ prompt, shape: videoShape(1024, 768), seed: 123, upscale: false, ...options });
-    if (options.reference) graph['105:104'].inputs.prompt = prompt.replace('a small blue bird',
+    const graph = buildH3Workflow({ prompt, shape: videoShape(1024, 768, options.seconds || 5), seed: 123, upscale: false, ...options });
+    if (options.reference) for (const node of Object.values(graph).filter(node => node.inputs.prompt)) node.inputs.prompt = prompt.replace('a small blue bird',
         options.reference.kind === 'image' ? 'the bird shown in <Picture 1>' : options.reference.kind === 'video'
             ? 'a small blue bird, with scene and movement inspired by <Video 1>' : 'a small blue bird, accompanied by the sound from <Audio 1>');
     const file = path.join(directory, `${name}.json`);

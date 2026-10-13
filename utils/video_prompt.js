@@ -117,7 +117,9 @@ async function enrichVideoPrompt({ prompt, shape, requestedSeconds, quality = 's
         const llm = provider || new LocalOpenAIProvider({ endpoint, model: profile.model,
             quantization: profile.quantization, contextTokens: 8192, fetchImpl, maxRetries: 0 });
         await onProgress(`Enriching ${requestedSeconds ?? shape.seconds}s video prompt with ${profile.label}…`);
-        const content = [{ type: 'text', text: `Requested duration: ${requestedSeconds ?? shape.seconds} seconds. Effective playback duration: ${shape.seconds.toFixed(2)} seconds after frame alignment. All actions and cuts must fit this timeline.\nTask: ${reference ? `Ref2VA${images.length ? ' with opening/ending frame guides' : ''}` : images.length === 2 ? 'FL2VA (opening and ending images)' : images.length === 1 ? 'I2VA (opening image)' : 'T2VA (text only)'}.\n${reference ? `${reference.promptContext}\n` : ''}User idea:\n${prompt}` }];
+        const segments = shape.segments;
+        const segmentInstructions = segments ? `\nReturn {"clips":[...]} with exactly ${segments.length} audiovisual scripts, each with the three normal fields. These are consecutive parts of ONE continuous scene, not repeated restarts. Keep identities, appearance, setting and voices consistent across clips. Each script uses local time starting at zero, [Shot 1], and concise actions for ONLY its assigned window. Later clips begin with the supplied overlapping motion/audio context; do not repeat the full story in each clip. Only clip 1 has the opening frame; only the final clip has the ending frame when supplied. Clip plan: ${JSON.stringify(segments.map((segment, index) => ({ clip: index + 1, targetStart: segment.startSeconds, targetEnd: segment.endSeconds, localDuration: segment.seconds, overlapSeconds: segment.trim / shape.fps })))}.` : '';
+        const content = [{ type: 'text', text: `Requested duration: ${requestedSeconds ?? shape.seconds} seconds. Effective playback duration: ${shape.seconds.toFixed(2)} seconds after frame alignment. All actions and cuts must fit this timeline.${segmentInstructions}\nTask: ${reference ? `Ref2VA${images.length ? ' with opening/ending frame guides' : ''}` : images.length === 2 ? 'FL2VA (opening and ending images)' : images.length === 1 ? 'I2VA (opening image)' : 'T2VA (text only)'}.\n${reference ? `${reference.promptContext}\n` : ''}User idea:\n${prompt}` }];
         for (const [index, image] of images.entries()) {
             content.push({ type: 'text', text: `${reference ? 'Frame guide' : `Picture ${index + 1}`}: ${index === 0 ? 'opening frame at 0.00 seconds' : `ending frame at ${shape.seconds.toFixed(2)} seconds`}.` },
                 { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${image.toString('base64')}` } });
@@ -128,14 +130,28 @@ async function enrichVideoPrompt({ prompt, shape, requestedSeconds, quality = 's
         }
         let enriched, failure;
         try {
-            const result = await llm.generate({ messages: [{ role: 'system', content: SYSTEM_PROMPT }, { role: 'user', content }],
+            const responseSchema = segments ? { type: 'object', additionalProperties: false, required: ['clips'], properties: {
+                clips: { type: 'array', minItems: segments.length, maxItems: segments.length, items: SCRIPT_SCHEMA },
+            } } : SCRIPT_SCHEMA;
+            const result = await llm.generate({ messages: [{ role: 'system', content: SYSTEM_PROMPT + (segments ? '\nFor an extended clip plan, return the clips array requested by the caller instead of a single script. Each array item follows the usual three-field contract.' : '') }, { role: 'user', content }],
                 instanceId: profile.instanceId, vision: images.length > 0 || reference?.previews?.length > 0, thinking: false,
-                maxOutputTokens: 1800, temperature: 0.6, responseSchema: SCRIPT_SCHEMA, signal: AbortSignal.timeout(timeoutMs) });
+                maxOutputTokens: segments ? Math.min(6000, 600 * segments.length) : 1800, temperature: 0.6, responseSchema, signal: AbortSignal.timeout(timeoutMs) });
             if (result.providerMeta?.instanceId !== profile.instanceId) {
                 throw new Error('The orchestrator must support X-AI-Instance routing before video prompt enrichment can run.');
             }
             if (result.finishReason === 'length') throw new Error('Prompt enrichment was truncated. Shorten the scene description.');
-            enriched = scriptPrompt(result.text, shape.seconds, images.length, reference);
+            if (segments) {
+                let pack;
+                try { pack = JSON.parse(result.text); } catch { throw new Error('Extended prompt enrichment returned invalid JSON.'); }
+                if (!Array.isArray(pack?.clips) || pack.clips.length !== segments.length) throw new Error('Extended prompt enrichment did not return every clip script.');
+                enriched = pack.clips.map((script, index) => {
+                    const segment = segments[index];
+                    let alignment = '';
+                    if (index === 0 && images.length) alignment += 'The supplied opening frame anchors the beginning of this clip.\n\n';
+                    if (index === segments.length - 1 && images.length === 2) alignment += 'The supplied ending frame anchors the end of this final clip.\n\n';
+                    return alignment + scriptPrompt(JSON.stringify(script), segment.seconds, 0, reference);
+                });
+            } else enriched = scriptPrompt(result.text, shape.seconds, images.length, reference);
         } catch (error) { failure = error; }
         try {
             await onProgress('Unloading prompt enrichment model before video generation…');

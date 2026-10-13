@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { buildH3Workflow, videoShape, runVideo, errorMessage } = require('../utils/comfy_media');
+const { buildH3Workflow, videoShape, runVideo, errorMessage, H3_MAX_SECONDS } = require('../utils/comfy_media');
 const { addPromptQualityOption, enrichVideoPrompt } = require('../utils/video_prompt');
 const { prepareVideoReference } = require('../utils/video_reference');
 
@@ -12,7 +12,7 @@ module.exports = {
         .addStringOption(option => option.setName('preset').setDescription('Video resolution (default Standard)').addChoices(
             { name: 'Fast — 768×448', value: 'fast' }, { name: 'Standard — 1024×768', value: 'sd' },
             { name: 'Wide — 1344×768', value: 'wide' }))
-        .addIntegerOption(option => option.setName('length').setDescription('Duration in seconds (default 5, snapped to H3 frame grid)').setMinValue(1).setMaxValue(15))
+        .addIntegerOption(option => option.setName('length').setDescription('Duration in seconds (default 5); over 15 uses H3 Extender').setMinValue(1).setMaxValue(H3_MAX_SECONDS))
         .addBooleanOption(option => option.setName('portrait').setDescription('Swap width and height'))
         .addNumberOption(option => option.setName('seed').setDescription('Generation seed (omit for random)').setMinValue(0).setMaxValue(Number.MAX_SAFE_INTEGER))
         .addIntegerOption(option => option.setName('steps').setDescription('Sampling steps (default 20)').setMinValue(1).setMaxValue(50))
