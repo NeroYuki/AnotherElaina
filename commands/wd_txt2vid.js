@@ -1,12 +1,14 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { buildH3Workflow, videoShape, runVideo, errorMessage } = require('../utils/comfy_media');
 const { addPromptQualityOption, enrichVideoPrompt } = require('../utils/video_prompt');
+const { prepareVideoReference } = require('../utils/video_reference');
 
 module.exports = {
     data: addPromptQualityOption(new SlashCommandBuilder()
         .setName('wd_txt2vid')
         .setDescription('Generate a video with audio using MiniMax H3')
         .addStringOption(option => option.setName('prompt').setDescription('Describe the scene, motion, dialogue, and sound').setRequired(true))
+        .addAttachmentOption(option => option.setName('ref').setDescription('Image, video, or audio reference (uses the hybrid H3 model)'))
         .addStringOption(option => option.setName('preset').setDescription('Video size and duration (default Standard)').addChoices(
             { name: 'Fast — 768×448, 5 seconds', value: 'fast' },
             { name: 'Standard — 1024×768, 5 seconds', value: 'sd' },
@@ -17,9 +19,9 @@ module.exports = {
         .addIntegerOption(option => option.setName('custom_length').setDescription('Custom duration in seconds (default 5, snapped to H3 frame grid)').setMinValue(1).setMaxValue(15))
         .addBooleanOption(option => option.setName('portrait').setDescription('Swap width and height'))
         .addNumberOption(option => option.setName('seed').setDescription('Generation seed (omit for random; 0 is a valid seed)').setMinValue(0).setMaxValue(Number.MAX_SAFE_INTEGER))
-        .addIntegerOption(option => option.setName('steps').setDescription('Sampling steps (default 20)').setMinValue(1).setMaxValue(50))
+        .addIntegerOption(option => option.setName('steps').setDescription('Sampling steps (default 8 Turbo; 20 with ref or no_optimize)').setMinValue(1).setMaxValue(50))
         .addBooleanOption(option => option.setName('do_upscale').setDescription('Use RTX video super resolution at 2× (default true)'))
-        .addBooleanOption(option => option.setName('no_optimize').setDescription('Disable EasyCache optimization'))),
+        .addBooleanOption(option => option.setName('no_optimize').setDescription('Use base sampling instead of the Turbo LoRA (references always use base sampling)'))),
 
     async execute(interaction) {
         await interaction.deferReply();
@@ -34,11 +36,13 @@ module.exports = {
             }
             if (options.getBoolean('portrait')) [width, height] = [height, width];
             const shape = videoShape(width, height, seconds);
+            const quality = options.getString('prompt_quality') || 'standard';
+            const reference = await prepareVideoReference(options.getAttachment('ref'), shape, { vision: quality !== 'off' });
             const prompt = await enrichVideoPrompt({ prompt: options.getString('prompt'), shape, requestedSeconds: seconds,
-                quality: options.getString('prompt_quality') || 'standard',
+                quality, reference,
                 onProgress: content => interaction.editReply({ content }).catch(() => {}) });
-            const workflow = buildH3Workflow({ prompt, shape,
-                seed: options.getNumber('seed') ?? undefined, steps: options.getInteger('steps') ?? 20,
+            const workflow = buildH3Workflow({ prompt, shape, reference,
+                seed: options.getNumber('seed') ?? undefined, steps: options.getInteger('steps') ?? undefined,
                 upscale: options.getBoolean('do_upscale') ?? true, optimize: !options.getBoolean('no_optimize') });
             await runVideo(interaction, workflow, shape);
         } catch (error) { await interaction.editReply({ content: `Video failed: ${errorMessage(error)}` }); }

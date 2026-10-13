@@ -157,7 +157,7 @@ test('both Discord commands pass duration and references into enrichment before 
             getString: key => ({ prompt: 'Original idea', prompt_quality: 'high', preset: name === 'wd_txt2vid' ? 'custom' : 'std' })[key] ?? null,
             getInteger: key => ['custom_length', 'length'].includes(key) ? 10 : null,
             getBoolean: () => null, getNumber: () => null,
-            getAttachment: () => ({ url: 'https://example.com/image.png' }),
+            getAttachment: key => ['image', 'last_image'].includes(key) ? { url: 'https://example.com/image.png' } : null,
         } };
         reject = false;
         await command.execute(interaction);

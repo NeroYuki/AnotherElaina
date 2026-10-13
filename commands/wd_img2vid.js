@@ -4,6 +4,7 @@ const ComfyClient = require('../utils/comfy_client');
 const { loadImage } = require('../utils/load_discord_img');
 const { buildH3Workflow, imageVideoShape, runVideo, errorMessage } = require('../utils/comfy_media');
 const { addPromptQualityOption, enrichVideoPrompt } = require('../utils/video_prompt');
+const { prepareVideoReference } = require('../utils/video_reference');
 
 module.exports = {
     data: addPromptQualityOption(new SlashCommandBuilder()
@@ -12,14 +13,15 @@ module.exports = {
         .addAttachmentOption(option => option.setName('image').setDescription('Opening frame').setRequired(true))
         .addStringOption(option => option.setName('prompt').setDescription('Describe the motion, dialogue, and sound').setRequired(true))
         .addAttachmentOption(option => option.setName('last_image').setDescription('Optional final frame'))
+        .addAttachmentOption(option => option.setName('ref').setDescription('Additional image, video, or audio reference (uses hybrid H3)'))
         .addStringOption(option => option.setName('preset').setDescription('Resolution, preserving image aspect ratio (default Standard)').addChoices(
             { name: 'Fast — 0.4 megapixels', value: 'fast' }, { name: 'Standard — 0.8 megapixels', value: 'std' },
             { name: 'High — 1.0 megapixels', value: 'high' }))
         .addIntegerOption(option => option.setName('length').setDescription('Duration in seconds (default 5, snapped to H3 frame grid)').setMinValue(1).setMaxValue(15))
         .addNumberOption(option => option.setName('seed').setDescription('Generation seed (omit for random; 0 is a valid seed)').setMinValue(0).setMaxValue(Number.MAX_SAFE_INTEGER))
-        .addIntegerOption(option => option.setName('steps').setDescription('Sampling steps (default 20)').setMinValue(1).setMaxValue(50))
+        .addIntegerOption(option => option.setName('steps').setDescription('Sampling steps (default 8 Turbo; 20 with ref or no_optimize)').setMinValue(1).setMaxValue(50))
         .addBooleanOption(option => option.setName('do_upscale').setDescription('Use RTX video super resolution at 2× (default true)'))
-        .addBooleanOption(option => option.setName('no_optimize').setDescription('Disable EasyCache optimization'))),
+        .addBooleanOption(option => option.setName('no_optimize').setDescription('Use base sampling instead of the Turbo LoRA (references always use base sampling)'))),
 
     async execute(interaction) {
         await interaction.deferReply();
@@ -46,10 +48,11 @@ module.exports = {
                 lastImage = await ComfyClient.uploadImage(lastPng, `${Date.now()}_last.png`, 'image/png');
                 if (quality !== 'off') images.push(await visionImage(lastPng));
             }
-            const prompt = await enrichVideoPrompt({ prompt: options.getString('prompt'), shape, requestedSeconds: seconds, quality, images,
+            const reference = await prepareVideoReference(options.getAttachment('ref'), shape, { vision: quality !== 'off' });
+            const prompt = await enrichVideoPrompt({ prompt: options.getString('prompt'), shape, requestedSeconds: seconds, quality, images, reference,
                 onProgress: content => interaction.editReply({ content }).catch(() => {}) });
-            const workflow = buildH3Workflow({ prompt, shape, image, lastImage,
-                seed: options.getNumber('seed') ?? undefined, steps: options.getInteger('steps') ?? 20,
+            const workflow = buildH3Workflow({ prompt, shape, image, lastImage, reference,
+                seed: options.getNumber('seed') ?? undefined, steps: options.getInteger('steps') ?? undefined,
                 upscale: options.getBoolean('do_upscale') ?? true, optimize: !options.getBoolean('no_optimize') });
             await runVideo(interaction, workflow, shape);
         } catch (error) { await interaction.editReply({ content: `Video failed: ${errorMessage(error)}` }); }

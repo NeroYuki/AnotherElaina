@@ -1,6 +1,5 @@
 const crypto = require('crypto');
 const axios = require('axios');
-const h3Template = require('../resources/video_minimax_h3_t2v.json');
 const postTemplate = require('../resources/video_post_process.json');
 
 const H3_FPS = 24;
@@ -30,35 +29,93 @@ function inputPath(upload) {
     return [upload.subfolder, upload.name].filter(Boolean).join('/');
 }
 
-function buildH3Workflow({ prompt, shape, seed = crypto.randomInt(0, 2_000_000_000), image, lastImage, steps = 20, upscale = true, optimize = true }) {
+const H3_MODELS = Object.freeze({
+    base: 'minimax_h3_fl2va_pruned_int8_convrot.safetensors',
+    hybrid: 'minimax_h3_hybrid_fl2va_ref2va_b25-49-int8.safetensors',
+    reference: 'minimax_h3_ref2va_pruned_int8_convrot.safetensors',
+    turbo: 'minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors',
+    turbo768: 'minimax_h3_fl2v_turbo_8step_v1.0_768p_comfyui_bf16.safetensors',
+});
+
+function buildH3Workflow({ prompt, shape, seed = crypto.randomInt(0, 2_000_000_000), image, lastImage,
+    reference, referenceOnly = false, steps, upscale = true, optimize = true }) {
     if (!prompt?.trim()) throw new Error('A video prompt is required.');
     if (!Number.isSafeInteger(seed) || seed < 0) throw new Error('Seed must be a non-negative safe integer.');
+    const turbo = optimize && !reference;
+    steps ??= turbo ? 8 : 20;
     if (!Number.isInteger(steps) || steps < 1 || steps > 50) throw new Error('Steps must be between 1 and 50.');
-    const workflow = JSON.parse(JSON.stringify(h3Template));
-    // The bot enriches the prompt and unloads its LLM before submission, so the
-    // desktop template's LM Studio and preview nodes are unnecessary here.
-    for (const id of ['115', '142', '143', '144', '145', '146', '148', '105:107', '105:111']) delete workflow[id];
-    Object.assign(workflow['105:104'].inputs, { prompt, width: shape.width, height: shape.height, length: shape.length });
-    workflow['105:15'].inputs.noise_seed = seed;
-    workflow['105:9'].inputs.steps = steps;
-    workflow['105:91'].inputs.fps = H3_FPS;
-    Object.assign(workflow['92'].inputs, { format: 'mp4', codec: 'h264', 'format.codec': 'h264' });
+    const node = (class_type, inputs, title) => ({ class_type, inputs, _meta: { title: title || class_type } });
+    const workflow = {
+        '105:6': node('UNETLoader', { unet_name: reference ? (referenceOnly ? H3_MODELS.reference : H3_MODELS.hybrid) : H3_MODELS.base, weight_dtype: 'default' }),
+        '105:13': node('CLIPLoader', { clip_name: 'qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors', type: 'minimax', device: 'default' }),
+        '105:11': node('VAELoader', { vae_name: 'minimax_h3_video_vae_fp16.safetensors' }, 'Video VAE'),
+        '105:24': node('VAELoader', { vae_name: 'minimax_h3_audio_vae_fp32.safetensors' }, 'Audio VAE'),
+        '105:120': node('ModelAttentionBackend', { model: ['105:6', 0], attention: 'comfy kitchen attention' }, 'Kitchen INT8 attention'),
+        '105:104': node(reference ? 'MiniMaxH3ReferenceToVideo' : 'MiniMaxH3ImageToVideo', {
+            clip: ['105:13', 0], vae: ['105:11', 0], prompt, width: shape.width, height: shape.height, length: shape.length,
+        }),
+        '105:15': node('RandomNoise', { noise_seed: seed }),
+        '105:17': node('KSamplerSelect', { sampler_name: turbo ? 'euler' : 'res_multistep' }),
+        '105:9': node('BasicScheduler', { model: ['105:120', 0], scheduler: 'simple', steps, denoise: 1 }),
+        '105:16': node('BasicGuider', { model: ['105:120', 0], conditioning: ['105:104', 0] }),
+        '105:14': node('SamplerCustomAdvanced', { noise: ['105:15', 0], guider: ['105:16', 0], sampler: ['105:17', 0],
+            sigmas: ['105:9', 0], latent_image: ['105:104', 1] }),
+        '105:10': node('VAEDecodeTiled', { samples: ['105:14', 0], vae: ['105:11', 0],
+            tile_size: 512, overlap: 64, temporal_size: 64, temporal_overlap: 8 }),
+        '105:23': node('VAEDecodeAudio', { samples: ['105:14', 0], vae: ['105:24', 0] }),
+        '105:91': node('CreateVideo', { images: ['105:10', 0], audio: ['105:23', 0], fps: H3_FPS, bit_depth: 8 }),
+        '92': node('SaveVideo', { video: ['105:91', 0], filename_prefix: 'video/AnotherElaina_H3',
+            format: 'mp4', codec: 'h264', 'format.codec': 'h264' }),
+    };
+    if (turbo) {
+        // The 768p adapter was trained with video/audio shifts 6/3; the
+        // lower-resolution adapter uses 12/3. Neither is a Ref2VA adapter.
+        const highResolution = Math.min(shape.width, shape.height) >= 704;
+        workflow.turbo = node('LoraLoaderModelOnly', { model: ['105:6', 0],
+            lora_name: highResolution ? H3_MODELS.turbo768 : H3_MODELS.turbo, strength_model: 1 });
+        workflow.shift = node('MiniMaxH3SigmaShift', { model: ['turbo', 0], shift_video: highResolution ? 6 : 12, shift_audio: 3 });
+        workflow['105:120'].inputs.model = ['shift', 0];
+    }
+    if (reference) {
+        const inputs = workflow['105:104'].inputs;
+        Object.assign(inputs, { audio_vae: ['105:24', 0], ref_image_size: 'match' });
+        if (reference.kind === 'image') {
+            workflow.reference = node('LoadImage', { image: inputPath(reference.upload) }, 'Reference <Picture 1>');
+            inputs['ref_images.ref_image_0'] = ['reference', 0];
+        } else if (reference.kind === 'video') {
+            workflow.reference = node('VHS_LoadVideo', { video: inputPath(reference.upload), force_rate: H3_FPS,
+                custom_width: shape.width, custom_height: shape.height, frame_load_cap: Math.min(shape.length, 360),
+                skip_first_frames: 0, select_every_nth: 1, format: 'None' }, 'Reference <Video 1>');
+            inputs['ref_videos.ref_video_0'] = ['reference', 0];
+            if (reference.hasAudio) inputs['ref_video_audios.ref_video_audio_0'] = ['reference', 2];
+        } else if (reference.kind === 'audio') {
+            workflow.reference = node('LoadAudio', { audio: inputPath(reference.upload) }, 'Reference <Audio 1>');
+            inputs['ref_audios.ref_audio_0'] = ['reference', 0];
+        } else throw new Error('Reference must be an image, video, or audio attachment.');
+    }
+    let conditioning = ['105:104', 0];
+    const anchor = (id, upload, frame_idx) => {
+        workflow[id] = node('LoadImage', { image: inputPath(upload) });
+        if (reference) {
+            // Guides preserve the hybrid reference conditioning. Anchor images
+            // are separate from the reference tokenizer's <Picture N> IDs.
+            const guide = `${id}_guide`;
+            workflow[guide] = node('MiniMaxH3AddGuide', { positive: conditioning, latent: ['105:104', 1],
+                vae: ['105:11', 0], image: [id, 0], frame_idx });
+            conditioning = [guide, 0];
+        } else workflow['105:104'].inputs[frame_idx === 0 ? 'first_frame' : 'last_frame'] = [id, 0];
+    };
     if (image) {
-        workflow.input_image = { class_type: 'LoadImage', inputs: { image: inputPath(image) } };
-        workflow['105:104'].inputs.first_frame = ['input_image', 0];
+        anchor('input_image', image, 0);
     }
     if (lastImage) {
-        workflow.last_image = { class_type: 'LoadImage', inputs: { image: inputPath(lastImage) } };
-        workflow['105:104'].inputs.last_frame = ['last_image', 0];
+        anchor('last_image', lastImage, -1);
     }
-    if (!upscale) {
-        delete workflow['105:127'];
-        workflow['105:91'].inputs.images = ['105:10', 0];
-    }
-    if (!optimize) {
-        delete workflow['105:124'];
-        workflow['105:9'].inputs.model = ['105:120', 0];
-        workflow['105:16'].inputs.model = ['105:120', 0];
+    workflow['105:16'].inputs.conditioning = conditioning;
+    if (upscale) {
+        workflow['105:127'] = node('RTXVideoSuperResolution', { images: ['105:10', 0],
+            resize_type: 'scale by multiplier', 'resize_type.scale': 2, quality: 'ULTRA' });
+        workflow['105:91'].inputs.images = ['105:127', 0];
     }
     return workflow;
 }
@@ -186,5 +243,5 @@ async function runVideo(interaction, workflow, shape) {
     }
 }
 
-module.exports = { H3_FPS, videoShape, imageVideoShape, inputPath, buildH3Workflow, buildPostProcessWorkflow,
+module.exports = { H3_FPS, H3_MODELS, videoShape, imageVideoShape, inputPath, buildH3Workflow, buildPostProcessWorkflow,
     videoOutput, errorMessage, mediaReply, deliverFile, runVideo };

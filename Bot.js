@@ -144,6 +144,7 @@ client.on('interactionCreate', async interaction => {
         'wd_img2model',
         'wd_txt2vid',
         'wd_img2vid',
+        'wd_ref2vid',
         'wd_vid_upscale',
     ]
 

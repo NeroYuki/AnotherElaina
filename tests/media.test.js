@@ -169,8 +169,8 @@ test('oversized media is returned as a Catbox link without another Discord attac
     assert.match(message.content, /https:\/\/files.catbox.moe\/model.glb/);
 });
 
-test('all four Discord command schemas serialize with required inputs first', () => {
-    for (const name of ['wd_img2model', 'wd_txt2vid', 'wd_img2vid', 'wd_vid_upscale']) {
+test('all media Discord command schemas serialize with required inputs first', () => {
+    for (const name of ['wd_img2model', 'wd_txt2vid', 'wd_img2vid', 'wd_ref2vid', 'wd_vid_upscale']) {
         const data = require(`../commands/${name}`).data.toJSON();
         let optional = false;
         for (const option of data.options) { if (!option.required) optional = true; else assert.equal(optional, false); }
