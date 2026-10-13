@@ -1,10 +1,12 @@
 'use strict'
 
+const crypto = require('node:crypto')
 const { loadConfig } = require('./config')
 const { initializeMongo } = require('./persistence/mongo')
 const { ChatRepository } = require('./persistence/repository')
 const { ContinuityLeases } = require('./persistence/leases')
 const { JobQueue, JobWorker } = require('./persistence/jobs')
+const { INFERENCE_JOB_TYPES, reconcileTurns } = require('./persistence/reconcile')
 const { LocalOpenAIProvider } = require('./providers/local_openai')
 const { probeCapabilities } = require('./providers/capabilities')
 const { E5Embedder } = require('./retrieval/embed_worker')
@@ -157,21 +159,21 @@ async function createChatSubsystem(options = {}) {
             return { redactedTurns: result.modifiedCount }
         },
         reconcile_turns: async () => {
-            const turns = await repository.collection(COLLECTIONS.turns).find({ lifecycle: { $in: ['committed', 'finalized'] }, responseRejected: { $ne: true } }).sort({ updatedAt: -1 }).limit(500).toArray()
-            let enqueued = 0
-            for (const turn of turns) {
-                if (turn.lifecycle === 'committed' || turn.recoveryRequired) {
-                    if (!await repository.isCanonicalTurn(turn.continuityId, turn.eventId)) continue
-                    await repository.updateTurn(turn.eventId, { lifecycle: 'finalized', finalizedAt: turn.finalizedAt || new Date(), recoveryRequired: false, reconciledAt: new Date() })
-                    await repository.collection(COLLECTIONS.scenes).updateOne({ sceneId: turn.sceneId, $or: [{ selectedHeadTurnId: turn.parentTurnId }, { selectedHeadTurnId: null }, { selectedHeadTurnId: { $exists: false } }] }, { $set: { selectedHeadTurnId: turn.eventId, updatedAt: new Date() } })
-                }
-                await jobs.enqueue({ type: 'extract_memory', entityId: turn.eventId, sourceIds: [turn.eventId], continuityId: turn.continuityId, expectedEpoch: turn.deletionEpoch, expectedRevision: turn.committedRevision, priority: -10, idempotencyKey: `extract:${turn.eventId}:v1`, payload: { sceneId: turn.sceneId, branchId: turn.branchId } })
-                enqueued += 1
-            }
-            return { scanned: turns.length, enqueued }
+            const result = await reconcileTurns({ repository, jobs, backfillLimit: config.startupBackfillLimit ?? 0 })
+            console.info('[chat reconciliation]', result)
+            return result
         }
     }
-    const worker = new JobWorker({ queue: jobs, handlers, onError: error => console.error('[chat worker]', error) })
+    const worker = new JobWorker({
+        queue: jobs, handlers,
+        onError: (error, job) => console.error('[chat worker]', { jobId: job?.jobId, type: job?.type, attempt: job?.attempts }, error),
+        inferenceTypes: INFERENCE_JOB_TYPES,
+        inferenceEnabled: config.backgroundInferenceEnabled,
+        inferenceIntervalMs: config.backgroundInferenceIntervalMs,
+        inferenceStartupDelayMs: config.backgroundStartupDelayMs,
+        inferenceErrorCooldownMs: config.backgroundErrorCooldownMs,
+        canRunInference: () => service.queue.tails.size === 0 && service.inference.active === 0
+    })
 
     await Promise.allSettled([
         embedder.init().then(() => status.set('embeddings', { enabled: true, reachable: true, exercised: true })).catch(error => status.set('embeddings', { enabled: true, reachable: false, degraded: true, error: error.code || error.message })),
@@ -181,7 +183,15 @@ async function createChatSubsystem(options = {}) {
     ])
     const day = new Date().toISOString().slice(0, 10)
     await jobs.enqueue({ type: 'retention_cleanup', idempotencyKey: `retention:${day}`, priority: -100, payload: {} })
-    await jobs.enqueue({ type: 'reconcile_turns', idempotencyKey: `reconcile:${day}`, priority: -90, payload: {} })
+    // Recover interrupted commits on each startup; do not tie this to a daily
+    // key that may already be completed before a later same-day crash.
+    await jobs.enqueue({ type: 'reconcile_turns', idempotencyKey: `reconcile:${crypto.randomUUID()}`, priority: 10, payload: {} })
+    console.info('[chat background]', {
+        inferenceEnabled: config.backgroundInferenceEnabled ?? true,
+        intervalMs: config.backgroundInferenceIntervalMs ?? 30000,
+        startupDelayMs: config.backgroundStartupDelayMs ?? 60000,
+        backlog: await jobs.backlog()
+    })
     worker.start()
     return {
         config, service, repository, jobs, status,

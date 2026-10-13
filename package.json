@@ -17,6 +17,7 @@
 		"chat:smoke:remote": "node scripts/chat/smoke_local.cjs --strict --remote",
 		"chat:smoke:subsystem": "node scripts/chat/smoke_subsystem.cjs",
 		"chat:migrate": "node scripts/chat/migrate.cjs",
+		"chat:jobs": "node scripts/chat/jobs.cjs",
 		"chat:reindex": "node scripts/chat/reindex.cjs",
 		"chat:ingest": "node scripts/chat/ingest_lore.cjs",
 		"chat:setup:embedding": "node scripts/chat/setup_embedding.cjs"

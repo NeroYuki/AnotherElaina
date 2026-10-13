@@ -215,6 +215,38 @@ For a stalled turn, stop new intake for its continuity, inspect the authoritativ
 
 For failed background jobs, fix the unavailable dependency, verify source epoch/revision/canonical ancestry, and retry by idempotency key. Reconciliation must recreate missing derivation jobs for committed turns. It must not publish work from a deleted epoch or displaced generation variant.
 
+### Controlling the memory backlog
+
+Startup now recovers unfinished commits only. `CHAT_STARTUP_BACKFILL_LIMIT=0` (default) disables scanning finalized historical turns. Setting it to 1–100 opts into a bounded recent-history scan at each startup; use the command below for deliberate larger backfills. A clean restart with no new turns does not insert extraction jobs. Existing `queued`, `retry`, or expired `running` jobs still resume. Completed jobs, including successful empty extractions, remain idempotency markers; deleting job records can allow historical backfill to extract the same turn again. Dead/cancelled jobs are not automatically revived.
+
+Merge these values into the **Linux bot's** `.env`, then run `pm2 restart Bot --update-env` after syncing the code:
+
+```dotenv
+CHAT_STARTUP_BACKFILL_LIMIT=0
+CHAT_BACKGROUND_INFERENCE_ENABLED=true
+CHAT_BACKGROUND_INFERENCE_INTERVAL_MS=30000
+CHAT_BACKGROUND_STARTUP_DELAY_MS=60000
+CHAT_BACKGROUND_ERROR_COOLDOWN_MS=60000
+```
+
+These controls apply to the existing queue as well as future jobs. One background inference job runs at a time, with a gap after completion; model repairs/retries inside that job can still make more than one request. New inference admission waits while foreground chat is active, and one failed inference job puts all inference jobs into cooldown. Indexing and cleanup continue during the delay/pause. `CHAT_BACKGROUND_CONCURRENCY` remains a legacy setting; raising it does not add workers. Run only one PM2 bot instance for these per-process limits. Background work already running can finish when a new chat arrives; it is not preempted.
+
+Graceful worker shutdown waits for the queue completion/failure write as well as the handler, reducing repeated inference when restarting immediately after a model response. A forced process kill can still leave a running lease to be reclaimed; allow PM2 enough shutdown time for active inference to finish.
+
+To pause extraction and episode summaries while retaining their durable queue, set `CHAT_BACKGROUND_INFERENCE_ENABLED=false` and restart. New chat turns continue to queue derivation jobs, so pause is temporary load relief, not a backlog drain. Re-enable to resume paced processing. Each failed job retries at most three times, with persisted exponential backoff beginning at 30 seconds and respecting `Retry-After`.
+
+Inspect and manage the queue from the Linux repository directory:
+
+```bash
+npm run chat:jobs -- status
+# Enqueue missing jobs from the most recent 25 eligible historical turns:
+npm run chat:jobs -- backfill --limit 25
+# After fixing the underlying failure, retry at most 10 dead extraction jobs:
+npm run chat:jobs -- retry --type extract_memory --limit 10
+```
+
+`status` is read-only and displays counts by type/state plus recent job IDs, attempts, creation/update times, next run times, and error codes, without message contents. Compare `createdAt`, `jobId`, and `idempotencyKey` across restarts: unchanged creation time means resumed work rather than a newly queued extraction. Startup logs show the backlog snapshot; reconciliation reports `inserted` separately from `existing`, correcting the old misleading `enqueued` count. The backfill command queues work for the bot's paced worker and does not call inference itself. Its limit is the size of the recent history window, including already-known turns, not a promise to enqueue that many new jobs. Increasing the limit deliberately broadens that window. Never bulk-delete `chat_jobs` to clear load; pause admission instead, and preserve completion markers.
+
 For Qdrant corruption or embedding revision change, keep Mongo authoritative, disable semantic reads, create a new revision-specific collection, reindex eligible records with ACL payloads, validate dimensions/filters, and atomically change the alias. Do not drop Mongo source records.
 
 For a search outage, report inability to verify current facts and keep local roleplay available. Never switch operating mode to legacy `auto`, `online`, or `online_lite`.

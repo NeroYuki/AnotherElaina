@@ -15,9 +15,9 @@ class JobQueue {
         this.maxAttempts = options.maxAttempts || 3
     }
 
-    async enqueue(input) {
+    _record(input) {
         const now = this.clock()
-        const record = {
+        return {
             schemaVersion: 1,
             jobId: input.jobId || this.id(),
             type: input.type,
@@ -35,12 +35,32 @@ class JobQueue {
             createdAt: now,
             updatedAt: now
         }
+    }
+
+    async enqueue(input) {
+        const record = this._record(input)
         const result = await this.collection.findOneAndUpdate(
             { idempotencyKey: input.idempotencyKey },
             { $setOnInsert: record },
             { upsert: true, returnDocument: 'after' }
         )
         return valueOf(result)
+    }
+
+    // Unlike enqueue's returned record, this reports actual insertions, including
+    // empty extractions whose completed jobs must remain idempotency markers.
+    async enqueueMissing(input) {
+        try {
+            const result = await this.collection.updateOne(
+                { idempotencyKey: input.idempotencyKey },
+                { $setOnInsert: this._record(input) },
+                { upsert: true }
+            )
+            return result.upsertedCount === 1
+        } catch (error) {
+            if (error.code === 11000) return false
+            throw error
+        }
     }
 
     async claim(types) {
@@ -104,7 +124,10 @@ class JobQueue {
     async fail(job, error, options = {}) {
         const now = this.clock()
         const dead = options.dead === true || job.attempts >= (options.maxAttempts || this.maxAttempts)
-        const delayMs = options.delayMs ?? Math.min(300000, 1000 * (2 ** Math.max(0, job.attempts - 1)))
+        const delayMs = options.delayMs ?? Math.max(
+            Number(error.retryAfterMs) || 0,
+            Math.min(300000, 30000 * (2 ** Math.max(0, job.attempts - 1)))
+        )
         const result = await this.collection.updateOne({
             jobId: job.jobId,
             state: 'running',
@@ -154,6 +177,14 @@ class JobWorker {
         this.pollMs = options.pollMs || 1000
         this.onError = options.onError || (() => {})
         this.heartbeatMs = options.heartbeatMs || Math.max(1000, Math.floor(this.queue.leaseMs / 3))
+        this.clock = options.clock || (() => Date.now())
+        this.inferenceTypes = new Set(options.inferenceTypes || [])
+        this.inferenceEnabled = options.inferenceEnabled !== false
+        this.inferenceIntervalMs = options.inferenceIntervalMs ?? 30000
+        this.inferenceStartupDelayMs = options.inferenceStartupDelayMs ?? 60000
+        this.inferenceErrorCooldownMs = options.inferenceErrorCooldownMs ?? 60000
+        this.canRunInference = options.canRunInference || (() => true)
+        this.inferenceNextAt = 0
         this.running = false
         this.timer = null
         this.inFlight = null
@@ -162,6 +193,7 @@ class JobWorker {
     start() {
         if (this.running) return
         this.running = true
+        this.inferenceNextAt = this.clock() + this.inferenceStartupDelayMs
         this._schedule(0)
     }
 
@@ -172,26 +204,43 @@ class JobWorker {
 
     async _tick() {
         if (!this.running) return
+        const operation = this._processTick()
+        this.inFlight = operation
+        try { await operation }
+        finally { if (this.inFlight === operation) this.inFlight = null }
+    }
+
+    async _processTick() {
         let job = null
         let heartbeat = null
+        let failed = false
         try {
-            job = await this.queue.claim(Object.keys(this.handlers))
+            const allowInference = this.inferenceEnabled && this.clock() >= this.inferenceNextAt && this.canRunInference()
+            const types = Object.keys(this.handlers).filter(type => allowInference || !this.inferenceTypes.has(type))
+            // claim([]) means any type to JobQueue, so never call it with an
+            // empty allowlist when background inference is paused/cooling down.
+            if (!types.length) return
+            job = await this.queue.claim(types)
             if (job) {
                 const handler = this.handlers[job.type]
                 heartbeat = setInterval(() => this.queue.renew(job).catch(error => this.onError(error)), this.heartbeatMs)
                 heartbeat.unref?.()
-                this.inFlight = Promise.resolve(handler(job))
-                const result = await this.inFlight
+                const result = await handler(job)
                 if (!await this.queue.complete(job, result)) {
                     throw Object.assign(new Error('Job completed after its lease was lost'), { code: 'CHAT_JOB_LEASE_LOST' })
                 }
             }
         } catch (error) {
+            failed = true
             if (job) await this.queue.fail(job, error).catch(failure => this.onError(failure))
-            this.onError(error)
+            this.onError(error, job)
         } finally {
+            if (job && this.inferenceTypes.has(job.type)) {
+                this.inferenceNextAt = this.clock() + (failed
+                    ? Math.max(this.inferenceIntervalMs, this.inferenceErrorCooldownMs)
+                    : this.inferenceIntervalMs)
+            }
             clearInterval(heartbeat)
-            this.inFlight = null
             if (this.running) this._schedule(this.pollMs)
         }
     }

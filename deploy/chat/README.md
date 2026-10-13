@@ -43,6 +43,8 @@ CHAT_STRUCTURED_OUTPUT_MODE=auto
 CHAT_ALLOW_EXTREME_MODEL=false
 ```
 
+Background extraction now defaults to recovery only on startup, with a 60-second inference grace period and a 30-second gap after each background inference job. `CHAT_STARTUP_BACKFILL_LIMIT=0` prevents automatic historical backfill. Set `CHAT_BACKGROUND_INFERENCE_ENABLED=false` in the Linux bot environment to pause extraction/summaries while keeping queued work. After syncing the code, restart with `pm2 restart Bot --update-env`. Inspect actual queued/retried/completed work with `npm run chat:jobs -- status`; bounded backfill and dead-job retry commands are documented in `docs/chat-overhaul/OPERATOR_GUIDE.md`.
+
 The empty quantization value selects the fixed variant from `chat/model_profiles.js`. The alternatives are repository `unsloth/Qwen3.8-27B-GGUF` with variant `UD-Q4_K_M` and, only after setting `CHAT_ALLOW_EXTREME_MODEL=true`, repository `unsloth/Qwen3.8-Flash-Next-GGUF` with variant `UD-IQ3_XXS`. Do not put the UI's `repo:variant` display form in `CHAT_MODEL`; Unsloth's API expects these as separate fields.
 
 Keep `CHAT_STRUCTURED_OUTPUT_MODE=auto`. Qwen 3.8's thinking-aware llama.cpp template can conflict with server-side JSON grammar and corrupt the active server into repeated `/` output. Auto mode sends the trusted schema in the prompt for Qwen and validates it in the application. `server` is an explicit future override after the installed llama.cpp build is verified fixed; `prompt` disables server grammar for every model.

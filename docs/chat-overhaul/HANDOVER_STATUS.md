@@ -4,6 +4,8 @@ Updated: 2026-09-09
 
 ## Current State
 
+2026-10-13 backlog control update: finalized-history backfill is now disabled on startup by default (`CHAT_STARTUP_BACKFILL_LIMIT=0`); bounded interrupted-commit recovery still runs. Reconciliation counts new inserts separately from existing idempotency records, and successful empty extractions remain completed. Background inference supports pause, startup grace, per-job spacing, foreground admission deferral, and shared failure cooldown; persisted retries begin at 30 seconds. `npm run chat:jobs -- status`, `backfill --limit 25`, and `retry --type extract_memory --limit 10` provide Linux-local queue diagnostics and bounded maintenance. These changes are tested locally; the Linux queue contents/deployment have not been inspected or modified in this update.
+
 The legacy generation handler has been replaced by the local-only `chat/` subsystem. `Bot.js` initializes Mongo and chat before Discord login, routes messages and persistent controls through the conversation service, and invalidates derivatives on Discord message edit/delete.
 
 Implemented:
