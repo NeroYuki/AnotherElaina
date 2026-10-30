@@ -58,25 +58,68 @@ class QdrantVectorIndex {
         this.dimension = options.dimension || 384
         this.alias = options.alias || 'chat_active'
         this.collection = options.collection || collectionName(this)
+        this.timeoutMs = options.timeoutMs ?? 30000
     }
 
     async request(path, init = {}) {
-        const response = await this.fetch(`${this.url}${path}`, {
-            ...init,
-            headers: {
-                'content-type': 'application/json',
-                ...(this.apiKey ? { 'api-key': this.apiKey } : {}),
-                ...init.headers
+        const externalSignal = init.signal
+        const timeoutMs = init.timeoutMs ?? this.timeoutMs
+        const controller = new AbortController()
+        let timedOut = false
+        let onExternalAbort = null
+        const timer = timeoutMs > 0
+            ? setTimeout(() => {
+                timedOut = true
+                controller.abort()
+            }, timeoutMs)
+            : null
+        timer?.unref?.()
+        if (externalSignal) {
+            if (externalSignal.aborted) controller.abort(externalSignal.reason)
+            else {
+                onExternalAbort = () => controller.abort(externalSignal.reason)
+                externalSignal.addEventListener('abort', onExternalAbort, { once: true })
             }
-        })
-        const body = await response.json().catch(() => null)
-        if (!response.ok) {
-            const error = new Error(`Qdrant ${response.status}: ${body?.status?.error || body?.message || 'request failed'}`)
-            error.code = 'CHAT_QDRANT_ERROR'
-            error.status = response.status
-            throw error
         }
-        return body?.result
+        try {
+            const response = await this.fetch(`${this.url}${path}`, {
+                ...init,
+                signal: controller.signal,
+                headers: {
+                    'content-type': 'application/json',
+                    ...(this.apiKey ? { 'api-key': this.apiKey } : {}),
+                    ...init.headers
+                }
+            })
+            let body
+            try {
+                body = await response.json()
+            } catch (cause) {
+                if (response.ok) {
+                    if (controller.signal.aborted) throw cause
+                    throw Object.assign(new Error('Qdrant returned invalid JSON'), {
+                        code: 'CHAT_QDRANT_INVALID_RESPONSE', cause
+                    })
+                }
+            }
+            if (!response.ok) {
+                const error = new Error(`Qdrant ${response.status}: ${body?.status?.error || body?.message || 'request failed'}`)
+                error.code = 'CHAT_QDRANT_ERROR'
+                error.status = response.status
+                throw error
+            }
+            return body?.result
+        } catch (error) {
+            if (timedOut) {
+                const timeout = new Error(`Qdrant request timed out after ${timeoutMs}ms`)
+                timeout.code = 'CHAT_QDRANT_TIMEOUT'
+                throw timeout
+            }
+            throw error
+        } finally {
+            if (timer) clearTimeout(timer)
+            if (externalSignal && onExternalAbort) externalSignal.removeEventListener('abort', onExternalAbort)
+        }
     }
 
     async health() {
@@ -172,8 +215,8 @@ class QdrantVectorIndex {
     }
 
     async switchAlias(collection = this.collection) {
-        const aliases = await this.request('/aliases')
-        const exists = Array.isArray(aliases?.aliases) && aliases.aliases.some(item => item.alias_name === this.alias)
+        const aliases = await this.listAliases()
+        const exists = aliases.some(item => item.alias === this.alias)
         const actions = []
         if (exists) actions.push({ delete_alias: { alias_name: this.alias } })
         actions.push({ create_alias: { collection_name: collection, alias_name: this.alias } })
@@ -181,6 +224,30 @@ class QdrantVectorIndex {
             method: 'POST',
             body: JSON.stringify({ actions })
         })
+    }
+
+    async listAliases(options = {}) {
+        const result = await this.request('/aliases', { signal: options.signal })
+        if (!Array.isArray(result?.aliases) || result.aliases.some(item =>
+            typeof item?.alias_name !== 'string' || !item.alias_name
+            || typeof item?.collection_name !== 'string' || !item.collection_name)) {
+            throw Object.assign(new Error('Qdrant returned an invalid alias list'), {
+                code: 'CHAT_QDRANT_INVALID_RESPONSE'
+            })
+        }
+        return result.aliases.map(item => ({ alias: item.alias_name, collection: item.collection_name }))
+    }
+
+    async deleteCollection(name, options = {}) {
+        try {
+            await this.request(`/collections/${encodeURIComponent(name)}`, {
+                method: 'DELETE',
+                signal: options.signal
+            })
+        } catch (error) {
+            if (error.status !== 404) throw error
+        }
+        return true
     }
 
     async ensureAlias(collection = this.collection) {

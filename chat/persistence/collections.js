@@ -14,7 +14,8 @@ const COLLECTIONS = Object.freeze({
     jobs: 'chat_jobs',
     toolRuns: 'chat_tool_runs',
     tombstones: 'chat_tombstones',
-    migrations: 'chat_migrations'
+    migrations: 'chat_migrations',
+    reindex: 'chat_reindex_state'
 })
 
 const INDEXES = Object.freeze({
@@ -90,6 +91,9 @@ const INDEXES = Object.freeze({
     ],
     [COLLECTIONS.migrations]: [
         { key: { migrationId: 1 }, unique: true, name: 'migration_id_unique' }
+    ],
+    [COLLECTIONS.reindex]: [
+        { key: { qdrantUrl: 1, alias: 1 }, unique: true, name: 'reindex_target_unique' }
     ]
 })
 

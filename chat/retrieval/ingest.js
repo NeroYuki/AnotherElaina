@@ -4,10 +4,41 @@ const crypto = require('node:crypto')
 const fs = require('node:fs/promises')
 const path = require('node:path')
 const { COLLECTIONS } = require('../persistence/collections')
+const { LeaseLostError } = require('../persistence/leases')
+const { ReindexLifecycleStore } = require('../persistence/reindex_lifecycle')
 const { normalizedTerms } = require('./lexical')
 const { pointId } = require('./vector_index')
 
 const MAX_FILE_BYTES = 1024 * 1024
+
+function cleanupWarning(code, collection, error, at) {
+    return {
+        code,
+        collection: collection || null,
+        message: String(error?.message || error).slice(0, 1000),
+        at
+    }
+}
+
+function queuePending(pending, entry) {
+    if (pending.some(item => item?.collection === entry.collection)) return pending
+    return [...pending, entry]
+}
+
+function queuePendingAll(pending, collections, reason, at) {
+    let output = pending
+    for (const collection of collections) output = queuePending(output, { collection, reason, queuedAt: at })
+    return output
+}
+
+function dedupePending(pending) {
+    const seen = new Set()
+    return pending.filter(entry => {
+        if (!entry?.collection || seen.has(entry.collection)) return false
+        seen.add(entry.collection)
+        return true
+    })
+}
 
 function contentHash(text) {
     return crypto.createHash('sha256').update(text, 'utf8').digest('hex')
@@ -217,27 +248,364 @@ class Reindexer {
         this.embedder = options.embedder
         this.vectorIndex = options.vectorIndex
         this.batchSize = options.batchSize || 32
+        this.clock = options.clock || (() => new Date())
+        this.leaseMs = options.leaseMs || 120000
+        this.heartbeatMs = options.heartbeatMs || Math.max(1000, Math.floor(this.leaseMs / 3))
+        this.uniqueSuffix = options.uniqueSuffix || (() => crypto.randomUUID().replace(/-/g, '').slice(0, 10))
+        this.lifecycle = options.lifecycleStore || new ReindexLifecycleStore({
+            db: options.repository?.db,
+            url: options.qdrantUrl || this.vectorIndex?.url,
+            alias: options.alias || this.vectorIndex?.alias,
+            clock: this.clock,
+            ownerId: options.ownerId,
+            durationMs: this.leaseMs
+        })
     }
 
     async run(options = {}) {
-        const collection = options.collection || `${this.vectorIndex.collection}_build_${Date.now()}`
-        await this.vectorIndex.ensureCollection(collection)
-        let indexed = 0
-        for (const source of this._sources()) {
-            let batch = []
-            for await (const record of source.cursor) {
-                batch.push(source.map(record))
-                if (batch.length >= this.batchSize) {
-                    indexed += await this._indexBatch(batch, collection)
-                    batch = []
+        const lease = await this.lifecycle.acquire()
+        if (!lease) throw new LeaseLostError('Another reindex is already running for this Qdrant alias')
+
+        const cleanup = { deleted: [], pending: [], warnings: [] }
+        let heartbeatError = null
+        let heartbeat = null
+        const assertLease = async () => {
+            if (heartbeatError) throw heartbeatError
+            await this.lifecycle.assertValid(lease)
+        }
+
+        try {
+            heartbeat = setInterval(() => {
+                this.lifecycle.renew(lease).catch(error => { heartbeatError = error })
+            }, this.heartbeatMs)
+            heartbeat.unref?.()
+
+            const initial = await this.lifecycle.get()
+            let history = Array.isArray(initial?.history) ? [...initial.history] : []
+            let pending = Array.isArray(initial?.pendingDeletions) ? [...initial.pendingDeletions] : []
+            if (initial?.build?.collection && initial.build.ownerId !== lease.ownerId) {
+                const staleBuild = initial.build.collection
+                try {
+                    if (await this._aliasTarget() === staleBuild) {
+                        if (!history.some(entry => entry?.collection === staleBuild)) {
+                            history.push({ collection: staleBuild, role: 'active', owned: true, recovered: true, createdAt: this.clock() })
+                        }
+                    } else {
+                        pending = queuePending(pending, {
+                            collection: staleBuild,
+                            reason: 'stale_build',
+                            queuedAt: this.clock()
+                        })
+                    }
+                } catch {
+                    pending = queuePending(pending, {
+                        collection: staleBuild,
+                        reason: 'stale_build',
+                        queuedAt: this.clock()
+                    })
                 }
             }
-            if (batch.length) indexed += await this._indexBatch(batch, collection)
+            if (pending.length) {
+                try {
+                    const active = await this._aliasTarget()
+                    if (active && pending.some(entry => entry?.collection === active)) {
+                        pending = pending.filter(entry => entry?.collection !== active)
+                        if (!history.some(entry => entry?.collection === active)) {
+                            history.push({ collection: active, role: 'active', owned: true, recovered: true, createdAt: this.clock() })
+                        }
+                    }
+                } catch {
+                    // Cleanup will fail safe later rather than delete an unverified alias target.
+                }
+            }
+
+            const customCollection = Boolean(options.collection)
+            const collection = options.collection || this._buildCollectionName()
+            const owned = !customCollection
+            if (customCollection) {
+                history = this._recordNoSwitchBuild(history, collection, false)
+                pending = pending.filter(entry => entry?.collection !== collection)
+            }
+            await this._persist(lease, owned ? {
+                build: {
+                    collection,
+                    startedAt: this.clock(),
+                    ownerId: lease.ownerId,
+                    fencingToken: lease.fencingToken
+                },
+                history,
+                pendingDeletions: pending
+            } : { build: null, history, pendingDeletions: pending })
+
+            let indexed = 0
+            let published = false
+            try {
+                await assertLease()
+                await this.vectorIndex.ensureCollection(collection)
+                for (const source of this._sources()) {
+                    let batch = []
+                    for await (const record of source.cursor) {
+                        batch.push(source.map(record))
+                        if (batch.length >= this.batchSize) {
+                            indexed += await this._indexBatch(batch, collection)
+                            batch = []
+                            await assertLease()
+                        }
+                    }
+                    if (batch.length) {
+                        indexed += await this._indexBatch(batch, collection)
+                        await assertLease()
+                    }
+                }
+                await assertLease()
+                const verified = await this.vectorIndex.count(collection)
+                if (verified !== indexed) {
+                    throw Object.assign(new Error(`Qdrant rebuild verification failed: indexed ${indexed}, collection contains ${verified}`), {
+                        code: 'CHAT_REINDEX_VERIFY_FAILED'
+                    })
+                }
+                await assertLease()
+
+                let previous = null
+                let skipPrune = false
+                if (!options.noSwitch) {
+                    try {
+                        previous = await this._aliasTarget()
+                    } catch (error) {
+                        skipPrune = true
+                        cleanup.warnings.push(cleanupWarning('ALIAS_READ_FAILED', null, error, this.clock()))
+                    }
+                    if (!previous && !skipPrune) {
+                        previous = history.find(entry => entry?.collection && entry.role === 'active' && entry.owned)?.collection || null
+                    }
+                    try {
+                        await assertLease()
+                        await this.vectorIndex.switchAlias(collection)
+                    } catch (error) {
+                        if (error.code === 'CHAT_LEASE_LOST') throw error
+                        await assertLease()
+                        let aliases
+                        try {
+                            aliases = await this._listAliases()
+                        } catch (readError) {
+                            pending = queuePending(pending, { collection, reason: 'ambiguous_publish', queuedAt: this.clock() })
+                            await this._persist(lease, { build: null, history, pendingDeletions: pending })
+                            cleanup.pending = pending
+                            cleanup.warnings.push(cleanupWarning('AMBIGUOUS_PUBLISH_UNVERIFIABLE', collection, readError, this.clock()))
+                            error.chatCleanupHandled = true
+                            throw error
+                        }
+                        const active = aliases.find(item => item.alias === this._aliasName())?.collection
+                        if (active !== collection) {
+                            error.reindexReason = 'ambiguous_publish'
+                            throw error
+                        }
+                        cleanup.warnings.push(cleanupWarning('ALIAS_PUBLISH_AMBIGUOUS', collection, error, this.clock()))
+                    }
+                }
+                published = !options.noSwitch
+                await assertLease()
+
+                if (!options.noSwitch) {
+                    const retirement = this._retireHistory(history, { collection, owned, previous, skipPrune })
+                    history = owned ? retirement.history : this._recordNoSwitchBuild(retirement.history, collection, false)
+                    pending = queuePendingAll(pending, retirement.candidates, 'superseded_build', this.clock())
+                    await this._persist(lease, { build: null, history, pendingDeletions: pending })
+                    const result = skipPrune
+                        ? { deleted: [], pending, warnings: [] }
+                        : await this._runCleanup(lease, pending, assertLease, [collection, ...history.map(entry => entry.collection)])
+                    cleanup.deleted.push(...result.deleted)
+                    cleanup.pending = result.pending
+                    cleanup.warnings.push(...result.warnings)
+                    await this._persist(lease, { pendingDeletions: result.pending })
+                } else {
+                    if (owned) history = this._recordNoSwitchBuild(history, collection)
+                    await this._persist(lease, { build: null, history, pendingDeletions: pending })
+                    const result = await this._runCleanup(lease, pending, assertLease, [collection, ...history.map(entry => entry.collection)])
+                    cleanup.deleted.push(...result.deleted)
+                    cleanup.pending = result.pending
+                    cleanup.warnings.push(...result.warnings)
+                    await this._persist(lease, { pendingDeletions: result.pending })
+                }
+
+                return { collection, indexed, aliasSwitched: !options.noSwitch, cleanup }
+            } catch (error) {
+                if (error.code === 'CHAT_LEASE_LOST' || error.chatCleanupHandled) throw error
+                if (published) {
+                    cleanup.pending = pending
+                    cleanup.warnings.push(cleanupWarning('POST_PUBLISH_CLEANUP_FAILED', collection, error, this.clock()))
+                    return { collection, indexed, aliasSwitched: true, cleanup }
+                }
+                if (owned) {
+                    const outcome = await this._cleanupFailedBuild(
+                        lease,
+                        collection,
+                        error.reindexReason || 'failed_build',
+                        pending,
+                        assertLease
+                    )
+                    pending = outcome.pending
+                    cleanup.deleted.push(...outcome.deleted)
+                    cleanup.pending = pending
+                    cleanup.warnings.push(...outcome.warnings)
+                    await this._persist(lease, { build: null, history, pendingDeletions: pending })
+                }
+                error.cleanup = cleanup
+                throw error
+            }
+        } finally {
+            clearInterval(heartbeat)
+            await this.lifecycle.release(lease).catch(() => false)
         }
-        const verified = await this.vectorIndex.count(collection)
-        if (verified !== indexed) throw new Error(`Qdrant rebuild verification failed: indexed ${indexed}, collection contains ${verified}`)
-        if (!options.noSwitch) await this.vectorIndex.switchAlias(collection)
-        return { collection, indexed, aliasSwitched: !options.noSwitch }
+    }
+
+    _buildCollectionName() {
+        const timestamp = new Date(this.clock()).getTime()
+        const suffix = String(this.uniqueSuffix() || '').replace(/[^a-zA-Z0-9]+/g, '').slice(0, 12)
+            || crypto.randomUUID().replace(/-/g, '').slice(0, 10)
+        return `${this.vectorIndex.collection}_build_${timestamp}_${suffix}`
+    }
+
+    _aliasName() {
+        return this.lifecycle.alias || this.vectorIndex.alias || 'chat_active'
+    }
+
+    async _listAliases() {
+        if (typeof this.vectorIndex.listAliases !== 'function') {
+            throw Object.assign(new Error('Qdrant adapter does not support listing aliases'), {
+                code: 'CHAT_QDRANT_ALIAS_LIST_UNSUPPORTED'
+            })
+        }
+        const aliases = await this.vectorIndex.listAliases()
+        if (!Array.isArray(aliases)) {
+            throw Object.assign(new Error('Qdrant returned an invalid alias list'), { code: 'CHAT_QDRANT_INVALID_RESPONSE' })
+        }
+        const normalized = aliases.map(item => ({ alias: item?.alias ?? item?.alias_name, collection: item?.collection ?? item?.collection_name }))
+        if (normalized.some(item => typeof item.alias !== 'string' || !item.alias
+            || typeof item.collection !== 'string' || !item.collection)) {
+            throw Object.assign(new Error('Qdrant returned an invalid alias list'), { code: 'CHAT_QDRANT_INVALID_RESPONSE' })
+        }
+        return normalized
+    }
+
+    async _aliasTarget() {
+        const target = (await this._listAliases()).find(item => item.alias === this._aliasName())
+        return target?.collection || null
+    }
+
+    async _persist(lease, patch) {
+        await this.lifecycle.update(lease, { $set: { ...patch, updatedAt: this.clock() } })
+    }
+
+    _retireHistory(history, { collection, owned, previous, skipPrune }) {
+        if (skipPrune) {
+            const tracked = history.filter(entry => entry?.collection !== collection)
+            if (owned) tracked.push({ collection, role: 'active', owned: true, createdAt: this.clock(), activatedAt: this.clock() })
+            return { history: tracked, candidates: [] }
+        }
+        const retained = []
+        const candidates = []
+        const previousEntry = history.find(entry => entry?.collection === previous && entry.owned)
+        const rollback = previousEntry && previous !== collection ? previous : null
+        for (const entry of history) {
+            if (!entry || !entry.collection || entry.collection === collection) continue
+            if (entry.role === 'manual' || entry.noSwitch) {
+                retained.push(entry)
+                continue
+            }
+            if (!entry.owned) continue
+            if (entry.collection === rollback) {
+                retained.push({ ...entry, role: 'rollback' })
+                continue
+            }
+            candidates.push(entry.collection)
+        }
+        if (rollback && !retained.some(entry => entry.collection === rollback)) {
+            retained.push({ ...previousEntry, role: 'rollback' })
+        }
+        if (owned) {
+            retained.push({ collection, role: 'active', owned: true, createdAt: this.clock(), activatedAt: this.clock() })
+        }
+        return { history: retained, candidates: [...new Set(candidates)].filter(name => name !== collection) }
+    }
+
+    _recordNoSwitchBuild(history, collection, owned = true) {
+        const retained = history.filter(entry => entry?.collection !== collection)
+        retained.push({
+            collection,
+            role: 'manual',
+            noSwitch: owned,
+            owned,
+            createdAt: this.clock()
+        })
+        return retained
+    }
+
+    async _cleanupFailedBuild(lease, collection, reason, pending, assertLease) {
+        const outcome = { deleted: [], pending: [...pending], warnings: [] }
+        let aliases
+        try {
+            await assertLease()
+            aliases = await this._listAliases()
+        } catch (error) {
+            if (error.code === 'CHAT_LEASE_LOST') throw error
+            outcome.pending = queuePending(outcome.pending, { collection, reason, queuedAt: this.clock() })
+            outcome.warnings.push(cleanupWarning('FAILED_BUILD_ALIAS_CHECK_FAILED', collection, error, this.clock()))
+            return outcome
+        }
+        if (aliases.some(item => item.collection === collection)) {
+            outcome.pending = queuePending(outcome.pending, { collection, reason: 'aliased_failed_build', queuedAt: this.clock() })
+            outcome.warnings.push(cleanupWarning('FAILED_BUILD_STILL_ALIASED', collection, new Error('The failed build is still referenced by an alias'), this.clock()))
+            return outcome
+        }
+        try {
+            await assertLease()
+            await this.vectorIndex.deleteCollection(collection)
+            outcome.deleted.push(collection)
+        } catch (error) {
+            if (error.code === 'CHAT_LEASE_LOST') throw error
+            outcome.pending = queuePending(outcome.pending, { collection, reason, queuedAt: this.clock() })
+            outcome.warnings.push(cleanupWarning('FAILED_BUILD_DELETE_FAILED', collection, error, this.clock()))
+        }
+        return outcome
+    }
+
+    async _runCleanup(lease, pending, assertLease, retained = []) {
+        const outcome = { deleted: [], pending: [...pending], warnings: [] }
+        if (!pending.length) return outcome
+        const protectedNames = new Set([this.vectorIndex.collection, ...retained])
+        const survivors = []
+        for (const entry of pending) {
+            if (!entry?.collection) continue
+            if (protectedNames.has(entry.collection)) {
+                survivors.push({ ...entry, reason: 'retained' })
+                continue
+            }
+            await assertLease()
+            let aliases
+            try {
+                aliases = await this._listAliases()
+            } catch (error) {
+                survivors.push(entry)
+                outcome.warnings.push(cleanupWarning('CLEANUP_ALIAS_CHECK_FAILED', entry.collection, error, this.clock()))
+                continue
+            }
+            if (aliases.some(item => item.collection === entry.collection)) {
+                survivors.push({ ...entry, reason: 'aliased' })
+                continue
+            }
+            await assertLease()
+            try {
+                await this.vectorIndex.deleteCollection(entry.collection)
+                outcome.deleted.push(entry.collection)
+            } catch (error) {
+                if (error.code === 'CHAT_LEASE_LOST') throw error
+                survivors.push(entry)
+                outcome.warnings.push(cleanupWarning('CLEANUP_DELETE_FAILED', entry.collection, error, this.clock()))
+            }
+        }
+        outcome.pending = dedupePending(survivors)
+        return outcome
     }
 
     *_sources() {
