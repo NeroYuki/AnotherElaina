@@ -16,6 +16,7 @@ const QWEN21_MODELS = [
 const MOSS_MODELS = [
     'moss_image_base_bf16.safetensors',
     'moss_image_sft_bf16.safetensors',
+    'moss_image_sft_int8_convrot.safetensors',
 ];
 const NEW_MODELS = [...QWEN21_MODELS, ...MOSS_MODELS];
 const RETIRED_MODELS = [
@@ -129,7 +130,20 @@ test('new Qwen 2.1 and MOSS checkpoints use the shared Stable-diffusion root nam
     assert.match(by_value[QWEN21_MODELS[2]], /Qwen Image 2\.1.*Uncensored.*Int8 ConvRot/);
     assert.match(by_value[MOSS_MODELS[0]], /MOSS Image Base/);
     assert.match(by_value[MOSS_MODELS[1]], /MOSS Image SFT/);
-    for (const value of NEW_MODELS) assert.equal(config.model_selection_curated.some(x => x.value === value), true);
+    for (const value of [...QWEN21_MODELS, MOSS_MODELS[0], MOSS_MODELS[1]]) {
+        assert.equal(config.model_selection_curated.some(x => x.value === value), true);
+    }
+});
+
+test('Flux Fill/Kontext use the installed Q8 files and Kontext leaves experimental', () => {
+    const flux = config.model_selection_flux.map(x => x.value);
+    assert.ok(flux.includes('comfy_sym\\flux1-fill-dev-Q8_0.gguf'));
+    assert.ok(flux.includes('comfy_sym\\flux1-kontext-dev-Q8_0.gguf'));
+    assert.equal(flux.some(value => /flux1-(fill|kontext)-dev-Q6_K/i.test(value)), false);
+    assert.deepEqual(config.model_selection_flux_dev.map(x => x.value), ['flux1-dev-Q8_0.gguf']);
+    assert.deepEqual(config.model_selection_kontext.map(x => x.value), ['comfy_sym\\flux1-kontext-dev-Q8_0.gguf']);
+    assert.equal(config.model_selection_experimental.some(x => /kontext/i.test(x.value)), false);
+    assert.ok(config.model_selection_experimental.some(x => x.value === 'moss_image_sft_int8_convrot.safetensors'));
 });
 
 test('old profiles cannot reactivate retired Nunchaku Qwen checkpoints', async () => {
@@ -161,11 +175,11 @@ test('Qwen 2.1 and MOSS resolve the correct family defaults and per-variant step
             const defaults = get_model_family_defaults(model, mode);
             assert.equal(defaults.sampler, 'Euler');
             assert.equal(defaults.scheduler, 'Simple');
-            assert.equal(defaults.step, 50);
+            assert.equal(defaults.step, 36);
             assert.equal(defaults.cfg, 3);
             assert.equal(defaults.dcfg, 5);
         }
-        assert.equal(get_model_family_defaults(model, 't2i').hr_step, 50);
+        assert.equal(get_model_family_defaults(model, 't2i').hr_step, 36);
         assert.equal(get_model_family_defaults(model, 't2i').hr_cfg, 3);
         assert.equal(get_model_family_defaults(model, 't2i').hr_dcfg, 5);
     }
@@ -251,7 +265,9 @@ test('serialized Discord model menus stay within 25 options and include sentinel
     for (const command of [commands.create, commands.img2img]) {
         const checkpoint = checkpoint_options(command).find(x => x.name === 'checkpoint');
         assert.equal(checkpoint.choices.length, config.model_selection_curated.length);
-        for (const model of NEW_MODELS) assert.ok(checkpoint.choices.some(x => x.value === model));
+        for (const model of [...QWEN21_MODELS, MOSS_MODELS[0], MOSS_MODELS[1]]) {
+            assert.ok(checkpoint.choices.some(x => x.value === model));
+        }
     }
 
     const active_models = config.model_selection

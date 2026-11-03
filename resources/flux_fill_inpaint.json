@@ -171,7 +171,7 @@
   },
   "45": {
     "inputs": {
-      "unet_name": "forge\\comfy_sym\\flux1-fill-dev-Q6_K.gguf"
+      "unet_name": "forge\\comfy_sym\\flux1-fill-dev-Q8_0.gguf"
     },
     "class_type": "UnetLoaderGGUF",
     "_meta": {

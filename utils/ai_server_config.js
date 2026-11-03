@@ -6,6 +6,7 @@ const { convert_upload_path_to_file_data } = require('./common_helper');
 const { PROXY_URL, serviceHeaders } = require('./proxy_config');
 const { is_tiled_upscale_script, normalize_upscale_config, normalize_extra_script, NATIVE_OUTPAINT_SCRIPT } = require('./forge_img2img_scripts');
 const { normalize_outpaint_config } = require('./forge_outpaint');
+const { prepare_pid_upscale, PID_UPSCALER } = require('./forge_pid');
 
 // Direct address of the sdwebui (forge) backend. The `url` field now points at
 // the orchestrator proxy, but gradio `file=` references embedded in request
@@ -25,6 +26,7 @@ const server_pool = [
         fn_index_controlnet: [468, 1150],        //[txt2img, img2img]
         fn_index_controlnet_annotation: [1264, 1282],   // +6 per extra unit
         fn_index_controlnet_type_select: [472, 1154],    // +44 / +46 per extra unit
+        fn_index_reference_settings: { klein: 1467, qwen21: 1468, anima: 1469, krea: 1470, moss: 1471 },
         // fn_index_controlnet_2: [512, 1196],
         // fn_index_controlnet_annotation_2: [1270, 1288],
         // fn_index_controlnet_3: [556, 1242],
@@ -198,6 +200,73 @@ const get_data_upscale = (session_hash, input, upscale_multiplier = 1, upscaler 
     ]
 }
 
+const MAX_REFERENCE_SIDE = 4096
+const DEFAULT_REFERENCE_SIDE = 1024
+
+// Native Forge ImageStitch gallery value. The caller supplies already-uploaded
+// Gradio gallery objects; this helper only validates/copies them.
+function resolve_generation_references(generation_options) {
+    const disabled = { enabled: false, images: [], max_side: DEFAULT_REFERENCE_SIDE }
+    if (generation_options === undefined || generation_options === null) return disabled
+    if (typeof generation_options !== 'object' || Array.isArray(generation_options)) {
+        throw new Error('generation_options must be an object.')
+    }
+
+    const references = generation_options.references
+    if (references === undefined || references === null) return disabled
+    if (!Array.isArray(references)) {
+        throw new Error('generation_options.references must be an array of uploaded gallery images.')
+    }
+    if (references.length === 0) return disabled
+
+    const images = references.map((item, index) => {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) {
+            throw new Error(`Reference image ${index + 1} must be a native Gradio gallery object.`)
+        }
+        const image = item.image
+        const path = image && typeof image === 'object' ? image.path : item.path
+        if (typeof path !== 'string' || path.trim() === '') {
+            throw new Error(`Reference image ${index + 1} is missing an uploaded file path.`)
+        }
+        return item
+    })
+
+    const raw_max_side = generation_options.reference_max_side ?? generation_options.max_side ??
+        generation_options.references_max_side ?? DEFAULT_REFERENCE_SIDE
+    const max_side = typeof raw_max_side === 'number' ? raw_max_side : Number(raw_max_side)
+    if (typeof raw_max_side === 'boolean' || raw_max_side === '' || !Number.isFinite(max_side) ||
+        max_side <= 0 || max_side > MAX_REFERENCE_SIDE) {
+        throw new Error(`Reference Image maximum side length must be a positive number no larger than ${MAX_REFERENCE_SIDE}px.`)
+    }
+
+    return { enabled: true, images: images.slice(), max_side }
+}
+
+function resolve_generation_pid(generation_options, model, width, height) {
+    if (!generation_options || typeof generation_options !== 'object' || Array.isArray(generation_options)) return null
+    const raw = generation_options.pid
+    if (!raw) return null
+    if (raw !== true && (typeof raw !== 'object' || Array.isArray(raw))) {
+        throw new Error('generation_options.pid must be an object of PiD options.')
+    }
+    const options = raw === true ? {} : raw
+    const prepared = prepare_pid_upscale({
+        model,
+        width,
+        height,
+        prompt: options.prompt,
+        degrade_sigma: options.degrade_sigma,
+        color_correction: options.color_correction,
+    })
+    if (prepared.stage !== 'integrated') {
+        throw new Error(
+            `PiD postpass for ${prepared.family} models must run through run_pid_postpass, ` +
+            'not the integrated PiD builder fields.',
+        )
+    }
+    return prepared
+}
+
 // The current Forge schema has no TIPO/DanTagGen controls; their builder
 // arguments remain in place for existing callers.
 const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed, sampler, scheduler, session_hash,
@@ -207,7 +276,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
     use_foocus = false, use_booru_gen = false, booru_gen_config = null, current_model = '',
     inpaint_img_upload_path = null, inpaint_mask_upload_path = null, colorbalance_config = null, usersetting = null, outpaint_config = null, 
     upscale_config = null, extra_script = "None", detail_daemon_config = null, tipo_input = null, latentmod_config = null,
-    mahiro_config = null, teacache_config = null, modulation_config = null, daam_config = null) => {
+    mahiro_config = null, teacache_config = null, modulation_config = null, daam_config = null, generation_options = null) => {
     // default mode 0 is img2img, 4 is inpainting
     const native_outpaint_config = normalize_extra_script(extra_script) === NATIVE_OUTPAINT_SCRIPT
         ? normalize_outpaint_config(outpaint_config) : null
@@ -219,6 +288,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
         inpaint_area = 'Whole picture'
         upscaler = 'None'
     }
+    const reference_options = resolve_generation_references(generation_options)
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 3000000 && upscaler == "None") ? true : false
     const inpaint_img = convert_upload_path_to_file_data(inpaint_img_upload_path, server_pool[0].direct_url)
@@ -235,6 +305,13 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
     const tiled_upscale_config = is_tiled_upscale_script(extra_script)
         ? normalize_upscale_config(upscale_config)
         : null
+    const pid_config = resolve_generation_pid(generation_options, current_model, width, height)
+    if (pid_config && (tiled_upscale_config || native_outpaint_config)) {
+        throw new Error(
+            'PiD Integrated cannot be combined with Native Outpaint or Tiled Latent Upscale. ' +
+            'Choose one post-processing path.',
+        )
+    }
 
     if (!is_anima && modulation_config?.enable) {
         console.warn("Modulation is only supported for Anima models. Disabling modulation.");
@@ -302,7 +379,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             "",
             "upload",
             null,
-            (tiled_upscale_config || native_outpaint_config) ? "None" : (extra_script || (usersetting?.seedvr2_model ? "SeedVR2 Native Upscaler (24G)" : "None")),   // extra script
+            (tiled_upscale_config || native_outpaint_config) ? "None" : pid_config ? "None" : (extra_script || (usersetting?.seedvr2_model ? "SeedVR2 Native Upscaler (24G)" : "None")),   // extra script
             false,        // soft inpainting
             1,
             0.5,
@@ -328,13 +405,13 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             0,
             enable_censor,
             usersetting?.do_preview ?? true,
-            false,          // PiD
-            "",
-            "pid_sdxl_1024_to_4096_4step_bf16 [c8dd35d7d5]",         // 68 PiD
-            "Illustriousxl_v10.vae.safetensors",
-            "Qwen2.5-VL-7B-Instruct-Q8_0.gguf",
-            0,
-            true,
+            pid_config ? true : false,                               // PiD
+            pid_config?.prompt ?? "",
+            pid_config?.checkpoint ?? "pid_sdxl_1024_to_4096_4step_bf16 [c8dd35d7d5]",         // 68 PiD
+            pid_config?.vae ?? "Illustriousxl_v10.vae.safetensors",
+            pid_config?.text_encoder ?? "Qwen2.5-VL-7B-Instruct-Q8_0.gguf",
+            pid_config?.degrade_sigma ?? 0,
+            pid_config?.color_correction ?? true,
             false,                                                   // 73 Sparse Attention Integrated
             1.25,                                                    // 74 Tau
             [0.15, 0.85],                                            // 75 Timestep Range
@@ -506,9 +583,9 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             false,               // never oom
             !!tiled_upscale_config || (!!native_outpaint_config && shouldUseTiledVAE), // 242 tiled VAE
             "m + (M-m)*(1-x)**3",
-            false,          // image stitch
-            [],
-            1024,
+            reference_options.enabled,          // image stitch
+            reference_options.images,
+            reference_options.max_side,
             false,               // spectrum guidance
             0.5,
             4,
@@ -531,7 +608,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             "start",
             "",
             64,
-            upscaler,                                                // 269 Upscaler
+            pid_config ? "None" : upscaler,                          // 269 Upscaler
             2,
             false,
             "Seed",
@@ -600,12 +677,15 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
     coupler_config = null, color_grading_config = null, clip_skip = 2, enable_censor = false, 
     freeu_config = null, dynamic_threshold_config = null, pag_config = null, use_foocus = false, use_booru_gen = false, booru_gen_config = null, 
     current_model = '', colorbalance_config = null, usersetting = null, detail_daemon_config = null, tipo_input = null, latentmod_config = null,
-    mahiro_config = null, teacache_config = null, batch_count = 1, batch_size = 1, modulation_config = null, daam_config = null) => {
+    mahiro_config = null, teacache_config = null, batch_count = 1, batch_size = 1, modulation_config = null, daam_config = null, generation_options = null) => {
 
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 1600000) ? true : false
     // check if prompt contain "(<word>:-<decimal number>)" format
     const shouldUseNegPip = (prompt && prompt.match(/\([\w\s]+:-?\d+(\.\d+)?\)/g)) ? true : false
+
+    const reference_options = resolve_generation_references(generation_options)
+    const pid_config = resolve_generation_pid(generation_options, current_model, width, height)
 
     // Determine model type and calculate cfg/shift accordingly
     const is_flux = model_selection_flux.find(x => x.value === current_model) != null
@@ -659,10 +739,10 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             final_shift,      // distilled cfg/shift
             height,
             width,
-            upscale_multiplier > 1 ? true : false,      // Hires fix
+            pid_config ? false : (upscale_multiplier > 1 ? true : false),      // Hires fix
             upscale_denoise_strength,    
-            upscale_multiplier,
-            upscaler,
+            pid_config ? 1 : upscale_multiplier,
+            pid_config ? 'None' : upscaler,
             upscale_step,
             0,
             0,
@@ -694,13 +774,13 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             0,
             enable_censor,
             usersetting?.do_preview ?? true,
-            false,          // PiD
-            "",
-            "pid_sdxl_1024_to_4096_4step_bf16 [c8dd35d7d5]",         // 47 PiD
-            "Illustriousxl_v10.vae.safetensors",
-            "Qwen2.5-VL-7B-Instruct-Q8_0.gguf",
-            0,
-            true,
+            pid_config ? true : false,                               // PiD
+            pid_config?.prompt ?? "",
+            pid_config?.checkpoint ?? "pid_sdxl_1024_to_4096_4step_bf16 [c8dd35d7d5]",         // 47 PiD
+            pid_config?.vae ?? "Illustriousxl_v10.vae.safetensors",
+            pid_config?.text_encoder ?? "Qwen2.5-VL-7B-Instruct-Q8_0.gguf",
+            pid_config?.degrade_sigma ?? 0,
+            pid_config?.color_correction ?? true,
             false,                                                   // 52 Sparse Attention Integrated
             1.25,                                                    // 53 Tau
             [0.15, 0.85],                                            // 54 Timestep Range
@@ -866,9 +946,9 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
             false,      // never OOM
             false,
             "m + (M-m)*(1-x)**3",
-            false,      // image stitch
-            [],
-            1024,
+            reference_options.enabled,      // image stitch
+            reference_options.images,
+            reference_options.max_side,
             false,                          // spectrum guidance
             0.5,
             4,
@@ -1067,10 +1147,16 @@ const model_selection_flux = [
     { name: 'Flux.dev Q6_K', value: 'archive\\flux1-dev-Q6_K.gguf' },
     { name: 'Flux.dev Q8_0', value: 'flux1-dev-Q8_0.gguf'},
     { name: 'Flux Krea.dev Q8_0', value: 'flux1-krea-dev-Q8_0.gguf'},
-    { name: 'Flux Fill.dev Q6_K', value: 'comfy_sym\\flux1-fill-dev-Q6_K.gguf'},
-    { name: 'Flux Kontext.dev Q6_K', value: 'comfy_sym\\flux1-kontext-dev-Q6_K.gguf'},
+    { name: 'Flux Fill.dev Q8_0', value: 'comfy_sym\\flux1-fill-dev-Q8_0.gguf'},
+    { name: 'Flux Kontext.dev Q8_0', value: 'comfy_sym\\flux1-kontext-dev-Q8_0.gguf'},
     { name: 'Pixelwave Flux v3 Q8_0', value: 'pixelwave-flux-Q8_0.gguf'}
 ]
+
+// Flux Dev is a base generation model, not a reference-edit model. Reference
+// commands offer it as an alias and resolve it to the installed Kontext model.
+const model_selection_flux_dev = model_selection_flux.filter(item =>
+    /flux1-dev/i.test(item.value) && !model_selection_legacy.some(legacy => legacy.value === item.value))
+const model_selection_kontext = model_selection_flux.filter(item => /kontext/i.test(item.value))
 
 const model_selection_chroma = [
     { name: 'Chroma1 HD Flash Q8_0', value: 'Chroma1-HD-Flash-Q8_0.gguf'},
@@ -1107,6 +1193,7 @@ const model_selection_qwen21 = [
 const model_selection_moss = [
     { name: 'MOSS Image Base BF16', value: 'moss_image_base_bf16.safetensors'},
     { name: 'MOSS Image SFT BF16', value: 'moss_image_sft_bf16.safetensors'},
+    { name: 'MOSS Image SFT Int8 ConvRot', value: 'moss_image_sft_int8_convrot.safetensors'},
 ]
 
 const model_selection_lumina = [
@@ -1144,7 +1231,8 @@ const model_selection_experimental = model_selection_flux
     .concat(model_selection_moss)
     .concat(model_selection_z_image)
     .concat(model_selection_krea)
-    .filter(x => !model_selection_legacy.map(y => y.value).includes(x.value));
+    .filter(x => !model_selection_legacy.map(y => y.value).includes(x.value))
+    .filter(x => !/kontext/i.test(x.value));
 
 const controlnet_preprocessor_selection = [
     { name: 'None', value: 'None', type: 'All' },
@@ -1248,6 +1336,13 @@ const upscaler_selection = [
     { name: 'AnimeSharp v4 RCAN 2x', value: '2x-AnimeSharpV4_RCAN' },
     { name: 'UltraSharp 4x', value: '4x_UltraSharp' },
     { name: 'NMKD-Siax 4x', value: '4x_NMKD-Siax_200k' },
+]
+
+// Explicit generation consumers only. Native Extras and /wd_upscale must keep
+// using `upscaler_selection` because literal "PiD" is not a native upscaler.
+const generation_upscaler_selection = [
+    ...upscaler_selection,
+    { name: 'PiD - fixed 4x (SDXL integrated / RGB postpass)', value: PID_UPSCALER },
 ]
 
 const sampler_selection = [
@@ -1488,6 +1583,8 @@ module.exports = {
     model_selection,
     model_selection_xl,
     model_selection_flux,
+    model_selection_flux_dev,
+    model_selection_kontext,
     model_selection_anima,
     model_selection_chroma,
     model_selection_flux_klein_9b,
@@ -1504,6 +1601,7 @@ module.exports = {
     controlnet_preprocessor_selection,
     controlnet_model_selection,
     upscaler_selection,
+    generation_upscaler_selection,
     controlnet_model_selection_sd,
     controlnet_model_selection_xl,
     controlnet_model_selection_flux,
