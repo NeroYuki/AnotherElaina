@@ -101,6 +101,15 @@ async function unloadEnrichmentModel(profile, { fetchImpl, endpoint, sleepImpl, 
 }
 
 let pending = Promise.resolve();
+// Unsloth shares one model server between these GPU placements. Serialize every
+// enrichment job (video and image) through unload so they cannot evict each
+// other's model. A failed job must not poison the queue for the next caller.
+function queuePromptEnrichment(operation) {
+    const job = pending.then(operation);
+    pending = job.catch(() => {});
+    return job;
+}
+
 async function enrichVideoPrompt({ prompt, shape, requestedSeconds, quality = 'standard', images = [], reference, onProgress = () => {} }, {
     fetchImpl = globalThis.fetch, endpoint = PROXY_URL, sleepImpl = sleep,
     timeoutMs = 300_000, unloadTimeoutMs = 60_000, provider,
@@ -111,9 +120,7 @@ async function enrichVideoPrompt({ prompt, shape, requestedSeconds, quality = 's
     if (!prompt?.trim() || !Number.isFinite(shape?.seconds) || shape.seconds <= 0 || images.length > 2) {
         throw new Error('Prompt enrichment requires a prompt, duration, and at most two frame-anchor images.');
     }
-    // Unsloth shares one model server between these GPU placements. Serialize
-    // video rewrites through unload so they cannot evict each other's model.
-    const job = pending.then(async () => {
+    return queuePromptEnrichment(async () => {
         const llm = provider || new LocalOpenAIProvider({ endpoint, model: profile.model,
             quantization: profile.quantization, contextTokens: 8192, fetchImpl, maxRetries: 0 });
         await onProgress(`Enriching ${requestedSeconds ?? shape.seconds}s video prompt with ${profile.label}…`);
@@ -162,8 +169,6 @@ async function enrichVideoPrompt({ prompt, shape, requestedSeconds, quality = 's
         if (failure) throw failure;
         return enriched;
     });
-    pending = job.catch(() => {});
-    return job;
 }
 
-module.exports = { addPromptQualityOption, enrichVideoPrompt, scriptPrompt, QUALITIES };
+module.exports = { addPromptQualityOption, enrichVideoPrompt, scriptPrompt, QUALITIES, queuePromptEnrichment, unloadEnrichmentModel };

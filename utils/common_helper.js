@@ -203,7 +203,10 @@ function parse_common_setting(setting_json) {
                 hires_cfg: usersetting_config_obj?.hires_cfg ?? null,
                 hires_shift: usersetting_config_obj?.hires_shift ?? null,
                 seedvr2_model: usersetting_config_obj?.seedvr2_model ?? null,
-                seedvr2_resolution: usersetting_config_obj?.seedvr2_resolution ?? null
+                seedvr2_resolution: usersetting_config_obj?.seedvr2_resolution ?? null,
+                image_prompt_quality: usersetting_config_obj?.image_prompt_quality ?? 'off',
+                image_prompt_batch: usersetting_config_obj?.image_prompt_batch ?? 'all',
+                image_prompt_style: usersetting_config_obj?.image_prompt_style ?? 'auto'
             }
         }
         catch (err) {
@@ -221,7 +224,10 @@ function parse_common_setting(setting_json) {
             hires_cfg: null,
             hires_shift: null,
             seedvr2_model: null,
-            seedvr2_resolution: null
+            seedvr2_resolution: null,
+            image_prompt_quality: 'off',
+            image_prompt_batch: 'all',
+            image_prompt_style: 'auto'
         }
     }
 }

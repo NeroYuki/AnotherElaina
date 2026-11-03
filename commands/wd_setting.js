@@ -72,6 +72,29 @@ module.exports = {
                 .addIntegerOption(option =>
                     option.setName('seedvr2_resolution')
                         .setDescription('Target resolution shortest side for SeedVR2 upscaling (default: 1600)'))
+                .addStringOption(option =>
+                    option.setName('image_prompt_quality')
+                        .setDescription('Image prompt enrichment: Standard/Gemma 12B, High/Qwen 27B, or Off (default)')
+                        .addChoices(
+                            { name: 'Off — use my prompt directly', value: 'off' },
+                            { name: 'Standard — Gemma 12B', value: 'standard' },
+                            { name: 'High — Qwen 27B', value: 'high' }
+                        ))
+                .addStringOption(option =>
+                    option.setName('image_prompt_batch')
+                        .setDescription('All: one shared enhancement per batch (default). Each: separate additions per image')
+                        .addChoices(
+                            { name: 'All — one shared enhancement per batch', value: 'all' },
+                            { name: 'Each — separate additions per image', value: 'each' }
+                        ))
+                .addStringOption(option =>
+                    option.setName('image_prompt_style')
+                        .setDescription('Addition style: Auto by model (default), Tags, or Natural language')
+                        .addChoices(
+                            { name: 'Auto — choose by model family', value: 'auto' },
+                            { name: 'Tags — comma-separated tags', value: 'tags' },
+                            { name: 'Natural — descriptive sentences', value: 'natural' }
+                        ))
                 )
 
     ,
@@ -106,6 +129,9 @@ module.exports = {
         const seedvr2_model_raw = interaction.options.getString('seedvr2_model') ?? null
         const seedvr2_model = seedvr2_model_raw === 'disabled' ? null : seedvr2_model_raw
         const seedvr2_resolution = interaction.options.getInteger('seedvr2_resolution') ?? null
+        const image_prompt_quality = interaction.options.getString('image_prompt_quality') ?? null
+        const image_prompt_batch = interaction.options.getString('image_prompt_batch') ?? null
+        const image_prompt_style = interaction.options.getString('image_prompt_style') ?? null
 
         await interaction.deferReply();
 
@@ -211,6 +237,9 @@ module.exports = {
             hires_shift: hires_shift,
             seedvr2_model: seedvr2_model,
             seedvr2_resolution: seedvr2_resolution,
+            image_prompt_quality: image_prompt_quality,
+            image_prompt_batch: image_prompt_batch,
+            image_prompt_style: image_prompt_style,
         }
 
         const config_string = JSON.stringify(config)

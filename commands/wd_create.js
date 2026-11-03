@@ -20,6 +20,10 @@ const { load_profile } = require('../utils/profile_helper.js');
 const { load_adetailer } = require('../utils/adetailer_execute.js');
 const { clamp, calculateOptimalGrid, parseImageCount, parse_common_setting } = require('../utils/common_helper');
 const { catboxUpload } = require('../utils/catbox_upload.js');
+const { enrichImagePrompts } = require('../utils/image_prompt');
+const { withForgeSession } = require('../utils/forge_session');
+const { is_pid_upscaler, prepare_pid_upscale } = require('../utils/forge_pid');
+const { runImagePromptBatch, isImagePromptBatchCancelled, ImagePromptBatchCancelled } = require('../utils/image_prompt_batch');
 const { get_model_family_defaults } = require('../utils/model_defaults');
 const workflow_og = require('../resources/flux_lora.json')
 const ComfyClient = require('../utils/comfy_client');
@@ -62,6 +66,7 @@ module.exports = {
 					{ name: 'Latent - VERY SLOW', value: 'Latent' },
                     { name: 'ERSGAN - Normal', value: 'ERSGAN' },
                     { name: 'Lanczos - Fastest', value: 'Lanczos' },
+                    { name: 'PiD - fixed 4x (SDXL)', value: 'PiD' },
 				))
         // .addIntegerOption(option =>
         //     option.setName('force_server_selection')
@@ -193,6 +198,7 @@ module.exports = {
 
 		let prompt = (profile?.prompt_pre || '') + (interaction.options.getString('prompt') || '') + (profile?.prompt || '')
 		let neg_prompt = (profile?.neg_prompt_pre || '') + (interaction.options.getString('neg_prompt') || '') + (profile?.neg_prompt || '')
+        const originalPrompt = prompt
 
         let width = clamp(interaction.options.getInteger('width') || profile?.width || 1024, 512, 2048) // this can only end well :)
         let height = clamp(interaction.options.getInteger('height') || profile?.height || 1024, 512, 2048)
@@ -215,7 +221,7 @@ module.exports = {
 
         let upscale_step = (upscaler_mode === 'Latent' ? 25 : 15)
         const upscale_multiplier = clamp(interaction.options.getNumber('upscale_multiplier') || 1, 1, 4)
-        const upscaler = upscaler_mode === 'Latent' ? 'Latent' : upscaler_mode === 'Lanczos' ? 'Lanczos' : '4x_UltraSharp' 
+        const upscaler = upscaler_mode === 'Latent' ? 'Latent' : upscaler_mode === 'Lanczos' ? 'Lanczos' : upscaler_mode === 'PiD' ? 'PiD' : '4x_UltraSharp'
         const upscale_denoise_strength = (upscaler_mode === 'Latent' ? 0.65 : 0.25)
 
         const checkpoint = interaction.options.getString('checkpoint') || profile?.checkpoint  ||  null
@@ -244,7 +250,46 @@ module.exports = {
         catch {
             seed = parseInt('-1')
         }
-        
+
+        const effective_checkpoint = checkpoint || cached_model[0]
+
+        let enrichment
+        try {
+            enrichment = await enrichImagePrompts({
+                prompt: originalPrompt,
+                model: effective_checkpoint,
+                count: bulk_size,
+                settings: usersetting,
+                workflow: 'txt2img',
+                onProgress: async message => {
+                    await interaction.editReply({ content: message }).catch(err => {
+                        console.log('Unable to update image prompt enhancement progress', err)
+                    })
+                },
+            })
+        }
+        catch (err) {
+            console.log('Image prompt enhancement failed', err)
+            await interaction.editReply({ content: `Image prompt enhancement failed: ${err?.message || err}\nImage generation was not started.`, components: [] })
+                .catch(reply_err => console.log('cannot send enhancement error to discord', reply_err))
+            return
+        }
+
+        const expectedPromptCount = enrichment.perImage ? bulk_size : 1
+        if (!Array.isArray(enrichment.prompts) || enrichment.prompts.length !== expectedPromptCount
+            || enrichment.prompts.some(enriched => typeof enriched !== 'string' || enriched.slice(0, originalPrompt.length) !== originalPrompt)) {
+            await interaction.editReply({ content: 'Image prompt enhancement returned an invalid prompt batch; image generation was not started.', components: [] })
+                .catch(reply_err => console.log('cannot send enhancement error to discord', reply_err))
+            return
+        }
+
+        let collector = null
+
+        const runGeneration = async () => {
+        // Model state is Forge-wide, so every selection/setup/request in this
+        // block runs under one lease, including the re-sync after waiting.
+        await sync_active_model()
+
         if (height % 8 !== 0 || width % 8 !== 0) {
             height = Math.ceil(height / 8) * 8
             width = Math.ceil(width / 8) * 8
@@ -263,6 +308,22 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                 await interaction.channel.send(`Active model changed to **${check_model_filename(checkpoint)}**
 currently cached models: ${cached_model.map(x => check_model_filename(x)).join(', ')}`)
             }
+        }
+        else if (cached_model[0] !== effective_checkpoint) {
+            // Another command changed Forge while this request waited for the
+            // enhancer. Restore the frozen checkpoint even if the JS cache no
+            // longer lists it; never generate with an unexpected model.
+            const change_result = await model_change(effective_checkpoint, true).catch(err => {
+                console.log(err)
+            })
+
+            if (!change_result) {
+                await interaction.editReply({ content: `Could not restore active model **${check_model_filename(effective_checkpoint)}** after waiting for another generation; image generation was not started.
+currently cached models: ${cached_model.map(x => check_model_filename(x)).join(', ')}`, components: [] })
+                return
+            }
+            await interaction.channel.send(`Active model restored to **${check_model_filename(effective_checkpoint)}**
+currently cached models: ${cached_model.map(x => check_model_filename(x)).join(', ')}`)
         }
 
         // if cached_model[0] is inpaint model, force change to the main model
@@ -386,6 +447,8 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         // TODO: add progress ping
         let current_preview_id = 0
         const session_hash = crypt.randomBytes(16).toString('base64');
+        let progress_session_hash = session_hash
+        let isInferenceActive = false
         let isDone = false
         let isCancelled = false
         let progress_ping_delay = 2000
@@ -402,23 +465,26 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
 
         const filter = i => i.customId === 'cancel_simple_' + interaction.id && i.user.id === interaction.user.id;
 
-        const collector = interaction.channel.createMessageComponentCollector({ filter, time: 800000 });
+        collector = interaction.channel.createMessageComponentCollector({ filter, time: 800000 });
 
         collector.on('collect', async i => {
             isCancelled = true
             collector.stop()
 
-            // attempt to stop the generating
-            const option_cancel = {
-                method: 'POST',
-                body: JSON.stringify({
-                    fn_index: server_pool[server_index].fn_index_abort,
-                    session_hash: session_hash,
-                    data: []
-                })
-            }
+            // Only abort the inference this command currently owns; stale
+            // buttons or rendering-phase cancellation must not abort another job.
+            if (isInferenceActive) {
+                const option_cancel = {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        fn_index: server_pool[server_index].fn_index_abort,
+                        session_hash: progress_session_hash,
+                        data: []
+                    })
+                }
 
-            fetch(`${WORKER_ENDPOINT}/run/predict/`, option_cancel)
+                fetch(`${WORKER_ENDPOINT}/run/predict/`, option_cancel)
+            }
 
             try {
                 i.message.delete()
@@ -454,8 +520,46 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         prompt = extra_config.prompt
         prompt = await fetch_user_defined_wildcard(prompt, interaction.user.id)
 
+        // Parse commands/wildcards/LoRAs exactly once on the original prompt,
+        // then append only the enhancer's validated new suffix to that base.
+        const generationBasePrompt = prompt
+        const promptPlan = {
+            prompts: enrichment.prompts.map(enriched => {
+                if (typeof enriched !== 'string' || enriched.slice(0, originalPrompt.length) !== originalPrompt) {
+                    throw new Error('Image prompt enhancement did not preserve the original prompt prefix; image generation was not started.')
+                }
+                return generationBasePrompt + enriched.slice(originalPrompt.length)
+            }),
+            perImage: enrichment.perImage === true,
+        }
+
         if (is_flux ? width * height > 1_800_000 : is_xl ? width * height > 1_200_000 : is_sd15 ? width * height > 640_000 : width * height > 1_440_000) {
             await interaction.channel.send(`:warning: Image size is too large for model's capability and may introduce distorsion, please consider using smaller image size unless you know what you're doing`);
+        }
+
+        // PiD uses fixed 4x output and conflicts with Hires Fix. The initial
+        // txt2img integration is SDXL-only; non-SDXL RGB postpass is available
+        // through /wd_img2img and /wd_ref2img.
+        let pidPolicy = null
+        let pidConfig = null
+        if (is_pid_upscaler(upscaler)) {
+            try {
+                pidPolicy = prepare_pid_upscale({
+                    model: cached_model[0], width, height, prompt,
+                    degrade_sigma: 0, color_correction: true,
+                })
+                if (pidPolicy.stage !== 'integrated') {
+                    throw new Error(
+                        'PiD postpass for non-SDXL checkpoints is available through /wd_img2img and /wd_ref2img. ' +
+                        'Use an SDXL checkpoint for /wd_create PiD upscaling.',
+                    )
+                }
+                pidConfig = pidPolicy
+            }
+            catch (err) {
+                await interaction.editReply({ content: err.message })
+                return
+            }
         }
 
         const slow_sampler = ['DPM++ SDE', 'DPM++ 2M SDE', 'DPM++ 2M SDE Heun', 'Restart']
@@ -472,6 +576,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         compute += upscale_multiplier > 1 ? (upscale_multiplier * height * upscale_multiplier * width * upscale_step * (slow_sampler.includes(sampler) ? 1.5 : 1)) : 0
         // calculate compute (change model)
         compute += checkpoint ? 2_000_000 : 0
+        if (pidPolicy) compute += pidPolicy.width * pidPolicy.height * 4
 
         const cooldown = compute * bulk_size / (bulk_size > 1 ? 2_750_000 : 2_500_000)
 
@@ -481,6 +586,19 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             interaction.channel.send('Coupler detected, changing resolution to multiple of 64')
             height = Math.ceil(height / 64) * 64
             width = Math.ceil(width / 64) * 64
+        }
+        if (pidPolicy) {
+            try {
+                pidPolicy = prepare_pid_upscale({
+                    model: cached_model[0], width, height, prompt,
+                    degrade_sigma: 0, color_correction: true,
+                })
+                pidConfig = pidPolicy
+            }
+            catch (err) {
+                await interaction.editReply({ content: err.message })
+                return
+            }
         }
 
         if (extra_config.coupler_config && extra_config.coupler_config.mode === 'Advanced') {
@@ -551,49 +669,74 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             use_adetailer = true
         }
     
-        const create_data = get_data_body(server_index, prompt, neg_prompt, sampling_step, cfg_scale, 
-            seed, sampler, scheduler, session_hash, height, width, upscale_multiplier, upscaler, 
-            upscale_denoise_strength, upscale_step, false, use_adetailer, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
-            extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, override_neg_prompt ? false : true, extra_config.use_booru_gen, 
-            booru_gen_config_obj, cached_model[0], colorbalance_config_obj, usersetting, extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config_obj,
-            extra_config.mahiro_config, extra_config.teacache_config, batch_count, batch_size, extra_config.modulation_config, daam_config)
-
         const hires_models = resolve_hires_models(usersetting, cached_model[0])
 
-        // make option_init but for axios
-        const option_init_axios = {
-            data: {
-                fn_index: server_pool[server_index].fn_index_create,
-                session_hash: session_hash,
-                data: create_data
-            },
-            config: {
-                headers: workloadHeaders('sdwebui', forgeWorkload({
-                    taskKind: 'txt2img', checkpoint: cached_model[0], width, height,
-                    batchSize: batch_size, batchCount: batch_count,
-                    baseSteps: sampling_step,
-                    upscaleMultiplier: upscale_multiplier, hiresSteps: upscale_step,
-                    hiresCheckpoint: hires_models.checkpoint,
-                    hiresSupportModels: hires_models.support_models,
-                    seedvr2Model: usersetting?.seedvr2_model,
-                    seedvr2Resolution: usersetting?.seedvr2_resolution,
-                    useAdetailer: use_adetailer,
-                    tiledVae: width * height > 1600000,
-                }), SD_HEADERS),
-                timeout: 900000
+        const buildRequest = ({ prompt: requestPrompt, seed: requestSeed, sessionHash: requestSession, perImage }) => {
+            const request_batch_count = perImage ? 1 : batch_count
+            const request_batch_size = perImage ? 1 : batch_size
+            const create_data = get_data_body(server_index, requestPrompt, neg_prompt, sampling_step, cfg_scale,
+                requestSeed, sampler, scheduler, requestSession, height, width, upscale_multiplier, upscaler,
+                upscale_denoise_strength, upscale_step, false, use_adetailer, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
+                extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, override_neg_prompt ? false : true, extra_config.use_booru_gen,
+                booru_gen_config_obj, cached_model[0], colorbalance_config_obj, usersetting, extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config_obj,
+                extra_config.mahiro_config, extra_config.teacache_config, request_batch_count, request_batch_size, extra_config.modulation_config, daam_config,
+                pidConfig ? { pid: pidConfig } : undefined)
+
+            return {
+                sessionHash: requestSession,
+                data: {
+                    fn_index: server_pool[server_index].fn_index_create,
+                    session_hash: requestSession,
+                    data: create_data
+                },
+                config: {
+                    headers: workloadHeaders('sdwebui', forgeWorkload({
+                        taskKind: 'txt2img', checkpoint: cached_model[0],
+                        width: pidPolicy ? pidPolicy.width : width,
+                        height: pidPolicy ? pidPolicy.height : height,
+                        batchSize: request_batch_size, batchCount: request_batch_count,
+                        baseSteps: sampling_step,
+                        upscaleMultiplier: upscale_multiplier, hiresSteps: upscale_step,
+                        hiresCheckpoint: hires_models.checkpoint,
+                        hiresSupportModels: hires_models.support_models,
+                        seedvr2Model: usersetting?.seedvr2_model,
+                        seedvr2Resolution: usersetting?.seedvr2_resolution,
+                        useAdetailer: use_adetailer,
+                        tiledVae: (pidPolicy ? pidPolicy.width * pidPolicy.height : width * height) > 1600000,
+                        ...(pidPolicy ? { features: { pid: true, pid_stage: pidPolicy.stage } } : {}),
+                    }), SD_HEADERS),
+                    timeout: 900000
+                }
             }
         }
 
-        const option_progress = {
+        const send = async (request) => {
+            isInferenceActive = true
+            try {
+                const response = await axios.post(`${WORKER_ENDPOINT}/run/predict/`, request.data, request.config)
+                if (isCancelled) throw new ImagePromptBatchCancelled()
+                return response
+            }
+            catch (err) {
+                if (isImagePromptBatchCancelled(err)) throw err
+                if (isCancelled) throw new ImagePromptBatchCancelled()
+                throw err
+            }
+            finally {
+                isInferenceActive = false
+            }
+        }
+
+        const option_progress = () => ({
             method: 'POST',
             body: JSON.stringify({
-                id_task: `task(${session_hash})`,
+                id_task: `task(${progress_session_hash})`,
                 id_live_preview: current_preview_id,
             }),
             headers: {
                 'Content-Type': 'application/json'
             }
-        }
+        })
 
         console.log(`requesting: ${WORKER_ENDPOINT}/run/predict/`)
 
@@ -670,7 +813,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             setTimeout(async () => {
                 if (isDone || isCancelled) return
                 try {
-                    await fetch(`${WORKER_ENDPOINT}/internal/progress`, option_progress)
+                    await fetch(`${WORKER_ENDPOINT}/internal/progress`, option_progress())
                         .then(async (res) => res.json())
                         .then(async (progress_res_obj) => {
                             if (progress_res_obj.completed) return
@@ -711,7 +854,21 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             // setTimeout of 1 second before start progress fetching due to this weird behaviour
             setTimeout(() => fetch_progress(), 1000)
 
-            await axios.post(`${WORKER_ENDPOINT}/run/predict/`, option_init_axios.data, option_init_axios.config )
+            await runImagePromptBatch({
+                plan: promptPlan,
+                count: bulk_size,
+                seed,
+                sessionHash: session_hash,
+                buildRequest,
+                send,
+                shouldCancel: () => isCancelled,
+                onTask: ({ sessionHash: taskSession }) => {
+                    progress_session_hash = taskSession
+                    current_preview_id = 0
+                },
+                heatmapsPerImage: daam_config ? daam_config.prompt.split(',').length : 0,
+                pidImagesPerRequest: pidConfig ? 1 : 0,
+            })
                 .then((res) => {
                     if (res.status !== 200) {
                         throw 'Server can be reached but returned non-200 status'
@@ -734,12 +891,13 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                         // Skip DAAM heatmap images that precede the actual generated images.
                         // The backend returns bulk_size * num_tokens heatmaps first, then the normal order (grid -> individual images).
                         const daam_heatmap_count = daam_config ? bulk_size * daam_config.prompt.split(',').length : 0;
-                        const actualImagePaths = imagePaths.slice(daam_heatmap_count);
+                        let actualImagePaths = imagePaths.slice(daam_heatmap_count);
+                        if (pidConfig) actualImagePaths = actualImagePaths.slice(-bulk_size);
                         if (actualImagePaths.length === 0) {
                             throw 'Request return no images after filtering DAAM heatmaps';
                         }
                         // if actualImagePaths.length > 1, it means the first image is the grid; check if its dimensions exceed 3000px, if so use jpg
-                        if (actualImagePaths.length > 1 && bulk_size > 1) {
+                        if (!pidConfig && actualImagePaths.length > 1 && bulk_size > 1 && !promptPlan.perImage) {
                             // calculate most efficient grid size, consider initial width and height as well
                             const gridInfo = calculateOptimalGrid(width, height, actualImagePaths.length - 1);
                             console.log(`Creating grid with ${gridInfo.columns}x${gridInfo.rows} layout for ${actualImagePaths.length - 1} images`);
@@ -877,7 +1035,12 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         catch (err) {
             console.log(err)
             try {
-                await interaction.editReply({content: 'Error while creating image: ' + err, components: []})
+                if (isImagePromptBatchCancelled(err)) {
+                    await interaction.editReply({ content: 'Image generation cancelled.', components: [] })
+                }
+                else {
+                    await interaction.editReply({content: 'Error while creating image: ' + err, components: []})
+                }
             }
             catch (err) {
                 console.log('cannot send error to discord', err)
@@ -889,5 +1052,24 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         setTimeout(() => {
             client.cooldowns.delete(interaction.user.id);
         }, cooldown * 1000);
+        }
+
+        try {
+            await withForgeSession(async () => {
+                try {
+                    await runGeneration()
+                }
+                finally {
+                    // Stop listening before the Forge lease is released so a
+                    // stale button cannot abort a later owner of the instance.
+                    if (collector) collector.stop()
+                }
+            })
+        }
+        catch (err) {
+            console.log('Image generation failed', err)
+            await interaction.editReply({ content: 'Error while creating image: ' + err, components: [] })
+                .catch(reply_err => console.log('cannot send error to discord', reply_err))
+        }
 	},
 };
