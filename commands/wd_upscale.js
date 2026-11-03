@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { byPassUser } = require('../config.json');
 const crypt = require('crypto');
-const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, model_name_hash_mapping, upscaler_selection } = require('../utils/ai_server_config.js');
+const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, get_data_upscale, model_name_hash_mapping, upscaler_selection } = require('../utils/ai_server_config.js');
 const { default: axios } = require('axios');
 const { serviceHeaders } = require('../utils/proxy_config');
 const { forgeWorkload, workloadHeaders } = require('../utils/orchestrator_workload');
@@ -106,6 +106,11 @@ module.exports = {
         const trim_padding = interaction.options.getBoolean('trim_padding') ?? false
         const private_mode = interaction.options.getBoolean('private_mode') != null ?  interaction.options.getBoolean('private_mode') : false
         // const color_enhance_weight = clamp(interaction.options.getNumber('color_enhance_weight') || 0, 0, 1)
+
+        if (!seedvr2_model && (gfpgan_visibility > 0 || codeformer_visibility > 0 || codeformer_weight > 0)) {
+            await interaction.reply({ content: 'This Forge version no longer supports GFPGAN or CodeFormer in Extras. Please leave their options at zero.', ephemeral: true });
+            return;
+        }
 
         //make a temporary reply to not get timeout'd
 		await interaction.deferReply({ephemeral: private_mode});
@@ -265,51 +270,14 @@ module.exports = {
             return
         })
     
-        const upscale_data = [
-            `task(${session_hash})`,
-            0,
+        const upscale_data = get_data_upscale(
+            session_hash,
             convert_upload_path_to_file_data(attachment_upload_path, server_pool[server_index].direct_url),
-            null,
-            "",
-            "",
-            true,
-            "",
-            true,
-            false,
-            0,
             upscale_multiplier,
-            0,
-            1024,
-            1024,
-            true,
-            upscaler,     // upscaler 1
-            upscaler_2,                 // upscaler 2
-            upscaler_2_visibility,                      // upscaler 2 visibility
-            gfpgan_visibility > 0 ? true : false,      // gfpgan
-            gfpgan_visibility,
-            codeformer_visibility > 0 ? true : false,      // codeformer
-            codeformer_visibility,
-            codeformer_weight,
-            false,      // focal point crop
-            0.9,
-            0.15,
-            0.5,
-            false,
-            false,      // nudenet
-            true,
-            false,
-            false,
-            "Variable blur",
-            10,
-            5,
-            "#000000",
-            "Ellipse",
-            3,
-            0,
-            10,
-            0.5,
-            1,
-        ]
+            upscaler,
+            upscaler_2,
+            upscaler_2_visibility,
+        )
 
         //console.log(upscale_data)
 

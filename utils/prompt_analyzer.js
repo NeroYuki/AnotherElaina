@@ -1,5 +1,6 @@
 const { queryRecordLimit } = require("../database/database_interaction")
 const { server_pool } = require("./ai_server_config")
+const { serviceHeaders } = require("./proxy_config")
 
 const default_server_address = server_pool[0].direct_url
 
@@ -144,6 +145,7 @@ async function preview_coupler_setting(interaction, width, height, extra_config,
             data: coupler_preview_data
         }),
         headers: {
+            ...serviceHeaders('sdwebui'),
             'Content-Type': 'application/json'
         }
     }
@@ -160,8 +162,19 @@ async function preview_coupler_setting(interaction, width, height, extra_config,
             })
             .then(async (res) => {
                 // upload an image to the same channel as the interaction
-                const img_dataURI = res.data[0]
-                const img = Buffer.from(img_dataURI.split(",")[1], 'base64')
+                const preview = res.data[0]
+                let img
+                if (typeof preview === 'string' && preview.startsWith('data:image/')) {
+                    img = Buffer.from(preview.split(",")[1], 'base64')
+                } else if (preview?.path) {
+                    const image_response = await fetch(`${endpoint}/file=${preview.path}`, {
+                        headers: serviceHeaders('sdwebui')
+                    })
+                    if (!image_response.ok) throw new Error('Failed to retrieve coupler preview')
+                    img = Buffer.from(await image_response.arrayBuffer())
+                } else {
+                    throw new Error('Coupler preview returned no image')
+                }
                 if (extra_config.coupler_config && extra_config.coupler_config.mode === 'Advanced') {
                     const img_name = `preview_annotation.png`
                     await interaction.channel.send({files: [{attachment: img, name: img_name}]})
