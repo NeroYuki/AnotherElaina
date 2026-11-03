@@ -90,7 +90,7 @@ references, rather than treated as a full-length source performance.
 Long prompt enrichment returns a separate validated script per clip in one LLM
 request, then verifies the LLM unload before rendering. With enrichment off,
 the supplied prompt is reused for each clip. The 2× RTX option stays available:
-the repository-owned `ElainaRTXVideoUpscale` node streams the assembled video
+the local `ElainaRTXVideoUpscale` node streams the assembled video
 through the already installed NVIDIA SDK one frame at a time, then copies the
 assembled audio. This bounds frame memory independently of video duration.
 Long videos can take several minutes, especially with references and base
@@ -100,11 +100,11 @@ The extender is installed persistently at
 `G:/ComfyUI_windows_portable/ComfyUI/custom_nodes/ComfyUI_MiniMax_H3_Extender`,
 version 3.0.12, reviewed commit `60efaf15c589d6671ef43e7c0946913a54221865`.
 Its source is unmodified. The streaming node lives beside it in
-`custom_nodes/anotherelaina_h3` and is maintained in this repository under
-`resources/comfy_nodes/anotherelaina_h3`. Both survive ComfyUI restarts.
-`scripts/install_h3_extender.ps1 -Restart` reinstalls the adapter and restarts
-only an idle GPU-0 server. It checks the pinned extender revision and existing
-dependencies; it does not upgrade packages or download models. The extender's
+`custom_nodes/anotherelaina_h3` in that ComfyUI installation. Both survive
+ComfyUI restarts. The original adapter copy and one-off installer are retained
+in the local working-copy archive, rather than maintained in the bot repository.
+Maintain the installed adapter in ComfyUI's checkout and restart only an idle
+server after changes. The extender's
 optional latent-refine/upscaler feature is disabled in these workflows.
 
 Kitchen INT8 and Sage are alternative attention implementations for one
@@ -166,9 +166,9 @@ headroom. GPU placement checks and cleanup locks still apply; generation and
 model loading retain capacity checks. The idle orchestrator was restarted
 without stopping its managed AI servers. Exact source backups are in
 `G:/bootstrap_scripts/gpu-orchestrator/backups/control-routing-20261013-080744`.
-The review patch is `resources/patches/orchestrator-control-capacity.patch`;
-`scripts/deploy_orchestrator_control_fix.ps1` prepares, tests, backs up, and
-deploys it. These are source changes that survive restart; an upstream source
+The one-off review patch and deployment helpers are retained in the local
+working-copy archive. The maintained implementation and tests live in the
+orchestrator checkout. These source changes survive restart; an upstream source
 replacement may require reapplying them. Unsupported instance routing fails
 explicitly; `prompt_quality:off` can run without prompt enrichment support.
 
@@ -233,11 +233,16 @@ outputs are retained under ignored `temp/`.
 
 Enrichment checks verify the model's physical GPU while loaded, then confirm
 it has unloaded. `--generate standard` also passes the rewritten prompt into
-a real four-step H3 execution. Optional routing regression checks use the
-orchestrator's Python environment:
+a real four-step H3 execution. Run maintained routing and handoff regressions
+from the orchestrator checkout using its Python environment:
 
 ```powershell
-G:/bootstrap_scripts/gpu-orchestrator/.venv/Scripts/python.exe -B tests/video_prompt_routing_test.py G:/bootstrap_scripts/gpu-orchestrator
+Push-Location G:/bootstrap_scripts/gpu-orchestrator
+try {
+    ./.venv/Scripts/python.exe -B -m unittest backend.test_phase43 backend.test_service_control backend.test_service_handoff
+} finally {
+    Pop-Location
+}
 ```
 
 On 12 October 2026, all 18 media regression tests and 97 enabled chat tests

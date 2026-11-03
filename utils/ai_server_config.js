@@ -4,6 +4,8 @@ const BLANK_IMG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAL4CAYAAAA
 
 const { convert_upload_path_to_file_data } = require('./common_helper');
 const { PROXY_URL, serviceHeaders } = require('./proxy_config');
+const { is_tiled_upscale_script, normalize_upscale_config, normalize_extra_script, NATIVE_OUTPAINT_SCRIPT } = require('./forge_img2img_scripts');
+const { normalize_outpaint_config } = require('./forge_outpaint');
 
 // Direct address of the sdwebui (forge) backend. The `url` field now points at
 // the orchestrator proxy, but gradio `file=` references embedded in request
@@ -207,6 +209,16 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
     upscale_config = null, extra_script = "None", detail_daemon_config = null, tipo_input = null, latentmod_config = null,
     mahiro_config = null, teacache_config = null, modulation_config = null, daam_config = null) => {
     // default mode 0 is img2img, 4 is inpainting
+    const native_outpaint_config = normalize_extra_script(extra_script) === NATIVE_OUTPAINT_SCRIPT
+        ? normalize_outpaint_config(outpaint_config) : null
+    if (native_outpaint_config) {
+        if (!inpaint_img_upload_path || !inpaint_mask_upload_path) throw new Error('Native Outpaint requires the padded image and mask uploads.');
+        mode = 4
+        mask_blur = native_outpaint_config.mask_blur
+        mask_content = 'fill'
+        inpaint_area = 'Whole picture'
+        upscaler = 'None'
+    }
     // use tiled VAE if image is too large and no upscaler is used to prevent massive VRAM usage
     const shouldUseTiledVAE = ((width * height) > 3000000 && upscaler == "None") ? true : false
     const inpaint_img = convert_upload_path_to_file_data(inpaint_img_upload_path, server_pool[0].direct_url)
@@ -219,6 +231,10 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
     const is_lumina = model_selection_lumina.find(x => x.value === current_model) != null
     const is_z_image = model_selection_z_image.find(x => x.value === current_model) != null
     const is_anima = model_selection_anima.find(x => x.value === current_model) != null
+    const is_moss = model_selection_moss.find(x => x.value === current_model) != null
+    const tiled_upscale_config = is_tiled_upscale_script(extra_script)
+        ? normalize_upscale_config(upscale_config)
+        : null
 
     if (!is_anima && modulation_config?.enable) {
         console.warn("Modulation is only supported for Anima models. Disabling modulation.");
@@ -236,6 +252,9 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
     } else if (is_z_image) {
         final_cfg = 1;
         final_shift = cfg_scale;
+    } else if (is_moss) {
+        final_cfg = cfg_scale;
+        final_shift = 5;
     } else {
         final_cfg = cfg_scale;
         final_shift = 3;
@@ -270,7 +289,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             height,
             width,
             1,
-            "Crop and Resize",                                       // 27 Resize Mode
+            tiled_upscale_config ? "Latent Upscale" : native_outpaint_config ? "Just Resize" : "Crop and Resize",  // 27 Resize Mode
             inpaint_area,        // inpaint area
             mask_padding,         // inpaint padding
             "Inpaint masked",
@@ -283,7 +302,7 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             "",
             "upload",
             null,
-            extra_script || (usersetting?.seedvr2_model ? "SeedVR2 Native Upscaler (24G)" : "None"),   // extra script
+            (tiled_upscale_config || native_outpaint_config) ? "None" : (extra_script || (usersetting?.seedvr2_model ? "SeedVR2 Native Upscaler (24G)" : "None")),   // extra script
             false,        // soft inpainting
             1,
             0.5,
@@ -478,14 +497,14 @@ const get_data_body_img2img = (index, prompt, neg_prompt, sampling_step, cfg_sca
             latentmod_config?.spectral_mod_multiplier || 0,
             latentmod_config?.affect_uncond || "None",
             latentmod_config?.dyncfg_augment || "None",
-            false,
-            "MultiDiffusion",
-            768,
-            768,
-            64,
-            4,
+            tiled_upscale_config ? true : false,                 // 235 MultiDiffusion Integrated
+            tiled_upscale_config?.method || "MultiDiffusion",    // 236 Method
+            tiled_upscale_config?.tile_width || 768,             // 237 Tile Width
+            tiled_upscale_config?.tile_height || 768,            // 238 Tile Height
+            tiled_upscale_config?.tile_overlap ?? 64,            // 239 Tile Overlap
+            tiled_upscale_config?.tile_batch_size || 4,          // 240 Tile Batch Size
             false,               // never oom
-            false,
+            !!tiled_upscale_config || (!!native_outpaint_config && shouldUseTiledVAE), // 242 tiled VAE
             "m + (M-m)*(1-x)**3",
             false,          // image stitch
             [],
@@ -566,7 +585,8 @@ function resolve_hires_models(usersetting, current_model = '') {
         model_selection_chroma.find(x => x.value === requested_checkpoint)        ? ["ae.safetensors", "t5-v1_1-xxl-encoder-Q8_0.gguf"] :
         model_selection_flux_klein_9b.find(x => x.value === requested_checkpoint) ? ["flux2-vae.safetensors", "Qwen3-8B-Q8_0.gguf"] :
         model_selection_flux_klein_4b.find(x => x.value === requested_checkpoint) ? ["flux2-vae.safetensors", "qwen_3_4b.safetensors"] :
-        model_selection_qwen_image.find(x => x.value === requested_checkpoint)    ? ["qwen_image_vae.safetensors", "qwen_2.5_vl_7b_fp8_scaled.safetensors"] :
+        model_selection_qwen21.find(x => x.value === requested_checkpoint)        ? ["qwen_image_2.1_vae_bf16.safetensors", "qwen3vl_8b_int8_convrot.safetensors"] :
+        model_selection_moss.find(x => x.value === requested_checkpoint)          ? ["flux2-vae.safetensors", "qwen3.5_9b_int8_convrot.safetensors"] :
         model_selection_anima.find(x => x.value === requested_checkpoint)         ? ["qwen_image_vae.safetensors", "qwen_3_06b_base.safetensors"] :
         model_selection_z_image.find(x => x.value === requested_checkpoint)       ? ["ae.safetensors", "qwen_3_4b.safetensors"] :
         model_selection_lumina.find(x => x.value === requested_checkpoint)        ? ["ae.safetensors", "gemma_2_2b_fp16.safetensors"] :
@@ -592,6 +612,7 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
     const is_lumina = model_selection_lumina.find(x => x.value === current_model) != null
     const is_z_image = model_selection_z_image.find(x => x.value === current_model) != null
     const is_anima = model_selection_anima.find(x => x.value === current_model) != null
+    const is_moss = model_selection_moss.find(x => x.value === current_model) != null
 
     if (!is_anima && modulation_config?.enable) {
         console.warn("Modulation is only supported for Anima models. Disabling modulation.");
@@ -608,6 +629,9 @@ const get_data_body = (index, prompt, neg_prompt, sampling_step, cfg_scale, seed
     } else if (is_z_image) {
         final_cfg = 1;
         final_shift = cfg_scale;
+    } else if (is_moss) {
+        final_cfg = cfg_scale;
+        final_shift = 5;
     } else {
         final_cfg = cfg_scale;
         final_shift = 3;
@@ -1074,10 +1098,15 @@ const model_selection_z_image = [
     { name: 'Z Image Turbo', value: 'comfy_sym\\z_image_turbo_bf16.safetensors'},
 ]
 
-const model_selection_qwen_image = [
-    { name: 'Qwen Image Nunchaku FP4', value: 'comfy_sym\\svdq-fp4_r128-qwen-image.safetensors'},
-    { name: 'Qwen Image Edit Nck. FP4 8 Steps', value: 'comfy_sym\\svdq-fp4_r128-qwen-image-edit-lightningv1.0-8steps.safetensors'},
-    { name: 'Qwen Image Edit 2509 Nck. FP4 8 Steps', value: 'comfy_sym\\svdq-fp4_r128-qwen-image-edit-2509-lightningv2.0-8steps.safetensors'},
+const model_selection_qwen21 = [
+    { name: 'Qwen Image 2.1 Int8 ConvRot', value: 'qwen_image_2.1_int8_convrot.safetensors'},
+    { name: 'Qwen Image 2.1 Turbo Int8 ConvRot', value: 'qwen_image_2.1_turbo_int8_convrot.safetensors'},
+    { name: 'Qwen Image 2.1 Uncensored Int8 ConvRot', value: 'qwen-image-2.1-UC-int8_convrot.safetensors'},
+]
+
+const model_selection_moss = [
+    { name: 'MOSS Image Base BF16', value: 'moss_image_base_bf16.safetensors'},
+    { name: 'MOSS Image SFT BF16', value: 'moss_image_sft_bf16.safetensors'},
 ]
 
 const model_selection_lumina = [
@@ -1096,7 +1125,26 @@ const model_selection_curated = [
     { name: 'IllumiyumeXL V-pred v3.1' , value: 'illumiyumexl_vpred_v31.safetensors'},
     { name: 'Krea 2 Turbo', value: 'krea2_turbo_int8_convrot.safetensors'},
     { name: 'Pastel Mix v2.1', value: 'pastelmix.safetensors' },
+    { name: 'Qwen Image 2.1 Int8 ConvRot', value: 'qwen_image_2.1_int8_convrot.safetensors'},
+    { name: 'Qwen Image 2.1 Turbo Int8 ConvRot', value: 'qwen_image_2.1_turbo_int8_convrot.safetensors'},
+    { name: 'Qwen Image 2.1 Uncensored Int8 ConvRot', value: 'qwen-image-2.1-UC-int8_convrot.safetensors'},
+    { name: 'MOSS Image Base BF16', value: 'moss_image_base_bf16.safetensors'},
+    { name: 'MOSS Image SFT BF16', value: 'moss_image_sft_bf16.safetensors'},
 ]
+
+// Shared experimental menu. Legacy checkpoints are excluded so callers can
+// present this list directly without duplicating the filtering logic.
+const model_selection_experimental = model_selection_flux
+    .concat(model_selection_chroma)
+    .concat(model_selection_flux_klein_4b)
+    .concat(model_selection_flux_klein_9b)
+    .concat(model_selection_anima)
+    .concat(model_selection_lumina)
+    .concat(model_selection_qwen21)
+    .concat(model_selection_moss)
+    .concat(model_selection_z_image)
+    .concat(model_selection_krea)
+    .filter(x => !model_selection_legacy.map(y => y.value).includes(x.value));
 
 const controlnet_preprocessor_selection = [
     { name: 'None', value: 'None', type: 'All' },
@@ -1302,7 +1350,8 @@ const check_model_filename = (model_filename) => {
         ...model_selection_flux_klein_9b,
         ...model_selection_flux_klein_4b,
         ...model_selection_z_image,
-        ...model_selection_qwen_image,
+        ...model_selection_qwen21,
+        ...model_selection_moss,
         ...model_selection_krea,
         ...model_selection_lumina,
         ...model_selection_curated,
@@ -1444,10 +1493,12 @@ module.exports = {
     model_selection_flux_klein_9b,
     model_selection_flux_klein_4b,
     model_selection_z_image,
-    model_selection_qwen_image,
+    model_selection_qwen21,
+    model_selection_moss,
     model_selection_lumina,
     model_selection_krea,
     model_selection_curated,
+    model_selection_experimental,
     model_selection_inpaint,
     model_selection_legacy,
     controlnet_preprocessor_selection,

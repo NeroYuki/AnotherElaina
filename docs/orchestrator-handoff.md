@@ -32,7 +32,9 @@ The source changes are in the orchestrator's `backend/proxy.py`,
 `G:/bootstrap_scripts/gpu-orchestrator/backups/idle-handoff-20261013-083243`;
 the subsequent verification update is backed up at
 `G:/bootstrap_scripts/gpu-orchestrator/backups/idle-handoff-20261013-083900`.
-The review diff is `resources/patches/orchestrator-idle-handoff.patch`.
+The one-off review patch and deployment helpers are local archive artifacts;
+the maintained implementation and regression checks live in the orchestrator
+checkout at `G:/bootstrap_scripts/gpu-orchestrator`.
 The orchestrator was restarted without restarting managed AI services.
 
 Verification: all 58 orchestrator checks passed, including eleven new handoff,

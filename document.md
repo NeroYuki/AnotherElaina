@@ -109,28 +109,42 @@ Say you want to "anime-fy" your photo? or generating an image with your prompt b
 
 #### Noisy Upscale 
 
-This is somewhat of a compromise between GAN-based upscaling (/wd_upscale) and hi-res fix (/wd_create). It works by encode the input image into latent space, add some noise, divide the image into "tiles" and make them run through another denoising process, hoping to "enhance" the feature in the picture to a higher resolution and/or introducing novel feature that make the high resolution output more aethestically pleasing
+This is somewhat of a compromise between GAN-based upscaling (/wd_upscale) and hi-res fix (/wd_create). It works by encoding the input image into latent space, adding noise, dividing the latent into overlapping "tiles" with Forge's integrated Mixture of Diffusers / MultiDiffusion tiling, and denoising each tile. This "enhances" the features in the picture at a higher resolution and/or introduces novel features that make the high resolution output more aesthetically pleasing.
 
-You need to first use /wd_script_upscale to specify the setting and then with /wd_img2img specify `extra_script` to use "Img2Img Upscale"
+Use `/wd_script_upscale set` to configure it, then select `extra_script: Tiled Latent Upscale` in `/wd_img2img` or `/wd_img2img_adv`. The command keeps the source image as the img2img input, multiplies the requested base width/height by `upscale_multiplier`, and uses Forge's native `Latent Upscale` resize mode. It is not the selectable `SD Upscale` script and does not run SeedVR2.
 
-!!! note extra_script availability
-	The `Img2Img Upscale` and `Outpainting` scripts are currently only offered in the simple `/wd_img2img` command. The advanced `/wd_img2img_adv` only offers the Flux-based extra scripts (see below).
+Settings:
+- `upscale_multiplier`: output size multiplier (1-4, default 2). Use `1` for tiled refinement without changing the output size.
+- `method`: `Mixture of Diffusers` (default) or `MultiDiffusion`.
+- `tile_width` / `tile_height`: tile size in pixels, snapped to 64px (default 1024, height 0 = same as width).
+- `tile_overlap`: overlap between tiles in pixels, snapped to 16px (0-1024, default 128), smaller than both tile dimensions.
+- `tile_batch_size`: tiles processed per batch (1-8, default 1).
+
+Only SD1/SDXL checkpoints (including their mapped inpaint checkpoints) are supported for this mode. Use a relatively conservative `denoising_strength` (roughly 0.2-0.45); higher values change the image more aggressively. Bigger tiles and batches use more VRAM.
 
 Example
 
 ```
-/wd_img2img image: [attachment] prompt: 1girl, fu xuan denoising_strength: 0.5 sampler: DPM++ 2M scheduler: Automatic sampling_step: 35 default_neg_prompt: n_nsfw profile: test_upscale extra_script: Img2Img Upscale
+/wd_script_upscale set upscale_multiplier: 2 method: Mixture of Diffusers tile_width: 1024 tile_height: 1024 tile_overlap: 128 tile_batch_size: 1
 ```
 
--> ![img2img upscale output](https://i.ibb.co/p6tczPZW/Screenshot-2025-02-01-111135.jpg) <-
+```
+/wd_img2img_adv image: [attachment] prompt: 1girl, fu xuan denoising_strength: 0.35 sampler: DPM++ 2M scheduler: Automatic sampling_step: 35 default_neg_prompt: n_nsfw extra_script: Tiled Latent Upscale
+```
+
+!!! note extra_script availability
+	`Tiled Latent Upscale` and `Native Outpaint` are offered in both `/wd_img2img` and `/wd_img2img_adv`. Both commands also offer the Flux-based extra scripts (see below).
+
 
 #### Outpainting
 
-Consider this the "expand this picture" option, it work by literally generate a new area around the original picture with just noise, it also introduce some noise at the border to ensure consistency and once again run with the denoising process. With the result (hopefully) being a new and expanded picture
+`Native Outpaint` expands the canvas and uses Forge's native masked inpainting to generate the added margins. The padding is initialized by extending the nearest edge pixel of the source outward, including at the corners, so there is no stretched or blurred copy of the whole image. The source stays in its exact original rectangle, and native inpainting repaints a narrow overlap strip along each expanded side to blend the join. The central area stays masked, while mask blur feathers the transition on both sides of the overlap. Subject details near an expanded edge, such as a face or object touching the border, can still change inside that strip.
 
-You need to first use /wd_script_outpaint to specify the setting and then with /wd_img2img specify `extra_script` to use "Outpainting"
+Use `/wd_script_outpaint set`, then choose `extra_script: Native Outpaint` in either img2img command. `size` is padding per selected side (default 128px); `direction` accepts LRUD. The `top`, `bottom`, `left`, and `right` settings override selected sides, with 0 falling back to `size`. Padding snaps up to 8px. `overlap` is how many pixels inside each expanded source edge are repainted (default 64, snapped up to 8px and capped at a quarter of the source side, so at least the central half remains black in the mask before feathering); sides without padding do not get an overlap strip. Default `mask_blur` is 32, and explicit 0 disables blending. Existing saved settings keep their stored `mask_blur`, and explicit 0 is kept. Omitted `denoising_strength` defaults to 1 for this mode.
 
-It's recommended to use inpaint model to outpaint a picture
+This path supports SD1/SDXL. It uses the matching inpaint checkpoint when the bot has a mapping, otherwise it keeps the selected SD1/SDXL model. Dedicated inpaint checkpoints usually work best. Describe the complete desired scene in the prompt. Qwen 2.1 and MOSS are not enabled for masked outpainting: Qwen's tested reference-edit path left the margins unchanged, and MOSS has no validated edit path in this installation. Coupler regions cannot be combined with Native Outpaint.
+
+The removed `Outpainting mk2` and `Ultimate SD upscale` selections are translated to the native replacements for stale interactions. Existing saved settings remain usable; obsolete outpaint falloff/color-variance and upscale seam-fix/upscaler fields are ignored. Legacy upscale `padding` maps to twice that value as tile overlap.
 
 Example 
 
@@ -139,11 +153,9 @@ Example
 ```
 
 ```
-/wd_img2img image: [attachment] prompt: a woman in a red dress standing in a city street with buildings in the background and a bird flying overhead, Ayako Rokkaku, official art, a detailed painting, orphism denoising_strength: 0.91 sampler: Euler a scheduler: Automatic cfg_scale: 6 sampling_step: 25 default_neg_prompt: Quality - SFW extra_script: Outpainting
+/wd_img2img_adv image: [attachment] prompt: a woman in a red dress standing in a city street with buildings in the background and a bird flying overhead, official art, a detailed painting denoising_strength: 1 sampler: Euler scheduler: Normal cfg_scale: 5 sampling_step: 24 extra_script: Native Outpaint
 ```
 
--> ![outpaint input](https://i.ibb.co/h1D1yJDJ/Screenshot-2025-02-01-110825.jpg) <-
--> ![outpaint output](https://i.ibb.co/5tBh1tY/Screenshot-2025-02-01-110834.jpg) <-
 
 #### Flux Outpaint / Flux Kontext (extra scripts)
 
@@ -271,7 +283,8 @@ Powered by TRELLIS, it can convert an image into a 3d model and output a video o
 - **Flux2 Klein 9B FP8 / Flux2 Klein 4B**: next-generation Flux "Klein" models (9B and 4B parameter sizes), use natural language proompt
 - **Anima Preview / Anima Base v1 / WAI Anima v1**: anime-focused experimental models, use booru prompt style with limited natural language understanding
 - **Z Image Turbo**: Z Image Turbo general-purpose model with highly refined result but not really creative, use natural language prompt
-- **Qwen Image Nunchaku FP4 / Qwen Image Edit (8 Steps / 2509)**: Qwen-based image generation models (FP4 quantized), including "Edit" variants optimized for image editing tasks
+- **Qwen Image 2.1 / Turbo / Uncensored Int8 ConvRot**: use natural-language prompts for generation and native image editing with the same checkpoints. Normal and Uncensored default to 40 steps; Turbo defaults to 8 steps, with CFG 1. The older Nunchaku Qwen checkpoints are retired. [Model reference](https://huggingface.co/Qwen/Qwen-Image-2.1), [Turbo reference](https://huggingface.co/Qwen/Qwen-Image-2.1-Turbo).
+- **MOSS Image Base / SFT BF16**: text-to-image models with natural-language, tag, and layout prompts. Defaults are Euler / Simple, 50 steps, CFG 3, and shift 5. [Model reference](https://huggingface.co/OpenMOSS-Team/MOSS-Image-Base).
 - **Neta Lumina v1 / NetaYume Lumina v3**: Lumina-lineage models (NetaYume being the v3 iteration)
 
 **SD1.x (1.5) family:** 512x512 to 768x768 resolution is recommended, poor language understanding, mediocre anatomy, its fast though (pretty much all of the derivitive model below use booru prompt style due to how poor the language understanding is)

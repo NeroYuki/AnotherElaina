@@ -46,8 +46,8 @@ but these runs use Kitchen INT8. Kitchen and Sage are alternatives for one
 attention operation. Kitchen weight/fused operations may still coexist with
 Sage attention in other workflows.
 
-Raw measurements, output paths, stage timings, seeds and frame checks are in
-[the short-run JSON](../resources/benchmarks/h3-2026-10-13-short.json).
+The original short-run JSON is retained in the local working-copy archive,
+not in maintained repository source. The measurements above summarize that run.
 Reproduce the same matrix when ComfyUI is idle:
 
 ```powershell
@@ -90,8 +90,8 @@ decode/assembly. Peak total GPU use was 23,273 MiB. The opening and ending
 frames match the supplied synthetic guide layout, and the orange subject's
 appearance remains substantially more consistent in this sample.
 
-Raw long-run timing and frame checks are in
-[the extended-run JSON](../resources/benchmarks/h3-2026-10-13-extended.json).
+The original long-run JSON is retained in the local working-copy archive;
+the measured timings and frame checks are summarized above.
 Qwen 27B on the 3090 Ti also returned all four long-clip scripts and verified
 its unload in **48.502 s**. That test used text only; the Gemma test included
 three image previews, so these two rewrite timings are not a controlled LLM

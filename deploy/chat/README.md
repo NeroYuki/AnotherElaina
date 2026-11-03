@@ -22,10 +22,17 @@ docker compose -f deploy/chat/compose.yaml ps
 Before the LAN bind, run the source restriction once from an **Administrator PowerShell** window. The rule permits the Linux `/32` plus the Windows service address itself so local maintenance smoke remains possible:
 
 ```powershell
-.\deploy\chat\configure-windows-lan.ps1 -BotHostAddress 192.168.1.9 -ServiceBindAddress 192.168.1.2
+$botHostAddress = '192.168.1.9'
+$serviceBindAddress = '192.168.1.2'
+$ruleName = 'AnotherElaina Docker chat services from Linux bot'
+Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue |
+    Remove-NetFirewallRule
+New-NetFirewallRule -DisplayName $ruleName -Direction Inbound -Action Allow `
+    -Profile Private -Protocol TCP -LocalAddress $serviceBindAddress `
+    -LocalPort 6333,8088 -RemoteAddress $botHostAddress,$serviceBindAddress
 ```
 
-Run the same command with the new Linux address whenever DHCP changes it; the named rule is replaced with the new `/32` source. A DHCP reservation for the Linux host avoids that operational failure mode.
+Run the same block with the new Linux address whenever DHCP changes it; the named rule is replaced with the new `/32` source. A DHCP reservation for the Linux host avoids that operational failure mode. The original one-off firewall script is retained in the local working-copy archive.
 
 Configure the application with:
 

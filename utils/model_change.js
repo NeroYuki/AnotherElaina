@@ -12,7 +12,8 @@ const {
     model_selection_z_image, 
     model_selection_lumina, 
     model_selection_anima, 
-    model_selection_qwen_image, 
+    model_selection_qwen21,
+    model_selection_moss,
     model_selection_flux_klein_4b, 
     model_selection_flux_klein_9b,
     model_selection_krea,
@@ -96,9 +97,14 @@ const flux_klein_4b_support_models = [
     "qwen_3_4b.safetensors"
 ]
 
-const qwen_support_models = [
-    "qwen_image_vae.safetensors",
-    "qwen_2.5_vl_7b_fp8_scaled.safetensors"
+const qwen21_support_models = [
+    "qwen_image_2.1_vae_bf16.safetensors",
+    "qwen3vl_8b_int8_convrot.safetensors"
+]
+
+const moss_support_models = [
+    "flux2-vae.safetensors",
+    "qwen3.5_9b_int8_convrot.safetensors"
 ]
 
 const anima_support_models = [
@@ -158,18 +164,41 @@ async function support_model_change(models, session_hash, model_type) {
     })
 }
 
+function get_model_type(modelname) {
+    return model_selection_xl.find(element => element.value === modelname) ? 'xl' :
+        [...model_selection_flux, ...model_selection_chroma].find(element => element.value === modelname) ? 'flux' :
+        [...model_selection_flux_klein_4b, ...model_selection_flux_klein_9b].find(element => element.value === modelname) ? 'klein' :
+        model_selection_qwen21.find(element => element.value === modelname) ? 'qwen21' :
+        model_selection_moss.find(element => element.value === modelname) ? 'moss' :
+        model_selection_anima.find(element => element.value === modelname) ? 'anima' :
+        model_selection_lumina.find(element => element.value === modelname) ? 'lumina' :
+        model_selection_z_image.find(element => element.value === modelname) ? 'zit' :
+        model_selection_krea.find(element => element.value === modelname) ? 'krea' : 'sd';
+}
+
+function get_support_models(modelname) {
+    if (model_selection_flux.find(element => element.value === modelname)) return flux_support_models
+    if (model_selection_chroma.find(element => element.value === modelname)) return chroma_support_models
+    if (model_selection_flux_klein_9b.find(element => element.value === modelname)) return flux_klein_9b_support_models
+    if (model_selection_flux_klein_4b.find(element => element.value === modelname)) return flux_klein_4b_support_models
+    if (model_selection_qwen21.find(element => element.value === modelname)) return qwen21_support_models
+    if (model_selection_moss.find(element => element.value === modelname)) return moss_support_models
+    if (model_selection_anima.find(element => element.value === modelname)) return anima_support_models
+    if (model_selection_lumina.find(element => element.value === modelname)) return lumina_support_models
+    if (model_selection_z_image.find(element => element.value === modelname)) return z_image_support_models
+    if (model_selection_krea.find(element => element.value === modelname)) return krea_support_models
+    return []
+}
+
 function model_change(modelname, forced = false) {
+    if (/^(?:svdq-.*qwen[-_]image|nunchaku_qwen_image)/i.test(normalize_checkpoint_name(modelname) || '')) {
+        return Promise.reject(new Error('Nunchaku Qwen Image models have been retired. Select Qwen Image 2.1 instead.'))
+    }
+
     const server_address = server_pool[0].url;
 
-    const model_type = model_selection_xl.find(element => element.value === modelname) ? 'xl' :
-                    [...model_selection_flux, ...model_selection_chroma].find(element => element.value === modelname) ? 'flux' :
-                    [...model_selection_flux_klein_4b, ...model_selection_flux_klein_9b].find(element => element.value === modelname) ? 'klein' :
-                    model_selection_qwen_image.find(element => element.value === modelname) ? 'qwen' :
-                    model_selection_anima.find(element => element.value === modelname) ? 'anima' :
-                    model_selection_lumina.find(element => element.value === modelname) ? 'lumina' :
-                    model_selection_z_image.find(element => element.value === modelname) ? 'zit' : 
-                    model_selection_krea.find(element => element.value === modelname) ? 'krea' : 'sd';
-    
+    const model_type = get_model_type(modelname)
+
     return new Promise(async (resolve, reject) => {
         // change model then send the notification to discord channel where the action is executed
         // if modelname is in the cached_model or forced, return true
@@ -199,56 +228,9 @@ function model_change(modelname, forced = false) {
                         
                         mark_model_active(modelname)
 
-                        if (model_selection_flux.find(element => element.value === modelname)) {
-                            await support_model_change(flux_support_models, session_hash, model_type).catch(err => {
-                                console.log("support model cannot be changed due to failure")
-                                // rollback the model change?
-                            })
-                        }
-                        else if (model_selection_chroma.find(element => element.value === modelname)) {
-                            await support_model_change(chroma_support_models, session_hash, model_type).catch(err => {
-                                console.log("support model cannot be changed due to failure")
-                                // rollback the model change?
-                            })
-                        }
-                        else if (model_selection_flux_klein_9b.find(element => element.value === modelname)) {
-                            await support_model_change(flux_klein_9b_support_models, session_hash, model_type).catch(err => {
-                                console.log("support model cannot be changed due to failure")
-                                // rollback the model change?
-                            })
-                        }
-                        else if (model_selection_flux_klein_4b.find(element => element.value === modelname)) {
-                            await support_model_change(flux_klein_4b_support_models, session_hash, model_type).catch(err => {
-                                console.log("support model cannot be changed due to failure")
-                                // rollback the model change?
-                            })
-                        }
-                        else if (model_selection_qwen_image.find(element => element.value === modelname)) {
-                            await support_model_change(qwen_support_models, session_hash, model_type).catch(err => {
-                                console.log("support model cannot be changed due to failure")
-                                // rollback the model change?
-                            })
-                        }
-                        else if (model_selection_anima.find(element => element.value === modelname)) {
-                            await support_model_change(anima_support_models, session_hash, model_type).catch(err => {
-                                console.log("support model cannot be changed due to failure")
-                                // rollback the model change?
-                            })
-                        }
-                        else if (model_selection_lumina.find(element => element.value === modelname)) {
-                            await support_model_change(lumina_support_models, session_hash, model_type).catch(err => {
-                                console.log("support model cannot be changed due to failure")
-                                // rollback the model change?
-                            })
-                        }
-                        else if (model_selection_z_image.find(element => element.value === modelname)) {
-                            await support_model_change(z_image_support_models, session_hash, model_type).catch(err => {
-                                console.log("support model cannot be changed due to failure")
-                                // rollback the model change?
-                            })
-                        }
-                        else if (model_selection_krea.find(element => element.value === modelname)) {
-                            await support_model_change(krea_support_models, session_hash, model_type).catch(err => {
+                        const support_models = get_support_models(modelname)
+                        if (support_models.length > 0) {
+                            await support_model_change(support_models, session_hash, model_type).catch(err => {
                                 console.log("support model cannot be changed due to failure")
                                 // rollback the model change?
                             })
@@ -280,6 +262,8 @@ function model_change(modelname, forced = false) {
 
 module.exports = {
     model_change,
+    get_model_type,
+    get_support_models,
     cached_model,
     sync_active_model,
 }

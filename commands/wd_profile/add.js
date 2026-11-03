@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageActionRow, MessageSelectMenu } = require('discord.js');
-const { upscaler_selection, model_selection, model_selection_xl, model_selection_flux, model_selection_legacy, model_selection_chroma, model_selection_flux_klein_4b, model_selection_flux_klein_9b, model_selection_anima, model_selection_lumina, model_selection_qwen_image, model_selection_z_image, model_selection_krea, sampler_selection, scheduler_selection } = require('../../utils/ai_server_config');
+const { upscaler_selection, model_selection, model_selection_xl, model_selection_legacy, model_selection_experimental, sampler_selection, scheduler_selection } = require('../../utils/ai_server_config');
 const { addRecord, queryRecord, queryRecordLimit, editRecords } = require('../../database/database_interaction');
 const { clamp } = require('../../utils/common_helper');
 
@@ -173,16 +173,7 @@ module.exports = {
         }
         
         if (checkpoint === 'experimental') {
-            const experimental_models = model_selection_flux
-                .concat(model_selection_chroma)
-                .concat(model_selection_flux_klein_4b)
-                .concat(model_selection_flux_klein_9b)
-                .concat(model_selection_anima)
-                .concat(model_selection_lumina)
-                .concat(model_selection_qwen_image)
-                .concat(model_selection_z_image)
-                .concat(model_selection_krea)
-                .filter(x => !model_selection_legacy.map(y => y.value).includes(x.value));
+            const experimental_models = model_selection_experimental;
             
             const experimentalSelectMenu = new MessageSelectMenu()
                 .setCustomId('experimental_model_select')

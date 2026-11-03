@@ -201,6 +201,14 @@ No paid or cloud judge is used. Review voice, player agency, unsupported claims,
 
 `/lore reindex` preserves source records and ACLs. Build a new revision-specific Qdrant collection, verify dimensions and filtered retrieval, then swap the configured alias. Never mix embedding revisions in one collection. `/lore remove` must block authoritative retrieval before asynchronous vector cleanup.
 
+### Reindex build lifecycle
+
+Reindex runs are serialized by a renewable Mongo lease in `chat_reindex_state`, keyed by a hash of the normalized Qdrant URL and alias. Run all reindex callers against the same authoritative Mongo database and the same canonical Qdrant URL; separate databases or different endpoint spellings do not share a lease. A busy lease fails closed; ownership is fenced and rechecked before alias publication and cleanup. Generated collections keep the `<base>_build_<epoch-ms>_<suffix>` form and are tracked as owned builds.
+
+A successful switch keeps the new active build plus one previous alias target as rollback when that target is an owned build. Older owned builds are deleted only after a fresh Qdrant alias read that protects every alias target. The original/base collection, explicit `options.collection` targets, foreign/untracked collections, and successful `noSwitch` builds are never auto-deleted. Failed builds are removed only when no alias references them; an ambiguous publish is re-read, and an unverifiable alias state leaves the collection queued for later cleanup. Failed deletions and crashed-build recoveries remain in `pendingDeletions` and are retried by later runs. Cleanup problems after a verified publish appear in `result.cleanup.warnings`/`pending` and do not fail the publish.
+
+Collections created before this lifecycle tracking are not swept automatically. To clean legacy builds safely, pause reindex jobs, read the complete alias list (`GET /aliases`), and delete only named `_build_` collections that are not referenced by any alias and have no required rollback value. Never bulk-delete by timestamp or prefix, never delete the base collection or the current alias target, and keep one verified rollback until the new index has passed operator checks.
+
 ## Memory and deletion
 
 `/memory show` and `/memory export` expose only currently authorized records and provenance in ephemeral responses. `/memory optout enabled:true` disables durable personal extraction; it does not prevent answering the current addressed message. `/scene new` starts a fresh scene and is not deletion. `/scene end` closes a scene and is not deletion.

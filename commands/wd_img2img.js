@@ -13,13 +13,15 @@ const fetch = (url, options = {}) => _nodeFetch(url, {
     ...options,
     headers: { ...SD_HEADERS, ...(options.headers || {}) },
 });
-const { loadImage } = require('../utils/load_discord_img.js');
+const { loadImage, uploadPngBufferToGradio } = require('../utils/load_discord_img.js');
 const { cached_model, model_change, sync_active_model } = require('../utils/model_change.js');
 const { queryRecordLimit } = require('../database/database_interaction.js');
 const { full_prompt_analyze, preview_coupler_setting, fetch_user_defined_wildcard, get_teacache_config_from_prompt, get_debug_prompt_analyze } = require('../utils/prompt_analyzer.js');
 const { load_profile } = require('../utils/profile_helper.js');
 const { clamp, parse_common_setting } = require('../utils/common_helper');
 const { get_model_family_defaults } = require('../utils/model_defaults');
+const { TILED_UPSCALE_SCRIPT, NATIVE_OUTPAINT_SCRIPT, normalize_extra_script, prepare_tiled_upscale } = require('../utils/forge_img2img_scripts');
+const { prepare_native_outpaint } = require('../utils/forge_outpaint');
 const workflow_outpaint = require('../resources/flux_fill_outpaint.json')
 const workflow_kontext = require('../resources/flux_kontext.json')
 const ComfyClient = require('../utils/comfy_client');
@@ -75,8 +77,8 @@ module.exports = {
                 .setDescription('Specify an extra script to be used during the process')
                 .addChoices(
                     { name: 'None', value: 'None' },
-                    { name: 'Img2Img Upscale', value: 'Ultimate SD upscale' },
-                    { name: 'Outpainting', value: 'Outpainting mk2' },
+                    { name: 'Tiled Latent Upscale', value: 'Tiled Latent Upscale' },
+                    { name: 'Native Outpaint', value: 'Native Outpaint' },
                     { name: 'Flux Outpaint', value: 'Flux Outpaint' },
                     { name: 'Flux Kontext', value: 'Flux Kontext' },
                 ))
@@ -262,9 +264,9 @@ module.exports = {
             cfg_scale = 1;
         }
 
-        const denoising_strength = clamp(interaction.options.getNumber('denoising_strength') || 0.7, 0, 1)
+        let denoising_strength = clamp(interaction.options.getNumber('denoising_strength') ?? 0.7, 0, 1)
         const force_server_selection = -1
-        const checkpoint = interaction.options.getString('checkpoint')|| profile?.checkpoint || null
+        let checkpoint = interaction.options.getString('checkpoint')|| profile?.checkpoint || null
         const upscaler = interaction.options.getString('upscaler') || 'None'
         let clip_skip = clamp(profile?.clip_skip || 1, 1, 12)
         const adetailer_config = profile?.adetailer_config ||
@@ -273,7 +275,8 @@ module.exports = {
         const latentmod_config = profile?.latentmod_config || (client.latentmod_config.has(interaction.user.id) ? client.latentmod_config.get(interaction.user.id) : null)
         const colorbalance_config = profile?.colorbalance_config ||
             (client.colorbalance_config.has(interaction.user.id) ? client.colorbalance_config.get(interaction.user.id) : null)
-        const extra_script = interaction.options.getString('extra_script') || 'None'
+        const extra_script = normalize_extra_script(interaction.options.getString('extra_script') || 'None')
+        if (extra_script === NATIVE_OUTPAINT_SCRIPT && interaction.options.getNumber('denoising_strength') == null) denoising_strength = 1
         const outpaint_config = profile?.script_outpaint_config || 
             (client.img2img_outpaint_config.has(interaction.user.id) ? client.img2img_outpaint_config.get(interaction.user.id) : null)
         const upscale_config = profile?.script_upscale_config ||
@@ -282,7 +285,7 @@ module.exports = {
         // parse the user setting config
         const usersetting_config = client.usersetting_config.has(interaction.user.id) ? client.usersetting_config.get(interaction.user.id) : null
         const usersetting = parse_common_setting(usersetting_config)
-        if (usersetting?.seedvr2_model) {
+        if (usersetting?.seedvr2_model && extra_script !== TILED_UPSCALE_SCRIPT && extra_script !== NATIVE_OUTPAINT_SCRIPT) {
             interaction.channel.send(`SeedVR2 upscaling active (${usersetting.seedvr2_model}, target ${usersetting.seedvr2_resolution ?? 1600}px shortest edge)`)
         }
         
@@ -320,8 +323,16 @@ module.exports = {
             return
         }
 
+        // Follow the existing inpaint command's checkpoint mapping when available.
+        if (extra_script === NATIVE_OUTPAINT_SCRIPT) {
+            const selected = checkpoint || cached_model[0]
+            const basename = value => value.replaceAll('\\', '/').split('/').pop().toLowerCase()
+            const mapped = model_selection_inpaint.find(item => basename(item.value) === basename(selected))
+            if (mapped) checkpoint = mapped.inpaint
+        }
+
         if (checkpoint) {
-            const change_result = await model_change(checkpoint, false).catch(err => {
+            const change_result = await model_change(checkpoint, extra_script === NATIVE_OUTPAINT_SCRIPT).catch(err => {
                 console.log(err)
             })
     
@@ -336,7 +347,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         }
 
         // if cached_model[0] is inpaint model, force change to the main model
-        if (cached_model[0].includes('_inpaint')) {
+        if (cached_model[0].includes('_inpaint') && extra_script !== NATIVE_OUTPAINT_SCRIPT) {
             interaction.channel.send(`Active model is inpaint model, changing to main model`)
             const main_model = model_selection_inpaint.find(x => x.inpaint === cached_model[0])?.value || cached_model[0]
             const change_result = await model_change(main_model, true).catch(err => 
@@ -477,6 +488,50 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
 
         // end forced config
 
+        // Tiled refinement uses Forge's native Latent Upscale resize mode. Apply
+        // the multiplier after the base-size cap so progress/cooldown/workload
+        // metadata all describe the actual output dimensions.
+        let tiled_upscale_prepared = null
+        if (extra_script === TILED_UPSCALE_SCRIPT) {
+            if (!upscale_config) {
+                interaction.editReply({ content: "Tiled Latent Upscale config is not set, please set it first using /wd_script_upscale"});
+                return
+            }
+            try {
+                tiled_upscale_prepared = prepare_tiled_upscale({
+                    model: cached_model[0],
+                    width: width,
+                    height: height,
+                    config: upscale_config,
+                })
+            }
+            catch (err) {
+                interaction.editReply({ content: err.message });
+                return
+            }
+            width = tiled_upscale_prepared.width
+            height = tiled_upscale_prepared.height
+        }
+
+        let native_outpaint_prepared = null
+        if (extra_script === NATIVE_OUTPAINT_SCRIPT) {
+            if (!outpaint_config) {
+                await interaction.editReply({ content: 'Outpaint config is not set, please set it first using /wd_script_outpaint' })
+                return
+            }
+            try {
+                native_outpaint_prepared = await prepare_native_outpaint({
+                    model: cached_model[0], width, height, config: outpaint_config, image: attachment,
+                })
+                width = native_outpaint_prepared.width
+                height = native_outpaint_prepared.height
+            }
+            catch (err) {
+                await interaction.editReply({ content: err.message })
+                return
+            }
+        }
+
         let server_index = get_worker_server(force_server_selection)
 
 		if (server_index === -1) {
@@ -540,7 +595,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
 
         prompt = get_prompt(prompt, remove_nsfw_restriction, cached_model[0])
 
-        const is_xl = model_selection_xl.find(x => x.value === cached_model[0]) != null
+        const is_xl = model_selection_xl.find(x => x.value === cached_model[0]) != null || native_outpaint_prepared?.family === 'xl' || tiled_upscale_prepared?.family === 'xl'
         const is_flux = model_selection_flux.find(x => x.value === cached_model[0]) != null
         const is_sd15 = model_selection.find(x => x.value === cached_model[0]) != null
         // Extract DAAM tokens from [DEBUG]#token# syntax and clean prompt
@@ -577,40 +632,18 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         // load extra script
         let outpaint_config_obj = null
         let upscale_config_obj = null
-        if (extra_script === 'Outpainting mk2') {
-            if (!outpaint_config) {
-                interaction.editReply({ content: "Outpainting config is not set, please set it first using /wd_script_outpaint"});
-                return
-            }
-
-            // parse the config string
-            try {
-                outpaint_config_obj = JSON.parse(outpaint_config)
-            }
-            catch (err) {
-                interaction.editReply({ content: "Failed to parse Outpainting config"});
-                return
-            }
-
-            interaction.channel.send('Outpainting mk2 script loaded')
+        if (extra_script === NATIVE_OUTPAINT_SCRIPT) {
+            outpaint_config_obj = native_outpaint_prepared.config
+            await interaction.channel.send(`Native Outpaint loaded (${width}x${height}, masked margins with edge blending)`)
         }
-        else if (extra_script === 'Ultimate SD upscale') {
-            if (!upscale_config) {
-                interaction.editReply({ content: "Upscale config is not set, please set it first using /wd_script_upscale"});
-                return
-            }
-            //console.log(upscale_config)
-            // parse the config string
-            try {
-                upscale_config_obj = JSON.parse(upscale_config)
-            }
-            catch (err) {
-                //console.log(err)
-                interaction.editReply({ content: "Failed to parse Upscale config"});
+        else if (extra_script === TILED_UPSCALE_SCRIPT) {
+            if (!tiled_upscale_prepared) {
+                interaction.editReply({ content: "Tiled Latent Upscale config is not set, please set it first using /wd_script_upscale"});
                 return
             }
 
-            interaction.channel.send('Ultimate SD upscale script loaded')
+            upscale_config_obj = tiled_upscale_prepared.config
+            interaction.channel.send(`Tiled Latent Upscale loaded (${width}x${height}, ${upscale_config_obj.method}, tiles ${upscale_config_obj.tile_width}x${upscale_config_obj.tile_height}, overlap ${upscale_config_obj.tile_overlap})`)
         }
         else if (extra_script === 'Flux Outpaint') {
             if (!outpaint_config) {
@@ -669,7 +702,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             return
         }
 
-        if (extra_config.coupler_config && (height % 64 !== 0 || width % 64 !== 0)) {
+        if (!native_outpaint_prepared && extra_config.coupler_config && (height % 64 !== 0 || width % 64 !== 0)) {
             interaction.channel.send('Coupler detected, changing resolution to multiple of 64')
             height = Math.ceil(height / 64) * 64
             width = Math.ceil(width / 64) * 64
@@ -732,12 +765,30 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             }
         }
     
+        let outpaint_image_path = null
+        let outpaint_mask_path = null
+        if (native_outpaint_prepared) {
+            if (extra_config.coupler_config) {
+                await interaction.editReply({ content: 'Native Outpaint cannot combine with Coupler regions. Remove the Coupler tags and try again.' })
+                return
+            }
+            try {
+                // Sequential uploads avoid Gradio racing two files named image.png.
+                outpaint_image_path = await uploadPngBufferToGradio(native_outpaint_prepared.canvas, session_hash, WORKER_ENDPOINT)
+                outpaint_mask_path = await uploadPngBufferToGradio(native_outpaint_prepared.mask, session_hash, WORKER_ENDPOINT)
+            }
+            catch (err) {
+                await interaction.editReply({ content: 'Failed to upload the Native Outpaint image or mask: ' + err.message })
+                return
+            }
+        }
+
         const create_data = get_data_body_img2img(server_index, prompt, neg_prompt, sampling_step, cfg_scale,
             seed, sampler, scheduler, session_hash, height, width, attachment, null, denoising_strength, /*img2img mode*/ 0, 4, "original", upscaler, 
             false, extra_config.coupler_config, extra_config.color_grading_config, clip_skip, is_censor,
             extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config, "Whole picture", 32, 
-            override_neg_prompt ? false : true, extra_config.use_booru_gen, booru_gen_config_obj, cached_model[0], null, null, colorbalance_config_obj, usersetting, 
-            outpaint_config, upscale_config, extra_script, extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config_obj,
+            override_neg_prompt ? false : true, extra_config.use_booru_gen, booru_gen_config_obj, cached_model[0], outpaint_image_path, outpaint_mask_path, colorbalance_config_obj, usersetting,
+            outpaint_config_obj, upscale_config_obj, extra_script, extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config_obj,
             extra_config.mahiro_config, extra_config.teacache_config, extra_config.modulation_config, daam_config)
 
         // make option_init but for axios
@@ -751,7 +802,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                 headers: workloadHeaders('sdwebui', forgeWorkload({
                     taskKind: 'img2img', checkpoint: cached_model[0], width, height,
                     upscaleMultiplier: 1, useAdetailer: false,
-                    tiledVae: width * height > 3000000,
+                    tiledVae: width * height > 3000000 || !!tiled_upscale_prepared,
                     features: { extra_script: extra_script !== 'None' },
                 }), SD_HEADERS),
                 timeout: 900000

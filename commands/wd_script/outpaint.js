@@ -1,13 +1,7 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { clamp, truncate, try_parse_json_and_return_formated_string } = require('../../utils/common_helper');
+const { truncate, try_parse_json_and_return_formated_string } = require('../../utils/common_helper');
+const { normalize_outpaint_config } = require('../../utils/forge_outpaint');
 
-
-// outpaint_config?.size || 128,       // outpainting mk2
-// outpaint_config?.mask_blur || 8,
-// // parse direction string "LRUD" (in any order, any case) to array ["left", "right", "up", "down"]
-// outpaint_config?.direction || ["left", "right", "up", "down"],
-// outpaint_config?.falloff_exp || 1,
-// outpaint_config?.color_var || 0.05,
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -27,39 +21,35 @@ module.exports = {
                 .setDescription('Setup the img2img outpaint script setting, will persist through generation')
                 .addIntegerOption(option =>
                     option.setName('size')
-                        .setDescription('Output image size (0-256, default is 128)')
+                        .setDescription('Padding per selected side, snapped up to 8px (0-512, default is 128)')
                         .setRequired(false))
                 .addIntegerOption(option =>
                     option.setName('mask_blur')
-                        .setDescription('Mask blur (0-64, default is 24)')
+                        .setDescription('Mask blur (0-64, default is 32)')
+                        .setRequired(false))
+                .addIntegerOption(option =>
+                    option.setName('overlap')
+                        .setDescription('Repaint this many pixels inside expanded source edges, snapped up to 8px (0-256, default is 64)')
                         .setRequired(false))
                 .addStringOption(option =>
                     option.setName('direction')
                         .setDescription('Outpaint direction (default is LRUD, left right up down, case insensitive)')
                         .setRequired(false))
-                .addNumberOption(option =>
-                    option.setName('falloff_exp')
-                        .setDescription('Falloff exponent (0-4, default is 1)')
-                        .setRequired(false))
-                .addNumberOption(option =>
-                    option.setName('color_var')
-                        .setDescription('Color variance (0-1, default is 0.05)')
-                        .setRequired(false))
                 .addIntegerOption(option =>
                     option.setName('top')
-                        .setDescription('[Flux only] Override top size (0-512, default is 0 -> use size)')
+                        .setDescription('Override selected top padding (0-512, default 0 uses size)')
                         .setRequired(false))
                 .addIntegerOption(option =>
                     option.setName('bottom')
-                        .setDescription('[Flux only] Override bottom size (0-512, default is 0 -> use size)')
+                        .setDescription('Override selected bottom padding (0-512, default 0 uses size)')
                         .setRequired(false))
                 .addIntegerOption(option =>
                     option.setName('left')
-                        .setDescription('[Flux only] Override left size (0-512, default is 0 -> use size)')
+                        .setDescription('Override selected left padding (0-512, default 0 uses size)')
                         .setRequired(false))
                 .addIntegerOption(option =>
                     option.setName('right')
-                        .setDescription('[Flux only] Override right size (0-512, default is 0 -> use size)')
+                        .setDescription('Override selected right padding (0-512, default 0 uses size)')
                         .setRequired(false))
                 )
 
@@ -83,40 +73,22 @@ module.exports = {
             return
         }
 
-        //parse the options
-        const size = clamp(interaction.options.getInteger('size') || 128, 0, 256)
-        const mask_blur = clamp(interaction.options.getInteger('mask_blur') || 24, 0, 64)
-        const direction = interaction.options.getString('direction') || "LRUD"
-        const falloff_exp = clamp(interaction.options.getNumber('falloff_exp') || 1, 0, 4)
-        const color_var = clamp(interaction.options.getNumber('color_var') || 0.05, 0, 1)
-        const top = clamp(interaction.options.getInteger('top') || 0, 0, 512)
-        const bottom = clamp(interaction.options.getInteger('bottom') || 0, 0, 512)
-        const left = clamp(interaction.options.getInteger('left') || 0, 0, 512)
-        const right = clamp(interaction.options.getInteger('right') || 0, 0, 512)
-
-        // check if direction is valid (contains any of "LRUD" in any order, any case)
-        if (!/^[LRUDlrud]+$/.test(direction)) {
-            await interaction.reply('Invalid direction string, should contain any of "LRUD" in any order, any case');
-            return
+        let config
+        try {
+            config = normalize_outpaint_config({
+                size: interaction.options.getInteger('size') ?? 128,
+                mask_blur: interaction.options.getInteger('mask_blur') ?? 32,
+                overlap: interaction.options.getInteger('overlap') ?? 64,
+                direction: interaction.options.getString('direction') ?? 'LRUD',
+                top: interaction.options.getInteger('top') ?? 0,
+                bottom: interaction.options.getInteger('bottom') ?? 0,
+                left: interaction.options.getInteger('left') ?? 0,
+                right: interaction.options.getInteger('right') ?? 0,
+            })
         }
-
-        //setup the config
-        const config = {
-            size: size,
-            mask_blur: mask_blur,
-            direction: direction.toLowerCase().split("").map((c) => {
-                if (c === "l") return "left"
-                if (c === "r") return "right"
-                if (c === "u") return "up"
-                if (c === "d") return "down"
-                return null
-            }).filter((c) => c !== null),
-            falloff_exp: falloff_exp,
-            color_var: color_var,
-            top: top,
-            bottom: bottom,
-            left: left,
-            right: right,
+        catch (err) {
+            await interaction.reply(err.message)
+            return
         }
 
         const config_string = JSON.stringify(config)
