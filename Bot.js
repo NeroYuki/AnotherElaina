@@ -136,6 +136,8 @@ client.on('interactionCreate', async interaction => {
         'wd_interrogate', 
         'wd_create_adv', 
         'wd_img2img_adv', 
+        'wd_ref2img',
+        'wd_ref2img_adv',
         'wd_upscale', 
         'wd_rembg',
     ]

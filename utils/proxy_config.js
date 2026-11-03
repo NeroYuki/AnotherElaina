@@ -31,7 +31,11 @@ const SERVICES = {
  * @returns {Object} merged headers including the routing header.
  */
 function serviceHeaders(service, extra = {}) {
-    return { ...extra, 'X-AI-Service': SERVICES[service] || service };
+    const resolved = SERVICES[service] || service;
+    // Forge's model, quicksettings and ControlNet state must share the same
+    // instance as inference; independently routed setup calls are not atomic.
+    const affinity = resolved === SERVICES.sdwebui ? { 'X-AI-Instance': 'forge-gpu0' } : {};
+    return { ...affinity, ...extra, 'X-AI-Service': resolved };
 }
 
 module.exports = {

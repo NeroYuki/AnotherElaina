@@ -1,12 +1,11 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
+const { MessageActionRow, MessageButton } = require('discord.js');
 const { byPassUser, censorGuildIds, optOutGuildIds } = require('../config.json');
 const crypt = require('crypto');
 const { server_pool, get_prompt, get_negative_prompt, get_worker_server, get_data_body_img2img, model_name_hash_mapping, model_selection_legacy, check_model_filename, model_selection, sampler_selection, model_selection_xl, model_selection_inpaint, model_selection_flux, scheduler_selection, sampler_to_comfy_name_mapping, scheduler_to_comfy_name_mapping } = require('../utils/ai_server_config.js');
-const { default: axios } = require('axios');
 const sharp = require('sharp');
 const { serviceHeaders } = require('../utils/proxy_config');
-const { forgeWorkload, workloadHeaders } = require('../utils/orchestrator_workload');
+const { forgeWorkload } = require('../utils/orchestrator_workload');
 const SD_HEADERS = serviceHeaders('sdwebui');
 const _nodeFetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 // Inject the sdwebui proxy routing header on every request in this command.
@@ -23,8 +22,16 @@ const { queryRecordLimit } = require('../database/database_interaction.js');
 const { load_profile } = require('../utils/profile_helper.js');
 const { clamp, parse_common_setting } = require('../utils/common_helper');
 const { get_model_family_defaults } = require('../utils/model_defaults');
+const { withForgeSession } = require('../utils/forge_session');
+const { withForgeImageModeCompat } = require('../utils/forge_image_command');
+const { runForgeImageJob, dataUriToBuffer } = require('../utils/forge_image_job');
+const { get_anima_inpaint_unit, is_anima_model } = require('../utils/anima_inpaint');
 const workflow_inpaint = require('../resources/flux_fill_inpaint.json')
 const ComfyClient = require('../utils/comfy_client');
+
+const normalize_model_name = value => typeof value === 'string'
+    ? value.trim().replaceAll('\\', '/').split('/').pop().toLowerCase()
+    : ''
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -540,7 +547,10 @@ module.exports = {
                             //console.log(mask_data_uri)
 
                             await unloadAllModel(session_hash)
-                            execute_inpaint()
+                            execute_inpaint().catch(err => {
+                                console.log(err)
+                                interaction.editReply({ content: 'Error while creating image: ' + err, components: [] }).catch(() => {})
+                            })
                         }
                     })
                 }
@@ -650,7 +660,10 @@ module.exports = {
                     })
             }
 
-            execute_inpaint()
+            execute_inpaint().catch(err => {
+                console.log(err)
+                interaction.editReply({ content: 'Error while creating image: ' + err, components: [] }).catch(() => {})
+            })
         }
         else {
             interaction.editReply({ content: "No mask image provided", ephemeral: true });
@@ -660,13 +673,42 @@ module.exports = {
         async function execute_inpaint() {
             interaction.editReply({ content: "Starting inpaint process, please wait..." });
 
+            const is_flux_prompt = prompt.startsWith('[FLUX]');
+            await sync_active_model();
+            let frozen_model = checkpoint || cached_model[0];
+            const frozen_was_active = normalize_model_name(cached_model[0]) === normalize_model_name(frozen_model);
+            let mapped_inpaint = null;
+            if (!is_flux_prompt && checkpoint) {
+                mapped_inpaint = model_selection_inpaint.find(x => x.value === checkpoint) || null;
+                if (mapped_inpaint) frozen_model = mapped_inpaint.inpaint;
+            }
+
+            // Prompt enrichment is an LLM call; keep it outside the Forge lease.
+            try {
+                const { enrichImagePrompts } = require('../utils/image_prompt');
+                const enrichment = await enrichImagePrompts({
+                    prompt,
+                    model: frozen_model,
+                    count: 1,
+                    settings: usersetting,
+                    workflow: 'inpaint',
+                    images: [dataUriToBuffer(attachment)].filter(Boolean),
+                    onProgress: message => interaction.editReply({ content: message }).catch(() => {}),
+                });
+                prompt = enrichment.prompts[0];
+            }
+            catch (err) {
+                await interaction.editReply({ content: 'Image prompt enrichment failed: ' + err.message }).catch(() => {});
+                return;
+            }
+
             // if prompt start with [FLUX], use flux inpaint workflow
             if (prompt.startsWith('[FLUX]')) {
                 prompt = prompt.replace('[FLUX]', '').trim()
                 // remove the teacache config from the prompt
                 const teacache_check = get_teacache_config_from_prompt(prompt, false)
 
-                attachment_buffer = await loadImage(attachment_option.proxyURL,
+                const attachment_buffer = await loadImage(attachment_option.proxyURL,
                     /*getBuffer:*/ true).catch((err) => {
                     console.log("Failed to retrieve image from discord", err)
                     return
@@ -696,515 +738,325 @@ module.exports = {
 
                 return
             }
-    
+
             let controlnet_input_2 = controlnet_input_option_2 ? await loadImage(controlnet_input_option_2.proxyURL,
                 /*getBuffer:*/ false, /*noDataURIHeader*/ false, /*safeMode*/ true).catch((err) => {
                 console.log(err)
                 interaction.reply({ content: "Failed to retrieve control net image 2", ephemeral: true });
+                return null
             }) : null
-    
+
             let controlnet_input_3 = controlnet_input_option_3 ? await loadImage(controlnet_input_option_3.proxyURL,
                 /*getBuffer:*/ false, /*noDataURIHeader*/ false, /*safeMode*/ true).catch((err) => {
                 console.log(err)
                 interaction.reply({ content: "Failed to retrieve control net image 3", ephemeral: true });
+                return null
             }) : null
-    
-    
-            if (checkpoint) {
-                const inpaint_model = model_selection_inpaint.find(x => x.value === checkpoint)
-                if (!inpaint_model) {
-                    await interaction.channel.send('Inpaint model not found, keep using normal model')
-                }
-                else {
-                    await interaction.channel.send(`Try to switch to inpaint model: **${check_model_filename(inpaint_model.inpaint)}**`)
-                    checkpoint = inpaint_model.inpaint
-                }
 
-                const change_result = await model_change(checkpoint, inpaint_model ? true : false).catch(err => {
-                    console.log(err)
-                })
-        
-                if (!change_result) {
-                    await interaction.channel.send(`Model is not cached or model change failed, fallback to to **${check_model_filename(cached_model[0])}**
-    currently cached models: ${cached_model.map(x => check_model_filename(x)).join(', ')}`)
-                }
-                else {
-                    await interaction.channel.send(`Active model changed to **${check_model_filename(checkpoint)}**
-    currently cached models: ${cached_model.map(x => check_model_filename(x)).join(', ')}`)
-                }
-            }
-    
-            let server_index = get_worker_server(force_server_selection)
-    
-            if (server_index === -1) {
-                await interaction.editReply({ content: "No server is available, please try again later"});
-                return
-            }
-    
-            // TODO: add progress ping
-            let current_preview_id = 0
-            
-            let isDone = false
-            let isCancelled = false
-            let progress_ping_delay = 2000
-            const is_xl = model_selection_xl.find(x => x.value === cached_model[0]) != null || model_selection_inpaint.find(x => x.inpaint === cached_model[0]) != null
-            const is_flux = model_selection_flux.find(x => x.value === cached_model[0]) != null
-            const is_vpred = cached_model[0].includes('vpred')
-
-            // Apply family defaults when user and profile did not explicitly set the values
-            const family_def_inp = get_model_family_defaults(cached_model[0], 'i2i')
-            if (family_def_inp) {
-                if (!user_sampler && !profile?.sampler && family_def_inp.sampler)
-                    sampler = family_def_inp.sampler
-                if (!user_scheduler && !profile?.scheduler && family_def_inp.scheduler)
-                    scheduler = family_def_inp.scheduler
-                if (user_step === null && !profile?.sampling_step && family_def_inp.step !== null)
-                    sampling_step = family_def_inp.step
-                if (cfg_scale !== 1 && user_cfg === null && !profile?.cfg_scale) {
-                    const f_cfg = family_def_inp.cfg !== 1 ? (family_def_inp.cfg ?? 1) : family_def_inp.dcfg
-                    if (f_cfg !== null) cfg_scale = f_cfg
-                }
-            }
-
-            if (is_vpred) {
-                await interaction.channel.send(`:information_source: This model is using v-prediction method, which may not be compatible with every setting of the command`);
-            }
-    
-            // override controlnet_config[0] with config exclusively for inpainting
-            let controlnet_config_obj = {
-                control_net: [
-                    {
-                        model: is_xl ? "controlnet_inpaint" : "None",
-                        preprocessor: controlnet_preprocessor_override ?? 'fill',
-                        type: (controlnet_preprocessor_override ?? 'fill').includes('inpaint') ? "Inpaint" : "All",
-                        weight: 1,
-                        mode: "My prompt is more important",
-                        resolution: is_xl ? 768 : 512,
-                        t_a: 32,
-                        t_b: 200
-                    },
-                    {
-                        model: "None",
-                        preprocessor: "None",
-                        type: "All",
-                        weight: 1,
-                        mode: "Balanced",
-                        resolution: 512,
-                        t_a: 100,
-                        t_b: 200
-                    },
-                    {
-                        model: "None",
-                        preprocessor: "None",
-                        type: "All",
-                        weight: 1,
-                        mode: "Balanced",
-                        resolution: 512,
-                        t_a: 100,
-                        t_b: 200
-                    }
-                ],
-                do_preview_annotation: false
-            }
-
-            // try to parse controlnet_config and replace [1] and [2] with the parsed config if exists
-            if (controlnet_config && !is_flux) {
-                try {
-                    const controlnet_config_obj_import = JSON.parse(controlnet_config)
-
-                    if (controlnet_config_obj_import.control_net[0] && controlnet_config_obj_import.control_net[0].model === "controlnet_inpaint") {
-                        controlnet_config_obj.control_net[0].preprocessor = controlnet_config_obj_import.control_net[0].preprocessor || controlnet_config_obj.control_net[0].preprocessor
-                        controlnet_config_obj.control_net[0].weight = controlnet_config_obj_import.control_net[0].weight || controlnet_config_obj.control_net[0].weight
-                        controlnet_config_obj.control_net[0].type = controlnet_config_obj_import.control_net[0].type || controlnet_config_obj.control_net[0].type
-                        controlnet_config_obj.control_net[0].mode = controlnet_config_obj_import.control_net[0].mode || controlnet_config_obj.control_net[0].mode
-                        controlnet_config_obj.control_net[0].resolution = controlnet_config_obj_import.control_net[0].resolution || controlnet_config_obj.control_net[0].resolution
-                        controlnet_config_obj.control_net[0].t_a = controlnet_config_obj_import.control_net[0].t_a || controlnet_config_obj.control_net[0].t_a
-                        controlnet_config_obj.control_net[0].t_b = controlnet_config_obj_import.control_net[0].t_b || controlnet_config_obj.control_net[0].t_b
-
-                        interaction.channel.send('dedicated controlnet config (from command/profile) or inpaint-specific config detected, overriding first controlnet config')
-                    }
-                    controlnet_config_obj.control_net[1] = controlnet_config_obj_import.control_net[1] || controlnet_config_obj.control_net[1]
-                    controlnet_config_obj.control_net[2] = controlnet_config_obj_import.control_net[2] || controlnet_config_obj.control_net[2]
-                }
-                catch (err) {
-                    console.log(err)
-                    interaction.channel.send({ content: "Failed to parse controlnet config:" + err });
-                }
-            }
-            
-            await load_controlnet(session_hash, server_index, attachment, controlnet_input_2, controlnet_input_3, JSON.stringify(controlnet_config_obj), interaction, 1, mask_data_uri, should_mask_control, {
-                width: width,
-                height: height,
-            })
-                .catch(err => {
-                    console.log(err)
-                    interaction.editReply({ content: "Failed to load control net:" + err });
-                });
-    
-            const row = new MessageActionRow()
-                    .addComponents(
-                        new MessageButton()
-                            .setCustomId('cancel_inpaint_' + interaction.id)
-                            .setLabel('Cancel')
-                            .setStyle('DANGER'),
-                    );
-    
-            const filter = i => i.customId === 'cancel_inpaint_' + interaction.id && i.user.id === interaction.user.id;
-    
-            const collector = interaction.channel.createMessageComponentCollector({ filter, time: 800000 });
-    
-            collector.on('collect', async i => {
-                isCancelled = true
-                i.deferUpdate();
-                collector.stop()
-    
-                // attempt to stop the generating
-                const option_cancel = {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        fn_index: server_pool[server_index].fn_index_abort,
-                        session_hash: session_hash,
-                        data: []
-                    })
-                }
-    
-                fetch(`${WORKER_ENDPOINT}/run/predict/`, option_cancel)
-    
-                try {
-                    i.message.delete()
-                    throw "Cancelled"
-                }
-                catch (err) {
-                    console.log(err)
-                }
-            });
-    
-            // TODO: remove button after collector period has ended
-    
-            // DEBUG: convert mask_uri to png and spit it out
-    
-            // const mask_uri = sharp_mask_data_uri
-            // await sharp(Buffer.from(mask_uri.replace(/^data:image\/\w+;base64,/, ""), 'base64'))
-            //     .toFormat('png')
-            //     .toBuffer()
-            //     .then(data => {
-            //         interaction.editReply({ content: "Debug mask conversion", files: [{attachment: data, name: "debug_mask.png"}] })
-            //     })
-            //     .catch(err => {
-            //         console.log(err)
-            //         return ""
-            //     })
-    
-            // return 
-    
-            const default_neg_prompt_comp = default_neg_prompt.split('_')
-            const override_neg_prompt = default_neg_prompt_comp[0] === 'n'
-            const remove_nsfw_restriction = default_neg_prompt_comp[1] === 'nsfw'
-            let extra_config = null
-    
-            neg_prompt = get_negative_prompt(neg_prompt, override_neg_prompt, remove_nsfw_restriction, cached_model[0])
-    
-            prompt = get_prompt(prompt, remove_nsfw_restriction, cached_model[0])
-
-            extra_config = full_prompt_analyze(prompt, is_xl)
-            prompt = extra_config.prompt
-            prompt = await fetch_user_defined_wildcard(prompt, interaction.user.id)
-    
-            if (extra_config.coupler_config && (height % 64 !== 0 || width % 64 !== 0)) {
-                interaction.channel.send('Coupler detected, changing resolution to multiple of 64')
-                height = Math.ceil(height / 64) * 64
-                width = Math.ceil(width / 64) * 64
-            }
-    
-            if (extra_config.coupler_config && extra_config.coupler_config.mode === 'Advanced') {
-                preview_coupler_setting(interaction, width, height, extra_config, server_pool[server_index].fn_index_coupler_region_preview[1], session_hash)
-            }
-    
-            const is_censor = ((interaction.guildId && censorGuildIds.includes(interaction.guildId)) || (interaction.channel && !interaction.channel.nsfw && !optOutGuildIds.includes(interaction.guildId))) ? true : false
-
-            let mask_padding = 32
-            if (mask_increase_padding && !segment_anything_prompt && inpaint_area === 'Only masked') {
-                interaction.channel.send("Expand mask padding setting will be applied to uploaded mask")
-                mask_padding = mask_increase_padding
-            }
-
-            if (extra_config.use_foocus) {
-                interaction.channel.send('Enhancing image with Foocus prompt expansion engine.')
-            }
-            if (extra_config.use_booru_gen) {
-                interaction.channel.send('Enhancing image with BooruGen prompt expansion engine.')
-            }
-            if (extra_config.tipo_input) {
-                interaction.channel.send('Enhancing image with TIPO input expansion engine.')
-            }
-            let booru_gen_config_obj = null
-            if (booru_gen_config) {
-                // try parse the config string
-                try {
-                    booru_gen_config_obj = JSON.parse(booru_gen_config)
-                    interaction.channel.send('Applying BooruGen config')
-                }
-                catch (err) {
-                    interaction.channel.send("Failed to parse BooruGen config")
-                    return
-                }
-            }
-            let colorbalance_config_obj = null
-            if (colorbalance_config) {
-                // try parse the config string
-                try {
-                    colorbalance_config_obj = JSON.parse(colorbalance_config)
-                    interaction.channel.send('Applying color balance to the vectorscope plugin')
-                }
-                catch (err) {
-                    interaction.channel.send("Failed to parse ColorBalance config")
-                    return
-                }
-            }
-            let latentmod_config_obj = null
-            if (latentmod_config) {
-                // try parse the config string
-                try {
-                    latentmod_config_obj = JSON.parse(latentmod_config)
-                    interaction.channel.send('Applying Latent Modifier config')
-                }
-                catch (err) {
-                    interaction.channel.send("Failed to parse Latent Modifier config")
-                    return
-                }
-            }
-
-            // Set default latentmod config for vpred models if not already set
-            if (cached_model[0].toLowerCase().includes('vpred') && !latentmod_config_obj) {
-                latentmod_config_obj = {
-                    mode: 'simple',
-                    rescale_cfg_phi: 0.5,
-                }
-            }
-        
-            const create_data = get_data_body_img2img(server_index, prompt, neg_prompt, sampling_step, cfg_scale,
-                seed, sampler, scheduler, session_hash, height, width, attachment, mask_data_uri, denoising_strength, 4, mask_blur, mask_content, "None", false, 
-                extra_config.coupler_config, extra_config.color_grading_config, 1, is_censor, extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config,
-                inpaint_area, mask_padding, extra_config.use_foocus, extra_config.use_booru_gen, booru_gen_config_obj, cached_model[0], attachment_upload_path, mask_upload_path, 
-                colorbalance_config_obj, usersetting, null, null, "None", extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config_obj,
-                extra_config.mahiro_config, extra_config.teacache_config, extra_config.modulation_config)
-    
-            // make option_init but for axios
-            const option_init_axios = {
-                data: {
-                    fn_index: server_pool[server_index].fn_index_img2img,
-                    session_hash: session_hash,
-                    data: create_data
-                },
-                config: {
-                    headers: workloadHeaders('sdwebui', forgeWorkload({
-                        taskKind: 'inpaint', checkpoint: cached_model[0], width, height,
-                        tiledVae: width * height > 3000000,
-                        features: { inpaint_area },
-                    }), SD_HEADERS),
-                    timeout: 900000
-                }
-            }
-    
-            const option_progress = {
-                method: 'POST',
-                body: JSON.stringify({
-                    id_task: `task(${session_hash})`,
-                    id_live_preview: current_preview_id,
-                }),
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            }
-    
-            console.log(`requesting: ${WORKER_ENDPOINT}/run/predict/`)
-    
-            function updateInteractionReply(data, state = 'queued') {
-                return new Promise(async (resolve, reject) => {
-                    let embeded = null
-                    if (state === 'completed') {
-                        embeded = new MessageEmbed()
-                            .setColor('#22ff77')
-                            .setTitle('Output')
-                            .setDescription(`Here you go. Generated in ${data.duration.toFixed(2)} seconds.`)
-                            .addField('Random seed', data.seed, true)
-                            .addField('Model used', `${data.model_name || "Unknown Model"} (${data.model})`, true)
-                            .setImage(`attachment://${data.img_name}`)
-                            .setFooter({text: `Putting ${Array("my RTX 3090 Ti","plub's RTX 3070")[0]} to good use!`});
-                    }
-                    else if (state === 'progress') {
-                        embeded = new MessageEmbed()
-                            .setColor('#ffff00')
-                            .setTitle('Progress')
-                            .setDescription(`Image creation in progress`)
-                            .addField('Progress (ETA)', `${(data.progress * 100).toFixed(2)}% (${(data.eta || 0).toFixed(2)}s)`)
-                            .setFooter({text: "Working on it..."});
-    
-                        if (data.img) {
-                            embeded.setImage(`attachment://${data.img_name}`)
-                        }
-                    }
-                    else if (state === 'queued') {
-                        embeded = new MessageEmbed()
-                            .setColor('#444444')
-                            .setTitle('Queueing')
-                            .setDescription('Waiting for the previous creation to be done')
-                            .setFooter({text: 'Imagine not having a 4090 instead kekw'})
-                    }
-    
-                    if (embeded) {
-                        const reply_content = {embeds: [embeded], components: [row]}
-                        if (data.img) {
-                            reply_content.files = [{attachment: data.img, name: data.img_name}]
-                        }
-
-                        // if completed, only allow edit if the state is completed
-                        if ((state === 'progress' || state === 'queued') && (isDone || isCancelled)) {
-                            resolve()
-                            return
-                        }
-
-                        await interaction.editReply(reply_content)
-                            .catch(err => {
-                                console.log(err)
-                                reject('Error while updating interaction reply')
-                            })
-    
-                        resolve()
-                    }
-                    else {
-                        reject('Attempted to send empty embeded message')
-                    }
-                })
-            }
-    
-            function fetch_progress() {
-                setTimeout(async () => {
-                    if (isDone || isCancelled) return
-                    try {
-                        await fetch(`${WORKER_ENDPOINT}/internal/progress`, option_progress)
-                            .then(async (res) => res.json())
-                            .then(async (progress_res_obj) => {
-                                if (progress_res_obj.completed) return
-                                if (progress_res_obj.queued) {
-                                    await updateInteractionReply({}, 'queued').catch(err => {
-                                        console.log(err)
-                                    })
-                                    return
-                                }
-                                current_preview_id = progress_res_obj.id_live_preview
-                                const img_dataURI = progress_res_obj.live_preview
-    
-                                await updateInteractionReply({
-                                    img: img_dataURI ? Buffer.from(img_dataURI.split(",")[1], 'base64') : null,
-                                    img_name: 'progress_img.png',
-                                    progress: progress_res_obj.progress,
-                                    eta: progress_res_obj.eta
-                                }, 'progress').catch(err => {
-                                    console.log(err)
-                                })
-                            })
-                            .catch(err => {
-                                throw err
-                            })
-                    }
-                    catch (err) {
-                        console.log(err)
-                    }
-                    finally {
-                        progress_ping_delay += 500
-                        fetch_progress()
-                    }
-                }, progress_ping_delay);
-            }
-    
             try {
-                // initiate the request for image, this fucker refuse to be caught unless put into synchronous by await
-                // setTimeout of 1 second before start progress fetching due to this weird behaviour
-                setTimeout(() => fetch_progress(), 1000)
-    
-                await axios.post(`${WORKER_ENDPOINT}/run/predict/`, option_init_axios.data, option_init_axios.config )
-                    .then((res) => {
-                        if (res.status !== 200) {
-                            throw 'Server can be reached but returned non-200 status'
+                return await withForgeSession(async () => {
+                    await sync_active_model()
+
+                    let target_checkpoint = checkpoint
+                    let force = false
+                    if (checkpoint) {
+                        target_checkpoint = mapped_inpaint ? mapped_inpaint.inpaint : checkpoint
+                        force = !!mapped_inpaint
+                    }
+
+                    if (target_checkpoint) {
+                        if (mapped_inpaint) {
+                            await interaction.channel.send(`Try to switch to inpaint model: **${check_model_filename(mapped_inpaint.inpaint)}**`)
                         }
-                        return res.data
-                    }) // fuck node fetch, all my homies use axios
-                    .then(async (final_res_obj) => {
-                        if (final_res_obj.data) {
-                            // if server index == 0, get local image directory, else initiate request to get image from server
-                            let img_buffer = null
-                            const file_dir = final_res_obj.data[0].value[0]?.image.path
-                            console.log(final_res_obj.data)
-                            if (!file_dir) {
-                                // error from python server side, we bail
-                                throw 'Request return no image'
-                            }
-                            // all server is now remote
-                            // retry fetch before throwing
-                            let fetch_final_retry_count = 0
-                            let img_res = null
-                            while (fetch_final_retry_count < 3 && !img_res) {
-                                img_res = await fetch(`${WORKER_ENDPOINT}/file=${file_dir}`).catch(err => {
-                                    console.log('Error while fetching image on remote server, retrying...')
-                                })
-                                fetch_final_retry_count++
-                                // wait for 2 seconds before retry
-                                await new Promise(resolve => setTimeout(resolve, 2000))
-                            }
-                            if (!img_res) {
-                                throw 'Error while fetching image on remote server'
-                            }
-    
-                            if (img_res && img_res.status === 200) {
-                                img_buffer = Buffer.from(await img_res.arrayBuffer())
-                            }
-    
-                            // attempt to get the image seed (-1 if failed to do so)
-                            const seed = JSON.parse(final_res_obj.data[2] || JSON.stringify({seed: -1})).seed.toString()
-                            const model_hash = JSON.parse(final_res_obj.data[2] || JSON.stringify({sd_model_hash: "-"})).sd_model_hash
-                            const model_name = JSON.parse(final_res_obj.data[2] || JSON.stringify({sd_model_name: "-"})).sd_model_name
-                            console.log(final_res_obj.duration)
-                            //console.log(img_buffer, seed)
-    
-                            // wait for 2 seconds before updating the interaction reply to avoid race condition
-                            await new Promise(resolve => setTimeout(resolve, 2000))
-    
-                            // update the interaction reply
-                            await updateInteractionReply({
-                                img: img_buffer ? img_buffer : file_dir,
-                                img_name: 'img.png',
-                                seed: seed,
-                                model: model_hash,
-                                model_name: model_name,
-                                duration: final_res_obj.duration
-                            }, 'completed').catch(err => {
+                        else if (checkpoint) {
+                            await interaction.channel.send('Inpaint model not found, keep using normal model')
+                        }
+                        let change_result = await model_change(target_checkpoint, force).catch(err => {
+                            console.log(err)
+                            return false
+                        })
+                        if (!change_result && frozen_was_active && !force) {
+                            change_result = await model_change(target_checkpoint, true).catch(err => {
                                 console.log(err)
+                                return false
                             })
-    
-                            isDone = true
+                        }
+
+                        if (!change_result) {
+                            await interaction.channel.send(`Model is not cached or model change failed, fallback to **${check_model_filename(cached_model[0])}**
+    currently cached models: ${cached_model.map(x => check_model_filename(x)).join(', ')}`)
                         }
                         else {
-                            isCancelled = true
-                            throw 'Request return non-JSON data'
+                            await interaction.channel.send(`Active model changed to **${check_model_filename(target_checkpoint)}**
+    currently cached models: ${cached_model.map(x => check_model_filename(x)).join(', ')}`)
                         }
+                    }
+                    else if (normalize_model_name(cached_model[0]) !== normalize_model_name(frozen_model)) {
+                        const restored = await model_change(frozen_model, true).catch(err => {
+                            console.log(err)
+                            return false
+                        })
+                        if (!restored) {
+                            throw new Error(`The model **${frozen_model}** that was active before prompt enhancement could not be restored.`)
+                        }
+                        await interaction.channel.send(`Active model changed to **${check_model_filename(frozen_model)}**
+    currently cached models: ${cached_model.map(x => check_model_filename(x)).join(', ')}`)
+                    }
+
+                    let server_index = get_worker_server(force_server_selection)
+
+                    if (server_index === -1) {
+                        await interaction.editReply({ content: "No server is available, please try again later" });
+                        return
+                    }
+
+                    const is_xl = model_selection_xl.find(x => x.value === cached_model[0]) != null || model_selection_inpaint.find(x => x.inpaint === cached_model[0]) != null
+                    const is_flux = model_selection_flux.find(x => x.value === cached_model[0]) != null
+                    const is_vpred = cached_model[0].includes('vpred')
+
+                    // Apply family defaults when user and profile did not explicitly set the values
+                    const family_def_inp = get_model_family_defaults(cached_model[0], 'i2i')
+                    if (family_def_inp) {
+                        if (!user_sampler && !profile?.sampler && family_def_inp.sampler)
+                            sampler = family_def_inp.sampler
+                        if (!user_scheduler && !profile?.scheduler && family_def_inp.scheduler)
+                            scheduler = family_def_inp.scheduler
+                        if (user_step === null && !profile?.sampling_step && family_def_inp.step !== null)
+                            sampling_step = family_def_inp.step
+                        if (cfg_scale !== 1 && user_cfg === null && !profile?.cfg_scale) {
+                            const f_cfg = family_def_inp.cfg !== 1 ? (family_def_inp.cfg ?? 1) : family_def_inp.dcfg
+                            if (f_cfg !== null) cfg_scale = f_cfg
+                        }
+                    }
+
+                    if (is_vpred) {
+                        await interaction.channel.send(`:information_source: This model is using v-prediction method, which may not be compatible with every setting of the command`);
+                    }
+
+                    // override controlnet_config[0] with config exclusively for inpainting
+                    let controlnet_config_obj = {
+                        control_net: [
+                            {
+                                model: is_xl ? "controlnet_inpaint" : "None",
+                                preprocessor: controlnet_preprocessor_override ?? 'fill',
+                                type: (controlnet_preprocessor_override ?? 'fill').includes('inpaint') ? "Inpaint" : "All",
+                                weight: 1,
+                                mode: "My prompt is more important",
+                                resolution: is_xl ? 768 : 512,
+                                t_a: 32,
+                                t_b: 200
+                            },
+                            {
+                                model: "None",
+                                preprocessor: "None",
+                                type: "All",
+                                weight: 1,
+                                mode: "Balanced",
+                                resolution: 512,
+                                t_a: 100,
+                                t_b: 200
+                            },
+                            {
+                                model: "None",
+                                preprocessor: "None",
+                                type: "All",
+                                weight: 1,
+                                mode: "Balanced",
+                                resolution: 512,
+                                t_a: 100,
+                                t_b: 200
+                            }
+                        ],
+                        do_preview_annotation: false
+                    }
+
+                    // try to parse controlnet_config and replace [1] and [2] with the parsed config if exists
+                    let imported_controlnet = null
+                    if (controlnet_config && !is_flux) {
+                        try {
+                            imported_controlnet = JSON.parse(controlnet_config)
+                        }
+                        catch (err) {
+                            console.log(err)
+                            interaction.channel.send({ content: "Failed to parse controlnet config:" + err });
+                        }
+                    }
+
+                    if (is_anima_model(cached_model[0])) {
+                        try {
+                            const first_unit_override = imported_controlnet?.control_net?.[0]?.model === "controlnet_inpaint"
+                                ? imported_controlnet.control_net[0] : null
+                            controlnet_config_obj.control_net[0] = get_anima_inpaint_unit({
+                                model: cached_model[0],
+                                preprocessor_override: controlnet_preprocessor_override,
+                                overrides: first_unit_override,
+                            })
+                            if (imported_controlnet) {
+                                controlnet_config_obj.control_net[1] = imported_controlnet.control_net[1] || controlnet_config_obj.control_net[1]
+                                controlnet_config_obj.control_net[2] = imported_controlnet.control_net[2] || controlnet_config_obj.control_net[2]
+                            }
+                            interaction.channel.send('Using Anima inpaint ControlNet unit (inpaint_noobai, 1024)')
+                        }
+                        catch (err) {
+                            await interaction.editReply({ content: err.message })
+                            return
+                        }
+                    }
+                    else if (imported_controlnet) {
+                        if (imported_controlnet.control_net[0] && imported_controlnet.control_net[0].model === "controlnet_inpaint") {
+                            controlnet_config_obj.control_net[0].preprocessor = imported_controlnet.control_net[0].preprocessor || controlnet_config_obj.control_net[0].preprocessor
+                            controlnet_config_obj.control_net[0].weight = imported_controlnet.control_net[0].weight || controlnet_config_obj.control_net[0].weight
+                            controlnet_config_obj.control_net[0].type = imported_controlnet.control_net[0].type || controlnet_config_obj.control_net[0].type
+                            controlnet_config_obj.control_net[0].mode = imported_controlnet.control_net[0].mode || controlnet_config_obj.control_net[0].mode
+                            controlnet_config_obj.control_net[0].resolution = imported_controlnet.control_net[0].resolution || controlnet_config_obj.control_net[0].resolution
+                            controlnet_config_obj.control_net[0].t_a = imported_controlnet.control_net[0].t_a || controlnet_config_obj.control_net[0].t_a
+                            controlnet_config_obj.control_net[0].t_b = imported_controlnet.control_net[0].t_b || controlnet_config_obj.control_net[0].t_b
+
+                            interaction.channel.send('dedicated controlnet config (from command/profile) or inpaint-specific config detected, overriding first controlnet config')
+                        }
+                        controlnet_config_obj.control_net[1] = imported_controlnet.control_net[1] || controlnet_config_obj.control_net[1]
+                        controlnet_config_obj.control_net[2] = imported_controlnet.control_net[2] || controlnet_config_obj.control_net[2]
+                    }
+
+                    const WORKER_ENDPOINT = server_pool[server_index].url
+                    const mode_headers = serviceHeaders('sdwebui')
+
+                    return await withForgeImageModeCompat({
+                        model: cached_model[0],
+                        workflow: 'inpaint',
+                        session_hash: session_hash,
+                        endpoint: WORKER_ENDPOINT,
+                        headers: mode_headers,
+                    }, async () => {
+                        await load_controlnet(session_hash, server_index, attachment, controlnet_input_2, controlnet_input_3, JSON.stringify(controlnet_config_obj), interaction, 1, mask_data_uri, should_mask_control || is_anima_model(cached_model[0]), {
+                            width: width,
+                            height: height,
+                        })
+                            .catch(err => {
+                                console.log(err)
+                                interaction.editReply({ content: "Failed to load control net:" + err });
+                            });
+
+                        const default_neg_prompt_comp = default_neg_prompt.split('_')
+                        const override_neg_prompt = default_neg_prompt_comp[0] === 'n'
+                        const remove_nsfw_restriction = default_neg_prompt_comp[1] === 'nsfw'
+
+                        neg_prompt = get_negative_prompt(neg_prompt, override_neg_prompt, remove_nsfw_restriction, cached_model[0])
+                        prompt = get_prompt(prompt, remove_nsfw_restriction, cached_model[0])
+
+                        const extra_config = full_prompt_analyze(prompt, is_xl)
+                        prompt = extra_config.prompt
+                        prompt = await fetch_user_defined_wildcard(prompt, interaction.user.id)
+
+                        if (extra_config.coupler_config && (height % 64 !== 0 || width % 64 !== 0)) {
+                            interaction.channel.send('Coupler detected, changing resolution to multiple of 64')
+                            height = Math.ceil(height / 64) * 64
+                            width = Math.ceil(width / 64) * 64
+                        }
+
+                        if (extra_config.coupler_config && extra_config.coupler_config.mode === 'Advanced') {
+                            preview_coupler_setting(interaction, width, height, extra_config, server_pool[server_index].fn_index_coupler_region_preview[1], session_hash)
+                        }
+
+                        const is_censor = ((interaction.guildId && censorGuildIds.includes(interaction.guildId)) || (interaction.channel && !interaction.channel.nsfw && !optOutGuildIds.includes(interaction.guildId))) ? true : false
+
+                        let mask_padding = 32
+                        if (mask_increase_padding && !segment_anything_prompt && inpaint_area === 'Only masked') {
+                            interaction.channel.send("Expand mask padding setting will be applied to uploaded mask")
+                            mask_padding = mask_increase_padding
+                        }
+
+                        if (extra_config.use_foocus) {
+                            interaction.channel.send('Enhancing image with Foocus prompt expansion engine.')
+                        }
+                        if (extra_config.use_booru_gen) {
+                            interaction.channel.send('Enhancing image with BooruGen prompt expansion engine.')
+                        }
+                        if (extra_config.tipo_input) {
+                            interaction.channel.send('Enhancing image with TIPO input expansion engine.')
+                        }
+                        let booru_gen_config_obj = null
+                        if (booru_gen_config) {
+                            try {
+                                booru_gen_config_obj = JSON.parse(booru_gen_config)
+                                interaction.channel.send('Applying BooruGen config')
+                            }
+                            catch (err) {
+                                interaction.channel.send("Failed to parse BooruGen config")
+                                return
+                            }
+                        }
+                        let colorbalance_config_obj = null
+                        if (colorbalance_config) {
+                            try {
+                                colorbalance_config_obj = JSON.parse(colorbalance_config)
+                                interaction.channel.send('Applying color balance to the vectorscope plugin')
+                            }
+                            catch (err) {
+                                interaction.channel.send("Failed to parse ColorBalance config")
+                                return
+                            }
+                        }
+                        let latentmod_config_obj = null
+                        if (latentmod_config) {
+                            try {
+                                latentmod_config_obj = JSON.parse(latentmod_config)
+                                interaction.channel.send('Applying Latent Modifier config')
+                            }
+                            catch (err) {
+                                interaction.channel.send("Failed to parse Latent Modifier config")
+                                return
+                            }
+                        }
+
+                        // Set default latentmod config for vpred models if not already set
+                        if (cached_model[0].toLowerCase().includes('vpred') && !latentmod_config_obj) {
+                            latentmod_config_obj = {
+                                mode: 'simple',
+                                rescale_cfg_phi: 0.5,
+                            }
+                        }
+
+                        const create_data = get_data_body_img2img(server_index, prompt, neg_prompt, sampling_step, cfg_scale,
+                            seed, sampler, scheduler, session_hash, height, width, attachment, mask_data_uri, denoising_strength, 4, mask_blur, mask_content, "None", false,
+                            extra_config.coupler_config, extra_config.color_grading_config, 1, is_censor, extra_config.freeu_config, extra_config.dynamic_threshold_config, extra_config.pag_config,
+                            inpaint_area, mask_padding, extra_config.use_foocus, extra_config.use_booru_gen, booru_gen_config_obj, cached_model[0], attachment_upload_path, mask_upload_path,
+                            colorbalance_config_obj, usersetting, null, null, "None", extra_config.detail_daemon_config, extra_config.tipo_input, latentmod_config_obj,
+                            extra_config.mahiro_config, extra_config.teacache_config, extra_config.modulation_config)
+
+                        const workload = forgeWorkload({
+                            taskKind: 'inpaint', checkpoint: cached_model[0], width, height,
+                            tiledVae: width * height > 3000000,
+                            features: { inpaint_area },
+                        })
+
+                        return await runForgeImageJob({
+                            interaction,
+                            client,
+                            serverIndex: server_index,
+                            sessionHash: session_hash,
+                            endpoint: WORKER_ENDPOINT,
+                            fnIndex: server_pool[server_index].fn_index_img2img,
+                            abortFnIndex: server_pool[server_index].fn_index_abort,
+                            data: create_data,
+                            workload,
+                            customIdPrefix: 'cancel_inpaint_',
+                            title: 'Output',
+                            daamHeatmapCount: 0,
+                        })
                     })
-                    .catch(err => {
-                        isCancelled = true
-                        throw err
-                    });
+                })
             }
             catch (err) {
                 console.log(err)
                 try {
-                    await interaction.editReply({content: 'Error while creating image: ' + err, components: []})
+                    await interaction.editReply({ content: 'Error while creating image: ' + err, components: [] })
                 }
-                catch (err) {
-                    console.log('cannot send error to discord', err)
+                catch (reply_err) {
+                    console.log('cannot send error to discord', reply_err)
                 }
             }
         }
-
 
 
         client.cooldowns.set(interaction.user.id, true);

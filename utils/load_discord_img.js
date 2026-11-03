@@ -1,5 +1,6 @@
 const { default: axios } = require('axios');
 const sharp = require('sharp');
+const { randomUUID } = require('node:crypto');
 const { serviceHeaders } = require('./proxy_config');
 
 const SD_HEADERS = serviceHeaders('sdwebui');
@@ -116,7 +117,7 @@ function uploadPngBufferToGradio(buffer, session_hash, worker_endpoint) {
 
         // make form data to replicate the above
         const form_data = new FormData();
-        form_data.append('files', blob, 'image.png');
+        form_data.append('files', blob, `image_${randomUUID()}.png`);
 
         // upload to gradio (use multipart form data, Content-Type: <mime>, followed by the binary data)
         axios.post(`${worker_endpoint}/upload?upload_id=${session_hash}`, form_data, 

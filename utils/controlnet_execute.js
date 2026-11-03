@@ -14,6 +14,7 @@ const fetch = (url, options = {}) => _nodeFetch(url, {
     headers: { ...SD_HEADERS, ...(options.headers || {}) },
 });
 const { cached_model } = require('./model_change.js');
+const { is_anima_model, resolve_anima_controlnet_model, ANIMA_INPAINT_PREPROCESSOR } = require('./anima_inpaint.js');
 // const { loadImage } = require('../utils/load_discord_img');
 // const sharp = require('sharp');
 
@@ -78,7 +79,36 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
             }
         }
 
-        if (cached_model[0].includes("noobai")) {
+        if (is_anima_model(cached_model[0])) {
+            interaction.channel.send("Detected active Anima model, using Anima inpaint ControlNet mapping")
+            try {
+                controlnet_model = resolve_anima_controlnet_model(controlnet_model)
+                if (controlnet_input_2) controlnet_model_2 = resolve_anima_controlnet_model(controlnet_model_2)
+                if (controlnet_input_3) controlnet_model_3 = resolve_anima_controlnet_model(controlnet_model_3)
+
+                const enabled_units = []
+                if (controlnet_input && controlnet_model != "None")
+                    enabled_units.push({ name: 'first', preprocessor: controlnet_preprocessor })
+                if (controlnet_input_2 && controlnet_model_2 != "None")
+                    enabled_units.push({ name: 'second', preprocessor: controlnet_preprocessor_2 })
+                if (controlnet_input_3 && controlnet_model_3 != "None")
+                    enabled_units.push({ name: 'third', preprocessor: controlnet_preprocessor_3 })
+
+                const invalid_unit = enabled_units.find(unit => unit.preprocessor !== ANIMA_INPAINT_PREPROCESSOR)
+                if (invalid_unit) {
+                    throw new Error(
+                        `Anima inpaint ControlNet requires the "${ANIMA_INPAINT_PREPROCESSOR}" preprocessor ` +
+                        `for the ${invalid_unit.name} unit; "${invalid_unit.preprocessor}" is not compatible with ` +
+                        'animaLllite_006-inpainting. Use "inpaint_noobai" to black-fill the masked edit pixels.',
+                    )
+                }
+            }
+            catch (err) {
+                reject(err)
+                return
+            }
+        }
+        else if (cached_model[0].includes("noobai")) {
             interaction.channel.send("Detected active NoobAI model, translating specific controlnet model to NoobAI version")
             // inpaint -> NoobAI_Inpainting_ControlNet
             // ip-adapter -> noobIPAMARK1_mark1
@@ -134,9 +164,9 @@ function load_controlnet(session_hash, server_index, controlnet_input, controlne
         controlnet_preprocessor_3 = pick_instantid_preprocessor(controlnet_model_3, controlnet_preprocessor_3)
 
         // get controlnet request body
-        const controlnet_data = get_data_controlnet(controlnet_preprocessor, controlnet_model, controlnet_input, controlnet_weight || 1, controlnet_mode, controlnet_resolution, 0, 1, mask, controlnet_threshold_a, controlnet_threshold_b, controlnet_type ?? "All")
-        const controlnet_data_2 = get_data_controlnet(controlnet_preprocessor_2, controlnet_model_2, controlnet_input_2, controlnet_weight_2 || 1, controlnet_mode_2, controlnet_resolution_2, 0, 1, null, controlnet_threshold_a_2, controlnet_threshold_b_2, controlnet_type_2 ?? "All")
-        const controlnet_data_3 = get_data_controlnet(controlnet_preprocessor_3, controlnet_model_3, controlnet_input_3, controlnet_weight_3 || 1, controlnet_mode_3, controlnet_resolution_3, 0, 1, null, controlnet_threshold_a_3, controlnet_threshold_b_3, controlnet_type_3 ?? "All")
+        const controlnet_data = get_data_controlnet(controlnet_preprocessor, controlnet_model, controlnet_input, controlnet_weight ?? 1, controlnet_mode, controlnet_resolution, 0, 1, mask, controlnet_threshold_a, controlnet_threshold_b, controlnet_type ?? "All")
+        const controlnet_data_2 = get_data_controlnet(controlnet_preprocessor_2, controlnet_model_2, controlnet_input_2, controlnet_weight_2 ?? 1, controlnet_mode_2, controlnet_resolution_2, 0, 1, null, controlnet_threshold_a_2, controlnet_threshold_b_2, controlnet_type_2 ?? "All")
+        const controlnet_data_3 = get_data_controlnet(controlnet_preprocessor_3, controlnet_model_3, controlnet_input_3, controlnet_weight_3 ?? 1, controlnet_mode_3, controlnet_resolution_3, 0, 1, null, controlnet_threshold_a_3, controlnet_threshold_b_3, controlnet_type_3 ?? "All")
 
         
 
