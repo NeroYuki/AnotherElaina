@@ -108,6 +108,24 @@ The offload target is the normal `ModelPatcher.offload_device` (system RAM). The
 
 Note: Flux Fill in Forge-native img2img still hits a shape mismatch (`mat1 and mat2 shapes cannot be multiplied`) because Fill expects its masked/inpaint conditioning path. That is a model-semantics issue, not VRAM. The bot's Flux Fill usage remains the ComfyUI inpaint workflow; the Q8 filename was updated there.
 
+## MOSS layout prompts and Coupler conversion
+
+MOSS-Image accepts a JSON layout prompt with `summary.caption`, `items[].label/caption/bbox`, and `bbox_coord_space: "abs_centralized"` + `bbox_format: "yxyx"`. The bot mirrors Forge's built-in `sd_forge_json_builder` conversion, including the centered absolute coordinates, floor/ceil export precision, and parenthesis escaping.
+
+- `utils/moss_layout.js`: draft validation, MOSS compile/decompile, layout preview rendering (sharp/SVG), scaling, `<layout:name>` token parsing, and Forge Coupler Advanced conversion (`[x1,x2,y1,y2,weight]` normalized regions plus inline `|x1:x2,y1:y2,w|` prompt syntax).
+- `utils/layout_store.js`: per-user named layouts stored in `data/moss_layouts.json` (gitignored), with atomic writes.
+- `utils/layout_agent.js`: Qwen 27B (`Qwen3.8-27B-GGUF`, `UD-Q4_K_M`, `unsloth-gpu0`) layout planner with one automatic JSON-repair retry. It shares `queuePromptEnrichment` with the existing enhancers and unloads the model before image generation.
+- `utils/layout_prompt.js`: resolves `image_prompt_layout` (`off`/`auto`/`moss`/`coupler`) and expands saved `<layout:name>` tokens.
+- `commands/wd_layout_draft.js`: interactive draft preview with Adjust, Save, Coupler prompt, and Cancel. Adjustments are typed in the channel; Save returns a JSON file with the draft, compiled MOSS prompt, and Coupler prompt.
+
+Layout-aware planning is wired into `/wd_create` and `/wd_create_adv` through the new `image_prompt_layout` setting. MOSS receives the compiled JSON layout with the natural prompt appended; SD/SDXL models receive the equivalent Forge Coupler prompt. The setting is ignored for other families and for img2img/reference workflows, which keep plain prompt enhancement.
+
+Live smoke results:
+
+- Qwen 27B layout draft: 35.2 s for a 1024x1024 poster with a title and mountain.
+- MOSS SFT 512x512/36 steps with the compiled layout: 51.5 s. The preview rendered `EXPLORE` at the top and the mountain in the lower center as specified.
+- SDXL `pastelmix` 512x512/8 steps with the Coupler conversion: 27.9 s. The regions were applied, but SDXL's text rendering is inaccurate; MOSS remains the intended model for literal text layouts.
+
 ## Other real limitations / notes
 
 - Very long proxy requests used to outlive the orchestrator's flat 300s upstream read timeout: a four-reference Qwen run at 768px/12 steps completed on Forge (~9 minutes) but the client received a 504/502. The proxy no longer imposes a read/total deadline on upstream responses; connect and pool timeouts stay at 10s, write at 60s, and a client disconnect closes the upstream stream. An orchestrator restart is required for that change. Failed upstream sends are now recorded in the orchestrator request log instead of being silent.

@@ -200,8 +200,34 @@ Configure it with `/wd_setting set`:
 - `image_prompt_quality`: `Off` (default), `Standard` (Gemma 12B) or `High` (Qwen 27B).
 - `image_prompt_batch`: `All` (default, one shared enhancement used for the whole batch) or `Each` (one separate enhancement per generated image).
 - `image_prompt_style`: `Auto` (tags for ordinary SD/XL/Anima, natural language for other families and reference/edit workflows), `Tags`, or `Natural`.
+- `image_prompt_layout`: `Off` (default), `Auto` (MOSS JSON for MOSS, Coupler regions for SD/SDXL), `MOSS` (bbox JSON for MOSS only), or `Coupler` (Forge Coupler regions for SD/SDXL). Layout planning uses Qwen 27B and replaces plain enrichment for that request.
 
 Enhancement runs before the Forge model lease, and the LLM is unloaded and verified before image generation starts. If enhancement or unload fails, no image request is submitted and no Forge model is changed. `Each` keeps the total image limit, sends the images sequentially, and advances deterministic seeds per image; random seeds stay random.
+
+### MOSS layout drafts
+
+MOSS-Image accepts a JSON layout prompt with `summary` and `items`, where each item has a `label` (`object`, `character`, or `text`), a `caption`, and a bbox. `bbox_coord_space` is `abs_centralized` and `bbox_format` is `yxyx`, exactly as documented by OpenMOSS. The bot mirrors Forge's built-in JSON-builder conversion, including the centered absolute coordinates and parenthesis escaping.
+
+Create a reusable layout with:
+
+```
+/wd_layout_draft prompt: a minimalist travel poster with a blue mountain and the title EXPLORE width: 1024 height: 1024
+```
+
+Qwen 27B (`Qwen3.8-27B-GGUF`, `UD-Q4_K_M`, `unsloth-gpu0`) drafts the layout and renders a labeled preview. The message has these buttons:
+
+- **Adjust** — type a change request in the channel (for example "move the title to the bottom" or "make the character larger"); the LLM revises the complete layout, renders it again, and keeps the session open.
+- **Save** — name the layout (letters, numbers, `-`, `_`; max 32 characters). The bot stores it per user and returns a JSON file containing the draft, the compiled MOSS prompt, and a Coupler prompt.
+- **Coupler prompt** — returns the Forge Coupler Advanced prompt (inline `|x1:x2,y1:y2,weight|` regions) and a `coupler-config.json` mapping. Paste the prompt into `/wd_create` on an SD/SDXL model.
+- **Cancel** — closes the session.
+
+Use a saved layout in a prompt with `<layout:name>`:
+
+```
+/wd_create prompt: <layout:travel_poster> warm sunset light
+```
+
+MOSS models receive the compiled JSON layout. SD/SDXL models receive the equivalent Forge Coupler Advanced prompt, so the same layout works on other models. Only one layout token is supported per prompt. Layout planning uses the same serialized Unsloth queue as prompt enhancement and unloads the model before image generation; the interactive layout command keeps it loaded until the session ends.
 
 ### Inpainting (/wd_inpaint)
 
@@ -576,7 +602,7 @@ Your personal generation settings, persisted across generations until you change
 - `hires_positive` / `hires_negative` — extra prompt text appended only during the hi-res fix pass
 - `hires_cfg` / `hires_shift` — CFG scale / distilled shift override for the hi-res pass
 - `seedvr2_model` — apply a SeedVR2 upscaler to every txt2img/img2img result automatically; `seedvr2_resolution` sets the target resolution of the shortest side (default 1600). Set the model to `Disable` to turn this off
-- `image_prompt_quality` / `image_prompt_batch` / `image_prompt_style` — control the image prompt enhancer: off/standard/high quality, all/each batch behavior, and auto/tags/natural addition style. See the Image prompt enhancement section above
+- `image_prompt_quality` / `image_prompt_batch` / `image_prompt_style` / `image_prompt_layout` - control the image prompt enhancer: off/standard/high quality, all/each batch behavior, auto/tags/natural addition style, and off/auto/moss/coupler layout planning. See the Image prompt enhancement and MOSS layout drafts sections above
 
 !!! info SeedVR2 — quality over speed
 	SeedVR2 is a diffusion-based upscaler, which makes it **much more compute-intensive** than the classic upscalers in /wd_upscale (R-ESRGAN etc.), but also a much better upscaler: instead of just sharpening pixels, it actively reconstructs fine detail. Use it when **quality is the priority** (e.g. for your final image), not when you want a quick upscale. There are 4 model options, from smallest to biggest:

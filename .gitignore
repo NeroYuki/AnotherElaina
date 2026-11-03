@@ -131,3 +131,4 @@ resources/shipgirls
 temp_*
 temp/
 data/chat-models/
+data/moss_layouts.json

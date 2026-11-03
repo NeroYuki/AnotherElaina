@@ -126,7 +126,7 @@ function fullPromptAnalyzeResult(prompt) {
 
 async function runCommand({ commandName, server, prompt = ORIGINAL_PROMPT, bulkSize = 2,
     settings = { image_prompt_quality: 'standard', image_prompt_batch: 'each', image_prompt_style: 'tags' },
-    enrichment, enrichError, parseImageCountResult, syncModels, modelChangeResult, responsePaths }) {
+    enrichment, enrichError, layoutResult, parseImageCountResult, syncModels, modelChangeResult, responsePaths }) {
     const events = [];
     let lockDepth = 0;
     let syncCalls = 0;
@@ -273,6 +273,7 @@ async function runCommand({ commandName, server, prompt = ORIGINAL_PROMPT, bulkS
         if (request === '../utils/ai_server_config.js') return aiConfig;
         if (request === '../utils/model_change.js') return modelChange;
         if (request === '../utils/image_prompt') return imagePrompt;
+        if (request === '../utils/layout_prompt') return { prepareLayoutPrompt: async () => layoutResult || null };
         if (request === '../utils/forge_session') return forgeSession;
         if (request === '../utils/image_prompt_batch') {
             return originalLoad.call(this, request, parent, isMain);
@@ -507,5 +508,30 @@ for (const commandName of ['simple', 'advanced']) {
                 'the progress parse failure must not surface as a command error',
             );
         }, { failFirstProgress: true });
+    });
+}
+
+for (const commandName of ['simple', 'advanced']) {
+    test(`${commandName}: layout-aware planning bypasses plain enrichment`, async () => {
+        const layoutPrompt = '{"summary":{"caption":"Scene"},"items":[],"bbox_coord_space":"abs_centralized","bbox_format":"yxyx"}\noriginal prompt';
+        const layout = {
+            width: 1024,
+            height: 1024,
+            summary: { caption: 'Scene', meta: [], canvas: 'single' },
+            items: [{ label: 'object', caption: 'Subject', bbox: [10, 10, 200, 200] }],
+        };
+        await withServer(async server => {
+            const result = await runCommand({
+                commandName,
+                server,
+                bulkSize: 1,
+                layoutResult: { prompt: layoutPrompt, mode: 'moss', layout, source: 'drafted' },
+            });
+
+            assert.equal(result.events.some(event => event.type === 'enrich'), false);
+            assert.equal(result.getDataBodyCalls.length, 1);
+            assert.equal(result.getDataBodyCalls[0][1], layoutPrompt);
+            assert.equal(result.posts.length, 1);
+        });
     });
 }

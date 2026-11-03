@@ -95,6 +95,15 @@ module.exports = {
                             { name: 'Tags — comma-separated tags', value: 'tags' },
                             { name: 'Natural — descriptive sentences', value: 'natural' }
                         ))
+                .addStringOption(option =>
+                    option.setName('image_prompt_layout')
+                        .setDescription('Layout-aware prompt planning: Off (default), Auto, MOSS JSON, or Coupler regions')
+                        .addChoices(
+                            { name: 'Off — plain prompt/enrichment (default)', value: 'off' },
+                            { name: 'Auto — MOSS JSON; Coupler for SD/SDXL', value: 'auto' },
+                            { name: 'MOSS JSON — bbox layout for MOSS models', value: 'moss' },
+                            { name: 'Coupler regions — Forge Coupler for SD/SDXL', value: 'coupler' }
+                        ))
                 )
 
     ,
@@ -132,6 +141,7 @@ module.exports = {
         const image_prompt_quality = interaction.options.getString('image_prompt_quality') ?? null
         const image_prompt_batch = interaction.options.getString('image_prompt_batch') ?? null
         const image_prompt_style = interaction.options.getString('image_prompt_style') ?? null
+        const image_prompt_layout = interaction.options.getString('image_prompt_layout') ?? null
 
         await interaction.deferReply();
 
@@ -240,6 +250,7 @@ module.exports = {
             image_prompt_quality: image_prompt_quality,
             image_prompt_batch: image_prompt_batch,
             image_prompt_style: image_prompt_style,
+            image_prompt_layout: image_prompt_layout,
         }
 
         const config_string = JSON.stringify(config)

@@ -354,6 +354,7 @@ test('wd_setting exposes bounded enhancer options and persists them through comm
         image_prompt_quality: ['off', 'standard', 'high'],
         image_prompt_batch: ['all', 'each'],
         image_prompt_style: ['auto', 'tags', 'natural'],
+        image_prompt_layout: ['off', 'auto', 'moss', 'coupler'],
     });
     assert.ok(set.options.some(option => option.name === 'hires_checkpoint'));
     assert.ok(set.options.some(option => option.name === 'seedvr2_resolution'));
@@ -362,6 +363,7 @@ test('wd_setting exposes bounded enhancer options and persists them through comm
     const client = { usersetting_config: stored };
     const values = {
         image_prompt_quality: 'high', image_prompt_batch: 'each', image_prompt_style: 'natural',
+        image_prompt_layout: 'auto',
     };
     const interaction = {
         user: { id: 'user-1' },
@@ -380,10 +382,12 @@ test('wd_setting exposes bounded enhancer options and persists them through comm
     assert.equal(config.image_prompt_quality, 'high');
     assert.equal(config.image_prompt_batch, 'each');
     assert.equal(config.image_prompt_style, 'natural');
+    assert.equal(config.image_prompt_layout, 'auto');
     const parsed = parse_common_setting(stored.get('user-1'));
     assert.equal(parsed.image_prompt_quality, 'high');
     assert.equal(parsed.image_prompt_batch, 'each');
     assert.equal(parsed.image_prompt_style, 'natural');
+    assert.equal(parsed.image_prompt_layout, 'auto');
     assert.equal(parsed.do_preview, true);
     assert.equal(parsed.hires_checkpoint, 'Use same checkpoint');
 
@@ -404,7 +408,9 @@ test('wd_setting exposes bounded enhancer options and persists them through comm
     assert.equal(defaults.image_prompt_quality, 'off');
     assert.equal(defaults.image_prompt_batch, 'all');
     assert.equal(defaults.image_prompt_style, 'auto');
+    assert.equal(defaults.image_prompt_layout, 'off');
     assert.equal(parse_common_setting(null).image_prompt_quality, 'off');
     assert.equal(parse_common_setting(null).image_prompt_batch, 'all');
     assert.equal(parse_common_setting(null).image_prompt_style, 'auto');
+    assert.equal(parse_common_setting(null).image_prompt_layout, 'off');
 });

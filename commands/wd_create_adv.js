@@ -32,6 +32,7 @@ const { enrichImagePrompts } = require('../utils/image_prompt');
 const { withForgeSession } = require('../utils/forge_session');
 const { runImagePromptBatch, isImagePromptBatchCancelled, ImagePromptBatchCancelled } = require('../utils/image_prompt_batch');
 const { fetchProgressJson } = require('../utils/forge_progress');
+const { prepareLayoutPrompt } = require('../utils/layout_prompt');
 const { get_model_family_defaults } = require('../utils/model_defaults');
 const { clamp, calculateOptimalGrid, parseImageCount, parse_common_setting } = require('../utils/common_helper');
 const { is_pid_upscaler, prepare_pid_upscale } = require('../utils/forge_pid');
@@ -334,20 +335,45 @@ module.exports = {
 
         const effective_checkpoint = checkpoint || cached_model[0]
 
+        let layoutResult = null
         let enrichment
         try {
-            enrichment = await enrichImagePrompts({
+            layoutResult = await prepareLayoutPrompt({
                 prompt: originalPrompt,
                 model: effective_checkpoint,
-                count: bulk_size,
-                settings: usersetting,
-                workflow: 'txt2img',
+                width,
+                height,
+                userId: interaction.user.id,
+                setting: usersetting?.image_prompt_layout,
                 onProgress: async message => {
                     await interaction.editReply({ content: message }).catch(err => {
-                        console.log('Unable to update image prompt enhancement progress', err)
+                        console.log('Unable to update layout planning progress', err)
                     })
                 },
             })
+            if (layoutResult) {
+                prompt = layoutResult.prompt
+                enrichment = {
+                    prompts: [layoutResult.prompt],
+                    perImage: false,
+                    layoutMode: layoutResult.mode,
+                    layout: layoutResult.layout,
+                }
+            }
+            else {
+                enrichment = await enrichImagePrompts({
+                    prompt: originalPrompt,
+                    model: effective_checkpoint,
+                    count: bulk_size,
+                    settings: usersetting,
+                    workflow: 'txt2img',
+                    onProgress: async message => {
+                        await interaction.editReply({ content: message }).catch(err => {
+                            console.log('Unable to update image prompt enhancement progress', err)
+                        })
+                    },
+                })
+            }
         }
         catch (err) {
             console.log('Image prompt enhancement failed', err)
@@ -356,9 +382,10 @@ module.exports = {
             return
         }
 
-        const expectedPromptCount = enrichment.perImage ? bulk_size : 1
+        const expectedPromptCount = layoutResult ? 1 : (enrichment.perImage ? bulk_size : 1)
         if (!Array.isArray(enrichment.prompts) || enrichment.prompts.length !== expectedPromptCount
-            || enrichment.prompts.some(enriched => typeof enriched !== 'string' || enriched.slice(0, originalPrompt.length) !== originalPrompt)) {
+            || enrichment.prompts.some(enriched => typeof enriched !== 'string')
+            || (!layoutResult && enrichment.prompts.some(enriched => enriched.slice(0, originalPrompt.length) !== originalPrompt))) {
             await interaction.editReply({ content: 'Image prompt enhancement returned an invalid prompt batch; image generation was not started.', components: [] })
                 .catch(reply_err => console.log('cannot send enhancement error to discord', reply_err))
             return
@@ -599,15 +626,17 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         // Parse commands/wildcards/LoRAs exactly once on the original prompt,
         // then append only the enhancer's validated new suffix to that base.
         const generationBasePrompt = prompt
-        const promptPlan = {
-            prompts: enrichment.prompts.map(enriched => {
-                if (typeof enriched !== 'string' || enriched.slice(0, originalPrompt.length) !== originalPrompt) {
-                    throw new Error('Image prompt enhancement did not preserve the original prompt prefix; image generation was not started.')
-                }
-                return generationBasePrompt + enriched.slice(originalPrompt.length)
-            }),
-            perImage: enrichment.perImage === true,
-        }
+        const promptPlan = layoutResult
+            ? { prompts: [generationBasePrompt], perImage: false }
+            : {
+                prompts: enrichment.prompts.map(enriched => {
+                    if (typeof enriched !== 'string' || enriched.slice(0, originalPrompt.length) !== originalPrompt) {
+                        throw new Error('Image prompt enhancement did not preserve the original prompt prefix; image generation was not started.')
+                    }
+                    return generationBasePrompt + enriched.slice(originalPrompt.length)
+                }),
+                perImage: enrichment.perImage === true,
+            }
 
         if (extra_config.coupler_config && (height % 64 !== 0 || width % 64 !== 0)) {
             interaction.channel.send('Coupler detected, changing resolution to multiple of 64')

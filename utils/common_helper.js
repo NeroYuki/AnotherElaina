@@ -206,7 +206,8 @@ function parse_common_setting(setting_json) {
                 seedvr2_resolution: usersetting_config_obj?.seedvr2_resolution ?? null,
                 image_prompt_quality: usersetting_config_obj?.image_prompt_quality ?? 'off',
                 image_prompt_batch: usersetting_config_obj?.image_prompt_batch ?? 'all',
-                image_prompt_style: usersetting_config_obj?.image_prompt_style ?? 'auto'
+                image_prompt_style: usersetting_config_obj?.image_prompt_style ?? 'auto',
+                image_prompt_layout: usersetting_config_obj?.image_prompt_layout ?? 'off'
             }
         }
         catch (err) {
@@ -227,7 +228,8 @@ function parse_common_setting(setting_json) {
             seedvr2_resolution: null,
             image_prompt_quality: 'off',
             image_prompt_batch: 'all',
-            image_prompt_style: 'auto'
+            image_prompt_style: 'auto',
+            image_prompt_layout: 'off'
         }
     }
 }
