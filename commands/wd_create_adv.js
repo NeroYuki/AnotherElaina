@@ -529,10 +529,6 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                 await interaction.editReply({ content: err.message })
                 return
             }
-            if (debug_create_data) {
-                await interaction.editReply({ content: 'PiD cannot be combined with a debug payload override.' })
-                return
-            }
         }
 
         const slow_sampler = ['DPM++ SDE', 'DPM++ 2M SDE', 'DPM++ 2M SDE Heun', 'Restart']
@@ -706,6 +702,14 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                 console.log('Error loading debug data:', err);
                 await interaction.channel.send(':x: Failed to load debug data: ' + err.message);
             }
+        }
+
+        // A loaded debug payload replaces the entire positional request body,
+        // so it cannot carry the integrated PiD fields. Check only after the
+        // override has been parsed (a failed load leaves it null and is fine).
+        if (pidPolicy && debug_create_data) {
+            await interaction.editReply({ content: 'PiD cannot be combined with a debug payload override.' })
+            return
         }
 
         const hires_models = resolve_hires_models(usersetting, cached_model[0])

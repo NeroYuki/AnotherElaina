@@ -2,6 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
 const Module = require('node:module');
@@ -10,6 +11,13 @@ const { setTimeout: sleep } = require('node:timers/promises');
 const COMMAND_NAMES = { simple: 'wd_create', advanced: 'wd_create_adv' };
 const ORIGINAL_PROMPT = 'trigger, <lora:dynamic_lora:0.75>, __wildcard__';
 const PROCESSED_PROMPT = 'trigger, <lora:dynamic_lora:0.75>, resolved';
+const SDXL_MODEL = 'wai_nsfw_illustrious_v120.safetensors';
+const DEBUG_FIXTURE_PATH = path.join(__dirname, '..', 'resources', 'debug_sdwebui_request.json');
+// Never touch the real debug/config files; the harness only serves this payload
+// when a test opts into the debug fixture.
+const DEBUG_PAYLOAD = JSON.stringify({
+    data: ['task(debug)', 'debug prompt', '', 20, 7, 123, 'Euler', 'Automatic', 'debug-session', 512, 512],
+});
 
 function startFileServer({ failFirstProgress = false, activeProgress = false } = {}) {
     const progressRequests = [];
@@ -54,7 +62,7 @@ function startFileServer({ failFirstProgress = false, activeProgress = false } =
     });
 }
 
-function makeInteraction({ prompt, bulkSize, defaultNegPrompt }) {
+function makeInteraction({ prompt, bulkSize, defaultNegPrompt, upscaler = 'Lanczos' }) {
     const edits = [];
     const channelSends = [];
     const collector = {
@@ -67,8 +75,8 @@ function makeInteraction({ prompt, bulkSize, defaultNegPrompt }) {
         neg_prompt: '',
         seed: '42',
         default_neg_prompt: defaultNegPrompt,
-        upscaler_mode: 'Lanczos',
-        upscaler: 'Lanczos',
+        upscaler_mode: upscaler,
+        upscaler,
         checkpoint: null,
         profile: 'test-profile',
         bulk_size: String(bulkSize),
@@ -133,7 +141,7 @@ function fullPromptAnalyzeResult(prompt) {
 async function runCommand({ commandName, server, prompt = ORIGINAL_PROMPT, bulkSize = 2,
     settings = { image_prompt_quality: 'standard', image_prompt_batch: 'each', image_prompt_style: 'tags' },
     enrichment, enrichError, layoutResult, parseImageCountResult, syncModels, modelChangeResult, responsePaths,
-    cancelDuringPost = false }) {
+    cancelDuringPost = false, upscaler = 'Lanczos', debugFixture = undefined }) {
     const events = [];
     let lockDepth = 0;
     let syncCalls = 0;
@@ -274,6 +282,18 @@ async function runCommand({ commandName, server, prompt = ORIGINAL_PROMPT, bulkS
         },
     };
 
+    // Serve only the debug override fixture, leaving every other filesystem
+    // read untouched (in particular the real debug/config files).
+    const originalReadFileSync = fs.readFileSync;
+    if (debugFixture !== undefined) {
+        fs.readFileSync = function (file, ...args) {
+            if (typeof file === 'string' && path.resolve(file) === path.resolve(DEBUG_FIXTURE_PATH)) {
+                return debugFixture;
+            }
+            return originalReadFileSync.call(this, file, ...args);
+        };
+    }
+
     const originalLoad = Module._load;
     Module._load = function (request, parent, isMain) {
         if (request === '../config.json' || request === '../../config.json') {
@@ -323,7 +343,7 @@ async function runCommand({ commandName, server, prompt = ORIGINAL_PROMPT, bulkS
         delete require.cache[require.resolve(commandPath)];
         const command = require(commandPath);
         const { interaction, edits, channelSends, collector } = makeInteraction({
-            prompt, bulkSize, defaultNegPrompt: commandName === 'simple' ? 'q_sfw' : 'n_sfw',
+            prompt, bulkSize, defaultNegPrompt: commandName === 'simple' ? 'q_sfw' : 'n_sfw', upscaler,
         });
         const client = makeClient();
         triggerCancel = () => collector.handler({
@@ -336,6 +356,7 @@ async function runCommand({ commandName, server, prompt = ORIGINAL_PROMPT, bulkS
         };
     }
     finally {
+        if (debugFixture !== undefined) fs.readFileSync = originalReadFileSync;
         Module._load = originalLoad;
     }
 }
@@ -475,6 +496,99 @@ test('advanced: all/off keeps the original batch request untouched', async () =>
         assert.doesNotMatch(result.posts[0].payload.session_hash, /-image-/);
         assert.equal(result.collector.stopped, true);
         assert.deepEqual(server.abortRequests, []);
+    });
+});
+
+test('advanced: PiD with a configured SDXL model submits an integrated PiD request', async () => {
+    await withServer(async server => {
+        const result = await runCommand({
+            commandName: 'advanced',
+            server,
+            prompt: ORIGINAL_PROMPT,
+            bulkSize: 1,
+            upscaler: 'PiD',
+            syncModels: [SDXL_MODEL],
+            enrichment: {
+                prompts: [ORIGINAL_PROMPT],
+                perImage: false,
+                style: 'tags',
+                quality: 'standard',
+            },
+        });
+
+        assert.equal(result.posts.length, 1, 'the generation request was submitted');
+        assert.equal(result.getDataBodyCalls.length, 1);
+        const generationOptions = result.getDataBodyCalls[0][39];
+        assert.ok(generationOptions?.pid, 'the integrated PiD policy reached the request builder');
+        assert.equal(generationOptions.pid.stage, 'integrated');
+        assert.equal(generationOptions.pid.family, 'xl');
+        assert.equal(generationOptions.pid.width, 2048);
+        assert.equal(generationOptions.pid.height, 2048);
+        assert.equal(result.edits.some(edit => /Error while creating image/.test(String(edit.content))), false);
+        assert.equal(result.collector.stopped, true);
+        assert.deepEqual(server.abortRequests, []);
+    });
+});
+
+test('advanced: a loaded debug payload override is rejected when PiD is selected', async () => {
+    const debugPrompt = `trigger, __wildcard__ [DEBUG-WEBUI]`;
+    await withServer(async server => {
+        const result = await runCommand({
+            commandName: 'advanced',
+            server,
+            prompt: debugPrompt,
+            bulkSize: 1,
+            upscaler: 'PiD',
+            syncModels: [SDXL_MODEL],
+            enrichment: {
+                prompts: [debugPrompt],
+                perImage: false,
+                style: 'tags',
+                quality: 'standard',
+            },
+            debugFixture: DEBUG_PAYLOAD,
+        });
+
+        assert.equal(result.posts.length, 0, 'no generation may be submitted');
+        assert.equal(result.getDataBodyCalls.length, 0, 'no request body may be built');
+        assert.ok(
+            result.channelSends.some(payload => /DEBUG MODE/.test(String(payload.content ?? payload))),
+            'the debug payload was actually loaded',
+        );
+        assert.equal(result.edits.at(-1).content, 'PiD cannot be combined with a debug payload override.');
+        assert.equal(result.edits.some(edit => /Error while creating image/.test(String(edit.content))), false);
+    });
+});
+
+test('advanced: a loaded debug payload override still replaces a non-PiD request', async () => {
+    const debugPrompt = `trigger, __wildcard__ [DEBUG-WEBUI]`;
+    await withServer(async server => {
+        const result = await runCommand({
+            commandName: 'advanced',
+            server,
+            prompt: debugPrompt,
+            bulkSize: 1,
+            syncModels: [SDXL_MODEL],
+            enrichment: {
+                prompts: [debugPrompt],
+                perImage: false,
+                style: 'tags',
+                quality: 'standard',
+            },
+            debugFixture: DEBUG_PAYLOAD,
+        });
+
+        assert.equal(result.posts.length, 1, 'the generation request was submitted');
+        assert.equal(result.getDataBodyCalls.length, 1);
+        const submitted = result.posts[0].payload.data;
+        assert.match(String(submitted[0]), /^task\(/);
+        assert.equal(submitted[1], 'debug prompt');
+        assert.equal(submitted[5], 123);
+        assert.ok(
+            result.channelSends.some(payload => /DEBUG MODE/.test(String(payload.content ?? payload))),
+            'the debug payload was actually loaded',
+        );
+        assert.equal(result.edits.some(edit => /Error while creating image/.test(String(edit.content))), false);
     });
 });
 
