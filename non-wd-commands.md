@@ -3,7 +3,7 @@
 !!! warning WIP
      This is a work in progress and thus incomplete
 
-This document covers everything the bot can do **other than** the AI image generation commands (the `/wd_...` family). For image generation, see the main [AI Image Documentation](document.md).
+This document covers everything the bot can do **other than** the AI image generation commands (the `/wd_...` family). For image generation, see the main [AI Image Documentation](document.md). For video and 3D, see [AI media commands](docs/media-commands.md). For chat, scenes, memory, and lore, see the [AI chat guide](docs/ai-chat.md).
 
 [TOC3]
 
@@ -13,43 +13,44 @@ This document covers everything the bot can do **other than** the AI image gener
 - **Attachments**: Commands that take a file (e.g. `/osu_mai_mod beatmap_file:`) need you to attach the file to the message as usual.
 - **Subcommands**: Some commands group multiple actions together (e.g. `/shipgirl_multi start`, `/shipgirl_multi stop`). Just pick the subcommand after the main command.
 - **Context menus**: Right-click (or tap-and-hold on mobile) a message containing an image → **Apps** → find extra actions like "Find sauce" and "SD Image Info".
-- **Chatting**: Mention the bot (`@Elaina ...`) in any server channel to chat with it. More below.
+- **Chatting**: Mention the bot (`@Elaina ...`) or reply to one of its messages in a server channel. See the [AI chat guide](docs/ai-chat.md).
 - **Cooldowns**: Commands have per-user cooldowns; if the bot tells you to slow down, just wait a bit.
 
 ***
 
 ### Chatting With The Bot (no slash command needed)
 
-The bot doubles as an AI chat companion. To talk to it, simply **mention it** in a message:
+The bot doubles as a local AI chat companion with a persistent scene. To talk to
+it, **mention it** or **reply to one of its messages**:
 
 ```
 @Elaina hello! how are you today?
 ```
 
-- The bot keeps a **conversation context** per user (or per channel — toggle with the button below), so it remembers what you talked about.
-- You can attach **images** to your message and the bot can "see" them (vision is supported in all modes).
-- After each reply, a row of buttons appears under the message:
-	- **💣 Forget Everything** — wipe the conversation context
-	- **▶️ Continue** — keep going from where the bot stopped
-	- **🔁 Regenerate** — throw away the last reply and try again
-	- **🔎 Debug** — show debug info about the last response (which model/mode was used, etc.)
-	- **👥 User conversation / 🌐 Channel conversation** — toggle between your personal context and a shared channel-wide context
-- **Special tokens** you can add to your message to force behavior:
-	- `<think>` — enable "thinking" mode for this message (better reasoning, slower)
-	- `<local>` — force a local model for this message (no online APIs)
-	- `<unsafe>` — force the uncensored local model for this message
+- The first addressed message in a channel creates a scene automatically.
+  `/scene new` starts a fresh scene, `/scene status` shows the active scene and
+  participants, `/scene character` sets your player character, and `/scene end`
+  closes the scene without deleting its records.
+- Addressed messages automatically join you as a participant. When participant
+  observation is enabled, later messages from participants can be stored as
+  passive observations; the bot does not reply to those.
+- Attach **images** to the addressed message and the bot can use them (up to
+  two). Audio and video attachments are not understood as chat input.
+- Chat is **local-only** now. There is no Gemini/online mode, no automatic
+  online/local mode selection, and no uncensored switch. `<think>` requests
+  thinking for one message; the old `<local>` and `<unsafe>` tokens have no
+  effect.
+- Delivered replies can have **Continue**, **Regenerate**, and **Scene Status**
+  buttons; the **Debug** button is only shown to the bot owner. The old
+  **Forget Everything** and user/channel-conversation buttons are gone.
+- Use `/memory` to show, forget, delete, export, or opt out of durable personal
+  memory, and `/lore` (owner/moderator) to add curated reference text. The bot
+  owner configures the local model profile, streaming, and response style with
+  `/chat_config`.
 
-The bot runs several different models depending on the server's current **operating mode** (set by the bot owner via `/chat_config`):
-
-| Mode | What runs |
-|------|-----------|
-| `auto` | Automatically picks the best mode for your message (local vs online, based on availability/rate limits) |
-| `auto_local` | Like auto but never uses online APIs |
-| `saving` | Small 8B local model hosted on the bot's own machine (slow, but doesn't touch the AI server) |
-| `standard` | 35B local model on the AI server (thinking enabled) |
-| `uncensored` | 27B local model on the AI server (no thinking, less filtered) |
-| `online` / `online_lite` | Google Gemini models via API (subject to rate limits — see `/ratestatus`) |
-| `disabled` | Chat is turned off ("Elaina is sleeping") |
+Full details, examples, permissions, privacy notes, and troubleshooting:
+[AI chat guide](docs/ai-chat.md). For video and 3D commands, see
+[AI media commands](docs/media-commands.md).
 
 ***
 
@@ -190,10 +191,10 @@ Videos over 10 MB are uploaded to Catbox and the link is returned.
 
 These are mostly for the bot owner or server admins:
 
-- **/chat_config** (owner) — switch the chatbot operating mode (see the chat section above) and toggle streamed responses. Owner-only.
-- **/remove_channel_context** (owner) — wipe the chat context of a specific channel. Owner-only.
-- **/ratestatus** — show the current rate-limit status for the online (Gemini) chat modes: usage this minute/day, remaining, and when the next request will be allowed.
-- **/resetratelimits** — reset the online-mode rate limits (all / online / online_lite). Requires **Administrator** permission.
+- **/chat_config** (owner) — configure the current local chat subsystem: local model profile, streamed responses, and response style. `mode:Status` reports the live model, context, style, streaming, and service states. Owner-only. See the [AI chat guide](docs/ai-chat.md).
+- **/remove_channel_context** (owner) — clear the active stored chat scene and derived memory for a channel. Existing Discord messages are not deleted. Owner-only.
+- **/ratestatus** — legacy telemetry for the retired online chat modes: it still reports stored online/online-lite rate-limit counters and legacy mode recommendations. It is not used by the current local chat.
+- **/resetratelimits** — legacy administrator utility that clears those stored online-mode counters. It does not affect current local chat.
 - **/server_stat** — show the bot server's stats: OS info, RAM/CPU usage, and the AI server's VRAM/status.
 - **/test_api** — debug command that just replies "Testing API" (ephemeral). Nothing to see here.
 
@@ -210,6 +211,8 @@ These appear under **Apps** when you right-click a message that contains an imag
 
 ### FAQ
 
-- **Why is the chat "sleeping"?** The bot owner can turn chat off with `/chat_config` (`disabled` mode). Try again later.
+- **Why is the chat "sleeping"?** The bot owner can turn chat off with `/chat_config mode:disabled`. Try again later, or ask them to run `/chat_config mode:Status`.
+- **Why did the bot ignore my message?** Mention it or reply to one of its messages. Direct messages, webhooks, and other bots are ignored. After `/scene end`, start a new scene with `/scene new` or resume one with `/scene resume`.
+- **Does chat use Gemini or another cloud model?** No. The current chat path is local-only and has no online fallback. The rate-limit commands above are retained legacy utilities, not an online chat mode.
 - **Do these commands cost anything?** No, everything is free, but every command has a cooldown.
 - **Can I contribute questions/data?** The trivia and shipgirl question banks live in the bot's `resources/` folder; ask the bot owner if you want to add more.

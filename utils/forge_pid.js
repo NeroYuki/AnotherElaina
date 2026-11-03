@@ -24,6 +24,7 @@ const PID_POSTPASS_STEPS = 4
 const PID_POSTPASS_CFG = 1
 const PID_POSTPASS_SHIFT = 1.5
 const PID_POSTPASS_CANCELLED = 'PID_POSTPASS_CANCELLED'
+const PID_POSTPASS_RESTORE_FAILED = 'PID_POSTPASS_RESTORE_FAILED'
 
 function is_pid_upscaler(value) {
     return value === PID_UPSCALER || value === PID_LEGACY_UPSCALER
@@ -329,6 +330,7 @@ async function run_pid_postpass(packet, {
     const predictFn = predict || (args => gradio_predict({ ...args, endpoint, headers }))
     const fn = Number.isInteger(fnIndex) ? fnIndex : require('./ai_server_config').server_pool[0].fn_index_img2img
 
+    let taskError = null
     try {
         await switchFn({
             checkpoint: policy.checkpoint,
@@ -352,12 +354,31 @@ async function run_pid_postpass(packet, {
         logger.log?.('PiD postpass completed:', resultPath)
         return normalize_postpass_packet(packet, response, resultPath)
     }
+    catch (error) {
+        taskError = error
+        throw error
+    }
     finally {
         try {
             await restoreFn({ endpoint, headers, session_hash })
         }
-        catch (error) {
-            logger.error?.('Failed to restore the Forge checkpoint after PiD postpass:', error)
+        catch (restoreError) {
+            // The Forge checkpoint is process-global. Returning an upscaled
+            // image while silently leaving Forge on PiD would make every later
+            // generation use the wrong model, so surface the failure with the
+            // original error attached when the sampling pass also failed.
+            const detail = restoreError?.message || String(restoreError)
+            const failure = new Error(
+                taskError
+                    ? `PiD postpass failed (${taskError.message || taskError}) and the original Forge checkpoint ` +
+                      `could not be restored: ${detail}`
+                    : `PiD postpass completed, but the original Forge checkpoint could not be restored: ${detail}`,
+            )
+            failure.code = PID_POSTPASS_RESTORE_FAILED
+            failure.cause = taskError || restoreError
+            failure.restoreError = restoreError
+            logger.error?.('Failed to restore the Forge checkpoint after PiD postpass:', restoreError)
+            throw failure
         }
     }
 }
@@ -376,6 +397,7 @@ module.exports = {
     PID_POSTPASS_CFG,
     PID_POSTPASS_SHIFT,
     PID_POSTPASS_CANCELLED,
+    PID_POSTPASS_RESTORE_FAILED,
     is_pid_upscaler,
     prepare_pid_upscale,
     strip_lora_tags,

@@ -11,7 +11,7 @@ const COMMAND_NAMES = { simple: 'wd_create', advanced: 'wd_create_adv' };
 const ORIGINAL_PROMPT = 'trigger, <lora:dynamic_lora:0.75>, __wildcard__';
 const PROCESSED_PROMPT = 'trigger, <lora:dynamic_lora:0.75>, resolved';
 
-function startFileServer({ failFirstProgress = false } = {}) {
+function startFileServer({ failFirstProgress = false, activeProgress = false } = {}) {
     const progressRequests = [];
     const abortRequests = [];
     let progressFailures = 0;
@@ -34,7 +34,9 @@ function startFileServer({ failFirstProgress = false } = {}) {
                 }
                 else if (req.url.startsWith('/run/predict')) abortRequests.push(parsed);
                 res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ completed: true }));
+                res.end(JSON.stringify(activeProgress && req.url.startsWith('/internal/progress')
+                    ? { active: true, queued: false, completed: false, progress: 0.1 }
+                    : { completed: true }));
             });
             return;
         }
@@ -55,7 +57,11 @@ function startFileServer({ failFirstProgress = false } = {}) {
 function makeInteraction({ prompt, bulkSize, defaultNegPrompt }) {
     const edits = [];
     const channelSends = [];
-    const collector = { stopped: false, on() {}, stop() { this.stopped = true; } };
+    const collector = {
+        stopped: false, handler: null,
+        on(event, handler) { if (event === 'collect') this.handler = handler; },
+        stop() { this.stopped = true; },
+    };
     const values = {
         prompt,
         neg_prompt: '',
@@ -126,7 +132,8 @@ function fullPromptAnalyzeResult(prompt) {
 
 async function runCommand({ commandName, server, prompt = ORIGINAL_PROMPT, bulkSize = 2,
     settings = { image_prompt_quality: 'standard', image_prompt_batch: 'each', image_prompt_style: 'tags' },
-    enrichment, enrichError, layoutResult, parseImageCountResult, syncModels, modelChangeResult, responsePaths }) {
+    enrichment, enrichError, layoutResult, parseImageCountResult, syncModels, modelChangeResult, responsePaths,
+    cancelDuringPost = false }) {
     const events = [];
     let lockDepth = 0;
     let syncCalls = 0;
@@ -135,6 +142,7 @@ async function runCommand({ commandName, server, prompt = ORIGINAL_PROMPT, bulkS
     const getDataBodyCalls = [];
     const parseCalls = [];
     const expectedBulk = parseImageCountResult?.bulk_size ?? bulkSize;
+    let triggerCancel;
 
     const aiConfig = {
         server_pool: [{
@@ -236,6 +244,12 @@ async function runCommand({ commandName, server, prompt = ORIGINAL_PROMPT, bulkS
             const index = posts.length;
             posts.push({ url, payload });
             events.push({ type: 'post', sessionHash: payload.session_hash, lockDepth, index });
+            if (cancelDuringPost && index === 0) {
+                triggerCancel();
+                const deadline = Date.now() + 2000;
+                while (!server.abortRequests.length && Date.now() < deadline) await sleep(5);
+                assert.equal(server.abortRequests.length, 1, 'Cancel must reach the backend before generation returns');
+            }
             const createData = payload.data;
             const paths = typeof responsePaths === 'function'
                 ? responsePaths(index, createData)
@@ -312,6 +326,9 @@ async function runCommand({ commandName, server, prompt = ORIGINAL_PROMPT, bulkS
             prompt, bulkSize, defaultNegPrompt: commandName === 'simple' ? 'q_sfw' : 'n_sfw',
         });
         const client = makeClient();
+        triggerCancel = () => collector.handler({
+            user: interaction.user, deferUpdate: async () => {},
+        });
         await command.execute(interaction, client);
         return {
             events, posts, getDataBodyCalls, parseCalls, edits, channelSends, collector,
@@ -339,6 +356,21 @@ function enrichmentForEach(prompt, count) {
 }
 
 for (const commandName of ['simple', 'advanced']) {
+    test(`${commandName}: cancellation skips the remaining enhanced batch jobs`, async () => {
+        await withServer(async server => {
+            const result = await runCommand({
+                commandName, server, bulkSize: 3, cancelDuringPost: true,
+                enrichment: enrichmentForEach(ORIGINAL_PROMPT, 3),
+            });
+            assert.equal(result.posts.length, 1);
+            assert.deepEqual(server.abortRequests[0].data, []);
+            assert.equal(server.abortRequests[0].fn_index, 102);
+            assert.equal(result.collector.stopped, true);
+            assert.match(result.edits.at(-1).content, /cancelled/i);
+            assert.deepEqual(result.edits.at(-1).components, []);
+        }, { activeProgress: true });
+    });
+
     test(`${commandName}: enhances before the Forge lease, then emits one single-image request per variant`, async () => {
         await withServer(async server => {
             const result = await runCommand({

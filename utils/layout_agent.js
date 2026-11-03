@@ -118,17 +118,42 @@ async function unloadLayoutModel(profile = QUALITIES.high, deps = {}) {
 }
 
 /**
+ * Queue a standalone layout-model unload behind any in-flight enrichment or
+ * layout job. This is the only safe way to clean up from interactive code:
+ * the shared queue guarantees another consumer's inference is not active when
+ * the status check and unload run.
+ */
+function unloadLayoutModelQueued(profile = QUALITIES.high, deps = {}) {
+    return queuePromptEnrichment(() => unloadLayoutModel(profile, deps));
+}
+
+function combinedSignal(signal, timeoutMs) {
+    if (!signal) return AbortSignal.timeout(timeoutMs);
+    if (signal.aborted) return signal;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(new Error('Layout planning timed out.')), timeoutMs);
+    timer.unref?.();
+    const onAbort = () => controller.abort(signal.reason);
+    signal.addEventListener('abort', onAbort, { once: true });
+    controller.signal.addEventListener('abort', () => {
+        clearTimeout(timer);
+        signal.removeEventListener('abort', onAbort);
+    }, { once: true });
+    return controller.signal;
+}
+
+/**
  * Draft or revise a layout with Qwen 27B (UD-Q4_K_M, unsloth-gpu0).
- * By default the model is unloaded before returning so Forge can sample.
- * The interactive /wd_layout_draft command passes unload:false and unloads
- * once at the end of the session.
+ * The model is unloaded inside the shared prompt-enrichment queue before this
+ * function returns, so callers never need to unload outside the queue. Pass
+ * unload:false only in tests that inject a provider and no unload backend.
  */
 async function draftImageLayout({
     prompt, width, height, model, previousDraft = null, feedback = '', onProgress = () => {},
 }, {
     fetchImpl = globalThis.fetch, endpoint = PROXY_URL, sleepImpl = sleep,
     timeoutMs = 300_000, unloadTimeoutMs = 60_000, provider, profile = QUALITIES.high,
-    unload = true, retryInvalid = true,
+    unload = true, retryInvalid = true, signal,
 } = {}) {
     if (!prompt || !String(prompt).trim()) throw new Error('Layout planning requires a non-empty prompt.');
     if (!Number.isInteger(width) || width <= 0 || width > 4096 ||
@@ -161,7 +186,7 @@ async function draftImageLayout({
                     maxOutputTokens: 6000,
                     temperature: 0.4,
                     responseSchema: LAYOUT_SCHEMA,
-                    signal: AbortSignal.timeout(timeoutMs),
+                    signal: combinedSignal(signal, timeoutMs),
                 });
                 if (result.providerMeta?.instanceId !== profile.instanceId) {
                     throw new Error('The orchestrator must support X-AI-Instance routing before layout planning can run.');
@@ -207,4 +232,5 @@ module.exports = {
     parseLayoutResponse,
     draftImageLayout,
     unloadLayoutModel,
+    unloadLayoutModelQueued,
 };

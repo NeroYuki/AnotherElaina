@@ -1,381 +1,764 @@
 # Elaina Mk. 2 AI Image Documentation
 
-!!! warning WIP
-     This is a work in progress and thus incomplete
+!!! info Scope and availability
+    This page covers the AI image workflows implemented by the bot. A command being documented does not guarantee that every service behind it is enabled on a particular deployment: the Forge image backend, ComfyUI workflows, the local prompt/layout models, CelForge, and the slash-command registration are separate. If a command is missing, replies with a maintenance message, or fails to reach a backend, that is a deployment/configuration issue rather than a different command syntax.
 
 [TOC3]
 
+New here? Start with the [README](README.md). For the non-image half of the bot, see [Non-WD Commands](non-wd-commands.md) and [AI chat](docs/ai-chat.md). For a maintainer-oriented explanation of the architecture, see [How it works](docs/ai-how-it-works.md). Video and 3D specifics live in [Media commands](docs/media-commands.md).
+
 ### A Quick Note For People Who Have Never Used a Discord Bot Before
 
-If you already know your way around Discord bots, feel free to skip this section. If not, here is everything you need to know to use this bot:
+If you already know your way around Discord bots, feel free to skip this section. If not, here is everything you need to use this bot:
 
-- **Slash commands**: Almost everything this bot does is triggered by a "slash command". You type `/` in the chat box and a menu of available commands pops up, keep typing the name to filter it (e.g. `/wd_create`) then press Enter. Discord will even show you what each command does before you run it.
-- **Command parameters (options)**: Many commands take inputs, shown as "options" when you type the command. For example `/wd_create` asks for a `prompt` (the description of the image you want). Options marked with an asterisk are **required**; the rest are optional and have sensible defaults — you can leave them alone.
-- **Uploading images**: Commands that need an image (like `/wd_img2img`, `/wd_inpaint`, `/wd_upscale`) have an `image:` option. Simply attach your image file to the message the same way you would send it normally, then click the attachment slot in the command.
-- **Subcommands**: Some commands (like `/shipgirl_config` or `/wd_setting`) contain smaller commands inside them. You'll see them as `/wd_setting set`, `/wd_setting check`, etc. — just pick the subcommand after typing the main command.
-- **Context menus**: A few features are not slash commands. Right-click (or tap-and-hold on mobile) any message that contains an image, go to **Apps**, and you will find options like "Find sauce" and "SD Image Info".
-- **Chatting with the bot**: You can also just have a conversation with the bot. Mention the bot in discord followed by your message in any channel and the bot will reply as an AI chat companion. See the separate [Non-WD Commands Documentation](non-wd-commands.md) for details.
-- **Cooldowns**: Every command has a cooldown to keep the server from melting. Wait a bit and try again if the bot tells you to slow down.
+- **Slash commands**: Almost everything this bot does is triggered by a "slash command". Type `/` in the chat box and a menu of available commands pops up; keep typing the name to filter it (for example `/wd_create`) and press Enter. Discord shows what each command does before you run it.
+- **Command parameters (options)**: Many commands take inputs, shown as options when you type the command. For example `/wd_create` asks for a `prompt`. Options marked with an asterisk are **required**; the rest are optional and have defaults.
+- **Choice options**: Some options are menus with fixed labels, such as `upscaler`, `sampler`, `reference_layout`, or `default_neg_prompt`. Pick the **label** Discord shows; the bot may store a different internal value for it. The examples below show option names and the labels you will see.
+- **Uploading images**: Commands that need an image (such as `/wd_img2img`, `/wd_ref2img`, `/wd_inpaint`, and `/wd_upscale`) have an `image:` option. Attach the file to the message, then select the attachment in the command.
+- **Subcommands**: Some commands contain smaller commands inside them. For example `/wd_setting set`, `/wd_setting check`, and `/wd_setting reset`; pick the subcommand after typing the main command.
+- **Context menus**: A few features are not slash commands. Right-click (or tap-and-hold on mobile) a message containing an image, go to **Apps**, and look for options such as "Find sauce" and "SD Image Info".
+- **Chatting with the bot**: Mention the bot in a channel followed by your message to chat with it. See [Non-WD Commands](non-wd-commands.md) and [AI chat](docs/ai-chat.md).
+- **Cooldowns**: Every generation command has a cooldown so the backend is not overloaded. If the bot says to wait, wait a little before trying again.
 
-All of the examples in this document use the format `/command option:value`, which is exactly what you type in Discord.
+In this page, an example such as `/wd_create prompt:a girl` shows the command and option names. In Discord, free-text values are typed and choice values are selected from the menu.
 
-***
+### Start Here: Goal To Command
 
-### Text to Image (/wd_create, /wd_create_adv)
-The beginning of everything. You want to make an image from your description? Start here with /wd_create, just fill the prompt input in the command and let it rip
+| What you want to do | Start with | Main controls | Notes |
+|---|---|---|---|
+| Make an image from a description | `/wd_create` or `/wd_create_adv` | `prompt`, `neg_prompt`, `checkpoint`, `width`, `height`, `seed` | Basic mode uses the curated checkpoint menu. Advanced mode exposes sampler, scheduler, CFG, steps, clip skip, hires controls, ControlNet, and ADetailer. Extra scripts are an img2img feature. |
+| Keep an existing image's composition but change style/detail | `/wd_img2img` or `/wd_img2img_adv` | `image`, `prompt`, `denoising_strength` | Low denoise preserves more; high denoise changes more. This is whole-image denoising, not identity-preserving reference editing. |
+| Use one to four images as references for an edit | `/wd_ref2img` or `/wd_ref2img_adv` | `image`, `reference_2`…`reference_4`, `reference_layout`, `edit_variant`, `checkpoint` | The selected model must have native reference/edit conditioning. See the [compatibility matrix](#reference-model-compatibility). |
+| Redraw only part of an image | `/wd_inpaint` | `image`, `mask` or `segment_anything_prompt`, `prompt`, `denoising_strength`, `mask_blur` | The mask defines the edit region; blur, resizing and whole-picture processing can also affect the surrounding appearance. Use `mask_color: Raw - No detection` for a saved raw mask. |
+| Extend the canvas | `/wd_img2img` or `/wd_img2img_adv` with `extra_script: Native Outpaint`; or a Flux script | `/wd_script_outpaint set`, then `extra_script` | Native Outpaint is SD1/SDXL only. Flux Outpaint and Flux Kontext run on ComfyUI. |
+| Upscale while generating | Hires Fix in `/wd_create`/`/wd_create_adv`; Tiled Latent Upscale in img2img; PiD in generation commands | `upscale_multiplier`, `upscaler`/`upscaler_mode`, extra script | These are different operations with different limits. See [Upscaling paths](#upscaling-paths-hires-tiled-extras-seedvr2-and-pid). |
+| Upscale an existing image without regenerating it | `/wd_upscale` | `upscaler`, `upscale_multiplier`, `seedvr2_model` | Classic upscalers are fast; SeedVR2 reconstructs detail and is much heavier. |
+| Control pose, depth, lineart, or layout | `/wd_controlnet set`, then a generation command with `controlnet_input` | `controlnet_model`, `controlnet_preprocessor`, weight/mode | ControlNet is applied on Forge SD/SDXL requests; it is not applied to Flux generation in this bot. |
+| Fix faces or hands | `/wd_adetailer set`, then `do_adetailer:true` in an advanced command; or `/wd_inpaint` | detector, threshold, mask blur/padding, denoise | ADetailer repaints detected regions. Inpainting gives you direct control over the region. |
+| Put different subjects in different regions | Forge Coupler tags in the prompt, or `/wd_layout_draft` | `<=>`, `\|\|`, Advanced `\|x1:x2,y1:y2,weight\|` regions | Coupler is for SD/SDXL. Layout drafts can also save a reusable `<layout:name>` token. |
+| Add detail to a short prompt automatically | `/wd_setting set` with `image_prompt_quality` | `image_prompt_quality`, `image_prompt_batch`, `image_prompt_style`, `image_prompt_layout` | Off by default. The enhancer appends text only and preserves the original prompt. |
+| Save and reuse generation settings | `/wd_profile_add`, then `profile:<name>` | prompt prefixes, size, sampler, CFG, steps, checkpoint, configs | Profiles are stored per user; another user's profile can be used as a fallback if you do not own that name. |
+| Describe an image | `/wd_interrogate` | `engine`, `florence_task`, `florence_prompt` | Florence 2 family only; CLIP/DeepBooru are retired. |
+| Read generation metadata or find a source | Context menu **SD Image Info** / **Find sauce**, or `/wd_imginfo` | image attachment | Metadata can be stripped by the uploader; sauce search is best-effort. |
+| Make a video | `/wd_txt2vid`, `/wd_img2vid`, `/wd_ref2vid`, `/wd_vid_upscale` | prompt, image/reference, preset, length, upscale | Implemented with MiniMax H3 workflows; availability depends on the ComfyUI/media service. See [Media commands](docs/media-commands.md). |
+| Make a 3D model | `/wd_img2model` | `image`, `recipe`, `seed`, `download_glb` | Uses CelForge and returns an orbit video; GLB is optional. This command does not expose a Cancel button. |
 
+### Cancelling a Generation
+
+Use the **Cancel** button on the bot's progress reply. The button is filtered to the person who started the request, so another user cannot cancel your job.
+
+- **Forge generation** (`/wd_create`, `/wd_create_adv`, `/wd_img2img`, `/wd_img2img_adv`, `/wd_ref2img`, `/wd_ref2img_adv`, `/wd_inpaint`): cancellation is owned by the command instance. The bot waits until it can prove that *this* request is the one running before sending Forge's global interrupt. If the request is still queued, it waits and re-checks instead of interrupting whoever is currently generating. A cancel that arrives before the image request is submitted suppresses that submission.
+- **Preparation and step boundaries**: input preparation, prompt enrichment, and some model setup can finish before a Cancel button appears. Once the button is available, cancellation records your intent; model setup, uploads, result rendering, and PiD restoration can finish before the next inference is suppressed. The bot keeps tracking a submitted request until it has stopped.
+- **ComfyUI generation** (`Flux Outpaint`, `Flux Kontext`, Flux inpaint, interrogation, and the media workflows): the bot requests cancellation of the exact queued or running prompt on the exact ComfyUI instance. It confirms queue/history/websocket evidence before calling the job cancelled. Cancelling while an upload is still running prevents submission.
+- **Batches**: if the bot is sending images one at a time (for example `image_prompt_batch: Each`), it checks cancellation before each image and stops before the next one. A cancellation inside a single multi-image Forge request stops that inference; do not assume all backend internals stop at the same instant.
+- **Failure reporting**: if the backend refuses or cannot confirm cancellation, the bot says so instead of pretending the job was cancelled. A button from a finished request cannot stop a later request.
+- **Not universal**: not every command exposes Cancel. For example `/wd_img2model` (CelForge), profile/config commands, `/wd_upscale`, and `/wd_rembg` do not attach the shared generation Cancel control. Check the progress reply before assuming a button exists.
+
+### Text To Image (`/wd_create`, `/wd_create_adv`)
+
+The beginning of everything: describe what you want, optionally choose a checkpoint, and generate.
+
+```text
+/wd_create prompt:1girl, silver hair, standing on a rooftop at night, city lights, looking at viewer
 ```
-/wd_create prompt:anime girl
+
+Useful optional values:
+
+- `neg_prompt` — things you do not want in the result. For current distilled/flow models, negative prompting may have little effect; do not rely on it to fix a composition.
+- `checkpoint` — a menu label from the command's checkpoint list. See [Model selection](#model-selection-menus-cache-and-active-model).
+- `width` / `height` — output size; the bot rounds to multiples of 8. Basic `/wd_create` clamps to 512–2048 per side; advanced `/wd_create_adv` allows 64–4096; img2img, reference, and inpaint paths cap at 2048. Stay near the model's trained resolution rather than using the maximum just because it is accepted.
+- `seed` — reproducibility. `-1` means random.
+- `default_neg_prompt` — one of `Quality - SFW`, `Quality - NSFW`, `None - SFW`, or `No Default`. This controls the injected quality/SFW prompt text; `No Default` disables that prompt preset. Channel/guild output-censor settings are a separate control.
+- `profile` — reuse a saved setup. See [Saving a generation profile](#saving-a-generation-profile-wd_profile).
+- `bulk_size` — basic/advanced text-to-image can generate more than one image per request (up to 6 for regular users; the backend still applies its own limits). `Each` prompt enhancement does not raise this limit.
+
+Basic `/wd_create` also exposes `upscale_multiplier` and `upscaler_mode` (`Latent - VERY SLOW`, `ERSGAN - Normal`, `Lanczos - Fastest`, or `PiD - fixed 4x (SDXL)`). Advanced `/wd_create_adv` separates the hires controls into `upscale_multiplier`, `upscaler`, `upscale_denoise_strength`, and `upscale_step`, and adds sampler, scheduler, `cfg_scale`, `sampling_step`, `clip_skip`, `keep_metadata`, ControlNet, ADetailer, and more.
+
+#### Starter Examples
+
+A 2:3 portrait on an Illustrious-family model with a saved quality baseline:
+
+```text
+/wd_create prompt:1girl, original character, black coat, snowy street, cinematic lighting checkpoint:WAI-NSFW-IllustriousXL v16 width:832 height:1216 default_neg_prompt:Quality - SFW
 ```
 
-Optionally, you can also:
-- Add a `neg_prompt` (things you don't want in the image)
-- Pick a `checkpoint` (generation model, see the model rundown below)
-- Use `bulk_size` to generate several images at once (up to 6, Forge backend only)
-- Use a saved `profile` to reuse a previously saved generation setup (see "Saving generation profile" below)
-- Control resolution with `width` / `height` and reproducibility with `seed`
+Advanced control over sampler and guidance:
+
+```text
+/wd_create_adv prompt:1girl, silver hair, red eyes, library, warm light checkpoint:AnimagineXL v4 sampler:Euler a scheduler:Automatic cfg_scale:6 sampling_step:28 width:1024 height:1024 clip_skip:1
+```
+
+A natural-language model (Qwen/MOSS/Flux/Krea) usually does better with a sentence than a comma-separated tag pile:
+
+```text
+/wd_create prompt:A quiet bookshop at dusk, warm lamps, rain on the windows, a cat sleeping on the counter, detailed background
+```
+
+Use a saved style profile and override only the subject:
+
+```text
+/wd_create prompt:a knight resting beside a campfire, profile:soft_painting width:1216 height:832 seed:123456789
+```
 
 #### Prompting
-Your first generation might look a bit odd, let's start with how prompting work shall we? To start, there are 2 major styles of prompting: Natural language style and Booru-tag style. Natural language should be self-explanatory. Booru-tag use a combination of tag from [danbooru image aggregation site](https://danbooru.donmai.us/wiki_pages/tag_groups) to describe the image. Example of their difference below
 
-``` 
-Natural language prompt
-A girl with big breast sitting on a chair, drinking tea from a teacup while her eyes looking at the viewer
+There are two common prompt styles:
+
+```text
+Natural language: A girl with long black hair sits in a chair, drinking tea from a china cup while looking at the viewer.
+Booru tags: 1girl, long hair, black hair, sitting, on chair, holding cup, teacup, drinking, looking at viewer
 ```
 
+Neither style is universally better. Tag-style prompting tends to suit SD1.x, SDXL/Illustrious, Pony, and Anima-style anime checkpoints; natural language tends to suit Flux/Chroma, Klein, Qwen, MOSS, Lumina, Krea, and similar newer models. Some models understand both but respond more predictably to one.
+
+For tag-style models, a common order is `subject count, character name, franchise/source, clothing/pose, setting, lighting, style/quality`. The exact trigger tags are model-specific; consult the model card rather than assuming a universal character list.
+
+**Weighting.** A pair of parentheses raises emphasis by roughly 10%: `((chair))` is about `1.21×`. A pair of square brackets lowers it: `[[big breast]]` is roughly `(big breast:0.81)`. You can also use numeric weights such as `(chair:1.2)` or negative weights where the backend supports them. Extreme values can damage composition; start small.
+
+**Prompt order and BREAK.** Long prompts tend to lose influence toward the end. Some backends accept `BREAK` to split the prompt into chunks:
+
+```text
+ganyu, genshin impact BREAK office lady outfit, office interior
 ```
-Booru-tag prompt
-1girl, large breast, drinking, holding cup, teacup, sitting, on chair, looking at viewer
+
+**Quality tags.** Many booru-trained models use quality tags such as `masterpiece`, `best quality`, `good quality`, `bad quality`, and `worst quality`. Pony-lineage models often use `score_9`, `score_8`, `score_7`, and so on. Adding every quality tag at once is not a guarantee of a better image.
+
+**Negative prompts.** `neg_prompt` is for things you want to avoid. Quality tags are often the most useful part. Current guidance-distilled models (several Flux/Krea/Qwen Turbo presets) run at low or CFG 1 style guidance, where a negative prompt may have little or no effect. That is a property of the guidance setup, not a universal rule for every model or workflow. If you need strong negative control, use a model/workflow that exposes meaningful CFG, or use masking/inpainting to correct the region.
+
+**Resolution.** These models were trained around particular resolutions. A rough starting point:
+
+| Model class | Typical starting bucket |
+|---|---|
+| SD1.x | 512×512 class; 768×512 and similar aspect ratios |
+| SDXL / Illustrious / Pony / Anima | 1024×1024 class; 832×1216 and 1216×832 are common |
+| Flux / Chroma / Klein / Qwen / MOSS / Krea / Lumina | 1024–1408 class; check the model card |
+
+Going well outside the trained area tends to produce repeated bodies, long necks, extra limbs, or blur. The bot warns when the requested area is above a model-class threshold, but that is a warning rather than a hard stop. Dimensions are rounded to multiples of 8; the basic txt2img, img2img, reference, and inpaint commands cap at 2048 per side, while advanced txt2img accepts up to 4096. Acceptance is not a quality guarantee. For a larger finished image, generate in-distribution and upscale rather than asking for a huge canvas directly.
+
+Further reading: [Danbooru tag groups](https://danbooru.donmai.us/wiki_pages/tag_groups) explains common tag families; the [Latent Diffusion paper](https://arxiv.org/abs/2112.10752) and [SDXL paper](https://arxiv.org/abs/2307.01952) cover the model side.
+
+#### Core Vocabulary (How It Works)
+
+<details>
+<summary>Checkpoint, VAE, and text encoder</summary>
+
+A **checkpoint** is the main model bundle used to denoise latents. In practice a checkpoint often includes a U-Net/backbone, a text encoder, and a VAE (or the bot loads companion VAE/text-encoder files separately). The **VAE** converts between pixel space and the compressed latent space. The **text encoder** turns your prompt into conditioning vectors. A mismatched VAE/text encoder can produce colour shifts, blur, or errors, which is why the bot loads companion modules when switching model families.
+
+</details>
+
+<details>
+<summary>Seed, steps, sampler, scheduler, CFG, shift, denoise</summary>
+
+- **Seed** initializes the noise pattern. Same prompt, model, settings, and seed usually produce the same image, though backend nondeterminism can still cause small differences.
+- **Sampling steps** are how many denoising iterations run. More is not automatically better; past a point it mainly costs time.
+- **Sampler** is the numerical method used to move from noise toward an image. **Scheduler** controls how noise levels are spaced across those steps.
+- **CFG scale** is classifier-free guidance. Higher values push harder toward the prompt and can produce a burnt-in look; lower values allow more freedom and can drift. Distilled models often use CFG 1 or a low value.
+- **Shift / distilled CFG** is a separate control used by some flow/distilled model families. Do not treat it as a second ordinary CFG slider; use the model family's defaults unless you know the model's recommended range.
+- **Denoising strength** controls how much noise is introduced before img2img or inpaint sampling. Lower values usually retain more source content; higher values allow larger changes. Resizing, VAE conversion and postprocessing can still alter pixels at low or zero denoise, so it is not a pixel-preservation or quality slider.
+
+</details>
+
+<details>
+<summary>LoRA, textual embedding, and ControlNet are different things</summary>
+
+- A **LoRA** is a small adapter that modifies the main model's behaviour, usually for a character, style, or concept. It is not a full checkpoint, and compatibility depends on the base architecture and training target.
+- A **textual embedding** is a learned token or set of tokens that changes prompt conditioning. It is usually small and model-family-specific.
+- **ControlNet** adds spatial conditioning from an input image (pose, depth, lineart, tile, and so on) so the denoiser follows that structure. This is a different role from a style/subject LoRA; some lightweight control implementations also use adapter-style weights.
+- **IP-Adapter** is image-prompt conditioning; it is neither a LoRA nor a standard ControlNet preprocessor, even though both appear in the ControlNet configuration menu.
+
+</details>
+
+### Model Selection: Menus, Cache, And Active Model
+
+#### What The Menus Actually Show
+
+The `checkpoint` menu is a convenience list, **not the full installed catalog**, and different commands show different lists:
+
+| Where | What the menu contains |
+|---|---|
+| `/wd_create`, `/wd_img2img` | The small **curated** list (ten models). Useful as a default set, not a complete inventory. |
+| `/wd_create_adv`, `/wd_img2img_adv` | Standard SD1.x and SDXL-lineage checkpoints, excluding legacy entries. |
+| `/wd_ref2img`, `/wd_ref2img_adv` | Only checkpoints with implemented reference/edit conditioning, capped to keep the option list manageable. |
+| `/wd_modelchange` | Standard checkpoints plus a **LEGACY MODELS** submenu; `experimental_checkpoint` exposes additional families. |
+| `/wd_setting set hires_checkpoint` | Standard checkpoints plus **LEGACY MODELS** and **EXPERIMENTAL MODELS** submenus. |
+| `/wd_profile_add checkpoint` | Standard checkpoints plus legacy/experimental submenus. |
+
+The **active model** is whatever Forge currently has loaded. If you omit `checkpoint`, a generation command uses the active model. If you choose a checkpoint, the bot tries to switch to it; when it is not cached or cannot be loaded, non-reference commands generally report the failure and continue with the active model, while a reference command with an explicit checkpoint fails instead of silently using a model whose edit policy might not apply. Use `/wd_modelchange` to load a model outside the current menu, including `experimental_checkpoint` for newer families. A successful forced model change has a 30-minute cooldown; ordinary per-request selections do not.
+
+The bot tracks roughly the three most recently used checkpoints in its own cache, but Forge still has to load anything it does not currently hold. A cached entry can be evicted by another request. If the model you selected is slow to load, that is model loading, not a broken prompt.
+
+**Display labels versus filenames.** Discord shows a friendly label; profiles, logs, and cached-model messages may show the stored filename (often a basename without the `archive/` or `comfy_sym/` directory). Examples:
+
+| Menu label | Stored filename (example) |
+|---|---|
+| `AnimagineXL v4` | `animaginexl_v40_opt.safetensors` |
+| `NoobAIXL v1.1` | `noobaixl_v1_1.safetensors` |
+| `WAI-NSFW-IllustriousXL v16` | `wai_nsfw_illustrious_v160.safetensors` |
+| `Flux2 Klein 9B NVFP4` | `flux-2-klein-9b-nvfp4.safetensors` |
+| `Qwen Image 2.1 Turbo Int8 ConvRot` | `qwen_image_2.1_turbo_int8_convrot.safetensors` |
+| `MOSS Image SFT BF16` | `moss_image_sft_bf16.safetensors` |
+| `Krea 2 Turbo` | `krea2_turbo_int8_convrot.safetensors` |
+| `Flux Kontext.dev Q8_0` | `comfy_sym/flux1-kontext-dev-Q8_0.gguf` |
+| `Pastel Mix v2.1` | `pastelmix.safetensors` |
+
+The same checkpoint can therefore appear under a short name in a menu and a longer filename in a cache report. Treat them as the same model, not two installations.
+
+#### Installed Catalog At A Glance
+
+The lists below follow the current `utils/ai_server_config.js` catalogs. They are **deployment notes, not benchmark rankings**: model quality depends on the prompt, settings, LoRA, and what you are trying to make.
+
+**Curated menu** (shown by basic `/wd_create` and `/wd_img2img`):
+
+| Label | Family | Default preset notes |
+|---|---|---|
+| `Flux2 Klein 9B NVFP4` | Klein | Euler / Beta, 4 steps, CFG 1 |
+| `WAI-NSFW-IllustriousXL v16` | Illustrious/SDXL | 24-step SDXL family default; command sampler/scheduler defaults apply |
+| `IllumiyumeXL V-pred v3.1` | Illustrious V-pred | V-pred model; the bot may apply a simple latent-modifier fallback |
+| `Krea 2 Turbo` | Krea | Euler / Simple, 8 steps, CFG 1 |
+| `Pastel Mix v2.1` | SD1.x | DPM++ 2M / Karras, 32 steps, CFG 7; 512-class |
+| `Qwen Image 2.1 Int8 ConvRot` | Qwen 2.1 | Euler / Simple, 40 steps, CFG 1 |
+| `Qwen Image 2.1 Turbo Int8 ConvRot` | Qwen 2.1 Turbo | Euler / Simple, 8 steps, CFG 1 |
+| `Qwen Image 2.1 Uncensored Int8 ConvRot` | Qwen 2.1 | Euler / Simple, 40 steps, CFG 1 |
+| `MOSS Image Base BF16` | MOSS | Euler / Simple, 36 steps, CFG 3, shift 5 |
+| `MOSS Image SFT BF16` | MOSS | Euler / Simple, 36 steps, CFG 3, shift 5 |
+
+**Additional active SD1.x and SDXL-lineage menu labels** include `Pastel Mix v2.1`, `HimawariMix v8`, `AnimagineXL v4`, `AnimagineXL v3.1`, `NoobAIXL v1.1`, `NoobAIXL V-pred v1.0`, `NoobAIXL MDNT V-pred v1.0`, `Seele NoobAIXL V-pred v2.0`, `Chenkin NoobAI v0.5`, `Chenkin NoobAI v0.3 Rectified Flow`, `ChimeraXL v2`, `Juggernaut XL`, `StableYogis Realism v4`, `SilverMoonMix3 v2`, `SilenceMix v3`, `ZukiCuteIL v5`, `ZukiNewCuteIL v1`, `ColorPalette v1`, `PVC Model Style v1.1`, `Mugen - Aesthetic`, `IllustriousXL v2.0`, and `WAI-NSFW-IllustriousXL v16`. The legacy picker also exposes older entries such as `AnimagineXL v3`, `NekorayXL v0.6`, `Dreamshaper XL Lightning`, `PonyDiffusionXL v6`, `PonyRealism v2.2`, `IllusionBreed v3`, `RealVisXL v5`, `IllustriousXL v1.0/v1.1`, `WAI-NSFW-IllustriousXL v12`, `PrefectPony v5.0`, `AutismMix PonyXL`, `IllumiyumeXL V-pred v3.2`, and `Rouwei V-pred v0.8`. They remain installed for compatibility, but do not treat "legacy" as a quality ranking.
+
+**Experimental menu** (`experimental_checkpoint`): Flux/Chroma (`Flux.dev Q8_0`, `Flux Krea.dev Q8_0`, `Flux Fill.dev Q8_0`, `Pixelwave Flux v3 Q8_0`, `Chroma1 HD Q8_0`, `Chroma1 HD Flash Q8_0`, `Chroma Detail v0.94 Q8_0`), Klein (`Flux2 Klein 9B NVFP4`, `Flux2 Klein 9B Int8 ConvRot`, `Flux2 Klein 4B`), `Anima Base v1`, `Anima Aesthetic v1.1`, `Anima Turbo v1.0`, `WAI Anima v1`, `Neta Lumina v1`, `NetaYume Lumina v3`, Qwen 2.1 (standard/Turbo/Uncensored), MOSS (Base/SFT BF16/SFT Int8 ConvRot), `Z Image Turbo`, and Krea 2 (Turbo/Raw). Flux Kontext is available in the reference menu rather than the experimental generation list.
+
+Family-level defaults are applied when you leave fields unset. The important ones are:
+
+| Family | Default sampler / scheduler | Steps | Guidance notes |
+|---|---|---|---|
+| SD1.x | DPM++ 2M / Karras | 32 | CFG 7 |
+| SDXL / Illustrious / Pony | no family sampler override; 24 steps | 24 | command/profile default |
+| Flux / Chroma | Euler / SGM Uniform | 20 | distilled guidance (CFG 1, dcfg 3) |
+| Klein | Euler / Beta | 4 | CFG 1 |
+| Anima | ER SDE / Beta | 32 | CFG 4 |
+| Lumina | no family sampler override | 32 | dcfg 6 |
+| Qwen 2.1 | Euler / Simple | 40 (Turbo 8) | CFG 1 |
+| MOSS | Euler / Simple | 36 | CFG 3, dcfg 5 |
+| Z Image Turbo | Euler / Beta | 9 | CFG 1, dcfg 9 |
+| Krea 2 | Euler / Simple | 8 | CFG 1, dcfg 1.15 |
+
+Overrides from the command/profile take priority. `dcfg` is the family's distilled/guidance default from `model_defaults`; the command maps it to the appropriate CFG/shift field for that family. Individual models may have additional forced presets in the command code; if a model's card recommends different settings, follow the card or your own measured results rather than treating the table as a universal law.
+
+Further reading: [Flux model family](https://blackforestlabs.ai/announcing-black-forest-labs/), [Flux Kontext model card](https://huggingface.co/black-forest-labs/FLUX.1-Kontext-dev), [Qwen Image 2.1](https://huggingface.co/Qwen/Qwen-Image-2.1), [Qwen Image 2.1 Turbo](https://huggingface.co/Qwen/Qwen-Image-2.1-Turbo), [MOSS Image Base](https://huggingface.co/OpenMOSS-Team/MOSS-Image-Base), and the [Animagine XL 4.0 model card](https://huggingface.co/cagliostrolab/animagine-xl-4.0). For the current installed labels, the source of truth is [utils/ai_server_config.js](utils/ai_server_config.js).
+
+### Image To Image (`/wd_img2img`, `/wd_img2img_adv`)
+
+Image-to-image takes an existing image, adds noise based on `denoising_strength`, and denoises it again with your prompt. It is a whole-image process: it does not know which pixels are a face, a logo, or a background unless you mask them.
+
+- `denoising_strength` near `0.2`–`0.45` keeps composition and makes a refined variant.
+- Around `0.5`–`0.75` changes style and detail substantially while keeping the rough layout.
+- Near `0.9`–`1.0` reinterprets the image and may lose the original subject. If you need identity preservation, use reference editing or inpainting instead.
+
+```text
+/wd_img2img image:[attachment] prompt:1girl, watercolor illustration, soft light, detailed background denoising_strength:0.45 width:1024 height:1024 default_neg_prompt:Quality - SFW
 ```
 
-To know which model can use which prompting style, consult the model list below
+Advanced mode adds sampler, scheduler, CFG, steps, clip skip, ControlNet, ADetailer, and extra scripts.
 
-You notice that the chair is missing? her breast is too big? You can emphasize or de-emphasize each word's importance with `( word )` and `[ word ]` respectively, each word have a default weight of 1 (100%), each pair of `()` increase this weight by 10%. For example ((chair)) will make the chair 21% more important (1.1×1.1=1.21). Vice versa, each pair of `[]` reduce this weight by 10%. You can also set the weight to an arbitrary number as well. For example `[[big breast]]` is equal to `(big breast:0.81)` From personal experience anything lower than 0.4 won't have any effect on the picture and on the contrary anything higher than 1.8 will mess up the composition badly
+#### Tiled Latent Upscale
 
-!!! note Prompt Order, BREAK keyword
-	Simply speaking, the longer the prompt, the less impactful later words in prompt will be on the generated image. If you are seeing it happen, you can use the keyword BREAK to break the prompt into multiple chunk that the bot can handle, for example "ganyu, genshin impact BREAK office lady outfit"
+This is an img2img extra script, not the retired `Ultimate SD upscale` and not SeedVR2. It keeps the source image as the img2img input, multiplies the requested base width/height by `upscale_multiplier`, and uses Forge's native `Latent Upscale` resize mode with Mixture of Diffusers or MultiDiffusion tiling. It refines at a larger size; it does not create a new scene from nothing.
 
-!!! note Booru-tag prompt derivitive
-	While booru-tag is generally easily understandable, some models do train on specific special tags/tag ordering. Most importantly is SDXL-based AnimagineXL and Illustrious linage of model. As they are trained to recognized anime characters. To get said character out of the model, it's recommended to follow `1girl/1boy (if applicable), character name, franchise (which contain the character), everything else` tag structure. It would be kinda unwieldy to list them all here so feel free to consult these models' CivitAI page
+Configure it with:
 
-You will notice that there is also `neg_prompt`, stands for negative prompt, this is where you put in stuff that you DO NOT want to have in the generated image. In general except "Quality" tags, it is not recommend to add anything to neg_prompt unless need to, tag ordering and emphasize should affect its effectiveness as well
+```text
+/wd_script_upscale set upscale_multiplier:2 method:Mixture of Diffusers tile_width:1024 tile_height:1024 tile_overlap:128 tile_batch_size:1
+```
 
-!!! note Booru "Quality" tags
-	A common feature all of the fine-tune on booru dataset share is the existence of "Quality" tag that is used to caption image with high rating on booru. In theory adding this to prompt and adding the "Bad Quality" tags to negative prompt should improve the quality of the image. Example of these tags are `masterpiece`, `best quality`, `good quality`, `bad quality`, `worst quality`. PonyDiffusion is quirky and use `score_9_up`, `score_8`, `score_7`, ... instead
-
-!!! warning Negative prompt on Flux
-	Negative prompt does not work with Flux due to it being a distilled model which require CFG Scaling to be 1 at all time, causing negative prompt to have no effect
-
-`width` and `height` should be self-explainatory. However due to how these model are pretrained on certain resolution. It is best to generate image at those resolutions or close to them. Resolution too low it will be a blurry mess, too hight and it will introduce distortion, especially on human body (overly long body, double belly, long neck, etc.). You can probably get away with +25% on each side for SDXL and Flux models and upto +50% for SD1.x. Different aspect ratio should be fine as long as you don't go too crazy on it and the area (height×width) is similar to the base square resolution area below are some base resolution supported by 3 major models
-
-SD1.x | SDXL / Anima | Flux / Other Families 
---------------|---------------------|------------------
-512×512 | 1024×1024 | 1408×1408
-768×768 | 768×1152 | 1728×1152
-768×512 | 864×1152 | 1664×1216
-916×512 | 1360×768 | 1920×1080
-
-`seed` is the seed for the initial noise pattern of the generation. Simply put, Same prompt + same seed = same result. Slightly different prompt + same seed = slightly different result. You can use it to your advantage
-
-#### Hi-res Fix (Latent Upscale)
-
-!!! info Technical stuff, tf is latent?
-    Well to start you need to differentiate the latent space and the pixel space when generating image. Pixel space is what you are familiar with if you use paint or any image manipulating software. Image is represented by pixels of color (and transparency). However using this as an output of an AI network is wayyyy too inefficient due to how many pixel there are (512×512~250k pixels jesus). That's why these images are created in a compressed representation of an image called a latent space first. Using a VAE (Variable Auto-Encoder) to decode it back to pixel space when generation is finish. How they are encoded/decoded is above my paygrade so feel free to google
-
-So you have a picture in latent space, about to be finalized to a complete image. But what if you want to make the picture bigger? Well It's time to copy and paste those latent space to a bigger canvas and... DO IT AGAIN. That is the idea behind hi-res fix (or latent upscaling). You only need to provide `upscale_multiplier` with anything higher than 1 and `upscaler_mode` or `upscaler` in advanced version to use Latent upscale. Keep in mind that this option is VERY SLOW. If you just want to have a quick and clean upscale, use /wd_upscale instead.
-
-#### Advanced Parameter
-
-!!! info Understand how the image is "actually" made
-    This is quite important if you want to understand how any of the parameters in the next part mean.
-
-Okay, a common misconception with AI image generation is that they simply bash photos together to "generate" an image. This is incorrect. A more appropriate analogy would be a scupltor trying to make a statue starting from a solid block of marble. While they know what to do (with the prompt). They will first just randomly smash on the block to shave off the bulk of the material, only when the general shape has been defined then it will start sculpting on finer detail, until the statue is finished
-
-In reality, this technology has its root in solving denoising problem. i.e. You have a damage/incomplete image, how do you reconstruct the image from the clue around that incomplete part. At one point, these denoising algorithms got so good, you can have the entire image being noise and it would still *try* to reconstruct the image, as long as they are guided by... something, which is where the CLIP-encoded prompt you typed steps in. The latent image go through a number of "sampling step" trying to "solve" the noise from the initial seed, using a certain sampler and scheduler combination. What each sampler and scheduler do you can find on google
-
-***
-
-If you use /wd_create_adv. You will be exposed to some extra parameter to the generation. ~~I will try to make it brief~~ Who am I kidding let's just cut to the chase:
-- `cfg_scale`: Decide how "creative" the image can be, high value make it adhere more to the prompt too high value cause the image to have a "burnt in" effect. low value make it more creative but more loose on prompt adherence, too low value make the image a mess. Normal value is 7 for SD1.x, 5.5 for SDXL, 3.5 (distilled, don't worry about this) for Flux
-- `sampler`: Specify sampler (how to "solve" the noise)
-- `scheduler`: Specify scheduler (how fast you want to solve the noise)
-- `sampling_step`: Specify number of sampling step (how long you want to solve the noise)
-- `clip_skip`: In simplified term, CLIP (the thing that turn your prompt to number to feed into the network) has a bunch of layer, with the final layer being the most abstracted, using clip skip > 1 will "skip" this layer, in theory clip skip 1 give better natural language understanding, while 2 give user more control by unshackle separate words with their surrounding context. This however really only work with SD1.x based model
-- `keep_metadata`: upload the image to catbox instead of discord CDN
-
-### Image to Image (/wd_img2img, /wd_img2img_adv)
-
-Say you want to "anime-fy" your photo? or generating an image with your prompt but loosely follow an image? This is the place to go to. This is a very versatile tool but this document will show some use cases of this command, be creative i guess.
-
-#### Noisy Upscale 
-
-This is somewhat of a compromise between GAN-based upscaling (/wd_upscale) and hi-res fix (/wd_create). It works by encoding the input image into latent space, adding noise, dividing the latent into overlapping "tiles" with Forge's integrated Mixture of Diffusers / MultiDiffusion tiling, and denoising each tile. This "enhances" the features in the picture at a higher resolution and/or introduces novel features that make the high resolution output more aesthetically pleasing.
-
-Use `/wd_script_upscale set` to configure it, then select `extra_script: Tiled Latent Upscale` in `/wd_img2img` or `/wd_img2img_adv`. The command keeps the source image as the img2img input, multiplies the requested base width/height by `upscale_multiplier`, and uses Forge's native `Latent Upscale` resize mode. It is not the selectable `SD Upscale` script and does not run SeedVR2.
+Then select `extra_script: Tiled Latent Upscale` in `/wd_img2img` or `/wd_img2img_adv`.
 
 Settings:
-- `upscale_multiplier`: output size multiplier (1-4, default 2). Use `1` for tiled refinement without changing the output size.
+
+- `upscale_multiplier`: output multiplier from 1 to 4; default 2. Use 1 for tiled refinement at the same output size.
 - `method`: `Mixture of Diffusers` (default) or `MultiDiffusion`.
-- `tile_width` / `tile_height`: tile size in pixels, snapped to 64px (default 1024, height 0 = same as width).
-- `tile_overlap`: overlap between tiles in pixels, snapped to 16px (0-1024, default 128), smaller than both tile dimensions.
-- `tile_batch_size`: tiles processed per batch (1-8, default 1).
+- `tile_width` / `tile_height`: tile size, snapped to 64px. Width defaults to 1024; height 0 means "same as width"; values are clamped to 256–2048.
+- `tile_overlap`: overlap in pixels, snapped to 16px, default 128. It must be smaller than both tile dimensions.
+- `tile_batch_size`: tiles per batch, 1–8, default 1. Larger batches use more memory.
 
-Only SD1/SDXL checkpoints (including their mapped inpaint checkpoints) are supported for this mode. Use a relatively conservative `denoising_strength` (roughly 0.2-0.45); higher values change the image more aggressively. Bigger tiles and batches use more VRAM.
+Only SD1/SDXL checkpoints (and their mapped inpaint checkpoints) are supported. Target dimensions are capped at 8192px. Use a conservative `denoising_strength` (roughly 0.2–0.45); higher values change the image more. Bigger tiles, batches, and scales cost more time and memory. If seams appear, increase overlap, use larger tiles, or lower the scale/denoise rather than stacking more postprocessing.
 
-Example
+Example:
 
-```
-/wd_script_upscale set upscale_multiplier: 2 method: Mixture of Diffusers tile_width: 1024 tile_height: 1024 tile_overlap: 128 tile_batch_size: 1
-```
-
-```
-/wd_img2img_adv image: [attachment] prompt: 1girl, fu xuan denoising_strength: 0.35 sampler: DPM++ 2M scheduler: Automatic sampling_step: 35 default_neg_prompt: n_nsfw extra_script: Tiled Latent Upscale
+```text
+/wd_img2img_adv image:[attachment] prompt:1girl, fu xuan, detailed outfit, soft light denoising_strength:0.35 sampler:DPM++ 2M scheduler:Automatic sampling_step:35 default_neg_prompt:No Default extra_script:Tiled Latent Upscale
 ```
 
-!!! note extra_script availability
-	`Tiled Latent Upscale` and `Native Outpaint` are offered in both `/wd_img2img` and `/wd_img2img_adv`. Both commands also offer the Flux-based extra scripts (see below).
+`Tiled Latent Upscale` and `Native Outpaint` are offered in both img2img commands. The Flux-based scripts (`Flux Outpaint`, `Flux Kontext`) are also available there.
 
+### Reference Editing (`/wd_ref2img`, `/wd_ref2img_adv`)
 
-#### Outpainting
+Reference commands use a model's native reference/edit conditioning. They are not "img2img with a high denoise": the model receives one or more reference images through a dedicated path, and the prompt describes the edit.
+
+The primary `image` is the edit target/first reference. `reference_2`, `reference_3`, and `reference_4` add up to three more images (four total).
+
+```text
+/wd_ref2img_adv image:[target] reference_2:[second image] prompt:put the character from reference 2 into a rainy city street, cinematic lighting reference_layout:Native edit_variant:General
+```
+
+#### Reference Model Compatibility
+
+| Checkpoint family | Installed reference-capable checkpoints | Reference switch / policy | Required edit LoRA |
+|---|---|---|---|
+| Qwen 2.1 | Standard, Turbo, Uncensored | `qwen21_do_reference` | None |
+| Klein (Flux2) | 9B NVFP4, 9B Int8 ConvRot, 4B | `klein_do_reference` | None |
+| Anima | Base, Aesthetic, Turbo, WAI | `anima_do_reference` | `AnimeEditV2` (added automatically) |
+| MOSS | Base, SFT BF16, SFT Int8 ConvRot | `moss_do_reference` (`Moss-Image-Edit`; `Disable` outside reference) | `moss_image_edit_lora_rank_64_bf16` (added automatically) |
+| Krea 2 | Turbo, Raw | `krea2_do_reference` | `krea2_general_edit_v2` for General; `krea2_identity_edit_v2` for Identity |
+| Flux Kontext | `Flux Kontext.dev Q8_0` | native reference/context path | None |
+| Flux Dev | Not reference-capable | Automatically replaced by the installed Flux Kontext checkpoint; the bot tells you it did so | None |
+| SD1.x / SDXL / Illustrious / Pony / other families | Not reference-capable in this workflow | Use img2img, inpaint, or a model from the table above | — |
+
+The bot checks the required edit LoRA is visible to Forge before generation. If it is missing, the request fails with a clear message instead of producing an unedited image. An explicit `<lora:...>` tag in your prompt is detected and not duplicated. A second Krea edit LoRA is not added at weight 1 over your existing one.
+
+Reference commands default `denoising_strength` to 1. They do not use ControlNet attachments or extra scripts, and references are never also sent to ControlNet. Prompts still accept ordinary LoRAs and wildcard syntax.
+
+#### Reference Layouts, Order, And Letterboxing
+
+- `reference_layout: Native` (default) sends the first image as the normal img2img input and the remaining images through Forge's native ImageStitch reference gallery. It is **not** a literal collage; the model receives separate reference conditioning.
+- `Horizontal`, `Vertical`, and `Grid` build one combined image from all references. The order is always `image`, `reference_2`, `reference_3`, `reference_4`. Horizontal forms one row, Vertical one column, and Grid uses enough columns to fit the square root. Each tile is resized with "contain" and gets white padding, so mixing portrait and landscape references can add visible white bars.
+- For Native, each reference is resized to fit within the reference side limit (1024px by default), flattened onto white, and padded to a multiple of 64 on the right/bottom. The primary image is also resized/padded and the output is contained into the requested `width`/`height`, so unusual aspect ratios can letterbox.
+- Output dimensions are 64–2048px per side and default to the primary upload's size. Reference count is limited to four. If you need a specific border-free result, crop the input to the target aspect ratio first.
+
+#### Choosing Reference Versus Img2img, Inpaint, Or Outpaint
+
+| Path | What is preserved | Best use |
+|---|---|---|
+| img2img denoise | Rough composition/colors through the noised image latent | Style passes, detail variants, anime-fying a photo when exact identity is not critical |
+| Native reference edit | The model's learned reference/identity conditioning, not exact pixels | "Use this character/outfit/object in a new scene"; combine up to four references |
+| Masked inpaint | Everything outside the mask | Local fixes, object replacement, region edits |
+| Outpaint | The original source rectangle, except a narrow overlap strip at expanded edges | Extending the frame, adding sky/background around a subject |
+
+Do not assume a reference model will preserve every pixel. It may change pose, clothing details, or background in service of the prompt. For exact preservation, mask the region or use img2img with low denoise.
+
+Further reading: [IP-Adapter](https://arxiv.org/abs/2308.06721) explains image-prompt conditioning; model-specific reference behaviour belongs in the checkpoint card linked above.
+
+### Inpainting (`/wd_inpaint`)
+
+Inpainting redraws a selected area of an image and keeps the rest. Use it to fix hands/faces, replace an object, remove something, or change a local feature.
+
+The bot supports two ways to define the area:
+
+1. **Manual mask** — attach a `mask` image. White (or the selected mask colour) marks the editable area; black protects the rest.
+2. **Automatic detection** — provide `segment_anything_prompt`. GroundingDINO finds candidate boxes, then SegmentAnything refines the shape. You choose the detected box; the bot can also return a reusable mask image.
+
+```text
+/wd_inpaint image:[attachment] prompt:1girl, red bunnygirl latex outfit, knee-high stockings, beautiful color, best quality neg_prompt:worst quality, bad quality, jpeg artifacts, bad anatomy, 2girls, cropped, more than 2 legs denoising_strength:1 mask_blur:4 mask_content:Fill - Keep color segment_anything_prompt:bunnygirl latex outfit
+```
+
+Key controls:
+
+- `denoising_strength`: how much the masked area is noised. `1` is common for a full replacement; lower values preserve more of the original region.
+- `mask_blur`: feathers the mask boundary. Higher values blend more but can leak changes outside the intended edge.
+- `mask_content`: `Fill - Keep color`, `Original - Keep both color and comp.`, `Latent Noise - Keep composition`, or `Latent Nothing - Keep nothing`. The default is `Latent Nothing - Keep nothing`.
+- `mask_color`: the colour used to detect the mask. Use `Raw - No detection` for a mask saved from automatic mode or an exact black/white mask.
+- `mask_increase_padding`: expands the detected mask by this many pixels (0–64; default 24).
+- `inpaint_area`: `Whole picture`, `Whole picture - Masked control`, or `Only masked`. Leave it on `Whole picture` unless you know why you need the others.
+- `controlnet_preprocessor_override`: `None - No preprocessor`, `Fill`, `Inpaint`, or `Inpaint NoobAI`.
+
+If `default_neg_prompt` is `No Default` and the negative prompt is empty, the command forces CFG 1. That is a current implementation detail, not a recommendation for every model.
+
+#### Anima Inpainting Guardrail
+
+When the active checkpoint is Anima, `/wd_inpaint` uses the installed inpaint ControlNet pair below. This older 3-channel LLLite model expects the white-mask edit pixels to be black-filled; `inpaint_noobai` does that.
+
+| Active family | ControlNet model | Preprocessor | Resolution |
+|---|---|---|---|
+| Anima | `animaLllite_006-inpainting` | `inpaint_noobai` | 1024 |
+| Other SD/SDXL | your `/wd_controlnet` config, or the inpaint default | your saved choice | saved/default |
+
+The command's normal `Fill` preprocessor is not passed through as an override. If you supply a saved ControlNet config for Anima, select `Inpaint NoobAI` explicitly. Other Anima ControlNet models or preprocessors fail with a clear compatibility message instead of silently producing a bad mask. Anima reference edit mode is disabled for the inpaint request and restored afterwards.
+
+### Outpainting
+
+#### Native Outpaint (SD1/SDXL)
 
 `Native Outpaint` expands the canvas and uses Forge's native masked inpainting to generate the added margins. The padding is initialized by extending the nearest edge pixel of the source outward, including at the corners, so there is no stretched or blurred copy of the whole image. The source stays in its exact original rectangle, and native inpainting repaints a narrow overlap strip along each expanded side to blend the join. The central area stays masked, while mask blur feathers the transition on both sides of the overlap. Subject details near an expanded edge, such as a face or object touching the border, can still change inside that strip.
 
-Use `/wd_script_outpaint set`, then choose `extra_script: Native Outpaint` in either img2img command. `size` is padding per selected side (default 128px); `direction` accepts LRUD. The `top`, `bottom`, `left`, and `right` settings override selected sides, with 0 falling back to `size`. Padding snaps up to 8px. `overlap` is how many pixels inside each expanded source edge are repainted (default 64, snapped up to 8px and capped at a quarter of the source side, so at least the central half remains black in the mask before feathering); sides without padding do not get an overlap strip. Default `mask_blur` is 32, and explicit 0 disables blending. Existing saved settings keep their stored `mask_blur`, and explicit 0 is kept. Omitted `denoising_strength` defaults to 1 for this mode.
+Configure it with `/wd_script_outpaint set`, then choose `extra_script: Native Outpaint` in either img2img command.
 
-This path supports SD1/SDXL. It uses the matching inpaint checkpoint when the bot has a mapping, otherwise it keeps the selected SD1/SDXL model. Dedicated inpaint checkpoints usually work best. Describe the complete desired scene in the prompt. Qwen 2.1 and MOSS are not enabled for masked outpainting: Qwen's tested reference-edit path left the margins unchanged, and MOSS has no validated edit path in this installation. Coupler regions cannot be combined with Native Outpaint.
+- `size`: padding per selected side (default 128px), snapped up to 8px.
+- `direction`: accepts `LRUD` (left, right, up, down); case-insensitive.
+- `top`, `bottom`, `left`, `right`: override individual sides. `0` means "use `size` for this selected side".
+- `overlap`: how many pixels inside each expanded source edge are repainted (default 64, snapped up to 8px). It is capped at a quarter of the source side, so at least the central half stays black in the mask before feathering. Sides without padding do not get an overlap strip.
+- `mask_blur`: default 32; explicit 0 disables blending. Existing saved settings keep their stored value, including an explicit 0.
+- Omitted `denoising_strength` defaults to 1 for this mode.
 
-The removed `Outpainting mk2` and `Ultimate SD upscale` selections are translated to the native replacements for stale interactions. Existing saved settings remain usable; obsolete outpaint falloff/color-variance and upscale seam-fix/upscaler fields are ignored. Legacy upscale `padding` maps to twice that value as tile overlap.
-
-Example 
-
-```
-/wd_script_outpaint set size: 128 direction: LRUD
-```
-
-```
-/wd_img2img_adv image: [attachment] prompt: a woman in a red dress standing in a city street with buildings in the background and a bird flying overhead, official art, a detailed painting denoising_strength: 1 sampler: Euler scheduler: Normal cfg_scale: 5 sampling_step: 24 extra_script: Native Outpaint
+```text
+/wd_script_outpaint set size:128 direction:LRUD
 ```
 
-
-#### Flux Outpaint / Flux Kontext (extra scripts)
-
-Two extra scripts are also available (in both `/wd_img2img` and `/wd_img2img_adv`) when you want to outpaint an image using a Flux-based model:
-- **Flux Outpaint** — outpaint the image using the Flux Fill model. Select `extra_script: Flux Outpaint` (the script automatically uses sensible sampler/scheduler/CFG settings for the Fill model).
-- **Flux Kontext** — outpaint/expand the image using the Flux Kontext model (text-in-context based generation). Select `extra_script: Flux Kontext`.
-
-Both of these run on the ComfyUI backend (see the "Generation Model Quick Rundown" for the required Flux Fill / Flux Kontext checkpoints).
-
-### Reference Editing (/wd_ref2img, /wd_ref2img_adv)
-
-These commands use the reference/edit conditioning built into Qwen 2.1, Klein, Anima, MOSS, Krea2 and Flux Kontext instead of plain denoising. Select a reference-capable `checkpoint` (the menu only lists installed models that work). The primary `image` is the edit target/first reference; `reference_2`, `reference_3` and `reference_4` add up to three more references (maximum four images).
-
-- Flux Dev has no reference conditioning. If you select Flux Dev (or it is the active model), ref2img automatically loads the installed Flux Kontext checkpoint instead and tells you it did so.
-- `reference_layout: Native` (default) sends the first image as the normal img2img input and the remaining images through Forge's native ImageStitch references. `Horizontal`, `Vertical` and `Grid` build one combined reference collage instead.
-- `edit_variant`: `General` (default) or `Identity` for Krea2. Identity selects `krea2_identity_edit_v2`; General selects `krea2_general_edit_v2`. An explicit edit LoRA tag in your prompt is never duplicated and a second Krea edit LoRA is never added at weight 1.
-- Anima and MOSS require their installed edit LoRAs (`AnimeEditV2` / `moss_image_edit_lora_rank_64_bf16`); these are added automatically and an explicit tag in your prompt is left untouched.
-- Reference commands default `denoising_strength` to 1 and do not use ControlNet attachments or extra scripts. References are never also sent to ControlNet.
-
-Prompts still accept ordinary LoRAs and wildcard syntax. For example:
-
-```
-/wd_ref2img_adv image: [target] reference_2: [second image] prompt: put the character from reference 2 into a rainy city street, cinematic lighting
+```text
+/wd_img2img_adv image:[attachment] prompt:a woman in a red dress standing in a city street with buildings in the background and a bird flying overhead, official art, a detailed painting denoising_strength:1 sampler:Euler scheduler:Normal cfg_scale:5 sampling_step:24 extra_script:Native Outpaint
 ```
 
-### PiD 4x upscaling
+This path supports SD1/SDXL. It uses the matching inpaint checkpoint when the bot has a mapping; otherwise it keeps the selected SD1/SDXL model. Dedicated inpaint checkpoints usually work best. Describe the complete desired scene in the prompt. Qwen 2.1 and MOSS are not enabled for masked outpainting: Qwen's tested path left the margins unchanged, and MOSS lacks a validated masked-outpaint path in this installation. Their reference-editing paths are separate (see [Reference Model Compatibility](#reference-model-compatibility)). Coupler regions cannot be combined with Native Outpaint.
 
-`PiD` is available in the `upscaler`/`upscaler_mode` choice for `/wd_create`, `/wd_create_adv`, `/wd_img2img`, `/wd_img2img_adv`, `/wd_ref2img` and `/wd_ref2img_adv`. It produces a fixed 4x result using the installed distilled SDXL PiD checkpoint.
+The removed `Outpainting mk2` and `Ultimate SD upscale` selections are retained only as retired aliases for stale interactions: `Outpainting mk2` maps to `Native Outpaint`, and `Ultimate SD upscale` maps to `Tiled Latent Upscale`. Existing saved settings remain usable; obsolete outpaint falloff/colour-variance and upscale seam-fix/upscaler fields are ignored. Legacy upscale `padding` maps to twice that value as tile overlap.
 
-- SDXL checkpoints use Forge's native integrated PiD pass. Hires Fix is disabled automatically for that request because the two passes cannot run together.
-- Non-SDXL reference workflows (Qwen 2.1, Klein, Anima, MOSS, Krea2) and non-SDXL img2img use a PiD postpass: the base image is generated first, then a temporary standalone PiD img2img pass upscales the RGB result. The original checkpoint, preset and companion modules are restored afterwards on success, failure or cancellation.
-- PiD is not offered in `/wd_create`/`/wd_create_adv` for non-SDXL checkpoints yet; use the img2img or reference command for those model families.
-- Keep the base width/height at 1024px or less in each direction, use multiples of 8, and keep the 4x output within 4096px. PiD cannot be combined with Hires Fix, Tiled Latent Upscale, Native Outpaint or a Flux Comfy script. Native `/wd_upscale` (Extras) never receives PiD; use the generation commands for it.
-- On this installation PiD works while Forge keeps `--sage`. Forge Neo's `backend/attention.py` now falls back to PyTorch SDPA whenever the active diffusion engine is PiD (`dynamic_args.pid`), so the PiD pass never uses SageAttention. Other models keep Sage. Without this Forge change, PiD with `--sage` emits `Encountered NaN in Latent` and blank images. Backups: `G:\AIStuff\sd-webui-forge-neo\tmp\attention-before-pid-sage-bypass-20261103.py`.
+#### Flux Outpaint And Flux Kontext (Extra Scripts)
 
-### Image prompt enhancement
+These two extra scripts are available in both img2img commands for Flux-based work:
 
-The optional image prompt enhancer can add compatible detail without replacing your prompt. It keeps your entire original prompt byte-for-byte, including LoRA tags, trigger phrases and wildcard syntax, and only appends validated newly generated details. It never adds new control syntax or model adapters.
+- **Flux Outpaint** uses the Flux Fill model to outpaint an image. Select `extra_script: Flux Outpaint`; the script sets sensible Fill-model sampler/scheduler/CFG values.
+- **Flux Kontext** uses the Flux Kontext model's context/reference behavior to expand or reframe an image from the prompt. Select `extra_script: Flux Kontext`.
+
+Both run on the ComfyUI backend and need the installed Flux Fill/Kontext checkpoints. Not every Forge-side feature is available in those ComfyUI workflows. These are not masked inpainting: if you need exact mask boundaries, use `/wd_inpaint` or Native Outpaint on a supported model.
+
+### Upscaling Paths: Hires, Tiled, Extras, SeedVR2, And PiD
+
+These options solve different problems. More is not always better.
+
+| Path | Where | What it does | Important limits |
+|---|---|---|---|
+| Hires Fix | `/wd_create`, `/wd_create_adv` when `upscale_multiplier` > 1 | Generates a base image, then runs a second denoising pass at a larger size | Txt2img only. More detail, but can distort anatomy or composition. `upscale_denoise_strength` and `upscale_step` control the second pass. |
+| Tiled Latent Upscale | img2img extra script | Encodes the source, tiles the latent, denoises tiles, and blends them at higher resolution | SD1/SDXL only; scale 1–4; target max 8192; seam risk if overlap/tiles/denoise are poor |
+| `/wd_upscale` classic upscalers | Extras | Lanczos/ESRGAN/AnimeSharp-type pixel upscaling; no prompt and no denoise | Useful for already-finished images. Learned upscalers can infer textures; they do not guarantee recovery of the original missing detail. |
+| `/wd_upscale` SeedVR2 | Extras | Diffusion-based reconstruction of detail at a target shortest side | Much heavier than classic upscalers; may hallucinate detail. Ignores traditional upscalers when selected. |
+| SeedVR2 setting | `/wd_setting set seedvr2_model` | Selects a SeedVR2 pass for the txt2img generation path | Target shortest side defaults to 1600; use `/wd_upscale` for an explicit pass after editing |
+| PiD | Generation `upscaler`/`upscaler_mode` | Fixed 4× upscale using the installed distilled SDXL PiD checkpoint | Base side ≤1024px, divisible by 8; output ≤4096px; cannot stack with Hires/Tiled/Outpaint/Flux scripts |
+
+Basic `/wd_create` chooses the hires denoise/step internally; use `/wd_create_adv` if you need to tune `upscale_denoise_strength` and `upscale_step`.
+
+#### Hires Fix Versus Tiled Latent
+
+Hires Fix is a second txt2img pass: the model samples the enlarged image again. Tiled Latent works from an existing image in img2img and tiles the latent so memory use stays manageable. If you are making a new image, start with Hires Fix. If you already have an image and want a larger refined version, use Tiled Latent or `/wd_upscale`.
+
+#### Ordinary Extras And SeedVR2
+
+`/wd_upscale` defaults to `upscale_multiplier:1` (no upscaling). Classic upscalers sharpen and interpolate; they do not know your prompt. `R-ESRGAN 4x+` and `R-ESRGAN 4x+ Anime6B` are common choices for anime art, and `NMKD-Siax 4x` is a common photographic choice, but test on your own image.
+
+Current Forge Extras no longer supports GFPGAN/CodeFormer: if you set `gfpgan_visibility` or `codeformer_visibility` above zero without SeedVR2, the command tells you to leave them at zero. Use SeedVR2 or generative inpainting if you need face reconstruction.
+
+SeedVR2 is a neural upscaler, not a classic resize. It is much more compute-intensive and can invent plausible texture. It is a good choice for a final image when quality matters more than speed. The `/wd_upscale` `seedvr2_model` option overrides the traditional upscaler/codeformer/gfpgan path; `trim_padding` crops the transparent padding added for divisibility.
+
+The saved generation setting is selected automatically in txt2img. The img2img/reference paths retain their own extra-script selection, so use `/wd_upscale` explicitly for a dependable SeedVR2 pass after an edit. Choose one generative upscale path at a time; clear the saved SeedVR2 setting before using txt2img PiD.
+
+Further reading: [SeedVR project](https://github.com/ByteDance-Seed/SeedVR) and the [Real-ESRGAN project](https://github.com/xinntao/Real-ESRGAN).
+
+#### PiD
+
+`PiD` is a fixed 4× upscaler available in the generation `upscaler`/`upscaler_mode` choices for `/wd_create`, `/wd_create_adv`, `/wd_img2img`, `/wd_img2img_adv`, `/wd_ref2img`, and `/wd_ref2img_adv`. It always uses the installed distilled SDXL PiD checkpoint at a fixed 4× scale.
+
+The field name depends on the command: basic txt2img uses `upscaler_mode`; advanced txt2img, img2img, and reference commands use `upscaler`; `/wd_upscale` also uses `upscaler`, but its Extras list does not include PiD.
+
+- **SDXL checkpoints** use Forge's native integrated PiD pass. Hires Fix is disabled automatically for that request because the two passes cannot run together.
+- **Non-SDXL img2img and reference workflows** use a PiD postpass: generate the base image normally, then run a temporary standalone PiD img2img pass on the RGB result. The original checkpoint, preset, and companion modules are restored afterwards on success, failure, or cancellation. If restoration fails, the bot reports it because Forge's active checkpoint is global.
+- **Txt2img PiD is SDXL-only.** `/wd_create` and `/wd_create_adv` reject a non-SDXL PiD request and point you to `/wd_img2img` or `/wd_ref2img`. The advanced txt2img choice label mentions "RGB postpass" because it shares the generation upscaler list, but the txt2img command still enforces the integrated-SDXL path.
+- Keep each base side at 1024px or less, divisible by 8, and keep the 4× output within 4096px. PiD cannot be combined with Hires Fix, Tiled Latent Upscale, Native Outpaint, or a Flux Comfy script.
+- Native `/wd_upscale` (Extras) never receives PiD; use a generation command for it.
+- The option uses the distilled SDXL PiD checkpoint. The installed Flux2 PiD checkpoint is undistilled and is deliberately not sent through the hardcoded LCM/4-step PiD path.
+
+PiD is not a magic detail generator. It is a fixed-scale upscaler with its own artifacts and output limits. Inspect the result at 100%; if the backend returns blank/NaN output, treat it as a backend compatibility issue and see [How it works](docs/ai-how-it-works.md) rather than simply retrying with a larger base size.
+
+### Image Prompt Enhancement
+
+The optional prompt enhancer adds compatible detail without replacing your prompt. It keeps your original prompt byte-for-byte, including LoRA tags, trigger phrases, wildcard syntax, profile tokens, and control syntax, and appends only validated new text. It never adds new control syntax or model adapters.
 
 Configure it with `/wd_setting set`:
 
-- `image_prompt_quality`: `Off` (default), `Standard` (Gemma 12B) or `High` (Qwen 27B).
-- `image_prompt_batch`: `All` (default, one shared enhancement used for the whole batch) or `Each` (one separate enhancement per generated image).
-- `image_prompt_style`: `Auto` (tags for ordinary SD/XL/Anima, natural language for other families and reference/edit workflows), `Tags`, or `Natural`.
-- `image_prompt_layout`: `Off` (default), `Auto` (MOSS JSON for MOSS, Coupler regions for SD/SDXL), `MOSS` (bbox JSON for MOSS only), or `Coupler` (Forge Coupler regions for SD/SDXL). Layout planning uses Qwen 27B and replaces plain enrichment for that request.
+- `image_prompt_quality`: `Off — use my prompt directly` (default), `Standard — Gemma 12B`, or `High — Qwen 27B`.
+- `image_prompt_batch`: `All — one shared enhancement per batch` (default) or `Each — separate additions per image`.
+- `image_prompt_style`: `Auto — choose by model family` (default), `Tags — comma-separated tags`, or `Natural — descriptive sentences`. Auto uses tags for SD/SDXL/Anima-style generation and natural language for other families and reference editing.
+- `image_prompt_layout`: `Off — plain prompt/enrichment (default)`, `Auto — MOSS JSON; Coupler for SD/SDXL`, `MOSS JSON — bbox layout for MOSS models`, or `Coupler regions — Forge Coupler for SD/SDXL`. Layout planning replaces plain enrichment for that request.
 
-Enhancement runs before the Forge model lease, and the LLM is unloaded and verified before image generation starts. If enhancement or unload fails, no image request is submitted and no Forge model is changed. `Each` keeps the total image limit, sends the images sequentially, and advances deterministic seeds per image; random seeds stay random.
+Example:
 
-### MOSS layout drafts
-
-MOSS-Image accepts a JSON layout prompt with `summary` and `items`, where each item has a `label` (`object`, `character`, or `text`), a `caption`, and a bbox. `bbox_coord_space` is `abs_centralized` and `bbox_format` is `yxyx`, exactly as documented by OpenMOSS. The bot mirrors Forge's built-in JSON-builder conversion, including the centered absolute coordinates and parenthesis escaping.
-
-Create a reusable layout with:
-
-```
-/wd_layout_draft prompt: a minimalist travel poster with a blue mountain and the title EXPLORE width: 1024 height: 1024
+```text
+/wd_setting set image_prompt_quality:High — Qwen 27B image_prompt_batch:Each — separate additions per image image_prompt_style:Natural — descriptive sentences
 ```
 
-Qwen 27B (`Qwen3.8-27B-GGUF`, `UD-Q4_K_M`, `unsloth-gpu0`) drafts the layout and renders a labeled preview. The message has these buttons:
+How it behaves:
 
-- **Adjust** — type a change request in the channel (for example "move the title to the bottom" or "make the character larger"); the LLM revises the complete layout, renders it again, and keeps the session open.
-- **Save** — name the layout (letters, numbers, `-`, `_`; max 32 characters). The bot stores it per user and returns a JSON file containing the draft, the compiled MOSS prompt, and a Coupler prompt.
-- **Coupler prompt** — returns the Forge Coupler Advanced prompt (inline `|x1:x2,y1:y2,weight|` regions) and a `coupler-config.json` mapping. Paste the prompt into `/wd_create` on an SD/SDXL model.
-- **Cancel** — closes the session.
+- `Off` returns the prompt unchanged. No LLM call is made.
+- `All` makes one shared addition and uses it for the whole batch. `Each` asks for one independent addition per image, sends the images sequentially, and advances a deterministic seed by one per image. Random seeds (`-1`) stay random. The command's total image limit still applies.
+- The enhancer is instructed not to add `<lora:...>`, embeddings, wildcards, profile syntax, weighted parentheses, `BREAK`/`AND` directives, or other control tokens. The bot validates the additions and rejects forbidden syntax.
+- The response must contain exactly the requested number of additions. Invalid JSON, the wrong count, an empty addition, truncation, or a failed/unsupported model unload aborts the request. The command reports that image generation was not started.
+- Enhancement runs before the Forge model lease, and the intended checkpoint is frozen first. For txt2img, if another request changes the active model while the LLM is working, the bot re-syncs and restores the frozen checkpoint before generating; if that restore fails, it does not submit the image. Img2img and reference commands follow the same freeze-and-restore path, but a non-reference model that cannot be applied may produce a fallback message and continue with the active model. A reference command with an explicit checkpoint is strict and will not silently fall back.
+- Layout planning uses the same serialized local-model queue as enhancement. The LLM is unloaded and verified before image generation starts. If the queue is busy, the request waits rather than evicting another consumer's model.
+
+Further reading: the deployment profiles are `unsloth/gemma-4-12B-it-qat-GGUF` for Standard and `unsloth/Qwen3.8-27B-GGUF` for High. See the [Gemma 4 12B profile](https://huggingface.co/unsloth/gemma-4-12B-it-qat-GGUF) and [Qwen3.8 27B profile](https://huggingface.co/unsloth/Qwen3.8-27B-GGUF); exact quantization and availability are deployment details.
+
+### Layout Drafts And Forge Coupler
+
+#### `/wd_layout_draft`
+
+MOSS-Image accepts a JSON layout prompt with `summary` and `items`. Each item has a `label` (`object`, `character`, or `text`), a `caption`, and a bbox. The compiled form uses `bbox_coord_space: abs_centralized` and `bbox_format: yxyx`, mirroring OpenMOSS/Forge's JSON builder conversion.
+
+Create a reusable layout:
+
+```text
+/wd_layout_draft prompt:a minimalist travel poster with a blue mountain and the title EXPLORE width:1024 height:1024
+```
+
+`prompt` is required. `width` and `height` are clamped to 256–2048 and rounded to a multiple of 16; both default to 1024. The draft is generated by Qwen 27B and shown as a labelled preview.
+
+The message has four buttons:
+
+- **Adjust** — type a change request in the channel (for example "move the title to the bottom" or "make the character larger"). The LLM revises the complete layout, re-renders it, and keeps the session open.
+- **Save** — name the layout with letters, numbers, hyphen, or underscore (1–32 characters). The bot stores it for your Discord user and returns a JSON file containing the draft, the compiled MOSS prompt, and a Coupler prompt.
+- **Coupler prompt** — returns the Forge Coupler Advanced prompt and a `coupler-config.json` mapping. The prompt is sent as an ephemeral message; if it is too long for a code block, it is attached as `coupler-prompt.txt`.
+- **Cancel** — closes the session immediately.
+
+Session behaviour: the draft session lasts 10 minutes. Adjust waits up to 3 minutes for your change request; Save waits up to 2 minutes per naming attempt and allows two attempts. Cancelling or expiring aborts the channel waiters, ignores late answers, and removes stale controls. If a button is pressed while another action is still running, the bot tells you it is still working instead of starting a second revision. Each draft/revise call unloads the layout model inside the shared queue before returning; the session does not pin the LLM for the full 10 minutes. The final cleanup also requests a queued unload.
 
 Use a saved layout in a prompt with `<layout:name>`:
 
-```
-/wd_create prompt: <layout:travel_poster> warm sunset light
-```
-
-MOSS models receive the compiled JSON layout. SD/SDXL models receive the equivalent Forge Coupler Advanced prompt, so the same layout works on other models. Only one layout token is supported per prompt. Layout planning uses the same serialized Unsloth queue as prompt enhancement and unloads the model before image generation; the interactive layout command keeps it loaded until the session ends.
-
-### Inpainting (/wd_inpaint)
-
-This is pretty much "redraw a specific area of an image". It can be used for multitude of purposes: Fixing generation output like bad hands or face, change certain feature / subject in the picture, object removal, !>nudify the subject   . The bot provide 2 way to define that inpaint area. Manually via mask or Automatically via SegmentAnything + GroundingDINO
-
-#### Automatic area detection
-
-To start we have the following command
-
-```
-/wd_inpaint image: [attachment] prompt: 1girl, red bunnygirl latex outfit, knee-high stocking, <lora:sdxl_mafuyu:1.0>, beautiful color, best quality, [breast], cleavage neg_prompt: worst quality, bad quality, jpeg artifact, bad anatomy, 2girls, cropped, more than 2 legs denoising_strength: 1 mask_blur: 4 mask_content: fill segment_anything_prompt: bunnygirl latex outfit
+```text
+/wd_create prompt:<layout:travel_poster> warm sunset light
 ```
 
-Image being this
+Only one layout token is supported per prompt. The saved draft is recompiled at the requested generation size, so the same layout can be reused at another aspect ratio.
 
--> ![initial image](https://i.ibb.co/27Z8Gmsm/img-1.png) <-
+- MOSS models receive the compiled JSON layout.
+- SD/SDXL models receive the equivalent Forge Coupler Advanced prompt.
+- Other model families are not supported for saved layouts and produce an error. Layout drafts are not a universal spatial-control mechanism.
 
-since i specified `segment_anything_prompt` with "bunnygirl latex outfit", GroundingDINO will find the object specified in the prompt and output the following
--> ![groundingdino output](https://i.ibb.co/8g42pwRF/Screenshot-2025-02-01-102910.jpg) <-
+Layout planning uses the same serialized Unsloth queue as prompt enhancement and unloads the model before image generation. A saved layout is stored per user; using the same name again updates that user's layout. Names are not globally shared.
 
-You select 1 because 0 box is the whole image, we don't want that. After that SegmentAnything will try to find the exact shape of the object and output the following
+#### Forge Coupler
 
--> ![segmentanything output](https://i.ibb.co/zWx7WpQB/Screenshot-2025-02-01-102950.jpg) <-
+Forge Coupler divides the canvas into regions with their own prompt text. It is useful when two subjects bleed into each other.
 
-green overlay on the image is the detection, select one that cover the part you want to redraw. In this case 1, it will output a mask image so that you can reuse it as manual mask in future inpaint as well. But more importantly, it will start running the inpainting process on that part of the image, which produce the final result
+Basic mode uses `<=>` between subjects (horizontal split) and `||` for a vertical stack:
 
--> ![inpaint output](https://i.ibb.co/GfqD7bzY/Screenshot-2025-02-01-103007.jpg) <-
+```text
+2girls, august von parseval \(azur lane\), azur lane, artist: eufoniuz, serious face <=> 2girls, ceres fauna, hololive, artist: eufoniuz, happy face
+```
 
-#### Manual area masking
+A `[GLOBAL]` line applies to all regions. `[GLOBAL:<value>]` controls its weight (default 0.5):
 
-If you use the mask from automatic mode, set `mask_color` to "raw"
+```text
+[GLOBAL] 2girls, artist: eufoniuz, (masterpiece:1.2), best quality <=> 2girls, august von parseval \(azur lane\), azur lane, serious face <=> 2girls, ceres fauna, hololive, happy face
+```
 
-!!! note Anima inpainting
-	When the active checkpoint is Anima, `/wd_inpaint` automatically uses the installed 006 inpaint ControlNet (`animaLllite_006-inpainting`) with the `inpaint_noobai` preprocessor at 1024 resolution. That preprocessor black-fills the white-mask edit pixels, which is the format this older 3-channel LLLite model expects. The command's default `fill` preprocessor is not passed through as an override; select `inpaint_noobai` explicitly if you supply a saved ControlNet config. Other incompatible preprocessors or ControlNet models fail with a clear message instead of producing an incorrect mask. Anima reference edit mode is disabled for the inpaint request and restored afterwards.
+Advanced mode assigns rectangles with `|x_start:x_end,y_start:y_end,weight|` fractions. For example, `|0:0.5,0:1,1|` is the left half:
 
-### Video Generation (/wd_txt2vid, /wd_img2vid, /wd_vid_upscale)
+```text
+[GLOBAL] 2girls, artist: eufoniuz, best quality <=> |0:0.5,0:1,1| 2girls, august von parseval \(azur lane\), azur lane, serious face <=> |0.5:1,0:1,1| 2girls, ceres fauna, hololive, happy face
+```
 
-!!! error OUT OF ORDER - video commands are completely broken
-	All video-related functionality is currently **completely broken** due to a broken back-end (the video generation stack could not be reimplemented and is awaiting a new WAN2GP-based workflow). Despite what the command definitions might suggest, these commands do **NOT** work right now:
+When Advanced mode is detected, the bot sends a region preview image. Coupler is an SD/SDXL workflow here, and layout-generated Coupler prompts are only offered for SD/SDXL; it is disabled for Flux. It cannot be combined with Native Outpaint and may round the output to a multiple of 64. Treat newer experimental families as unsupported for Coupler until verified. Coupler routes prompt text per region; it is not identity conditioning. For identity, use reference editing or an inpaint mask.
 
-- **/wd_txt2vid** (text to video): replies with a maintenance notice and does nothing. Waiting for reimplementation with the new WAN2GP workflow.
-- **/wd_img2vid** (image to video): replies with a maintenance notice and does nothing. Also waiting for WAN2GP.
-- **/wd_vid_upscale** (video post-processing: color correction, upscaling, frame interpolation): the back-end it depends on is down, so it cannot process anything either.
+Layout-generated Coupler prompts use Advanced regions: a full-canvas summary region at weight 0.5 plus one region per layout item at weight 1. The generated config uses `mode: Advanced`, `direction: Vertical`, `global: None`, and the region list. You can paste the returned prompt into `/wd_create` on an SD/SDXL model.
 
-If you see these commands in your command list, please do not attempt to use them — they will just waste your time (and a cooldown). There is no ETA for when video generation will return.
+### Advanced Controls
 
-### Image to 3D Model (/wd_img2model)
+These settings are discoverable through dedicated commands. They persist per user until reset.
 
-!!!error Currently broken
-	wd_img2model will be down due to me update (non)comfy dependency and trellis extension being the most hacky installation completely gone up in flame, it will require kaolin to be updated to cuda 12.6 and pytorch 2.7+ or I switch to another backend (maybe hunyuan3d + mv_adapter) but current time for it to return is TBA
+| Control | Setup command | Used by | Notes |
+|---|---|---|---|
+| ControlNet | `/wd_controlnet set` | `/wd_create_adv`, `/wd_img2img_adv`, `/wd_inpaint` | Up to three units. Advanced create/img2img use `controlnet_input` plus `_2`/`_3`; inpaint uses its `image` as the first input and exposes `controlnet_input_2`/`controlnet_input_3`. |
+| ADetailer | `/wd_adetailer set` | `/wd_create_adv`, `/wd_img2img_adv`, `/wd_ref2img_adv` | Requires `do_adetailer:true`; provide the saved config or `adetailer_config`. |
+| Colour balance / vectorscope | `/wd_colorbalance set` | Forge SD/SDXL generation | Latent colour/brightness/contrast bias. Not applied to Flux. |
+| Latent modifier | `/wd_latentmod set` | Forge generation | Advanced latent-space modifiers. `simple` mode exposes rescale CFG only. |
+| Prompt expansion (legacy) | `/wd_boorugen set` | Legacy prompt parser | Current Forge schema removed the TIPO/DanTagGen widgets; see the guardrail below. |
+| Tiled upscale config | `/wd_script_upscale set` | img2img extra script | See [Tiled Latent Upscale](#tiled-latent-upscale). |
+| Outpaint config | `/wd_script_outpaint set` | img2img extra script | See [Native Outpaint](#native-outpaint-sd1sdxl). |
+| Personal settings | `/wd_setting set` | Generation commands | Preview, hires overrides, SeedVR2, image prompt enhancement, layout planning. |
+| Profiles | `/wd_profile_add` | Generation commands | Reusable generation setups, including configs. |
 
-Powered by TRELLIS, it can convert an image into a 3d model and output a video of it spinning in 3d space. I'm stilling planning to allow downloading the output as actual 3d model file (.glb file) but for now it's for funsie. It's highly recommend to use image with transparent background to increase accuracy, while the command allow you to remove background, it shouldn't be relied on (In fact you should just use /wd_rembg to control the background-removed image
+#### ControlNet
 
-### Image Generation Basic Resource
+ControlNet adds spatial conditioning from an input image. Up to three units can be chained; the second and third use `_2` and `_3` option suffixes.
 
-#### Generation Model Quick Rundown
+`/wd_controlnet set` options:
 
-!!!warning How to actually change the generation model
-	I do wish that I have unlimited RAM but alas, I only have 128GB of it. And considering how heavy each model is (2-32GB), keeping it all in RAM for quick model switch is not exactly possible, that's why i employ a cache system where the most recent 3 models are stored in RAM and you can quickly use it in /wd_create and /wd_img2img via `checkpoint` parameter (/wd_inpaint is a bit more complex in the sense that it will try to load inpaint models first no matter what). To add a new checkpoint to the cache, you can use /wd_modelchange, do note that doing so will push the oldest model in the cache out of it and this command have a 30-minute cooldown. /wd_modelchange also has an `experimental_checkpoint` option for the newest (and potentially unstable) additions — those are not part of the regular `checkpoint` list until they prove themselves
+- `controlnet_model` — ControlNet, T2I-Adapter, IP-Adapter, InstantID, Union, or Inpaint model.
+- `controlnet_preprocessor` — feature extractor such as Canny, Depth, HED, Lineart Anime, OpenPose, Segmentation, Tile Resample, CLIP H/IPAdapter, or CLIP G/IPAdapter.
+- `controlnet_weight` — how strongly the control is enforced (default 1).
+- `controlnet_resolution` — preprocessor resolution (default 512).
+- `controlnet_mode` — `Balanced`, `Prompt` (my prompt is more important), or `ControlNet` (ControlNet is more important).
+- `controlnet_threshold_a` / `controlnet_threshold_b` — preprocessor thresholds (default 100/200).
+- `do_preview_annotation` — send the extracted annotation image for debugging.
 
-!!!note Legend
-	🏆 = Recommended, 🪦 = Legacy (You can still access these models via /wd_modelchange but they are not recommended for any usage unless you really know what you are doing). The rest have their specific use cases
+Use it by passing `controlnet_input` (and optional `_2`/`_3`) to an advanced generation command. `/wd_inpaint` uses its `image` as the first ControlNet input and accepts `controlnet_input_2`/`controlnet_input_3`. A saved config is applied automatically; `controlnet_config` can override it for one request.
 
-**SDXL family**: 1024x1024 to 1280x1280 resolution is recommended, mediocre language understanding, mediocre anatomy, at least it can putting out higher res pic without finnicky upscaling work
-- **AnimagineXL v4**: 🏆 latest major version release (or full re-trained on booru dataset) of AnimagineXL model, focus on learning way too much anime character and artist for its own good, the former de facto anime model in SDXL family. use booru prompting style
-- **AnimagineXL v3.1**: fine tuned from v3 to fix some character/artist recognition issue, in exchange seems like it messed up anatomy in some cases. use booru prompting style
-- **ChimeraXL v2**: merge of multiple pony-based model and sdxl-based model promising the best of both world, aesthetically im okay with it, doesnt seem much different from SDXL-based fine tune though
-- **StableYogis Realism v4**: 🏆 fine tune of ponydiffusion for photorealism purpose, its a bit better i guess
-- **AnimagineXL v3**: 🪦 the (former) latest major version release (or full re-trained on a part of booru dataset) of AnimagineXL model. Maintain good compatibility with SDXL-based LoRA. use booru prompting style
-- **NekorayXL v0.6**: 🪦 early SDXL finetune on anime style, aesthetically pleasing with minimal prompting, can in fact used with natural language prompt, style can be pretty repetitive though
-- **Dreamshaper XL Lightning**: 🪦 general use fine tune of SDXL, pretty much just better looking than base SDXL, use natural language to prompt, this is a "Lightning" model which require certain specific setting but can run with as low as 4 steps (around 5 seconds) per pic
-- **Juggernaut XL**: 🪦 photorealism focus model (turbo variant), better than dreamshaper at this area, but sometimes it did clothing pretty badly and nsfw is kinda 💀 
-- **RealvisXL v5**: 🪦 photorealism focus model,  prompt adherance, realism and nsfw capability is subjective compared to Juggernaut
-- **Kohaku XL Zeta**: 🪦 earliest SDXL fine-tune effort on booru dataset, use booru prompt, but its kinda shit (even until now at basically version 6). use booru prompting style
-- **ArtiWaifu v2**: 🪦 Another booru retrain effort but focus on acquiring better quality images from the start to allow good generation with minimal prompting. use booru prompting style
+Guardrails: ControlNet is applied on Forge SD/SDXL requests. It is not applied to Flux generation in this bot, and reference commands reject ControlNet attachments. For Anima inpainting, only the Anima inpaint ControlNet pair described above is accepted. Incompatible combinations fail with an error instead of silently ignoring the control image.
 
-**Illustrious family:** 1024x1024 to 1280x1280 resolution is recommended, mediocre language understanding, decent anatomy, focus on learning anime character/style in general. Illustrious is the base for some of the best SDXL anime focus model right now. All model below use booru prompting style (with limited natural language understanding)
-- **NoobAIXL v1.1 (Eps-pred)**: 🏆further fine tune of Illustrious using similar approach to NovelAI, pretty much the upgraded version of AnimagineXL, too bad AnimagineXL LoRA compatibility is rather spotty
-- **NoobAIXL v1 (V-pred)**: (if you know what setting to use for a v-pred model) use a more novel prediction method, supposedly provide better contrast and lighting
-- **Chenkin NoobAI v0.5**: a newer finetune model from NoobAI Eps v1.1 with more up-to-date character knowledge (Jan 2026) (v0.3 Rectified Flow is an alternative rectified-flow variant of it)
-- **NoobAIXL MDNT V-pred v1.0**: a smaller scale finetune on top of NoobAI V-pred to increase anatomical precision, compositional coherence, and versatile style integration.
-- **Seele NoobAIXL V-pred v2.0**: a NoobAI V-pred merge focused on consistency in higher resolution (up to 2MP)
-- **IllumiyumeXL V-pred v3.1**: 🏆 a merge of NoobAI (eps-pred, despite the name), have a more consistent aesthetic look, supposedly have a more up-to-date dataset (up to Feb 2025) — this is the curated/recommended version
-- **IllumiyumeXL V-pred v3.2**: 🪦 the newer iteration but have severely limited style, currently relegated to legacy
-- **WAI-NSFW-IllustriousXL v12 🏆 / v16**: The premier Illustrious merge, have good compatibility with both Illustrious and SDXL LoRA as well as NSFW capability. CivitAI darling due to how lax their license is !> and also porn (v12 is part of the curated selection, v16 is the newest)
-- **SilverMoonMix3 v2**: Illustrious merge that focus on generating image with lots of "dynamism" (lots of splash color, stylized composition and design)
-- **ZukiCuteIL v5 / newIL v1**: The actual replacement for HimawariMix in term of creating "cutesy" anime image. good result with minimal prompting
-- **SilenceMix v3**: Illustrious merge (and fine-tuned) to provide very detailed (almost noise-like) anime-style image. However it also leans toward 2.5D look (which can be mitigate by putting 2D in prompt and 3D in neg prompt)
-- **IllusionBreed v3**: 🪦 Illustrious merge that I intended to replace HimawariMix in term of creating "cutesy" anime image. However it leans a bit too much toward 2.5D look
-- **ColorPalette v1**: a NoobAI-based finetune focused on color/lighting control
-- **PVC Model Style v1.1**: a model aimed at mimicking "PVC figure" style renders
-- **Mugen - Aesthetic**: an aesthetic-focused merge in the NoobAI lineage
-- **Illustrious v2.0**: Improve on natural language capability on top of Illustrious v1.0, still pretty hard to use though
-- **SilenceMix v1**: 🪦 older SilenceMix release
-- **Illustrious v1.0 / v1.1**: 🪦 The first official release of the Illustrious model, the launch is a bit controversial but It's here, with the ability to handle up to 1536x1536 resolution. Although it's still recommend to use any of the recommended model mix for ease of use
-- **Rouwei V-pred v0.8**: 🪦 a NoobAI V-pred finetune for more up-to-date character knowledge (May 2025), undertrained though
+Further reading: [ControlNet paper](https://arxiv.org/abs/2302.05543) and the [Diffusers ControlNet guide](https://huggingface.co/docs/diffusers/en/using-diffusers/controlnet).
 
-**PonyDiffusionXL family**: 1024x1024 to 1280x1280 resolution is recommended. Supposedly a fine-tuned of SDXL, but the fine tune is so large scale, it basically reset the knowledge of the base SDXL model and thus creating its own ecosystem with LoRA and fine-tune. All use booru prompting style
-!!! warning LoRA compatibility 
-    PDXL nuked the entire SDXL text encoder during training, therefore it has a notorious bad compatibility with SDXL based LoRA but due to how good it is at making porn, there exists an entire LoRA ecosystem for it which I do not installed, feel free to nag me on that
-- **PonyDiffusionXL v6**: 🪦 the OG, regard as having the best anatomy understanding and NSFW ability in the whole class of SDXL models, prompt weird as shit though, even though it also use booru dataset
-- **PolyRealism v2.2**: 🪦 fine tune of ponydiffusion for photorealism purpose, its alright i guess
-- **PrefectPony v5.0**: 🪦 Newer fine-tuned of Pony, intended to merge extra LoRA and finetune to improve output quality toward anime style while not compromise on Pony prompt adherence
-- **AutismMix PonyXL**: 🪦 The premier Pony merge to mitigate borderline schizo prompting requirement in pony while keeping the prompt adherence and LoRA compatibility with Pony ecosystem
+#### ADetailer
 
-**Flux family:** 1280x1280 to 1408x1408 resolution is recommended, pretty much the state-of-the-art for open source model right now, have superior natural language understanding due to new text encoder design and possessing better prompt adherence and anatomy (also do oddly well with text on picture prompt), unfortunately fine tuning on this model is notoriously difficult due to being a distilled model and thus finetune selection here is very limited
-!!! warning Flux is slow
-    While possessing state-of-the-art prompt understanding, running the full Flux model takes 24GB of VRAM, therefore you can only use at max the Q8 compressed version here and running this will always be significantly slower than SDXL based model
-- **Flux.dev Q8**: 🏆  8-bit quant of the model, bigger, slower, but it is pretty much indiscernable from the full fp16 weight (which btw require you to load it all in a 24GB-GPU at minimum)
-- **Flux Krea.dev Q8**: 🏆 a variant of Flux.dev trained with additional data from Krea, similar characteristics to the base dev model
-- **Krea2 Raw Int8 ConvRot**: Currently the state-of-the-art for open-weight image generation. Use natural language prompt
-- **Krea2 Turbo NVFP4**: 🏆 Faster variant of Krea2, basically the recommended model for anyone who is new to image generation. Use natural language prompt
-- **Pixelwave Flux v3 Q8**: First major finetune effort of Flux, quality is subjective
-- **Flux Fill.dev Q8_0**: the Flux Fill model, made for (re)painting; used by the Flux inpaint workflow. The Flux Outpaint extra script uses the separate Nunchaku Fill path
-- **Flux Kontext.dev Q8_0**: reference/edit Flux variant that takes surrounding image context into account. Available in the ref2img checkpoint menu; Flux Dev selections in ref2img automatically use this model
-- **Flux.dev Q6_K**: 🪦 6-bit quant of the model. slightly worse than Q8 version but was recommended to use if one is generating Flux image with resolution above 2 megapixels or if one is using controlnets
+ADetailer detects a region (usually faces or hands) and repaints it with an img2img pass at a lower denoise.
 
-**Other families** (accessible via /wd_modelchange `experimental_checkpoint`, may be unstable):
-- **Chroma1 HD Flash Q8 / Chroma1 HD Q8 / Chroma Detail v0.94 Q8**: Chroma linage of models, finedtuned from Flux1 Klein with a significantly modfied architecture to slim down the model size and improve the model knowledge, use natural language or booru prompt style
-- **Flux2 Klein 9B FP8 / Flux2 Klein 4B**: next-generation Flux "Klein" models (9B and 4B parameter sizes), use natural language proompt
-- **Anima Preview / Anima Base v1 / WAI Anima v1**: anime-focused experimental models, use booru prompt style with limited natural language understanding
-- **Z Image Turbo**: Z Image Turbo general-purpose model with highly refined result but not really creative, use natural language prompt
-- **Qwen Image 2.1 / Turbo / Uncensored Int8 ConvRot**: use natural-language prompts for generation and native image editing with the same checkpoints. Normal and Uncensored default to 40 steps; Turbo defaults to 8 steps, with CFG 1. The older Nunchaku Qwen checkpoints are retired. [Model reference](https://huggingface.co/Qwen/Qwen-Image-2.1), [Turbo reference](https://huggingface.co/Qwen/Qwen-Image-2.1-Turbo).
-- **MOSS Image Base / SFT BF16 / SFT Int8 ConvRot**: text-to-image models with natural-language, tag, and layout prompts. Defaults are Euler / Simple, 36 steps, CFG 3, and shift 5. The Int8 ConvRot variant is the smaller experimental quant. [Model reference](https://huggingface.co/OpenMOSS-Team/MOSS-Image-Base).
-- **Neta Lumina v1 / NetaYume Lumina v3**: Lumina-lineage models (NetaYume being the v3 iteration)
+`/wd_adetailer set` options include:
 
-**SD1.x (1.5) family:** 512x512 to 768x768 resolution is recommended, poor language understanding, mediocre anatomy, its fast though (pretty much all of the derivitive model below use booru prompt style due to how poor the language understanding is)
-!!! warning SD1.x is old and dumb
-     While you can create good stuff with SD1.x based models, It's recommended to stick to SDXL or Flux based models to have a better experience 
-- **Pastel Mix v2.1:** 🏆  highly stylized anime illustration model, wild stroke that is aesthetically pleasing despite the inherit flaw from SD 1.x
-- **MeinaMix v11:** 🪦 mainstream SD1.x anime model, high contrast, bold stroke but sometimes leaning toward that 2.5D plastically feely, somewhat iron out SD1.x flaw in anatomy
-- **HimawariMix v8:** well-known model for cute anime girl
-- **Anything v5:** 🪦 The OG generation model when the bot is first published (it's actually v3.5 at the time but who care). Generate decent enough anime style image with natural language prompt but is pretty much outdated by everything else here
-- **Counterfeit v2.5:** 🪦 well known for pleasing anime aesthetic result and for some reason, really good background, still have the flaw of SD1.x
-- **CetusMix (Coda v2):** 🪦 derivative merge from MeinaMix, have a more refined style but more rigid than Meina
-- **RichyRichMix v2:** 🪦 a fairly new SD1.x merge that have okay styling that can mitigate SD1.x inherent problems
-- **CuteYukiMix:** 🪦 obscure cute anime girl model suggested by someone i knew
-- **IrisMix v5b:** 🪦 pretty much a mix of Counterfeit and CuteYukiMix
+- `adetailer_model` — YOLO Face/Hand/Eyes/Breast/Head+Hair/Person/Watermark/World, GroundingDINO Tiny/Base, or Florence2 Base/Large (with or without fine-tuning).
+- `object_to_detect` — object list for open-vocabulary models (YOLO World, GroundingDINO, Florence2), e.g. `person` or `eyes. hair.`.
+- `adetailer_prompt` / `adetailer_neg_prompt` — prompt override for the detected region; `[SEP]` separates prompts for multiple detections. Empty reuses the main prompt.
+- `adetailer_detection_threshold` — default 0.3.
+- `adetailer_mask_blur` — default 4.
+- `adetailer_mask_padding` — default 32.
+- `adetailer_denoise_strength` — default 0.4.
+
+Set `do_adetailer:true` in an advanced command. If the config is missing, the detail pass is not applied. ADetailer increases generation time and can over-smooth a face if the denoise is too high; use inpaint when you need exact placement.
+
+Further reading: [ADetailer repository](https://github.com/Bing-su/adetailer).
+
+#### Detail Daemon, FreeU, PAG, Dynamic Threshold, Mahiro, Modulation
+
+These are prompt-tag features parsed by the bot. They are advanced and model-dependent; start with small values.
+
+- **Detail Daemon**: `|dd: <amount>|` or `|dd: <amount>, <start>-<end>, <bias>|`. Example: `|dd: 0.2|`. It injects controlled noise during sampling to change busyness/detail. Start subtle; high amounts can create artifacts.
+- **FreeU**: `|freeu: <b1>, <b2>, <s1>, <s2>|`, e.g. `|freeu: 1.05, 1.2, 0.99, 0.95|`. It manipulates VAE decoder features. Effects are model-dependent.
+- **Perturbed-Attention Guidance**: `|pag: <scale>|` or `|pag: <scale>, <adaptive>|`, e.g. `|pag: 3|` or `|pag: 3, 0.5|`. It can improve prompt adherence but costs time and can over-sharpen.
+- **Dynamic Threshold**: `|dt: <mimic_scale>, <mimic_percentile>|`, e.g. `|dt: 7, 0.95|`. It scales guidance down in later steps to reduce burnt-in output at high CFG.
+- **Mahiro guidance**: `|mahiro|`. An alternative guidance path that emphasizes positive conditioning.
+- **Modulation guidance**: `|modulation|`. Only supported for Anima models; it is disabled with a warning on other families.
+
+Further reading: [FreeU paper](https://arxiv.org/abs/2309.11497), [PAG paper](https://arxiv.org/abs/2403.17377), and the [Detail Daemon repository](https://github.com/muerrilla/sd-webui-detail-daemon).
+
+#### Vectorscope / Colour Balance
+
+`/wd_colorbalance set` introduces a bias during latent denoising:
+
+- `brightness` / `contrast` — -5 to 5, default 0.
+- `saturation` — 0.25 to 1.75, default 1.
+- `red` / `green` / `blue` — -4 to 4 per channel. Positive red warms; negative blue pushes toward yellow.
+- `alt_mode` — interferes deeper in denoising. Stronger effect, more instability/artefacts.
+
+It is not applied to Flux.
+
+#### Latent Modifier
+
+This directly manipulates the latent during generation. `simple_mode` exposes only `rescale_cfg_phi`; advanced mode exposes sharpness, tonemap, contrast, CFG drift, extra noise, divisive normalisation, spectral modification, and dyn-CFG augmentation. Most users should leave it alone. V-pred models may receive a safe simple fallback when no latent modifier is configured; do not override that blindly.
+
+#### TeaCache / First-Block Cache
+
+Prompt syntax:
+
+- `(>> <value>)` or `(>> tc <value>)` — TeaCache, e.g. `(>> 0.2)`.
+- `(>> fbc <value>)` — First-block Cache, e.g. `(>> fbc 0.2)`.
+
+These skip some computation for speed, but output can become unpredictable, especially on SD models. Treat them as opt-in experiments, not free performance.
+
+Further reading: [TeaCache paper](https://arxiv.org/abs/2411.19108).
+
+#### Extension Compatibility Guardrails
+
+- **Flux and ControlNet**: the bot does not apply ControlNet to Flux generation even though Flux ControlNet files may appear in the catalog. Use a supported SD/SDXL request.
+- **Reference commands**: no ControlNet attachments and no extra scripts. They use the reference model's own edit path.
+- **Native Outpaint / Tiled Latent**: SD1/SDXL only; they cannot be combined with PiD, Hires Fix, or each other. Native Outpaint also cannot be combined with Coupler regions.
+- **Anima inpainting**: `/wd_inpaint` uses only `animaLllite_006-inpainting` + `inpaint_noobai`; other ControlNet pairs fail rather than guessing.
+- **Missing checkpoint**: non-reference commands may fall back to the active model and tell you; a reference command with an explicit checkpoint fails instead of applying an incompatible edit policy.
+- **Removed TIPO/DanTagGen widgets**: the current Forge schema no longer has the TIPO/DanTagGen controls. `/wd_boorugen` still accepts and stores `tipo_mode`, `tipo_tag_gen_length`, and `tipo_nl_gen_length` for backward compatibility, and the prompt parser still recognizes `[BOORU]`, `[FOOCUS]`, and `[TIPO]`, but do not rely on these to change the image on this backend. Use image prompt enrichment or a direct prompt instead.
+- **GFPGAN/CodeFormer**: current Forge Extras rejects nonzero face-restoration values; use SeedVR2 or generative inpainting.
+
+### Personal Settings And Profiles
+
+#### Personal Generation Settings (`/wd_setting`)
+
+These settings are held per Discord user in the running bot's memory. They last until changed, reset, or the bot restarts:
+
+- `/wd_setting set` — configure.
+- `/wd_setting check` — review the stored JSON.
+- `/wd_setting reset` — clear.
+
+Each `set` writes a new configuration bundle rather than merging just one field into the old bundle. Include the options you want to keep in the same command; omitted fields return to their defaults. Use `check` afterward if a previous choice seems to have disappeared.
+
+Options:
+
+- `do_preview` — show a live preview during generation. The current implementation stores `true` when you leave it unset (the command description may still say false); preview costs a little time.
+- `hires_checkpoint`, `hires_sampler`, `hires_scheduler` — force a different checkpoint/sampler/scheduler for the Hires Fix pass. Family defaults fill in sampler/scheduler/CFG/shift when a different hires checkpoint is selected and you leave those fields unset.
+- `hires_positive` / `hires_negative` — extra prompt text appended only during the hires pass.
+- `hires_cfg` / `hires_shift` — CFG and distilled shift overrides for the hires pass.
+- `seedvr2_model` — select automatic SeedVR2 in the txt2img path; `Disable` turns it off. For an explicit pass after editing, use `/wd_upscale`.
+- `seedvr2_resolution` — target shortest side for SeedVR2 (default 1600).
+- `image_prompt_quality` / `image_prompt_batch` / `image_prompt_style` / `image_prompt_layout` — see [Image Prompt Enhancement](#image-prompt-enhancement) and [Layout Drafts](#layout-drafts-and-forge-coupler).
+
+Explicit command values usually override profile values, but family presets and compatibility guards can override unsupported combinations. Personal settings control their named features, such as hires overrides or prompt enhancement; they are not a universal layer over every generation parameter. Check the stored settings and profile when a result uses an unexpected value.
+
+The extension setup commands also use per-user in-memory maps. Save supported ControlNet/ADetailer/outpaint/upscale configuration JSON in a generation profile if you need to reuse it after a restart. Profiles are stored in the database; saved layout drafts are stored separately in the bot's layout file.
+
+#### Saving A Generation Profile (`/wd_profile`)
+
+Profiles save a reusable generation setup:
+
+- `/wd_profile_add name:<name>` — create or update a profile. Names may contain letters, numbers, `/`, and `_`; whitespace and other special characters are rejected. `/wd_profile_detail server_wildcard:true` can look up a server-side wildcard profile instead of a database profile.
+- `/wd_profile_list` — list your profiles, or another `user`'s profiles, with pagination.
+- `/wd_profile_detail name:<name>` — show full settings; optionally specify `user`.
+- `/wd_profile_remove name:<name>` — delete one of your profiles.
+
+A profile can store prompt prefixes/suffixes (`prompt_pre`, `prompt`, `neg_prompt_pre`, `neg_prompt`), width/height, sampler, scheduler, CFG, steps, seed, upscale controls, clip skip, checkpoint, and saved ADetailer/ControlNet/colour-balance/BooruGen/outpaint/upscale/latent-modifier configs.
+
+Using `profile:<name>` searches your profiles first, then another user's profile with the same name as a fallback. The profile's checkpoint is still subject to the cache/model-switch rules.
+
+Profiles can also be used as wildcards: `%%my_style%%` substitutes the prompt stored in that profile, with the same ownership/fallback search.
+
+### Utilities
+
+#### Image Simple Upscale (`/wd_upscale`)
+
+`/wd_upscale` upscales an attachment or `image_url` with classic AI upscalers or SeedVR2. Classic upscalers avoid a prompt-driven denoising pass, but learned textures can still differ from the source. See [Upscaling paths](#upscaling-paths-hires-tiled-extras-seedvr2-and-pid).
+
+- `upscale_multiplier` defaults to 1 (no upscaling).
+- `upscaler` / `upscaler_2` / `upscaler_2_visibility` combine two classic upscalers.
+- `seedvr2_model` switches to SeedVR2 and ignores traditional upscalers/face restoration when set.
+- `trim_padding` crops transparent padding added for divisibility.
+- `private_mode` makes the reply ephemeral.
+- GFPGAN/CodeFormer options exist for compatibility, but current Forge rejects nonzero values; leave them at 0.
+
+#### Background Removal (`/wd_rembg`)
+
+`/wd_rembg` removes the background and can add an edge, shadow, background colour, or colour adjustments.
+
+- `birefnet-general` is a good default; `birefnet-massive` can remove too much of the subject.
+- `isnet-general-use` and `isnet-anime` are alternatives.
+- `edge_width` > 0 adds an outline; `edge_color` sets its colour.
+- `alpha_mat` and its foreground/background values refine semi-transparent edges.
+- `shadow_opacity`/`shadow_blur` add a shadow; `brightness`/`contrast`/`saturation` adjust colour.
+
+#### Describe An Image (`/wd_interrogate`)
+
+`/wd_interrogate` uses Florence 2-family models; CLIP and DeepBooru have been removed.
+
+- `engine: Florence 2` (default) — natural-language captioning.
+- `engine: Florence 2 Finetuned` — the fine-tuned caption model.
+- `engine: Florence 2 PromptGen` — prompt/tag-oriented output; the command switches to PromptGen automatically for `prompt_gen_*` tasks.
+- `florence_task` — `Caption`, `Caption (Detailed)`, `Caption (Extra Detailed)`, `Caption (Booru Tags)`, `Caption (Mixed)`, `Caption (Analyze)`, `Region Caption`, `Region Caption (Detailed)`, `OCR (Region Highlight)`, `Find Object`, `Find Object Segment`, or `Document Visual Question Answering`.
+- `florence_prompt` — used by Find Object, Find Object Segment, and DocVQA.
+
+#### Find Image Source And Generation Info
+
+The message context menu has **Find sauce** (SauceNAO, best-effort) and **SD Image Info** (reads generation metadata when present). `/wd_imginfo` does the same for an attached image. Uploaders and social platforms can strip metadata; no tool can recover information that is no longer in the file. SD WebUI metadata is usually easier to parse than ComfyUI workflows, but support depends on the file.
+
+### Video And 3D
+
+These commands are implemented, but they depend on separate media services and models. If the service is not registered or online, the command can still be present but fail; that is an availability issue, not a syntax issue.
+
+- `/wd_txt2vid` — text-to-video with MiniMax H3; options include `prompt`, optional `ref`, `preset`, `custom_width`, `custom_height`, `custom_length`, `portrait`, `seed`, `steps`, `do_upscale`, `no_optimize`, and `prompt_quality`.
+- `/wd_img2vid` — animate an opening image; options include `image`, `prompt`, optional `last_image`, optional `ref`, `preset`, `length`, `seed`, `steps`, `do_upscale`, `no_optimize`, and `prompt_quality`.
+- `/wd_ref2vid` — reference-driven video with `ref`, `prompt`, `preset`, `length`, `portrait`, `seed`, `steps`, `do_upscale`, and `prompt_quality`.
+- `/wd_vid_upscale` — video post-processing with `video`, optional `color_correction` and `ref_image`, `upscaler`, `frame_interpolation`, and `fps_multiplier`.
+- `/wd_img2model` — CelForge 3D conversion with `image`, optional `recipe`, `seed`, and `download_glb`; returns an orbit MP4 and optionally the GLB. It does **not** attach the shared Cancel button.
+
+See [Media commands](docs/media-commands.md) for the current workflow details, limits, and service requirements.
+
+### Model Knowledge Base And Resources
+
+These lists are starting points for understanding what a model may recognize. They are not current quality rankings and they do not guarantee a character will appear.
+
+**NoobAI / Illustrious lineage**: the training data includes Danbooru and other sources; knowledge cut-offs and character coverage depend on the specific fine-tune. Community character spreadsheets and model cards are more reliable than guessing tags.
+
+**AnimagineXL lineage**: v4 uses a newer Danbooru-based dataset; older v3/v3.1 used a smaller/pruned set. Character lists:
+
+- [AnimagineXL v3 character list](https://huggingface.co/spaces/cagliostrolab/animagine-xl-3.1/raw/main/wildcard/characterfull.txt)
+- [AnimagineXL v3.1 additions](https://huggingface.co/spaces/cagliostrolab/animagine-xl-3.1/raw/main/wildcard/character31.txt)
+
+**PonyDiffusionXL lineage**: a distinct prompt/LoRA ecosystem; do not assume an ordinary SDXL LoRA will behave the same. Pony-specific character knowledge is community-maintained; check the model card and the [Pony character page](https://ponychar.com/) if you use that lineage.
+
+**SDXL / Flux recognition**: models may recognize prominent characters, artists, or real people from pretraining data, but this is unreliable and can change with fine-tunes. Use explicit descriptions or LoRAs when identity matters.
 
 #### Textual Embedding Resource List
 
-!!! warning should not be abused
-	In all the additional basic resource, textual embedding is the easiest to use, but you probably should not use too many of them at the same time as they are quite inflexible and can lead to botched generation
+Textual embeddings are small prompt modifiers. Do not stack many at once; they can conflict and degrade output.
 
-Basically speaking, textual embedding manipulate the prompt to produce better image by including said embedding's keyword. Currently there is only embedding for SD1.x and SDXL. The list isn't long so here they are
-
-Embedding name | Put it in neg prompt? | Compatible version
------------------|-------------------------|------------------------
+Embedding | Put it in the negative prompt? | Compatible family
+---------|--------------------------------|------------------
 smooth_qual | no | SDXL
 smooth_neg | yes | SDXL
 aisistxl_v2 | yes | SDXL
@@ -392,314 +775,67 @@ badhandv4 | yes | SD1.x
 bad_prompt_version2 | yes | SD1.x
 easynegative | yes | SD1.x
 
-#### LoRA Resource List
-
-!!! note She is in another castle!
-    Due to how long this page is, It has been moved to here [LoRA Resource List](https://rentry.co/elainaresource)
-
-#### Dynamic Prompt (Wildcard) Setup
-
-!!! note She is also in another castle!
-	Due to how long this page is, It has been moved to here [Wildcard Resource List](https://rentry.co/elainaresourcewildcard)
-
-!!! note User-defined wildcards
-	Besides the prebuilt wildcard resource, you can reference your own saved generation profiles as a wildcard: wrap the profile name in `%%` (e.g. `%%my_style%%`) and the bot will substitute the prompt stored in that profile. If you don't have a profile of that name, it will fall back to other users' profiles with the same name.
-
-#### Model Knowledge-base
-
-**NoobAIXL Linage:** 
-- The model is trained on the full danbooru dataset in addition to E621 dataset (furry-focused, don't ask me why) With a knowledge cut off date somewhere in Oct 2024.
-	- Knowledge base table: https://docs.google.com/spreadsheets/d/14_pLjke3LxnLTNyD7PoMdb6hQUWPpBdiLbjoFM3WVvA/preview?usp=sharing
-
-**AnimagineXL Linage:** 
-- As of V4, the model is trained on the full danbooru dataset in addition to some other undisclosed source with a knowledge cut off date on Jan 7 2025. 
-- As of V3.1, the model is trained on a pruned danbooru dataset around 20% the size of the full dataset with the knowledge cut off date somewhere in Feb 2024
-	- AnimagineXL v3 Character list: https://huggingface.co/spaces/cagliostrolab/animagine-xl-3.1/raw/main/wildcard/characterfull.txt
-	- AnimagineXL v3.1 Character list (as addition to v3): https://huggingface.co/spaces/cagliostrolab/animagine-xl-3.1/raw/main/wildcard/character31.txt
-
-**Other Linage:**
-- PonyDiffusionXL v6 is also trained on full danbooru dataset + multiple other sources (however all artist name has been obfuscated) with a knowledge cut off date somewhere in Dec 2023
-	- Character knowledge base page: https://ponychar.com/
-	- PonyXL Style reversed engineer effort: https://rentry.org/ponyxl_loras_n_stuff#reverse-engineered-hashed-tokens
-- SDXL Recognize some real life celebrities and characters due to prominence in the pre-trained dataset (LAION), it also recognize some artistic style which people are still finding. Their result can be found at https://sdxl.parrotzone.art/
-
-- For Flux, someone tried to check if the model recognize common character. Here is their result: https://rentry.co/fluxcharknowledge
-
-### Image Generation Advanced Resource
-
-#### ControlNet Setup
-
-ControlNet allow user to control the generation based on multiple special feature that can be detected from another image (pose, depth map, lineart, etc.)
-
-Use /wd_controlnet to setup configuration of controlnet on your side (you can chain up to 3 controlnet at the same time, the 2nd and 3rd use the `_2` / `_3` versions of each option):
-- `controlnet_model` — which ControlNet / T2I-Adapter / IPAdapter model to use (Canny, Depth, SoftEdge, Lineart Anime, OpenPose, Segmentation, Tile, IPAdapter (CLIP H / CLIP G), Color, Sketch, Threshold, Shuffle, Blur, Fill, InstantID Keypoint / IPAdapter, ControlNet Union, ControlNet Inpaint, ...)
-- `controlnet_preprocessor` — the preprocessor used to extract the feature from the input image (e.g. OpenPose, HED, LERes / MiDaS depth, lineart, ...)
-- `controlnet_weight` — how strongly the control is enforced (default 1)
-- `controlnet_resolution` — the resolution the preprocessor works at (default 512)
-- `controlnet_mode` — `Balanced` / `My prompt is more important` / `ControlNet is more important`
-- `controlnet_threshold_a` / `controlnet_threshold_b` — preprocessor thresholds (default 100 / 200)
-- `do_preview_annotation` — also send the extracted annotation image (handy for debugging)
-
-When use /wd_create_adv, /wd_img2img_adv or /wd_inpaint, specify `controlnet_input` (plus `controlnet_input_2` / `controlnet_input_3` for the 2nd/3rd controlnet) with the input image, and your saved config is applied automatically. You can also pass `controlnet_config` directly to override it for a single generation.
-
-!!! note Forge backend only
-	ControlNet runs on the SD / SDXL (Forge) backend — it is not applied when generating with Flux-based models.
-
-Temporary link to read more on what each controlnet type do: https://huggingface.co/docs/diffusers/en/using-diffusers/controlnet (I'll try to write something easier to understand but this is a quite complicated)
-
-#### ADetailer Setup
-
-When generating an image of a person, some parts of the human body (face, hand) can be generated rather poorly and can be very noticable, ADetailer aim to detect these object and try to repaint it using the same method as image to image with low-ish denoising strength to make these feature less fucked
-
-Use /wd_adetailer to setup configuration of adetailer on your side (you can chain up to 3 detailers at the same time, the 2nd and 3rd use the `_2` / `_3` versions of each option):
-- `adetailer_model` — the detection model used to find the object to repaint:
-	- YOLO detectors: Face v8s, Hand v8n, Eyes (Segment), Breast (Segment), Head+Hair (Segment), Face (Segment), Person v8s (Segment), Watermark, YOLO World v8x
-	- Open-vocabulary detectors: GroundingDINO (Tiny/Base) and Florence2 (Base/Large, with or without fine-tuning)
-- `object_to_detect` — which object(s) the detector should look for (only for YOLO World / GroundingDINO / Florence2, e.g. "person" or "eyes. hair.")
-- `adetailer_prompt` — override the prompt used when inpainting the detected area; you can use [SEP] to separate prompt used on different detection (i.e. 2 different faces). Leave empty to reuse the main prompt
-- `adetailer_neg_prompt` — same as above but for the negative prompt
-- `adetailer_detection_threshold` — confidence threshold for detection (default 0.3)
-- `adetailer_mask_blur` — blur radius applied to the mask edge (default 4)
-- `adetailer_mask_padding` — how much the detected area is expanded (default 32)
-- `adetailer_denoise_strength` — how strongly the area is repainted (default 0.4)
-
-When use /wd_create_adv or /wd_img2img_adv, set `do_adetailer` to true to activate adetailer (your saved config is applied automatically, or you can pass `adetailer_config` directly). Keep in mind that enabling adetailer increases the generation time by roughly 50%.
-
-#### Forge Coupler Setup
-
-Generating image with multiple subjects can be a pain in the ass due to a concept call "bleeding" when the AI can't figure out which subject should inherit which feature from the prompt. Forge Coupler attempt to resolve this by allow user to split the canvas into multiple area that goes through different denoising route. Each with their own prompt. There are 2 usage mode for forge coupler, below is the example of basic mode
-```
-2girls, august von parseval \(azur lane\), azur lane, artist: eufoniuz, serious face <=> 2girls, ceres fauna, hololive, artist: eufoniuz, happy face
-```
-separated by <=> for each subject in the picture, so you will have 2 girls in this picture
-
--> ![forge coupler demo](https://i.ibb.co/KxsFTKS1/img.png) <-
-
-note: you can add another subject at the beginning or the end and if you add [GLOBAL] to it the prompt will be applied to all other subject. You can also control how strongly the global prompt is weighted with `[GLOBAL:<value>]` (e.g. `[GLOBAL:0.8]`, default is 0.5)
-
-```
-[GLOBAL] 2girls, artist: eufoniuz, __kw/lighting*__, (masterpiece:1.2), best quality <=> 2girls, august von parseval \(azur lane\), azur lane, artist: eufoniuz, serious face <=> 2girls, ceres fauna, hololive, artist: eufoniuz, happy face
-```
-
-!!! note Subject count
-	You may be confused on why i still use "2girls" for the "local" part of the image, shouldn't it be 1girl if we just want each girl in their own section of the image? Well, you will be correct, the reason why i use "2girls" here is because I don't want both subject to be completely separate from each other. You gotta have that interaction eh? 
-
-use \|\| instead of <=> to stack subject vertically instead of horizontally, the canvas will be divided equally
-
-```
-[GLOBAL] 2girls, artist: eufoniuz, __kw/lighting*__, (masterpiece:1.2), best quality || 2girls, august von parseval \(azur lane\), azur lane, artist: eufoniuz, serious face || 2girls, ceres fauna, hololive, artist: eufoniuz, happy face
-```
-
-But what if you DO NOT want to divide it equally? Then time to bust out the advance mode. With each "component" (separated by <=> or \|\|) you can set the component to occupy an arbitrary rectangular region on the canvas. Simply add `|<x_start_fraction>:<x_end_fraction>,<y_start_fraction>:<y:end_fraction>,<w>|` to each component's text, for example `|0:0.5,0:1,1|` will add a region on the left half of the canvas 
-
-```
-[GLOBAL] 2girls, artist: eufoniuz, __kw/lighting*__, (masterpiece:1.2), best quality <=> |0:0.5,0:1,1| 2girls, august von parseval \(azur lane\), azur lane, artist: eufoniuz, serious face <=> |0.5:1,0:1,1| 2girls, ceres fauna, hololive, artist: eufoniuz, happy face
-```
-
-If advance mode is detected, an additional image will be sent to indicate all the region you have defined
-
--> ![forge coupler region preview](https://i.ibb.co/3DbV1GZ/Screenshot-2025-02-01-101653.jpg) <-
-
-#### Detail Daemon Setup
-
-By adding some noise in a very controlled way during generation, one can deliberately crank up the amount of "detail" (or making the picture more "busy") and vice versa when generating an image
-
-To use add the following syntax to the prompt `|dd: <amount>|`, for example `|dd: 0.2|`. By default detail daemon will add more noise in the middle steps to add more "detail" to the image
-
--> ![dd demo amount](https://i.ibb.co/jP3yN2wh/Screenshot-2025-02-01-104427.jpg) <-
-
-In case you want to add bigger detail, you should specify detail daemon to add more noise in earlier steps of the generation, you can achieve this by using the syntax `|dd: <amount>, <start>-<end>, <bias>|` or `|dd: <amount>, <start>-<end>|` or `|dd: <amount>, <bias>|` for example `|dd: 0.2, 0.1-0.4, 0|` with `start` and `end` being the process of the step in generation process (0 at the start to 1 at the finish) and `bias` indicate how much noise should be dump in the earlier or later step of the daemon (-1 to fully dump it at the start and 1 to fully dump it at the end, by default, it is 0) 
-
--> ![dd demo timestep](https://i.ibb.co/BV8k4wxM/Screenshot-2025-02-01-104439.jpg) <-
-
-#### Vectorscope Setup
-
-This allow user to introduce bias during **latent** denoising process to manipulate the output's brightness, contrast and color balance
-
-Use /wd_colorbalance to setup configuration of colorbalance on your side, subsequent generation from you will use said config until reset
-
-The parsed settings are:
-- `brightness` / `contrast` — overall brightness / contrast adjustment (-5 to 5, default 0)
-- `saturation` — color intensity (0.25 to 1.75, default 1)
-- `red` / `green` / `blue` — per-channel color cast (-4 to 4, default 0; e.g. red:3 warms the image up, blue:-3 pushes it toward yellow)
-- `alt_mode` — if enabled, interferes deeper into the denoising process, potentially increasing the effect of all the settings above but at the cost of potential instability and artifact in the output
-
-#### Prompt Enhancer Setup
-
-Writing prompt is hard, maybe leave it to the AI as well? This allow user to input a simpler prompt and allow an large language model to "expand" it into a more elaborated prompt to make the output more interesting
-
-Use /wd_boorugen to setup the configuration of the prompt expansion (DanTagGen-based), it will persist until reset:
-- `gen_length` — how long the generated prompt should be (very short / short / long / very long)
-- `ban_tags` — tags that must not appear in the generated prompt
-- `format` — the output format of the generated prompt
-- `random_seed`, `temperature`, `top_p`, `top_k` — sampling parameters of the tag generator
-- `tipo_mode` — TIPO style mixing between booru tags and natural language (NL only / tag first / NL first / + generated NL / custom)
-- `tipo_tag_gen_length` / `tipo_nl_gen_length` — lengths of the generated tag part and natural-language part
-
-You can also trigger the enhancer from within the prompt itself:
-- `[BOORU]` — run the booru tag generation on your prompt
-- `[FOOCUS]` — run the FOOCUS expansion
-- `[TIPO]<your raw prompt>===<your tag prompt>===<your nl prompt>` — use TIPO to convert / combine your booru-tag prompt and natural-language prompt into a mixed prompt
-
-#### FreeU, Mahiro Guidance, Perturbed-Attention Guidance and Dynamic Threshold Setup
-
-**FreeU** allow manipulate 4 value in the first and second block of the VAE decoder process, which can improve the image in certain way
-
-To use add the following syntax to the prompt `|freeu: <b1>, <b2>, <s1>, <s2>|`, for example `|freeu: 1.05, 1.2, 0.99, 0.95|`
-
-**Pertubed-Attention Guidance** is a more novel way to guide the denoising process that should prevent "locked in" of subject in earlier steps of generation, which help improve prompt adherence for SD1.5 and SDXL models
-
-To use add the following syntax to the prompt `|pag: <pag scale>|` (or `|pag: <pag scale>, <adaptive scale>|` to enable the adaptive variant), for example `|pag: 3|` or `|pag: 3, 0.5|`
-
-**Dynamic Threshold** help to resolve the issue of "burnt-in" output of generated image on high CFG scale (in theory high CFG should be better at prompt adherence and especially negative prompt avoidance) by scaling the CFG scale back in later step of the generation
-
-To use add the following syntax to the prompt `|dt: <mimic_scale>, <mimic percentile>|`, for example `|dt: 7, 0.95|`
-
-**Mahiro Guidance:** (arxiv 2024-1208.1) Introduce a novel method to improve guidance in diffusion models by avoiding the inverse of the negative conditioning when possible and using the plain positive conditioning. (to put it more simple, more power to prompt, less power to negative prompt)
-
-To use add the following syntax to the prompt `|mahiro|`
-
-**Modulation Guidance** — alternative guidance variant to the denoising process. To use add the following syntax to the prompt `|modulation|`
-
-#### Latent Modifier Setup
-
-!!! error even I don't understand this
-    This is some advanced shit, unless you are ready for some utter chaos, DO NOT TRY TO MESS WITH THIS
-
-This provide numerous paramter to directly mess with the latent space during generation. `simple_mode` reduces the config to just the rescale cfg option; otherwise the full list of parsed settings (each numeric setting has a method/type selector where applicable) is:
-
-- `sharpness_multiplier` + `sharpness_method` (Anisotropic / Joint Anisotropic / Gaussian / CAS)
-- `tonemap_multiplier` + `tonemap_method` (Reinhard / Reinhard per Channel / Arctangent / Quantile / Gated / CFG Mimic / Spatial Norm) + `tonemap_percentile`
-- `contrast_multiplier` + `contrast_method` (Subtract / Subtract Channels / Subtract Median / Sharpen)
-- `combat_cfg_drift` — counteract the CFG drift effect
-- `rescale_cfg_phi` — the setting that actually matters, when increased by just a little bit it will add some more noise to the image
-- `extra_noise_type` (Gaussian / Uniform / Perlin / Pink / Green / Pyramid) + `extra_noise_method` (Add / Add Scaled / Speckle / CADs...) + `extra_noise_multiplier` + `extra_noise_lowpass`
-- `divisive_norm_size` + `divisive_norm_multiplier`
-- `spectral_mod_mode` (Hard Clamp / Soft Clamp) + `spectral_mod_percentile` + `spectral_mod_multiplier`
-- `affect_uncond` (None / Sharpness) — whether the modifiers also apply to the uncond latent
-- `dyncfg_augment` (None / Half-cosine / Half-cosine Mimic)
-
-Use /wd_latentmod to setup configuration of latentmod on your side
-
-#### TeaCache / First-block Cache Setup
-
-TeaCache / First-block Cache offer the ability to cache some calculation in earlier layer to apply to later steps, potentially skipping sampling step without compromising quality. It's recommended to start at low value first (0.2, value can range from 0 to 1) and work your way up or down to balance speed improvement and quality
-
-To use TeaCache add the following syntax to the prompt `(>> <value>)` (or explicitly `(>> tc <value>)`) , for example `(>> 0.2)` (work with image generation on SD, Flux and text to video on Hunyuan)
-
-To use First-block Cache add the following syntax to the prompt `(>> fbc <value>)` , for example `(>> fbc 0.2)` (only work with image generation on SD)
-
-!!! warning unpredictable output
-	While using these 2 caching method result in better generation speed, the result can be rather unpredictable (especially on SD-based model). Therefore this "optimization" is an opt-in
-
-#### Personal Generation Settings (/wd_setting)
-
-Your personal generation settings, persisted across generations until you change them (per-user, per-server):
-
-- Use `/wd_setting set` to configure, `/wd_setting check` to review, `/wd_setting reset` to clear
-- `do_preview` — show a live preview while generating (default false, slightly slower when on)
-- `hires_checkpoint` / `hires_sampler` / `hires_scheduler` — force a specific cached checkpoint / sampler / scheduler to be used for the hi-res fix pass (rather than reusing the base generation settings)
-- `hires_positive` / `hires_negative` — extra prompt text appended only during the hi-res fix pass
-- `hires_cfg` / `hires_shift` — CFG scale / distilled shift override for the hi-res pass
-- `seedvr2_model` — apply a SeedVR2 upscaler to every txt2img/img2img result automatically; `seedvr2_resolution` sets the target resolution of the shortest side (default 1600). Set the model to `Disable` to turn this off
-- `image_prompt_quality` / `image_prompt_batch` / `image_prompt_style` / `image_prompt_layout` - control the image prompt enhancer: off/standard/high quality, all/each batch behavior, auto/tags/natural addition style, and off/auto/moss/coupler layout planning. See the Image prompt enhancement and MOSS layout drafts sections above
-
-!!! info SeedVR2 — quality over speed
-	SeedVR2 is a diffusion-based upscaler, which makes it **much more compute-intensive** than the classic upscalers in /wd_upscale (R-ESRGAN etc.), but also a much better upscaler: instead of just sharpening pixels, it actively reconstructs fine detail. Use it when **quality is the priority** (e.g. for your final image), not when you want a quick upscale. There are 4 model options, from smallest to biggest:
-
-	| Option | Size | Quantization | Purpose |
-	|--------|------|--------------|---------|
-	| 3B Q8 | small | high | denoising |
-	| 7B Sharp Q4_K_M | big | low | sharpening |
-	| 7B Q8 | big | high | denoising |
-	| 7B Sharp Q8 | big | high | sharpening |
-
-	The "Sharp" variants are optimized for sharpening, the plain ones for denoising. It works well with both realistic images and illustrations.
-
-### Utilities Function
-
-#### Image simple upscale (/wd_upscale)
-
-Allow you to quickly upscale an image using various AI model designed to do so. Much quicker than using hi-res fix in /wd_create or /wd_img2img. But this method does not have the ability to create new detail from nothing, consider this less than CSI's "enhance" but more like anti-aliasing. It also support using CodeFormer and GFPGAN to try to fix human face, but this only really work with photo and is already pretty old tech. `upscale_multiplier` should be less than 4. Feel free to test out each model but R-ESRGAN 4x+ and R-ESRGAN 4x+ Anime6B is recommended for anime picture and NMKD-Siax 4x is recommended for photorealism
-
--> ![wd_upscale demo](https://i.ibb.co/0RG5vvk3/Screenshot-2025-01-31-080700.jpg) <-
-
-#### Image background removal (/wd_rembg)
-
-Allow you to remove background using various AI model designed to do so. It also allow you to do some post processing with the background-removed image
-- For background removal model it is recommended to use birefnet-general (birefnet-massive should only be used if not enough background is removed as it has a tendency to remove too much of the image), isnet-general (and -anime appropriately) can also be used
-- You can add an outline (edge), shadow to the processed image as well as define a background color instead of full transparency
-- brightness, saturation and contrast too why not lol
-
--> ![wd_rembg demo](https://i.ibb.co/HfBD0bCM/Screenshot-2025-01-31-080050.jpg) <-
-
-#### Saving generation profile (/wd_profile)
-
-You can save your generation setup (prompt, height, width, etc.) as a profile to be used as a shorthand in later generation
-
-- Profile management is split into 4 separate commands:
-	- `/wd_profile_add name:<name>` — save (or update, if the name already exists) a profile with the given settings
-	- `/wd_profile_list` — list all of your (or another `user`'s) profiles, with pagination
-	- `/wd_profile_detail name:<name>` — show the full settings of a profile
-	- `/wd_profile_remove name:<name>` — delete a profile
-- Generation profile support following setting (all are optional)
-	- prompt (<prompt pre>...<prompt>)
-	- negative prompt (<neg prompt pre>...<neg prompt>)
-	- width
-	- height
-	- sampler
-	- scheduler
-	- cfg sclale
-	- sampling step
-	- seed
-	- upscale_multiplier
-	- upscaler
-	- upscale_denoise_strength
-	- upscale_step
-	- clip skip
-	- checkpoint (still susceptable to checkpoint caching rule)
-	- adetailer config
-	- controlnet config
-	- colorbalance config
-	- boorugen config
-	- script outpaint config
-	- script upscale config
-	- latentmod config
-
-- To use it simply put the name of the profile to `profile` parameter. It will search to see if you have a profile of said name or not, if not found it will search for profile of said name from all user and if found apply the setting from this profile (same logic applied if you use /wd_profile_detail, unless you specify `user` pararameter)
-
-!!! info Parameter priority
-	Parameters value are applied according to this order until a non-empty value is found:  command-specific value > force sampler, scheduler, sampling step and cfg scale value for /wd_create and /wd_img2img > profile-specific value > user-specific value > default value
-
-#### Describe an Image (/wd_interrogate)
-
-Very straight forward, you put an image in, you get a description of it.
-
-!!! info Florence 2 only
-	CLIP and DeepBooru have been removed. The default (and only) engine family now is **Florence 2**, which is much more accurate and more versatile than the old CLIP/DeepBooru engines:
-	- `engine: Florence 2` (default) — natural language description (use "Florence 2 Finetuned" for a better caption model)
-	- `engine: Florence 2 PromptGen` + `florence_task: Caption (Booru Tags)` — booru-tag style description (replaces the old DeepBooru)
-
-	You can also pick a `florence_task` for different behaviors: basic/detailed/mixed captioning, region captioning, OCR, "Find Object" (with a `florence_prompt` telling it what to find), and document question-answering.
-
--> ![wd_interrogate demo](https://i.ibb.co/zhPDZpzW/Screenshot-2025-01-31-074528.jpg) <-
-
-#### Find Image source and Image Generation Info
-
-Also pretty straight forward, you only need to access the message context menu (tip: tap and hold the message in mobile to make the context menu appear, there will be 2 option to find the "sauce" and find the generation info
-
--> ![context menu](https://i.ibb.co/Z6k8k0Qk/Screenshot-2025-01-31-074910.jpg) <-
-- Find sauce use SauceNAO to find anime image, it works maybe half of the time but it's better than nothing xd
-
--> ![find sauce demo](https://i.ibb.co/nqvYFzqr/Screenshot-2025-01-31-075008.jpg) <-
-- SD Image Info attempt to read the image's EXIF data (which can be stripped by the uploader) to parse relevant info of generation like prompt, parameters and stuff, works better with image made from sdwebui than comfyui (if you don't know the difference, don't mind it), alternatively you can also use /wd_imginfo and attach an image to do the same thing as well
-
--> ![imginfo demo](https://i.ibb.co/fzSNckJ1/Screenshot-2025-01-31-075023.jpg) <-
+#### LoRA And Wildcard Resources
+
+The large external lists live outside this repository:
+
+- [LoRA Resource List](https://rentry.co/elainaresource)
+- [Wildcard Resource List](https://rentry.co/elainaresourcewildcard)
+
+These are community resources, not endorsements. Check the base model, trigger words, and license before using a LoRA. LoRA compatibility is not universal: a Pony LoRA, an SDXL LoRA, and a Flux LoRA are different targets even if the file extension is the same.
+
+Besides prebuilt wildcards, you can use a saved generation profile as a wildcard with `%%profile_name%%`. If you do not own a profile with that name, the bot falls back to another user's profile with the same name.
+
+### Troubleshooting
+
+| Symptom | Likely cause | What to try |
+|---|---|---|
+| The image ignores my requested change | Denoise too low, prompt too vague, or the model is not following the edit | Raise img2img denoise gradually; describe the change more specifically; use reference edit or inpaint for the relevant region |
+| The whole image changed when I only wanted a small edit | Whole-image img2img or high denoise | Use `/wd_inpaint` with a mask, or lower `denoising_strength` |
+| Two characters share hair/clothes/features | Prompt bleeding across regions | Use Forge Coupler regions or `/wd_layout_draft`; keep each region's prompt specific |
+| Hands/faces are damaged | Small generation area, model limitation, or high-denoise second pass | Use ADetailer with a face/hand detector, or inpaint the region; avoid over-sharpening |
+| Output is blurry or distorted at the edges | Resolution outside the model's trained area or extreme aspect ratio | Move toward a trained bucket; generate smaller and upscale; avoid huge canvases |
+| The model did not change | Checkpoint not cached/load failed, or the command fell back to the active model | Check the bot's cache/fallback message; use `/wd_modelchange`; retry when the backend is idle |
+| `reference_layout: Native` does not look like my images | Native references use separate conditioning, not a collage; the model may reinterpret them | Try `Horizontal`, `Vertical`, or `Grid` for a literal collage; make the prompt describe the desired result; choose a reference-capable model |
+| Reference edit fails on Anima/MOSS/Krea | Required edit LoRA is not visible or the model is not reference-capable | Check the bot's error; confirm the LoRA/model is installed; use a listed reference model |
+| Flux Dev was replaced by Flux Kontext | Flux Dev has no reference conditioning | Expected; the bot tells you. Use Kontext or a different reference model |
+| Tiled upscale has visible seams | Tile overlap too small, tiles too small, scale/denoise too aggressive | Increase `tile_overlap`, enlarge tiles, reduce `upscale_multiplier` or denoise |
+| Native Outpaint changed a face at the edge | The overlap strip intentionally repaints inside the expanded edge | Reduce `overlap`, add more padding, or compose the subject farther from the border |
+| PiD output is blank or the wrong size | Backend/PiD compatibility issue or base size limits | Keep base side ≤1024 and divisible by 8; don't stack Hires/Tiled/Outpaint/Flux scripts; check [How it works](docs/ai-how-it-works.md) |
+| `GFPGAN`/`CodeFormer` options do nothing | Current Forge Extras removed them | Leave them at 0; use SeedVR2 or inpaint |
+| Prompt enhancement failed and no image was made | LLM error, invalid additions, truncation, or unconfirmed unload | Read the error; shorten the prompt or use `All`; retry when the LLM service is free. The bot intentionally does not submit a partial result |
+| Layout session expired | The draft session lasts 10 minutes | Re-run `/wd_layout_draft`; controls from the old session are stale |
+| Saved layout not found | Wrong user scope or name | Save it with the same user, check the name, and use `<layout:name>` exactly |
+| TIPO/BooruGen controls seem ineffective | Current Forge schema removed TIPO/DanTagGen widgets | Use image prompt enhancement or write the prompt directly; treat `[TIPO]`/`[BOORU]`/`[FOOCUS]` as legacy |
+| Cancel failed or did not stop the job | Backend refused/could not confirm, or the request was already finished | Check the progress message; a stale button cannot cancel a later job. Try again on the current request if the button is still present |
+| Video/3D command fails | Media service, model, or CelForge not enabled | See [Media commands](docs/media-commands.md) and check whether the service is registered/online |
+
+### Further Reading
+
+| Topic | Link | Why read it |
+|---|---|---|
+| Latent diffusion / Stable Diffusion | [Rombach et al., 2022](https://arxiv.org/abs/2112.10752) | The original latent-diffusion design behind checkpoint/VAE/latent vocabulary |
+| SDXL | [Podell et al., 2023](https://arxiv.org/abs/2307.01952) | SDXL architecture and training choices |
+| LoRA | [Hu et al., 2021](https://arxiv.org/abs/2106.09685) | What a LoRA actually adapts |
+| ControlNet | [Zhang et al., 2023](https://arxiv.org/abs/2302.05543) | Spatial conditioning and how it differs from style/subject adaptation |
+| IP-Adapter | [Ye et al., 2023](https://arxiv.org/abs/2308.06721) | Image-prompt adapters for compatible ControlNet units; separate from native ref2img conditioning |
+| FreeU | [Si et al., 2023](https://arxiv.org/abs/2309.11497) | The decoder-feature trick behind the FreeU prompt tag |
+| Perturbed-Attention Guidance | [Ahn et al., 2024](https://arxiv.org/abs/2403.17377) | The guidance method behind the PAG prompt tag |
+| TeaCache | [Liu et al., 2024](https://arxiv.org/abs/2411.19108) | Caching/skipping trade-offs |
+| SeedVR | [ByteDance-Seed/SeedVR](https://github.com/ByteDance-Seed/SeedVR) | Neural video/image upscaling background for SeedVR2 |
+| Florence 2 | [Florence-2 model card](https://huggingface.co/microsoft/Florence-2-large) | Captioning, OCR, region, and grounding tasks used by `/wd_interrogate` |
+| Forge Neo | [Forge Classic/Neo project](https://github.com/Haoming02/sd-webui-forge-classic) | The maintained Forge fork used by this integration, including its native extensions |
+| ComfyUI | [ComfyUI](https://github.com/Comfy-Org/ComfyUI) | Backend for the ComfyUI image/video workflows |
+| Model cards | [Animagine XL 4.0](https://huggingface.co/cagliostrolab/animagine-xl-4.0), [Qwen Image 2.1](https://huggingface.co/Qwen/Qwen-Image-2.1), [MOSS Image Base](https://huggingface.co/OpenMOSS-Team/MOSS-Image-Base), [Flux Kontext](https://huggingface.co/black-forest-labs/FLUX.1-Kontext-dev) | Prompt style, recommended settings, and architecture-specific limits |
 
 ### Unrelated FAQ
 
-- **Why /wd_...?** At the very beginning the generation command use the WaifuDiffusion model (which is the earliest major anime focused fine-tuning effort for Stable Diffusion). However the NovelAI model leak happen pretty much right after. The name stick though
-- **Is there any fee?** ~~My electricity bill~~ Feel free to use this at no charge, there will be a cooldown for each of the command though. Afterall I don't have an RTX 5090 or anything *wink wink*
-- **Can the bot do anything besides generating images?** Yes! See the [Non-WD Commands Documentation](https://rentry.org/elainaresourcenonai) for everything else: chatting with the bot, quizzes (shipgirl, trivia), osu!/osu!droid/Malody stuff, Spotify genre lookups, and more
-- **Video generation is broken?** Unfortunately yes — all video commands (/wd_txt2vid, /wd_img2vid, /wd_vid_upscale) are out of order until the video back-end is rebuilt with the new WAN2GP workflow. Please don't try to use them for now
-- **Where can I see what the bot is doing?** `/ping` pokes the AI server connection, `/server_stat` shows server resource stats, and `/ratestatus` shows the current chat rate limit status (see the non-wd document)
+- **Why `/wd_...`?** The first generation commands used a WaifuDiffusion model; the name stuck even after the backend and model family changed.
+- **Is there a fee?** No. There are cooldowns to keep the shared backend usable.
+- **Can the bot do anything besides generating images?** Yes. See [Non-WD Commands](non-wd-commands.md) for chat, quizzes, osu!/osu!droid/Malody, Spotify genre lookups, and more.
+- **Are the video commands broken?** They are implemented with MiniMax H3 workflows, but they require the media service and models to be available. See [Media commands](docs/media-commands.md). A missing/failed service is not the same as a missing command.
+- **Where can I see what the bot is doing?** `/ping` checks the AI server connection and `/server_stat` shows resource stats. The bot owner can use `/chat_config mode:Status` for current local chat configuration. `/ratestatus` reports legacy online-mode counters, not local model/GPU admission.
+
+### Maintainer Notes
+
+The user-facing behaviour above is implemented across the command and utility modules. For architecture, service routing, schema assumptions, and deployment limits, read [How it works](docs/ai-how-it-works.md) instead of relying on operational notes in this page. Catalog definitions live in [utils/ai_server_config.js](utils/ai_server_config.js); family defaults live in [utils/model_defaults.js](utils/model_defaults.js). Reference policy and edit LoRAs are in [utils/forge_reference.js](utils/forge_reference.js); PiD limits are in [utils/forge_pid.js](utils/forge_pid.js).

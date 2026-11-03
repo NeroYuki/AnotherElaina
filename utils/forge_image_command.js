@@ -57,9 +57,9 @@ const { prepare_native_outpaint } = require('./forge_outpaint');
 const { is_pid_upscaler, prepare_pid_upscale, run_pid_postpass } = require('./forge_pid');
 const { withForgeSession } = require('./forge_session');
 const { runForgeImageJob, dataUriToBuffer } = require('./forge_image_job');
+const { runComfyImageJob } = require('./comfy_image_job');
 const workflow_outpaint = require('../resources/flux_fill_outpaint.json');
 const workflow_kontext = require('../resources/flux_kontext.json');
-const ComfyClient = require('./comfy_client');
 
 const REFERENCE_MAX_SIDE = 1024;
 const REFERENCE_LAYOUTS = [
@@ -438,6 +438,13 @@ function find_node_id(workflow, classType) {
     return Object.keys(workflow).find(key => workflow[key]?.class_type === classType) || null;
 }
 
+function comfy_progress_message(workflow, progress) {
+    if (progress?.node == null) return null;
+    const title = workflow[progress.node]?._meta?.title || workflow[progress.node]?.class_type;
+    return 'Processing: ' + (title || 'ComfyUI') +
+        (progress.max ? ` (${progress.value}/${progress.max})` : '');
+}
+
 async function execute_comfy_flux_kontext(interaction, client, data) {
     const workflow = JSON.parse(JSON.stringify(workflow_kontext));
     workflow['27'] && Object.assign(workflow['27'].inputs, { width: data.width });
@@ -449,43 +456,28 @@ async function execute_comfy_flux_kontext(interaction, client, data) {
     workflow['25'] && Object.assign(workflow['25'].inputs, { noise_seed: Math.floor(Math.random() * 2_000_000_000) });
     workflow['60'] && Object.assign(workflow['60'].inputs, { rel_l1_thresh: data.teacache_strength });
 
-    const image_info = await ComfyClient.uploadImage(
-        data.attachment,
-        Date.now() + '_' + data.attachment_option.name,
-        data.attachment_option.contentType,
-    ).catch(error => {
-        console.log('Failed to upload image', error);
-        return null;
-    });
-    if (image_info == null) {
-        interaction.editReply({ content: 'Failed to receive input image' });
-        return;
-    }
-    const loadImageNode = find_node_id(workflow, 'LoadImage');
-    if (loadImageNode) workflow[loadImageNode].inputs.image = image_info.name;
-
-    const { unloadForgeCheckpoint } = require('./forge_api_execute');
-    await unloadForgeCheckpoint();
-
-    ComfyClient.sendPrompt(workflow, progress => {
-        if (progress.node !== null) interaction.editReply({ content: 'Processing: ' + workflow[progress.node]?._meta?.title });
-    }, success => {
-        if (!success.output) return;
-        const filename = success.output.images[0].filename;
-        ComfyClient.getImage(filename, '', '', true).then(async arraybuffer => {
-            await interaction.channel.send({
-                content: 'Comfy backend returned file',
-                files: [{ attachment: Buffer.from(arraybuffer), name: filename }],
+    return runComfyImageJob(interaction, workflow, {
+        initialContent: 'Submitting ComfyUI Flux Kontext workflow…',
+        successContent: 'Comfy backend returned file',
+        async prepare(context) {
+            const image_info = await context.uploadImage(
+                data.attachment,
+                Date.now() + '_' + data.attachment_option.name,
+                data.attachment_option.contentType,
+            ).catch(error => {
+                console.log('Failed to upload image', error);
+                return null;
             });
-        }).catch(error => {
-            console.log('Failed to retrieve image', error);
-            interaction.editReply({ content: 'Failed to retrieve image' });
-        }).finally(() => ComfyClient.freeMemory(true));
-    }, error => {
-        interaction.editReply({ content: error.error });
-        ComfyClient.freeMemory(true);
-    }, progress => {
-        interaction.editReply({ content: 'Processing: ' + workflow[progress.node]?._meta?.title + ` (${progress.value}/${progress.max})` });
+            if (image_info == null) throw new Error('Failed to receive input image');
+            const loadImageNode = find_node_id(workflow, 'LoadImage');
+            if (loadImageNode) workflow[loadImageNode].inputs.image = image_info.name;
+
+            const { unloadForgeCheckpoint } = require('./forge_api_execute');
+            await unloadForgeCheckpoint();
+            return workflow;
+        },
+        progress: progress => comfy_progress_message(workflow, progress),
+        errorContent: error => error?.error || error?.message || String(error),
     });
 }
 
@@ -510,43 +502,28 @@ async function execute_comfy_flux_outpaint(interaction, client, data) {
     };
     if (workflow['44']) Object.assign(workflow['44'].inputs, outpaint_config);
 
-    const image_info = await ComfyClient.uploadImage(
-        data.attachment,
-        Date.now() + '_' + data.attachment_option.name,
-        data.attachment_option.contentType,
-    ).catch(error => {
-        console.log('Failed to upload image', error);
-        return null;
-    });
-    if (image_info == null) {
-        interaction.editReply({ content: 'Failed to receive input image' });
-        return;
-    }
-    const loadImageNode = find_node_id(workflow, 'LoadImage');
-    if (loadImageNode) workflow[loadImageNode].inputs.image = image_info.name;
-
-    const { unloadForgeCheckpoint } = require('./forge_api_execute');
-    await unloadForgeCheckpoint();
-
-    ComfyClient.sendPrompt(workflow, progress => {
-        if (progress.node !== null) interaction.editReply({ content: 'Processing: ' + workflow[progress.node]?._meta?.title });
-    }, success => {
-        if (!success.output) return;
-        const filename = success.output.images[0].filename;
-        ComfyClient.getImage(filename, '', '', true).then(async arraybuffer => {
-            await interaction.channel.send({
-                content: 'Comfy backend returned file',
-                files: [{ attachment: Buffer.from(arraybuffer), name: filename }],
+    return runComfyImageJob(interaction, workflow, {
+        initialContent: 'Submitting ComfyUI Flux Outpaint workflow…',
+        successContent: 'Comfy backend returned file',
+        async prepare(context) {
+            const image_info = await context.uploadImage(
+                data.attachment,
+                Date.now() + '_' + data.attachment_option.name,
+                data.attachment_option.contentType,
+            ).catch(error => {
+                console.log('Failed to upload image', error);
+                return null;
             });
-        }).catch(error => {
-            console.log('Failed to retrieve image', error);
-            interaction.editReply({ content: 'Failed to retrieve image' });
-        }).finally(() => ComfyClient.freeMemory(true));
-    }, error => {
-        interaction.editReply({ content: error.error });
-        ComfyClient.freeMemory(true);
-    }, progress => {
-        interaction.editReply({ content: 'Processing: ' + workflow[progress.node]?._meta?.title + ` (${progress.value}/${progress.max})` });
+            if (image_info == null) throw new Error('Failed to receive input image');
+            const loadImageNode = find_node_id(workflow, 'LoadImage');
+            if (loadImageNode) workflow[loadImageNode].inputs.image = image_info.name;
+
+            const { unloadForgeCheckpoint } = require('./forge_api_execute');
+            await unloadForgeCheckpoint();
+            return workflow;
+        },
+        progress: progress => comfy_progress_message(workflow, progress),
+        errorContent: error => error?.error || error?.message || String(error),
     });
 }
 

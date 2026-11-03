@@ -40,7 +40,8 @@ function cleanText(value, maxLength = MAX_CAPTION_LENGTH) {
         .replace(/<[^>]*>/g, '')
         .replace(/\[GLOBAL[^\]]*\]/gi, '')
         .replace(/>>+/g, '')
-        .replace(/__[^_]+__/g, '')
+        .replace(/__[^\r\n]*?__/g, '')
+        .replace(/%%[^%\r\n]+%%/g, '')
         .replace(/\s+/g, ' ')
         .trim()
         .slice(0, maxLength);
@@ -316,7 +317,12 @@ function couplerLines(input, { includeSummary = true, summaryWeight = 0.5, itemW
     const lines = [];
     const regions = [];
     if (includeSummary) {
-        const summary = cleanText(`${draft.summary.caption}${extra ? ` ${extra}` : ''}`, Math.max(1000, MAX_CAPTION_LENGTH * 4));
+        // Only the planner-authored caption is sanitized. The caller's original
+        // prompt is source text: keep its LoRA, wildcard, profile and other
+        // control syntax byte-for-byte so prompt_analyzer can parse it once.
+        const caption = cleanText(draft.summary.caption, Math.max(1000, MAX_CAPTION_LENGTH * 4));
+        const source = typeof extra === 'string' ? extra.trim() : '';
+        const summary = [caption, source].filter(Boolean).join(' ');
         if (summary) {
             regions.push([0, 1, 0, 1, clamp(summaryWeight, 0, 1)]);
             lines.push({ text: summary, region: regions[regions.length - 1] });

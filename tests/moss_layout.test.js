@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const sharp = require('sharp');
-const { get_coupler_config_from_prompt } = require('../utils/prompt_analyzer');
+const { get_coupler_config_from_prompt, full_prompt_analyze } = require('../utils/prompt_analyzer');
 const {
     compileLayoutPrompt,
     decompileLayoutPrompt,
@@ -94,6 +94,37 @@ test('converts a layout into Forge Coupler Advanced prompt and mapping', () => {
     assert.equal(parsed.coupler_config.adv_regions.length, 3);
     assert.deepEqual(parsed.coupler_config.adv_regions[0], [0, 1, 0, 1, 0.5]);
     assert.deepEqual(parsed.coupler_config.adv_regions[1], [0.1953, 0.8047, 0.293, 0.4102, 1]);
+});
+
+test('coupler conversion preserves source control syntax and sanitizes only planner captions', () => {
+    const draft = sampleDraft({
+        summary: { caption: 'Poster with <lora:planner:1> and __planner_wildcard__', canvas: 'single' },
+        items: [
+            { label: 'text', caption: 'Title with <lora:planner:1>', text: 'EXPLORE', bbox: [200, 300, 824, 420] },
+            { label: 'object', caption: 'Mountain with %%planner_profile%% and __planner_wildcard__', bbox: [250, 500, 750, 800] },
+        ],
+    });
+    const source = 'mysteryTriggerPhrase, <lora:hero:0.75>, __source_wildcard__, %%source_profile%%, {red|blue}';
+    const prompt = layoutToCouplerPrompt(draft, { extra: source });
+
+    // Planner-authored captions cannot inject new control syntax.
+    assert.doesNotMatch(prompt, /planner/);
+
+    // The caller's original prompt survives verbatim inside the global region
+    // and the existing analyzer sees the same regions and control tokens.
+    const parsed = get_coupler_config_from_prompt(prompt);
+    assert.equal(parsed.coupler_config.adv_regions.length, 3);
+    assert.match(parsed.prompt, /mysteryTriggerPhrase/);
+    assert.match(parsed.prompt, /<lora:hero:0\.75>/);
+    assert.match(parsed.prompt, /__source_wildcard__/);
+    assert.match(parsed.prompt, /%%source_profile%%/);
+    assert.match(parsed.prompt, /\{red\|blue\}/);
+
+    const analyzed = full_prompt_analyze(prompt, true);
+    assert.match(analyzed.prompt, /<lora:hero:0\.75>/);
+    assert.match(analyzed.prompt, /__source_wildcard__/);
+    assert.match(analyzed.prompt, /%%source_profile%%/);
+    assert.equal(analyzed.coupler_config.adv_regions.length, 3);
 });
 
 test('renders a PNG preview with the canvas proportions', async () => {

@@ -22,6 +22,7 @@ const { clamp, calculateOptimalGrid, parseImageCount, parse_common_setting } = r
 const { catboxUpload } = require('../utils/catbox_upload.js');
 const { enrichImagePrompts } = require('../utils/image_prompt');
 const { withForgeSession } = require('../utils/forge_session');
+const { createForgeCancellation } = require('../utils/forge_cancel');
 const { is_pid_upscaler, prepare_pid_upscale } = require('../utils/forge_pid');
 const { runImagePromptBatch, isImagePromptBatchCancelled, ImagePromptBatchCancelled } = require('../utils/image_prompt_batch');
 const { fetchProgressJson } = require('../utils/forge_progress');
@@ -29,6 +30,7 @@ const { prepareLayoutPrompt } = require('../utils/layout_prompt');
 const { get_model_family_defaults } = require('../utils/model_defaults');
 const workflow_og = require('../resources/flux_lora.json')
 const ComfyClient = require('../utils/comfy_client');
+const { runComfyImageJob } = require('../utils/comfy_image_job');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -142,39 +144,19 @@ module.exports = {
             workflow["28"]["inputs"]["model"] = [previous_model_node, 0]
         }
 
-        // Unload Forge model before using ComfyUI
         const { unloadForgeCheckpoint } = require('../utils/forge_api_execute');
-        await unloadForgeCheckpoint();
-
-        ComfyClient.sendPrompt(workflow, (data) => {
-            if (data.node !== null) interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] });
-        }, (data) => {
-            console.log('received success')
-            if (!data.output) {
-                return
-            }
-            const filename = data.output.images[0].filename
-
-            // fetch video from comfyUI
-            ComfyClient.getImage(filename, '', '', /*only_filename*/ true).then(async (arraybuffer) => {
-                // convert arraybuffer to buffer
-                const buffer = Buffer.from(arraybuffer)
-
-                await interaction.channel.send({ content: "Comfy backend returned file", files: [{ attachment: buffer, name: filename }] });
-            }).catch((err) => {
-                console.log("Failed to retrieve image", err)
-                interaction.editReply({ content: "Failed to retrieve image" });
-            }).finally(() => {
-                ComfyClient.freeMemory(true)
-            })
-
-        }, (data) => {
-            console.log('received error')
-            interaction.editReply({ content: data.error });
-            ComfyClient.freeMemory(true)
-        }, (data) => {
-            console.log('received progress')
-            interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] + ` (${data.value}/${data.max})` });
+        return runComfyImageJob(interaction, workflow, {
+            client: ComfyClient,
+            async prepare() {
+                await unloadForgeCheckpoint();
+                return workflow;
+            },
+            initialContent: 'Submitting image workflow…',
+            successContent: 'Comfy backend returned file',
+            progress(progress) {
+                const title = workflow[progress.node]?._meta?.title || workflow[progress.node]?.class_type;
+                return title ? `Processing: ${title}${progress.max ? ` (${progress.value}/${progress.max})` : ''}` : null;
+            },
         });
     },
 
@@ -311,9 +293,37 @@ module.exports = {
             return
         }
 
-        let collector = null
+        // Install the cancel control before waiting for the Forge lease so a
+        // user can cancel a queued request without touching the active owner.
+        const cancelCustomId = 'cancel_simple_' + interaction.id
+        const row = new MessageActionRow()
+            .addComponents(
+                new MessageButton()
+                    .setCustomId(cancelCustomId)
+                    .setLabel('Cancel')
+                    .setStyle('DANGER'),
+            )
+        let progressTimer = null
+        const stopProgress = () => {
+            if (progressTimer !== null) {
+                clearTimeout(progressTimer)
+                progressTimer = null
+            }
+        }
+        const cancellation = createForgeCancellation({
+            interaction,
+            customId: cancelCustomId,
+            headers: SD_HEADERS,
+            fetchImpl: fetch,
+            logger: console,
+            onCancel: () => {
+                stopProgress()
+            },
+        })
+        cancellation.installCollector({ interaction, customId: cancelCustomId })
 
         const runGeneration = async () => {
+        if (cancellation.isCancelled()) return
         // Model state is Forge-wide, so every selection/setup/request in this
         // block runs under one lease, including the re-sync after waiting.
         await sync_active_model()
@@ -476,54 +486,10 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         let current_preview_id = 0
         const session_hash = crypt.randomBytes(16).toString('base64');
         let progress_session_hash = session_hash
-        let isInferenceActive = false
         let isDone = false
-        let isCancelled = false
         let progress_ping_delay = 2000
 
         const WORKER_ENDPOINT = server_pool[server_index].url
-
-        const row = new MessageActionRow()
-    			.addComponents(
-    				new MessageButton()
-    					.setCustomId('cancel_simple_' + interaction.id)
-    					.setLabel('Cancel')
-    					.setStyle('DANGER'),
-    			);
-
-        const filter = i => i.customId === 'cancel_simple_' + interaction.id && i.user.id === interaction.user.id;
-
-        collector = interaction.channel.createMessageComponentCollector({ filter, time: 800000 });
-
-        collector.on('collect', async i => {
-            isCancelled = true
-            collector.stop()
-
-            // Only abort the inference this command currently owns; stale
-            // buttons or rendering-phase cancellation must not abort another job.
-            if (isInferenceActive) {
-                const option_cancel = {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        fn_index: server_pool[server_index].fn_index_abort,
-                        session_hash: progress_session_hash,
-                        data: []
-                    })
-                }
-
-                fetch(`${WORKER_ENDPOINT}/run/predict/`, option_cancel)
-            }
-
-            try {
-                i.message.delete()
-                throw "Cancelled"
-            }
-            catch (err) {
-                console.log(err)
-            }
-        });
-
-        // TODO: remove button after collector period has ended
 
         const default_neg_prompt_comp = default_neg_prompt.split('_')
         const override_neg_prompt = default_neg_prompt_comp[0] === 'n'
@@ -610,7 +576,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
 
         const cooldown = compute * bulk_size / (bulk_size > 1 ? 2_750_000 : 2_500_000)
 
-        await interaction.editReply({ content: `Generating image, you can create another image in ${cooldown.toFixed(2)} seconds ${teacache_check.teacache_config ? "(Teacache activated: -" + (100 * (1 - Math.pow(1 - teacache_check.teacache_config?.threshold || 0.1, 2))).toFixed(0) + "%)" : ""}` });
+        await interaction.editReply({ content: `Generating image, you can create another image in ${cooldown.toFixed(2)} seconds ${teacache_check.teacache_config ? "(Teacache activated: -" + (100 * (1 - Math.pow(1 - teacache_check.teacache_config?.threshold || 0.1, 2))).toFixed(0) + "%)" : ""}`, components: [row] });
 
         if (extra_config.coupler_config && (height % 64 !== 0 || width % 64 !== 0)) {
             interaction.channel.send('Coupler detected, changing resolution to multiple of 64')
@@ -741,19 +707,26 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         }
 
         const send = async (request) => {
-            isInferenceActive = true
+            const task = cancellation.beginTask({
+                sessionHash: request.sessionHash || request.data?.session_hash,
+                endpoint: WORKER_ENDPOINT,
+                abortFnIndex: server_pool[server_index].fn_index_abort,
+                headers: SD_HEADERS,
+            })
+            if (!task) throw new ImagePromptBatchCancelled()
             try {
                 const response = await axios.post(`${WORKER_ENDPOINT}/run/predict/`, request.data, request.config)
-                if (isCancelled) throw new ImagePromptBatchCancelled()
+                if (cancellation.isCancelled()) throw new ImagePromptBatchCancelled()
                 return response
             }
             catch (err) {
                 if (isImagePromptBatchCancelled(err)) throw err
-                if (isCancelled) throw new ImagePromptBatchCancelled()
+                if (cancellation.isCancelled()) throw new ImagePromptBatchCancelled()
                 throw err
             }
             finally {
-                isInferenceActive = false
+                cancellation.endTask(task)
+                await cancellation.drain()
             }
         }
 
@@ -809,7 +782,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                     }
 
                     // if completed, only allow edit if the state is completed
-                    if ((state === 'progress' || state === 'queued') && (isDone || isCancelled)) {
+                    if ((state === 'progress' || state === 'queued') && (isDone || cancellation.isCancelled())) {
                         resolve()
                         return
                     }
@@ -829,8 +802,9 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         }
 
         function fetch_progress() {
-            setTimeout(async () => {
-                if (isDone || isCancelled) return
+            progressTimer = setTimeout(async () => {
+                progressTimer = null
+                if (isDone || cancellation.isCancelled()) return
                 try {
                     const progress_res_obj = await fetchProgressJson(
                         `${WORKER_ENDPOINT}/internal/progress`,
@@ -840,7 +814,17 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                         },
                         { fetchImpl: fetch, logger: console },
                     )
-                    if (!progress_res_obj || progress_res_obj.completed) return
+                    if (!progress_res_obj) return
+                    if (progress_res_obj.completed) {
+                        cancellation.setTaskState('completed', { sessionHash: progress_session_hash })
+                        return
+                    }
+                    if (progress_res_obj.queued || progress_res_obj.active === true ||
+                        (progress_res_obj.active !== false && Number(progress_res_obj.progress) > 0)) {
+                        cancellation.setTaskState(progress_res_obj.queued ? 'queued' : 'running', {
+                            sessionHash: progress_session_hash,
+                        })
+                    }
                     if (progress_res_obj.queued) {
                         await updateInteractionReply({}, 'queued').catch(err => {
                             console.log(err)
@@ -863,6 +847,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                     console.log(err)
                 }
                 finally {
+                    if (isDone || cancellation.isCancelled()) return
                     progress_ping_delay += 500
                     fetch_progress()
                 }
@@ -872,7 +857,10 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         try {
             // initiate the request for image, this fucker refuse to be caught unless put into synchronous by await
             // setTimeout of 1 second before start progress fetching due to this weird behaviour
-            setTimeout(() => fetch_progress(), 1000)
+            progressTimer = setTimeout(() => {
+                progressTimer = null
+                fetch_progress()
+            }, 1000)
 
             await runImagePromptBatch({
                 plan: promptPlan,
@@ -881,10 +869,11 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                 sessionHash: session_hash,
                 buildRequest,
                 send,
-                shouldCancel: () => isCancelled,
+                shouldCancel: () => cancellation.isCancelled(),
                 onTask: ({ sessionHash: taskSession }) => {
                     progress_session_hash = taskSession
                     current_preview_id = 0
+                    cancellation.setTaskState('queued', { sessionHash: taskSession })
                 },
                 heatmapsPerImage: daam_config ? daam_config.prompt.split(',').length : 0,
                 pidImagesPerRequest: pidConfig ? 1 : 0,
@@ -896,7 +885,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                     return res.data
                 }) // fuck node fetch, all my homies use axios
                 .then(async (final_res_obj) => {
-                    if (isCancelled) return
+                    if (cancellation.isCancelled()) throw new ImagePromptBatchCancelled()
                     if (final_res_obj.data) {
                         // if server index == 0, get local image directory, else initiate request to get image from server
                         let catbox_url = null
@@ -945,6 +934,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                         const imageResults = [];
 
                         for (let i = 0; i < actualImagePaths.length; i++) {
+                            if (cancellation.isCancelled()) throw new ImagePromptBatchCancelled()
                             // all server is now remote
                             // retry fetch before throwing
                             let fetch_final_retry_count = 0;
@@ -973,6 +963,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                                 if (i === 0) {
                                     // wait for 2 seconds before updating the interaction reply to avoid race condition
                                     await new Promise(resolve => setTimeout(resolve, 2000));
+                                    if (cancellation.isCancelled()) throw new ImagePromptBatchCancelled()
 
                                     if (imageResults.length === 0) {
                                         throw 'Failed to fetch any images from remote server';
@@ -1027,6 +1018,7 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                         if (daam_heatmap_count > 0) {
                             const heatmapPaths = imagePaths.slice(0, daam_heatmap_count);
                             for (let h = 0; h < heatmapPaths.length; h++) {
+                                if (cancellation.isCancelled()) throw new ImagePromptBatchCancelled()
                                 const heatmap_res = await fetch(`${WORKER_ENDPOINT}/file=${heatmapPaths[h]}`).catch(err => {
                                     console.log(`Error fetching heatmap ${h+1}:`, err);
                                 });
@@ -1041,22 +1033,21 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
                         }
 
                         isDone = true;
+                        cancellation.stopCollector()
                     }
                     else {
-                        isCancelled = true
                         throw 'Request return non-JSON data'
                     }
                 })
                 .catch(err => {
-                    isCancelled = true
                     throw err
                 })
         }
         catch (err) {
             console.log(err)
             try {
-                if (isImagePromptBatchCancelled(err)) {
-                    await interaction.editReply({ content: 'Image generation cancelled.', components: [] })
+                if (isImagePromptBatchCancelled(err) || cancellation.isCancelled()) {
+                    await cancellation.reportCancelled()
                 }
                 else {
                     await interaction.editReply({content: 'Error while creating image: ' + err, components: []})
@@ -1074,22 +1065,37 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
         }, cooldown * 1000);
         }
 
+        await interaction.editReply({ content: 'Waiting for the Forge instance...', components: [row] })
+            .catch(reply_err => console.log('cannot show cancel control', reply_err))
+
         try {
             await withForgeSession(async () => {
                 try {
                     await runGeneration()
                 }
                 finally {
-                    // Stop listening before the Forge lease is released so a
-                    // stale button cannot abort a later owner of the instance.
-                    if (collector) collector.stop()
+                    // Stop listening and settle any in-flight interrupt before
+                    // the Forge lease is released. A stale button must never
+                    // abort the next owner of the instance.
+                    cancellation.stopCollector()
+                    await cancellation.drain()
                 }
             })
+            if (cancellation.isCancelled()) await cancellation.reportCancelled()
         }
         catch (err) {
             console.log('Image generation failed', err)
-            await interaction.editReply({ content: 'Error while creating image: ' + err, components: [] })
-                .catch(reply_err => console.log('cannot send error to discord', reply_err))
+            if (cancellation.isCancelled()) {
+                await cancellation.reportCancelled()
+            }
+            else {
+                await interaction.editReply({ content: 'Error while creating image: ' + err, components: [] })
+                    .catch(reply_err => console.log('cannot send error to discord', reply_err))
+            }
+        }
+        finally {
+            stopProgress()
+            await cancellation.finish()
         }
 	},
 };

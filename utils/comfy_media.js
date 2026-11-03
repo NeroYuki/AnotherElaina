@@ -308,24 +308,33 @@ async function deliverFile(reply, interaction, buffer, filename, content) {
 }
 
 async function runVideo(interaction, workflow, shape) {
-    const comfy = require('./comfy_client');
-    const reply = mediaReply(interaction);
-    try {
-        reply.progress(shape?.segments ? `Submitting ${shape.segments.length} H3 clips for ${shape.seconds.toFixed(2)}s video…` : 'Submitting video workflow…');
-        const result = await comfy.runPrompt(workflow, {
-            ...(shape?.segments ? { timeoutMs: 4 * 60 * 60 * 1000 } : {}),
-            onProgress(data) {
-                const title = workflow[data.node]?._meta?.title || workflow[data.node]?.class_type;
-                if (title) reply.progress(`Processing: ${title}${data.max ? ` (${data.value}/${data.max})` : ''}`);
-            },
-        });
-        const file = videoOutput(result.outputs);
-        const buffer = Buffer.from(await comfy.getImage(file.filename, file.subfolder || '', file.type || 'output'));
-        const description = shape ? `Video ready (${shape.width}×${shape.height}, ${shape.seconds.toFixed(2)}s, 24 fps before upscaling).` : 'Video processing complete.';
-        await deliverFile(reply, interaction, buffer, file.filename, description);
-    } catch (error) {
-        await reply.finish({ content: `Video failed: ${errorMessage(error)}` });
-    }
+    // Shared job lifecycle: owner-filtered Cancel button, exact-job backend
+    // cancellation, terminal confirmation, affinity-bound download/cleanup.
+    const { runComfyJob } = require('./comfy_image_job');
+    return runComfyJob(interaction, {
+        workflow,
+        initialContent: shape?.segments
+            ? `Submitting ${shape.segments.length} H3 clips for ${shape.seconds.toFixed(2)}s video…`
+            : 'Submitting video workflow…',
+        ...(shape?.segments ? { timeoutMs: 4 * 60 * 60 * 1000 } : {}),
+        progress(data) {
+            const title = workflow[data.node]?._meta?.title || workflow[data.node]?.class_type;
+            if (!title) return null;
+            return `Processing: ${title}${data.max ? ` (${data.value}/${data.max})` : ''}`;
+        },
+        async deliver(result, context) {
+            if (context.cancelled) return null;
+            const file = videoOutput(result.outputs);
+            const buffer = Buffer.from(await context.download(file));
+            if (context.cancelled) return null;
+            const description = shape
+                ? `Video ready (${shape.width}×${shape.height}, ${shape.seconds.toFixed(2)}s, 24 fps before upscaling).`
+                : 'Video processing complete.';
+            await deliverFile(context.reply, interaction, buffer, file.filename, description);
+            return null;
+        },
+        errorContent: error => `Video failed: ${errorMessage(error)}`,
+    });
 }
 
 module.exports = { H3_FPS, H3_MAX_SECONDS, H3_MODELS, videoShape, imageVideoShape, inputPath, buildH3Workflow, buildPostProcessWorkflow,

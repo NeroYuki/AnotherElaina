@@ -12,6 +12,7 @@ const { default: axios } = require('axios');
 const { serviceHeaders } = require('./proxy_config');
 const { workloadHeaders } = require('./orchestrator_workload');
 const { fetchProgressJson } = require('./forge_progress');
+const { createForgeCancellation } = require('./forge_cancel');
 
 const SD_HEADERS = serviceHeaders('sdwebui');
 const _nodeFetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
@@ -177,14 +178,33 @@ async function runForgeImageJob({
         submitted: false,
         completed: false,
         cancelled: false,
-        abortSent: false,
+        failed: false,
     };
 
-    let collector = null;
     let progressTimer = null;
     let progressDelay = progressOptions.initialDelay;
     let currentPreviewId = 0;
     let currentSessionHash = sessionHash;
+
+    const cancellation = createForgeCancellation({
+        interaction,
+        customId: cancelCustomId,
+        endpoint,
+        abortFnIndex,
+        headers: SD_HEADERS,
+        fetchImpl,
+        setTimeoutImpl,
+        clearTimeoutImpl,
+        logger,
+        onCancel: () => {
+            // Stale buttons are ignored by the controller before this callback
+            // runs. For a live job, stop all cosmetic work immediately; the
+            // interrupt itself was already dispatched synchronously.
+            state.cancelled = true;
+            state.active = false;
+            stopProgress();
+        },
+    });
 
     const stopProgress = () => {
         if (progressTimer !== null) {
@@ -193,13 +213,10 @@ async function runForgeImageJob({
         }
     };
 
-    const stopCollector = () => {
-        try { collector?.stop?.(); }
-        catch (error) { logger.log?.(error); }
-        collector = null;
-    };
+    const stopCollector = () => cancellation.stopCollector();
+    const isCancelled = () => state.cancelled || cancellation.isCancelled();
 
-    const shouldUpdate = () => state.active && !state.completed && !state.cancelled;
+    const shouldUpdate = () => state.active && !state.completed && !isCancelled();
 
     const updateInteractionReply = async (payload, phase = 'queued') => {
         if (!shouldUpdate() && phase !== 'completed') return;
@@ -258,8 +275,15 @@ async function runForgeImageJob({
             );
             if (!shouldUpdate() || !progressObject) return;
             if (progressObject?.completed) {
+                cancellation.setTaskState('completed', { sessionHash: currentSessionHash });
                 completed = true;
                 return;
+            }
+            if (progressObject.queued || progressObject.active === true ||
+                (progressObject.active !== false && Number(progressObject.progress) > 0)) {
+                cancellation.setTaskState(progressObject.queued ? 'queued' : 'running', {
+                    sessionHash: currentSessionHash,
+                });
             }
             if (progressObject?.queued) {
                 await updateInteractionReply({}, 'queued');
@@ -293,58 +317,39 @@ async function runForgeImageJob({
         }, progressDelay);
     }
 
-    const abortInference = async () => {
-        if (!state.submitted || state.abortSent || state.completed || !Number.isInteger(abortFnIndex)) return;
-        state.abortSent = true;
-        await abortSafePromise(fetchImpl(`${endpoint}/run/predict/`, {
-            method: 'POST',
-            body: JSON.stringify({ fn_index: abortFnIndex, session_hash: currentSessionHash, data: [] }),
-            headers: { 'Content-Type': 'application/json' },
-        })).catch(error => logger.log?.(error));
-    };
-
-    const onCancel = async component => {
-        // Stale buttons can still be delivered after the job released its
-        // lease. They must never abort the next user's inference.
-        if (!state.active || state.cancelled || state.completed) {
-            await abortSafePromise(component?.deferUpdate?.());
-            return;
-        }
-        state.cancelled = true;
-        const shouldAbort = state.submitted && !state.abortSent;
-        state.active = false;
-        stopProgress();
-        stopCollector();
-        await abortSafePromise(component?.deferUpdate?.());
-        await abortSafePromise(component?.message?.delete?.());
-        if (shouldAbort) await abortInference();
-    };
-
-    if (typeof interaction.channel?.createMessageComponentCollector === 'function') {
-        collector = interaction.channel.createMessageComponentCollector({
-            filter: component => component.customId === cancelCustomId && component.user.id === interaction.user.id,
-            time: 800000,
-        });
-        collector.on('collect', component => {
-            onCancel(component).catch(error => logger.log?.(error));
-        });
-    }
+    // Buttons are installed before submission so a cancel that arrives while
+    // this job is still waiting for the local Forge lease records a pending
+    // cancellation instead of aborting the current owner.
+    cancellation.installCollector({ interaction, customId: cancelCustomId });
 
     try {
-        if (state.cancelled) return { status: 'cancelled' };
+        if (isCancelled()) return { status: 'cancelled' };
         scheduleProgress();
-        state.submitted = true;
-        if (state.cancelled) return { status: 'cancelled' };
-        const response = await axiosImpl.post(`${endpoint}/run/predict/`, {
-            fn_index: fnIndex,
-            session_hash: sessionHash,
-            data,
-        }, {
-            headers: workload ? workloadHeaders('sdwebui', workload, SD_HEADERS) : SD_HEADERS,
-            timeout: 900000,
+        const mainTask = cancellation.beginTask({
+            sessionHash,
+            endpoint,
+            abortFnIndex,
+            headers: SD_HEADERS,
         });
+        if (!mainTask) return { status: 'cancelled' };
+        state.submitted = true;
+        let response;
+        try {
+            response = await axiosImpl.post(`${endpoint}/run/predict/`, {
+                fn_index: fnIndex,
+                session_hash: sessionHash,
+                data,
+            }, {
+                headers: workload ? workloadHeaders('sdwebui', workload, SD_HEADERS) : SD_HEADERS,
+                timeout: 900000,
+            });
+        }
+        finally {
+            cancellation.endTask(mainTask);
+            await cancellation.drain();
+        }
 
-        if (state.cancelled) return { status: 'cancelled' };
+        if (isCancelled()) return { status: 'cancelled' };
         if (response?.status !== 200) throw new Error('Server can be reached but returned non-200 status');
         let finalResult = response.data;
         if (!finalResult?.data) throw new Error('Request return non-JSON data');
@@ -383,22 +388,36 @@ async function runForgeImageJob({
         let pidWarning = pid ? await validatePidDimensions(imageBuffer, pidExpectedWidth, pidExpectedHeight) : null;
 
         if (postpass) {
+            if (isCancelled()) return { status: 'cancelled' };
             currentSessionHash = `${sessionHash}-pid`;
             currentPreviewId = 0;
             progressDelay = progressOptions.increment;
-            state.abortSent = false;
             scheduleProgress();
 
             const predictPostpass = async ({ fn_index, session_hash, data: postpassData }) => {
-                const postpassResponse = await axiosImpl.post(`${endpoint}/run/predict/`, {
-                    fn_index,
-                    session_hash,
-                    data: postpassData,
-                }, {
+                const postpassTask = cancellation.beginTask({
+                    sessionHash: session_hash,
+                    endpoint,
+                    abortFnIndex,
                     headers: SD_HEADERS,
-                    timeout: 900000,
                 });
-                if (state.cancelled) return { data: [] };
+                if (!postpassTask) return { data: [] };
+                let postpassResponse;
+                try {
+                    postpassResponse = await axiosImpl.post(`${endpoint}/run/predict/`, {
+                        fn_index,
+                        session_hash,
+                        data: postpassData,
+                    }, {
+                        headers: SD_HEADERS,
+                        timeout: 900000,
+                    });
+                }
+                finally {
+                    cancellation.endTask(postpassTask);
+                    await cancellation.drain();
+                }
+                if (isCancelled()) return { data: [] };
                 if (postpassResponse?.status !== 200) {
                     throw new Error('Server can be reached but returned non-200 status');
                 }
@@ -414,10 +433,10 @@ async function runForgeImageJob({
                 sessionHash: currentSessionHash,
                 endpoint,
                 daamHeatmapCount,
-                shouldCancel: () => state.cancelled,
+                shouldCancel: () => isCancelled(),
                 predict: predictPostpass,
             });
-            if (state.cancelled) return { status: 'cancelled' };
+            if (isCancelled()) return { status: 'cancelled' };
             if (!postpassResult?.data?.[0]?.value) throw new Error('PiD postpass returned no result');
 
             finalResult = postpassResult;
@@ -435,7 +454,7 @@ async function runForgeImageJob({
         }
 
         if (completionDelayMs > 0) await sleep(completionDelayMs);
-        if (state.cancelled) return { status: 'cancelled' };
+        if (isCancelled()) return { status: 'cancelled' };
 
         state.completed = true;
         state.active = false;
@@ -485,7 +504,12 @@ async function runForgeImageJob({
         };
     }
     catch (error) {
-        if (state.cancelled) return { status: 'cancelled' };
+        // A PiD restore failure leaves Forge on the wrong global checkpoint;
+        // report it even when the user also cancelled instead of presenting a
+        // clean cancellation.
+        const restoreFailure = error?.code === 'PID_POSTPASS_RESTORE_FAILED';
+        if (isCancelled() && !restoreFailure) return { status: 'cancelled' };
+        state.failed = true;
         logger.log?.(error);
         await abortSafePromise(interaction.editReply({
             content: 'Error while creating image: ' + error,
@@ -497,6 +521,10 @@ async function runForgeImageJob({
         state.active = false;
         stopProgress();
         stopCollector();
+        if (isCancelled() && !state.completed && !state.failed) {
+            await cancellation.reportCancelled();
+        }
+        await cancellation.finish();
     }
 }
 

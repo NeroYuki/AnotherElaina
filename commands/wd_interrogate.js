@@ -7,7 +7,7 @@ const { server_pool, get_prompt, get_negative_prompt, get_worker_server, model_n
 const { default: axios } = require('axios');
 const { loadImage } = require('../utils/load_discord_img');
 const workflow_og = require('../resources/florence_simple.json');
-const ComfyClient = require('../utils/comfy_client');
+const { runComfyImageJob } = require('../utils/comfy_image_job');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -56,21 +56,9 @@ module.exports = {
     async execute_comfy(interaction, client, data) {
         const workflow = JSON.parse(JSON.stringify(workflow_og))
 
-        //set the image buffer to the workflow
-        const image_info = await ComfyClient.uploadImage(data.attachment, Date.now() + "_" + data.attachment_option.name, data.attachment_option.contentType).catch((err) => {
-            console.log("Failed to upload image", err)
-            return
-        })
-
-        if (image_info == null) {
-            interaction.editReply({ content: "Failed to receive input image" });
-            return
-        }
-
         workflow["1"]["inputs"]["seed"] = Math.floor(Math.random() * 2_000_000_000)
         workflow["2"]["inputs"]["model"] = data.engine
         workflow["1"]["inputs"]["task"] = data.florence_task
-        workflow["3"]["inputs"]["image"] = image_info.name
 
         // change engine based on selected task
         if (data.florence_task.includes('prompt_gen')) {
@@ -86,69 +74,89 @@ module.exports = {
             workflow["1"]["inputs"]["text_input"] = data.florence_prompt
         }
 
-        let buffer = null
-        let output_text = null
-        let output_filename = null
         const task = data.florence_task
+        const region_tasks = [
+            'region_caption',
+            'dense_region_caption',
+            'caption_to_phrase_grounding',
+            'referring_expression_segmentation',
+            'region_proposal',
+        ]
+        const attachment_tasks = [
+            'caption',
+            'detailed_caption',
+            'more_detailed_caption',
+            'prompt_gen_tags',
+            'prompt_gen_mixed_caption',
+            'prompt_gen_analyze',
+            'docvqa',
+        ]
 
-        ComfyClient.sendPrompt(workflow, (comfy_data) => {
-            if (comfy_data.node !== null) interaction.editReply({ content: "Processing: " + workflow[comfy_data.node]["_meta"]["title"] });
-        }, async (comfy_data) => {
-            console.log('received success')
-            if (!comfy_data.output) {
-                return
-            }
+        return runComfyImageJob(interaction, workflow, {
+            initialContent: 'Submitting Florence interrogation workflow…',
+            async prepare(context) {
+                const image_info = await context.uploadImage(
+                    data.attachment,
+                    Date.now() + "_" + data.attachment_option.name,
+                    data.attachment_option.contentType,
+                ).catch((err) => {
+                    console.log("Failed to upload image", err)
+                    return null
+                })
+                if (image_info == null) throw new Error('Failed to receive input image')
+                workflow["3"]["inputs"]["image"] = image_info.name
+                return workflow
+            },
+            progress: comfy_data => {
+                if (comfy_data?.node == null) return null
+                const title = workflow[comfy_data.node]?._meta?.title || workflow[comfy_data.node]?.class_type
+                return "Processing: " + (title || 'ComfyUI')
+            },
+            async deliver(result, context) {
+                if (context.cancelled) return null
+                let buffer = null
+                let output_text = null
+                let output_filename = null
+                const events = result.executed?.length
+                    ? result.executed
+                    : Object.entries(result.outputs || {}).map(([node, output]) => ({ node, output }))
 
-            if (comfy_data.output.text) {
-                if (['region_caption',
-                    'dense_region_caption',
-                    'caption_to_phrase_grounding',
-                    'referring_expression_segmentation',
-                    'region_proposal'].includes(task))
-                {
-                    output_text = 'Region defined in the output image'
+                for (const event of events) {
+                    const output = event.output || {}
+                    if (output.text) {
+                        output_text = region_tasks.includes(task)
+                            ? 'Region defined in the output image'
+                            : output.text[0]
+                    }
+                    else if (output.images?.length) {
+                        if (attachment_tasks.includes(task)) {
+                            output_filename = data.attachment_option.name
+                            buffer = data.attachment_option.proxyURL
+                        }
+                        else {
+                            if (context.cancelled) return null
+                            const file = output.images[0]
+                            output_filename = file.filename
+                            buffer = await context.download(file, { filetype: file.type || 'temp' })
+                            if (context.cancelled) return null
+                        }
+                    }
                 }
-                else {
-                    output_text = comfy_data.output.text[0]
-                }
-            }
-            else if (comfy_data.output.images) {
-                if (['caption',
-                    'detailed_caption',
-                    'more_detailed_caption',
-                    'prompt_gen_tags',
-                    'prompt_gen_mixed_caption',
-                    'prompt_gen_analyze',
-                    'docvqa',
-                    ].includes(task))
-                {
-                    output_filename = data.attachment_option.name
-                    buffer = data.attachment_option.proxyURL
-                }
-                else {
-                    output_filename = comfy_data.output.images[0].filename
 
-                    // fetch image from comfyUI
-                    await ComfyClient.getImage(output_filename, '', 'temp', /*only_filename*/ false).then(async (arraybuffer) => {
-                            // convert arraybuffer to buffer
-                            buffer = Buffer.from(arraybuffer)
-                        }).catch((err) => {
-                            console.log("Failed to retrieve image", err)
-                            interaction.editReply({ content: "Failed to retrieve image" });
-                        }).finally(() => {
-                            ComfyClient.freeMemory(true)
-                        })
+                if (buffer !== null && output_text !== null) {
+                    return {
+                        content: "Output: " + output_text,
+                        files: [{ attachment: buffer, name: output_filename }],
+                    }
                 }
-            }
-
-            if (buffer !== null && output_text !== null) {
-                await interaction.channel.send({ content: "Output: " + output_text, files: [{ attachment: buffer, name: output_filename }] });
-            }
-
-        }, (comfy_data) => {
-            console.log('received error')
-            interaction.editReply({ content: comfy_data.error });
-            ComfyClient.freeMemory(true)
+                if (output_text !== null) return { content: "Output: " + output_text }
+                if (buffer !== null) return {
+                    content: 'Output:',
+                    files: [{ attachment: buffer, name: output_filename }],
+                }
+                throw new Error('ComfyUI finished without an interrogation output.')
+            },
+            errorContent: error => error?.error || error?.message || String(error),
         })
     },
 
@@ -177,7 +185,7 @@ module.exports = {
 
         if (engine.includes('Florence')) {
             // switch to comfy backend
-            this.execute_comfy(interaction, client, {
+            await this.execute_comfy(interaction, client, {
                 attachment_option: attachment_option,
                 attachment: attachment,
                 engine: engine,

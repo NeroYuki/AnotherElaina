@@ -8,6 +8,7 @@ const {
     PID_VAE,
     PID_TEXT_ENCODER,
     PID_POSTPASS_CANCELLED,
+    PID_POSTPASS_RESTORE_FAILED,
     is_pid_upscaler,
     prepare_pid_upscale,
     strip_lora_tags,
@@ -266,6 +267,80 @@ test('PiD postpass cancellation leaves the model untouched', async () => {
         restoreModel: async () => { throw new Error('must not restore') },
         predict: async () => { throw new Error('must not predict') },
     }), error => error.code === PID_POSTPASS_CANCELLED)
+})
+
+test('PiD postpass reports a restore failure after successful sampling', async () => {
+    const packet = {
+        data: [{ value: [{ image: { path: '/tmp/base.png' } }] }],
+        duration: 2,
+    }
+
+    await assert.rejects(run_pid_postpass(packet, {
+        endpoint: 'http://forge.test',
+        session_hash: 'session',
+        pid: prepare_pid_upscale({ model: ANIMA_MODEL, width: 512, height: 512 }),
+        fetchImage: async () => Buffer.from('base'),
+        getOptions: async () => ({ sd_model_checkpoint: ANIMA_MODEL, forge_additional_modules: [] }),
+        switchModel: async () => {},
+        restoreModel: async () => { throw new Error('restore boom') },
+        predict: async () => ({
+            data: [{ value: [{ image: { path: '/tmp/final.png' } }] }],
+            duration: 1,
+        }),
+    }), error => {
+        assert.equal(error.code, PID_POSTPASS_RESTORE_FAILED)
+        assert.match(error.message, /completed, but the original Forge checkpoint could not be restored/)
+        assert.match(error.message, /restore boom/)
+        assert.equal(error.cause.message, 'restore boom')
+        return true
+    })
+})
+
+test('PiD postpass carries the inference cause when restore also fails', async () => {
+    const packet = {
+        data: [{ value: [{ image: { path: '/tmp/base.png' } }] }],
+    }
+
+    await assert.rejects(run_pid_postpass(packet, {
+        endpoint: 'http://forge.test',
+        session_hash: 'session',
+        pid: prepare_pid_upscale({ model: ANIMA_MODEL, width: 512, height: 512 }),
+        fetchImage: async () => Buffer.from('base'),
+        getOptions: async () => ({ sd_model_checkpoint: ANIMA_MODEL, forge_additional_modules: [] }),
+        switchModel: async () => {},
+        restoreModel: async () => { throw new Error('restore boom') },
+        predict: async () => { throw new Error('inference boom') },
+    }), error => {
+        assert.equal(error.code, PID_POSTPASS_RESTORE_FAILED)
+        assert.match(error.message, /PiD postpass failed \(inference boom\)/)
+        assert.match(error.message, /could not be restored/)
+        assert.match(error.message, /restore boom/)
+        assert.equal(error.cause.message, 'inference boom')
+        assert.equal(error.restoreError.message, 'restore boom')
+        return true
+    })
+})
+
+test('PiD postpass still restores after a cancelled inference', async () => {
+    let cancelled = false
+    let restored = false
+    const packet = { data: [{ value: [{ image: { path: '/tmp/base.png' } }] }] }
+
+    await assert.rejects(run_pid_postpass(packet, {
+        endpoint: 'http://forge.test',
+        session_hash: 'session',
+        pid: prepare_pid_upscale({ model: ANIMA_MODEL, width: 512, height: 512 }),
+        fetchImage: async () => Buffer.from('base'),
+        getOptions: async () => ({ sd_model_checkpoint: ANIMA_MODEL, forge_additional_modules: [] }),
+        switchModel: async () => {},
+        restoreModel: async () => { restored = true },
+        predict: async () => {
+            cancelled = true
+            return { data: [] }
+        },
+        shouldCancel: () => cancelled,
+    }), error => error.code === PID_POSTPASS_CANCELLED)
+    assert.equal(restored, true)
 })
 
 test('PiD postpass rejects an integrated policy and missing base dimensions', async () => {

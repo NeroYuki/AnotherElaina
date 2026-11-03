@@ -16,7 +16,7 @@ function draft(label, offset = 0) {
     };
 }
 
-function makeHarness(answers) {
+function makeHarness(answers, { awaitMessages } = {}) {
     const edits = [];
     const sends = [];
     const followUps = [];
@@ -31,6 +31,7 @@ function makeHarness(answers) {
         createMessageComponentCollector() { return collector; },
         async send(payload) { sends.push(payload); return payload; },
         async awaitMessages() {
+            if (awaitMessages) return awaitMessages();
             const value = answers.shift() || '';
             return { first: () => ({ content: value }) };
         },
@@ -164,4 +165,158 @@ test('layout command can return a Coupler prompt without closing the session', a
     await harness.collectorHandlers.collect(component(harness, 'cancel'));
     await execution;
     assert.equal(unloads, 1);
+});
+
+test('expiry during Adjust feedback cancels the wait without starting another draft', async () => {
+    const realMoss = require('../utils/moss_layout');
+    const draftCalls = [];
+    let unloads = 0;
+    let feedbackRequested = false;
+    let resolveFeedback;
+    const feedback = new Promise(resolve => { resolveFeedback = resolve; });
+    const stubs = {
+        layoutAgent: {
+            unloadLayoutModel: async () => { unloads += 1; },
+            draftImageLayout: async (args) => {
+                draftCalls.push(args);
+                return draft('first');
+            },
+        },
+        layoutStore: {
+            validateName: name => String(name).trim(),
+            saveLayout: async () => ({}),
+        },
+        mossLayout: {
+            ...realMoss,
+            renderLayoutPreview: async () => Buffer.from('png-bytes'),
+        },
+    };
+    const command = await loadCommand(stubs);
+    const harness = makeHarness([], {
+        awaitMessages: () => {
+            feedbackRequested = true;
+            return feedback;
+        },
+    });
+    const execution = command.execute(harness.interaction);
+    while (!harness.collectorHandlers.collect) await tick();
+
+    const adjust = harness.collectorHandlers.collect(component(harness, 'adjust'));
+    while (!feedbackRequested) await tick();
+    harness.collectorHandlers.end();
+    await execution;
+
+    assert.equal(draftCalls.length, 1);
+    assert.equal(harness.messageEdits.length, 0);
+    assert.equal(harness.edits.at(-1).content, 'Layout draft expired without a save.');
+    assert.equal(harness.edits.at(-1).components.length, 0);
+    assert.equal(unloads, 1);
+
+    // A late channel answer must not revive the closed session.
+    resolveFeedback({ first: () => ({ content: 'move the title down' }) });
+    await adjust;
+    await tick();
+    assert.equal(draftCalls.length, 1);
+    assert.equal(harness.messageEdits.length, 0);
+    assert.equal(unloads, 1);
+});
+
+test('expiry during an Adjust LLM call drains the draft before final unload and never mutates the UI', async () => {
+    const realMoss = require('../utils/moss_layout');
+    const draftCalls = [];
+    let unloads = 0;
+    let draftResolved = false;
+    let unloadedBeforeDraftResolved = false;
+    let resolveDraft;
+    const pendingDraft = new Promise(resolve => { resolveDraft = resolve; });
+    const stubs = {
+        layoutAgent: {
+            unloadLayoutModel: async () => {
+                unloads += 1;
+                if (!draftResolved) unloadedBeforeDraftResolved = true;
+            },
+            draftImageLayout: async (args) => {
+                draftCalls.push(args);
+                if (draftCalls.length === 1) return draft('first');
+                return pendingDraft;
+            },
+        },
+        layoutStore: {
+            validateName: name => String(name).trim(),
+            saveLayout: async () => ({}),
+        },
+        mossLayout: {
+            ...realMoss,
+            renderLayoutPreview: async () => Buffer.from('png-bytes'),
+        },
+    };
+    const command = await loadCommand(stubs);
+    const harness = makeHarness(['move the title down']);
+    const execution = command.execute(harness.interaction);
+    while (!harness.collectorHandlers.collect) await tick();
+
+    const adjust = harness.collectorHandlers.collect(component(harness, 'adjust'));
+    while (draftCalls.length < 2) await tick();
+    harness.collectorHandlers.end();
+    await tick();
+
+    let finished = false;
+    execution.then(() => { finished = true; });
+    await tick();
+    assert.equal(finished, false, 'execute must wait for in-flight layout work');
+    assert.equal(unloads, 0);
+
+    draftResolved = true;
+    resolveDraft(draft('second', 40));
+    await execution;
+    await adjust;
+
+    assert.equal(finished, true);
+    assert.equal(unloads, 1);
+    assert.equal(unloadedBeforeDraftResolved, false);
+    assert.equal(harness.messageEdits.length, 0);
+    assert.equal(harness.edits.at(-1).content, 'Layout draft expired without a save.');
+    assert.equal(harness.edits.at(-1).components.length, 0);
+});
+
+test('a layout failure after expiry is not reported and still cleans up once', async () => {
+    const realMoss = require('../utils/moss_layout');
+    const draftCalls = [];
+    let unloads = 0;
+    let rejectDraft;
+    const pendingDraft = new Promise((_, reject) => { rejectDraft = reject; });
+    const stubs = {
+        layoutAgent: {
+            unloadLayoutModel: async () => { unloads += 1; },
+            draftImageLayout: async (args) => {
+                draftCalls.push(args);
+                if (draftCalls.length === 1) return draft('first');
+                return pendingDraft;
+            },
+        },
+        layoutStore: {
+            validateName: name => String(name).trim(),
+            saveLayout: async () => ({}),
+        },
+        mossLayout: {
+            ...realMoss,
+            renderLayoutPreview: async () => Buffer.from('png-bytes'),
+        },
+    };
+    const command = await loadCommand(stubs);
+    const harness = makeHarness(['move the title down']);
+    const execution = command.execute(harness.interaction);
+    while (!harness.collectorHandlers.collect) await tick();
+
+    const adjust = harness.collectorHandlers.collect(component(harness, 'adjust'));
+    while (draftCalls.length < 2) await tick();
+    harness.collectorHandlers.end();
+    rejectDraft(new Error('layout backend failed'));
+
+    await execution;
+    await adjust;
+    assert.equal(unloads, 1);
+    assert.equal(harness.messageEdits.length, 0);
+    assert.equal(harness.followUps.length, 0);
+    assert.equal(harness.edits.at(-1).content, 'Layout draft expired without a save.');
 });

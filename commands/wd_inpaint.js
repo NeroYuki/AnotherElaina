@@ -27,7 +27,7 @@ const { withForgeImageModeCompat } = require('../utils/forge_image_command');
 const { runForgeImageJob, dataUriToBuffer } = require('../utils/forge_image_job');
 const { get_anima_inpaint_unit, is_anima_model } = require('../utils/anima_inpaint');
 const workflow_inpaint = require('../resources/flux_fill_inpaint.json')
-const ComfyClient = require('../utils/comfy_client');
+const { runComfyImageJob } = require('../utils/comfy_image_job');
 
 const normalize_model_name = value => typeof value === 'string'
     ? value.trim().replaceAll('\\', '/').split('/').pop().toLowerCase()
@@ -163,69 +163,48 @@ module.exports = {
         workflow["50"]["inputs"]["rel_l1_thresh"] = data.teacache_strength
         workflow["38"]["inputs"]["noise_mask"] = data.inpaint_area === 'Whole picture' ? false : true
 
-        // extract outpaint config
-        
+        return runComfyImageJob(interaction, workflow, {
+            initialContent: 'Submitting ComfyUI Flux inpaint workflow…',
+            successContent: 'Comfy backend returned file',
+            async prepare(context) {
+                // Uploads happen after the Cancel button is attached, so a
+                // cancellation while either upload is pending is still safe.
+                const image_info = await context.uploadImage(
+                    data.attachment,
+                    Date.now() + "_" + data.attachment_option.name,
+                    data.attachment_option.contentType,
+                ).catch((err) => {
+                    console.log("Failed to upload image", err)
+                    return null
+                })
+                if (image_info == null) throw new Error('Failed to receive input image')
 
-        //set the image buffer to the workflow
-        const image_info = await ComfyClient.uploadImage(data.attachment, Date.now() + "_" + data.attachment_option.name, data.attachment_option.contentType).catch((err) => {
-            console.log("Failed to upload image", err)
-            return
+                const mask_info = await context.uploadImage(
+                    data.mask,
+                    Date.now() + "_" + data.mask_option.name,
+                    data.mask_option.contentType,
+                ).catch((err) => {
+                    console.log("Failed to upload mask", err)
+                    return null
+                })
+                if (mask_info == null) throw new Error('Failed to receive input mask')
+
+                workflow["17"]["inputs"]["image"] = image_info.name
+                workflow["48"]["inputs"]["image"] = mask_info.name
+
+                // Unload Forge model before using ComfyUI
+                const { unloadForgeCheckpoint } = require('../utils/forge_api_execute');
+                await unloadForgeCheckpoint();
+                return workflow
+            },
+            progress: progress => {
+                if (progress?.node == null) return null
+                const title = workflow[progress.node]?._meta?.title || workflow[progress.node]?.class_type
+                return "Processing: " + (title || 'ComfyUI') +
+                    (progress.max ? ` (${progress.value}/${progress.max})` : '')
+            },
+            errorContent: error => error?.error || error?.message || String(error),
         })
-
-        console.log(image_info)
-
-        if (image_info == null) {
-            interaction.editReply({ content: "Failed to receive input image" });
-            return
-        }
-
-        const mask_info = await ComfyClient.uploadImage(data.mask, Date.now() + "_" + data.mask_option.name, data.mask_option.contentType).catch((err) => {
-            console.log("Failed to upload mask", err)
-            return
-        })
-
-        if (mask_info == null) {
-            interaction.editReply({ content: "Failed to receive input mask" });
-            return
-        }
-
-        workflow["17"]["inputs"]["image"] = image_info.name
-        workflow["48"]["inputs"]["image"] = mask_info.name
-
-        // Unload Forge model before using ComfyUI
-        const { unloadForgeCheckpoint } = require('../utils/forge_api_execute');
-        await unloadForgeCheckpoint();
-
-        ComfyClient.sendPrompt(workflow, (data) => {
-            if (data.node !== null) interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] });
-        }, (data) => {
-            console.log('received success')
-            if (!data.output) {
-                return
-            }
-            const filename = data.output.images[0].filename
-
-            // fetch video from comfyUI
-            ComfyClient.getImage(filename, '', '', /*only_filename*/ true).then(async (arraybuffer) => {
-                // convert arraybuffer to buffer
-                const buffer = Buffer.from(arraybuffer)
-
-                await interaction.channel.send({ content: "Comfy backend returned file", files: [{ attachment: buffer, name: filename }] });
-            }).catch((err) => {
-                console.log("Failed to retrieve image", err)
-                interaction.editReply({ content: "Failed to retrieve image" });
-            }).finally(() => {
-                ComfyClient.freeMemory(true)
-            })
-
-        }, (data) => {
-            console.log('received error')
-            interaction.editReply({ content: data.error });
-            ComfyClient.freeMemory(true)
-        }, (data) => {
-            console.log('received progress')
-            interaction.editReply({ content: "Processing: " + workflow[data.node]["_meta"]["title"] + ` (${data.value}/${data.max})` });
-        });
     },
 
 	async execute(interaction, client) {
@@ -715,7 +694,7 @@ module.exports = {
                 })
 
                 interaction.channel.send('Flux Inpaint Mode is selected, switching to comfy backend, not all features are supported')
-                self.execute_comfy_flux_inpaint(interaction, client, {
+                await self.execute_comfy_flux_inpaint(interaction, client, {
                     prompt: prompt,
                     neg_prompt: neg_prompt,
                     sampling_step: sampling_step,

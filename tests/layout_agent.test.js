@@ -6,9 +6,11 @@ const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
 
-const { draftImageLayout, parseLayoutResponse } = require('../utils/layout_agent');
+const { draftImageLayout, parseLayoutResponse, unloadLayoutModelQueued } = require('../utils/layout_agent');
 const { prepareLayoutPrompt } = require('../utils/layout_prompt');
 const { saveLayout } = require('../utils/layout_store');
+const { full_prompt_analyze, get_coupler_config_from_prompt } = require('../utils/prompt_analyzer');
+const { queuePromptEnrichment, QUALITIES } = require('../utils/video_prompt');
 const {
     model_selection_moss,
     model_selection_xl,
@@ -156,6 +158,99 @@ test('prepareLayoutPrompt converts a saved layout to Coupler syntax for SDXL', a
     assert.equal(result.mode, 'coupler');
     assert.match(result.prompt, /\|\|/);
     assert.match(result.prompt, /\|0\.2000:0\.8000,0\.2000:0\.8000,1\.00\|/);
+});
+
+test('saved layouts keep the caller LoRA, wildcard, and profile tokens for Coupler parsing', async () => {
+    const layoutFile = await tempLayoutFile();
+    await saveLayout({
+        userId: 'user-a',
+        name: 'poster',
+        draft: {
+            width: 100,
+            height: 100,
+            summary: { caption: 'Saved poster', canvas: 'single' },
+            items: [{ label: 'object', caption: 'Mountain', bbox: [20, 20, 80, 80] }],
+        },
+        filePath: layoutFile,
+    });
+    const source = 'mysteryTriggerPhrase, <lora:hero:0.75>, __source_wildcard__, %%source_profile%%';
+
+    const result = await prepareLayoutPrompt({
+        prompt: `<layout:poster> ${source}`,
+        model: XL,
+        width: 100,
+        height: 100,
+        userId: 'user-a',
+        layoutFile,
+        unload: false,
+    });
+    assert.equal(result.mode, 'coupler');
+
+    const parsed = get_coupler_config_from_prompt(result.prompt);
+    assert.equal(parsed.coupler_config.adv_regions.length, 2);
+    assert.match(parsed.prompt, /mysteryTriggerPhrase/);
+    assert.match(parsed.prompt, /<lora:hero:0\.75>/);
+    assert.match(parsed.prompt, /__source_wildcard__/);
+    assert.match(parsed.prompt, /%%source_profile%%/);
+
+    const analyzed = full_prompt_analyze(result.prompt, true);
+    assert.equal(analyzed.coupler_config.adv_regions.length, 2);
+    assert.match(analyzed.prompt, /<lora:hero:0\.75>/);
+    assert.match(analyzed.prompt, /__source_wildcard__/);
+    assert.match(analyzed.prompt, /%%source_profile%%/);
+});
+
+test('saved layouts keep the caller control tokens outside the MOSS JSON prompt', async () => {
+    const layoutFile = await tempLayoutFile();
+    await saveLayout({
+        userId: 'user-a',
+        name: 'poster',
+        draft: {
+            width: 100,
+            height: 100,
+            summary: { caption: 'Saved poster', canvas: 'single' },
+            items: [{ label: 'object', caption: 'Mountain', bbox: [20, 20, 80, 80] }],
+        },
+        filePath: layoutFile,
+    });
+    const source = 'mysteryTriggerPhrase, <lora:hero:0.75>, __source_wildcard__, %%source_profile%%';
+
+    const result = await prepareLayoutPrompt({
+        prompt: `<layout:poster> ${source}`,
+        model: MOSS,
+        width: 100,
+        height: 100,
+        userId: 'user-a',
+        layoutFile,
+        unload: false,
+    });
+    assert.equal(result.mode, 'moss');
+    const [json, extra] = result.prompt.split('\n');
+    assert.doesNotMatch(json, /lora|wildcard|source_profile/);
+    assert.equal(extra, source);
+});
+
+test('queued layout cleanup waits for an active enrichment job before unloading', async () => {
+    const events = [];
+    let release;
+    const gate = new Promise(resolve => { release = resolve; });
+    const draft = queuePromptEnrichment(async () => {
+        events.push('draft-start');
+        await gate;
+        events.push('draft-end');
+    });
+    const cleanup = unloadLayoutModelQueued(QUALITIES.high, {
+        fetchImpl: async (url) => {
+            events.push(url.endsWith('/api/inference/status') ? 'status' : 'unload');
+            return Response.json({ active_model: null, loaded: [], loading: [] });
+        },
+    });
+
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(events, ['draft-start']);
+    release();
+    await Promise.all([draft, cleanup]);
+    assert.deepEqual(events, ['draft-start', 'draft-end', 'status']);
 });
 
 test('prepareLayoutPrompt drafts a fresh layout when enabled', async () => {

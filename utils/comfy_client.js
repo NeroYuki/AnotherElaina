@@ -1,10 +1,8 @@
 const ws = require('ws');
 const crypto = require("crypto");
-const { on } = require('events');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const { default: axios } = require('axios');
 const { PROXY_URL, serviceHeaders } = require('./proxy_config');
-const { comfyWorkload, workloadHeaders } = require('./orchestrator_workload');
 
 // Header used to route HTTP traffic to comfyui through the orchestrator proxy.
 const COMFY_HEADERS = serviceHeaders('comfyui');
@@ -77,71 +75,30 @@ const comfyClient = {
     },
 
     runPrompt: function(prompt, options = {}) {
-        return require('./comfy_prompt').runComfyPrompt(this, prompt, { ...options, notify: notifyOrchestrator });
+        return require('./comfy_prompt').runComfyPrompt(this, prompt, {
+            ...options,
+            notify: options.notify || notifyOrchestrator,
+        });
     },
 
+    // Legacy callback API. It now runs through the same managed runner as
+    // runPrompt, so it gains exact-job cancellation, history polling and
+    // listener cleanup without a second divergent execution engine.
     sendPrompt: function(prompt, progress_cb = () => {}, success_cb = () => {}, error_cb = () => {}, subprogress_cb = () => {}) {
         if (!this.clients.some(client => client.readyState === ws.OPEN)) {
             console.log('Client is not connected');
             return;
         }
-
-        const data = {
-            prompt: prompt,
-            client_id: this.clientId
-        }
-
-        // The workload is generated from the graph topology only. It contains
-        // no prompt text, seed, image URL, filename, or Discord identity.
-        const headers = workloadHeaders('comfyui', comfyWorkload(prompt), {
-            'Content-Type': 'application/json'
+        const promise = this.runPrompt(prompt, {
+            onProgress: data => progress_cb(data),
+            onSubprogress: data => subprogress_cb(data),
+            onExecuted: data => success_cb(data),
+            onError: error => error_cb({ error: error?.message || String(error) }),
         });
-        const orchestratorJobId = headers['X-AI-Job-ID'];
-        fetch(`${this.HTTP_ENDPOINT}/prompt`, {
-            method: 'POST',
-            body: JSON.stringify(data),
-            headers
-        })
-            .then(async res => {
-                if (res.status !== 200) {
-                    const reason = res.headers.get('x-ai-admission-reason');
-                    const retry = res.headers.get('x-ai-retry-after') || res.headers.get('retry-after');
-                    let err_data = null;
-                    try { err_data = await res.json(); } catch (_) { /* plain proxy error */ }
-                    if (reason) {
-                        throw `GPU orchestrator: ${reason}${retry ? `. Try again in ${retry}s.` : ''}`;
-                    }
-                    throw (err_data?.error) ? (err_data.error?.message || "Unknown server error") : "Unknown connection error";
-                }
-                return res.json();
-            })
-            .then(data => {
-                console.log('Prompt sent:', data);
-                this.promptListener.push({
-                    prompt_id: data.prompt_id,
-                    orchestrator_job_id: orchestratorJobId,
-                    progress_cb: progress_cb,
-                    success_cb: success_cb,
-                    error_cb: error_cb,
-                    subprogress_cb: subprogress_cb
-                });
-
-                // setup a timer of 15 minutes before the prompt is considered failed and remove from listener
-                setTimeout(() => {
-                    for (let i = 0; i < this.promptListener.length; i++) {
-                        if (this.promptListener[i].prompt_id === data.prompt_id) {
-                            notifyOrchestrator(this.promptListener[i].orchestrator_job_id, 'error');
-                            this.promptListener[i].error_cb({ error: 'Prompt timed out' });
-                            this.promptListener.splice(i, 1);
-                        }
-                    }
-                }, 15 * 60 * 1000);
-            })
-            .catch(err => {
-                console.log('Error:', err);
-                notifyOrchestrator(orchestratorJobId, 'error');
-                error_cb({ error: err});
-            });
+        // Existing callers do not await sendPrompt. Keep callback compatibility
+        // without turning a backend failure into an unhandled rejection.
+        promise.catch(() => {});
+        return promise;
     },
 
     updateOnMessage: function(data) {
@@ -171,68 +128,90 @@ const comfyClient = {
             console.log('Status:', parsed.data);
         }
 
+        const promptId = parsed.data?.prompt_id;
+        if (!promptId) return;
+        const matched = this.promptListener.filter(listener => listener.prompt_id === promptId);
+        if (!matched.length) return;
+        const removed = [];
+
+        const call = (listener, name, payload) => {
+            try { listener[name]?.(payload); }
+            catch (error) { console.log(`ComfyUI ${name} callback failed:`, error); }
+        };
+
         if (parsed.type === 'executing') {
-            //console.log('Executing:', parsed.data);
             if (parsed.data.node !== null) {
-                for (let i = 0; i < this.promptListener.length; i++) {
-                    if (this.promptListener[i].prompt_id === parsed.data.prompt_id) {
-                        console.log('found active listener:', this.promptListener[i].prompt_id);
-                        this.promptListener[i].progress_cb(parsed.data);
-                    }
-                }
+                for (const listener of matched) call(listener, 'progress_cb', parsed.data);
             }
         }
 
         if (parsed.type === 'executed') {
-            //console.log('Complete:', parsed.data);
-            for (let i = 0; i < this.promptListener.length; i++) {
-                if (this.promptListener[i].prompt_id === parsed.data.prompt_id) {
-                    this.promptListener[i].success_cb(parsed.data);
-                }
-            }
+            for (const listener of matched) call(listener, 'success_cb', parsed.data);
         }
 
         if (parsed.type === 'execution_success') {
-            for (let i = 0; i < this.promptListener.length; i++) {
-                if (this.promptListener[i].prompt_id === parsed.data.prompt_id) {
-                    // since we already taking all the data we need in executed event, we can just remove the listener here
-                    notifyOrchestrator(this.promptListener[i].orchestrator_job_id, 'success');
-                    this.promptListener[i].completed_cb?.();
-                    this.promptListener.splice(i, 1);
+            for (const listener of matched) {
+                if (listener.managed) {
+                    call(listener, 'completed_cb', parsed.data);
+                    continue;
                 }
+                // Compatibility for any raw listener pushed directly into the
+                // array: keep the old self-cleaning behavior. Managed listeners
+                // are finalized exactly once by runComfyPrompt.
+                notifyOrchestrator(listener.orchestrator_job_id, 'success');
+                call(listener, 'completed_cb');
+                removed.push(listener);
             }
         }
 
-        if (parsed.type === 'execution_error' || parsed.type === 'execution_interrupted') {
+        if (parsed.type === 'execution_error') {
             console.log('Error:', parsed.data);
-            for (let i = 0; i < this.promptListener.length; i++) {
-                if (this.promptListener[i].prompt_id === parsed.data.prompt_id) {
-                    notifyOrchestrator(this.promptListener[i].orchestrator_job_id, 'error');
-                    this.promptListener[i].error_cb(parsed.data);
-                    this.promptListener.splice(i, 1);
+            for (const listener of matched) {
+                if (listener.managed) {
+                    call(listener, 'error_cb', parsed.data);
+                    continue;
                 }
+                notifyOrchestrator(listener.orchestrator_job_id, 'error');
+                call(listener, 'error_cb', parsed.data);
+                removed.push(listener);
+            }
+        }
+
+        if (parsed.type === 'execution_interrupted') {
+            console.log('Interrupted:', parsed.data);
+            for (const listener of matched) {
+                if (listener.managed) {
+                    if (listener.interrupted_cb) call(listener, 'interrupted_cb', parsed.data);
+                    else call(listener, 'error_cb', parsed.data);
+                    continue;
+                }
+                notifyOrchestrator(listener.orchestrator_job_id, 'error');
+                call(listener, 'error_cb', parsed.data);
+                removed.push(listener);
             }
         }
 
         if (parsed.type === 'progress') {
-            //console.log('Progress:', parsed.data);
-            for (let i = 0; i < this.promptListener.length; i++) {
-                if (this.promptListener[i].prompt_id === parsed.data.prompt_id) {
-                    this.promptListener[i].subprogress_cb(parsed.data);
-                }
-            }
+            for (const listener of matched) call(listener, 'subprogress_cb', parsed.data);
+        }
+
+        if (removed.length) {
+            this.promptListener = this.promptListener.filter(listener => !removed.includes(listener));
         }
     },
 
-    getImage: function(filename, subfolder, filetype = "output", only_filename = false) {
+    getImage: function(filename, subfolder, filetype = "output", only_filename = false, options = {}) {
         const query = new URLSearchParams({ filename });
         if (!only_filename) { query.set('subfolder', subfolder || ''); query.set('type', filetype || 'output'); }
         const url = `${this.HTTP_ENDPOINT}/view?${query}`;
+        const headers = { ...COMFY_HEADERS };
+        if (options.instanceId) headers['X-AI-Instance'] = options.instanceId;
+        else if (options.affinityKey) headers['X-AI-Affinity-Key'] = options.affinityKey;
 
         console.log('Fetching files:', url);
 
         return new Promise((resolve, reject) => {
-            fetch(url, { headers: COMFY_HEADERS })
+            fetch(url, { headers })
                 .then(res => {
                     if (res.status !== 200) {
                         throw new Error(`Failed to retrieve ComfyUI output (HTTP ${res.status})`);
@@ -277,19 +256,24 @@ const comfyClient = {
         });
     },
 
-    freeMemory: function(shouldFreeCache) {
+    freeMemory: function(shouldFreeCache, options = {}) {
         const url = `${this.HTTP_ENDPOINT}/api/free`;
         const body = {
             unload_models: true, 
             free_memory: shouldFreeCache
         }
+        const headers = { ...COMFY_HEADERS, 'Content-Type': 'application/json' };
+        // Only clean the exact instance that ran the job. A global free while
+        // another prompt is executing would evict its models or workspace.
+        if (options.instanceId) headers['X-AI-Instance'] = options.instanceId;
+        else if (options.affinityKey) headers['X-AI-Affinity-Key'] = options.affinityKey;
 
         console.log('Fetching files:', url);
 
         return fetch(url, {
             method: 'POST',
             body: JSON.stringify(body),
-            headers: { ...COMFY_HEADERS, 'Content-Type': 'application/json' }
+            headers
         }).then(async response => {
             if (!response.ok) {
                 const retryAfter = response.headers.get('retry-after');

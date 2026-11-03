@@ -7,6 +7,8 @@ const {
     selectGalleryResult,
     fetchImageBuffer,
 } = require('../utils/forge_image_job');
+const { withForgeSession } = require('../utils/forge_session');
+const { createForgeCancellation, sendForgeInterrupt } = require('../utils/forge_cancel');
 
 const tick = () => new Promise(resolve => setImmediate(resolve));
 
@@ -150,6 +152,7 @@ test('cancel aborts only the active owner job and stale buttons cannot abort aga
             abortCalls++;
             return { status: 200, json: async () => ({}) };
         }
+        if (String(url).includes('/internal/progress')) return { status: 200, json: async () => ({ active: true }) };
         return { status: 200, arrayBuffer: async () => Buffer.from('png') };
     };
 
@@ -254,7 +257,8 @@ test('progress polling survives a non-JSON upstream error', async () => {
                     text: async () => "Upstream 'sdwebui-forge-neo' timed out.",
                 };
             }
-            return { status: 200, arrayBuffer: async () => Buffer.from('png') };
+            if (String(url).includes('/internal/progress')) return { status: 200, json: async () => ({ active: true }) };
+        return { status: 200, arrayBuffer: async () => Buffer.from('png') };
         },
         sleep: async () => {},
     });
@@ -264,6 +268,33 @@ test('progress polling survives a non-JSON upstream error', async () => {
         logs.some(line => line.includes("Upstream 'sdwebui-forge-neo' timed out")),
         `expected the progress failure to be logged, got: ${logs.join('\n')}`,
     );
+});
+
+test('a PiD restore failure in the postpass is reported to the user', async () => {
+    const { interaction, edits } = makeInteraction();
+    const restoreError = new Error('PiD postpass completed, but the original Forge checkpoint could not be restored: boom');
+    restoreError.code = 'PID_POSTPASS_RESTORE_FAILED';
+
+    const result = await runForgeImageJob({
+        interaction,
+        sessionHash: 'base-session',
+        endpoint: 'http://forge.test',
+        fnIndex: 1338,
+        abortFnIndex: 46,
+        data: [],
+        cancelCustomId: 'cancel_img2img_interaction-test',
+        completionDelayMs: 0,
+        progress: { enabled: false },
+        postpass: async () => { throw restoreError; },
+    }, {
+        axios: { async post() { return successResponse('/tmp/base.png'); } },
+        fetchImpl: async () => ({ status: 200, arrayBuffer: async () => Buffer.from('base') }),
+        sleep: async () => {},
+    });
+
+    assert.equal(result.status, 'error');
+    assert.match(edits.at(-1).content, /could not be restored/);
+    assert.deepEqual(edits.at(-1).components, []);
 });
 
 test('postpass replaces the delivered image and uses a new task session', async () => {
@@ -333,4 +364,196 @@ test('fetchImageBuffer decodes inline data URIs without touching the network', a
     });
     assert.equal(calls, 0);
     assert.deepEqual(buffer, bytes);
+});
+
+test('interrupt transport keeps JSON, service and explicit instance routing', async () => {
+    let captured = null;
+    const result = await sendForgeInterrupt({
+        endpoint: 'http://forge.test',
+        sessionHash: 'session-1',
+        abortFnIndex: 46,
+        headers: { 'X-AI-Instance': 'forge-gpu0' },
+        fetchImpl: async (url, options) => {
+            captured = { url, options };
+            return { status: 200, text: async () => '{}' };
+        },
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(captured.url, 'http://forge.test/run/predict/');
+    assert.equal(captured.options.method, 'POST');
+    assert.equal(captured.options.headers['Content-Type'], 'application/json');
+    assert.equal(captured.options.headers['X-AI-Service'], 'sdwebui-forge-neo');
+    assert.equal(captured.options.headers['X-AI-Instance'], 'forge-gpu0');
+    assert.deepEqual(JSON.parse(captured.options.body), {
+        fn_index: 46,
+        session_hash: 'session-1',
+        data: [],
+    });
+});
+
+test('a queued Forge task is interrupted only after it starts sampling', async () => {
+    let progressCalls = 0;
+    let interruptCalls = 0;
+    const timers = [];
+    const logs = [];
+    const cancellation = createForgeCancellation({
+        interaction: { id: 'queued', user: { id: 'owner' }, channel: {} },
+        customId: 'cancel_queued',
+        fetchImpl: async url => {
+            if (String(url).includes('/internal/progress')) {
+                progressCalls++;
+                return {
+                    status: 200,
+                    text: async () => JSON.stringify(
+                        progressCalls === 1 ? { queued: true } : { progress: 0.25 },
+                    ),
+                };
+            }
+            interruptCalls++;
+            return { status: 200, text: async () => '{}' };
+        },
+        setTimeoutImpl: callback => {
+            const timer = { callback, unref() {} };
+            timers.push(timer);
+            return timer;
+        },
+        clearTimeoutImpl: () => {},
+        logger: { log: (...args) => logs.push(args.join(' ')) },
+    });
+
+    const task = cancellation.beginTask({
+        sessionHash: 'queued-session',
+        endpoint: 'http://forge.test',
+        abortFnIndex: 46,
+    });
+    assert.ok(task);
+    cancellation.requestCancel();
+    await tick();
+    await tick();
+
+    assert.equal(interruptCalls, 0, 'queued work must not abort the running owner');
+    assert.equal(timers.length, 1);
+
+    timers[0].callback();
+    await tick();
+    await tick();
+    assert.equal(interruptCalls, 1, 'the pending cancel fires once the task starts');
+    await cancellation.finish();
+    assert.deepEqual(logs, []);
+});
+
+test('delayed cancel acknowledgement cannot abort the next lease owner', async () => {
+    const first = makeInteraction();
+    const second = makeInteraction();
+    let resolveAck;
+    const ack = new Promise(resolve => { resolveAck = resolve; });
+    let resolvePost;
+    const delayedResponse = new Promise(resolve => { resolvePost = resolve; });
+    let interrupts = 0;
+
+    const fetchImpl = async url => {
+        if (String(url).includes('/run/predict/')) {
+            interrupts++;
+            return { status: 200, text: async () => '{}' };
+        }
+        if (String(url).includes('/internal/progress')) return { status: 200, json: async () => ({ active: true }) };
+        return { status: 200, arrayBuffer: async () => Buffer.from('png') };
+    };
+
+    let firstResult = null;
+    await withForgeSession(async () => {
+        const job = runForgeImageJob({
+            interaction: first.interaction,
+            serverIndex: 0,
+            sessionHash: 'first-session',
+            endpoint: 'http://forge.test',
+            fnIndex: 1338,
+            abortFnIndex: 46,
+            data: [],
+            cancelCustomId: 'cancel_img2img_interaction-test',
+            completionDelayMs: 0,
+            progress: { enabled: false },
+        }, {
+            axios: { post: async () => delayedResponse },
+            fetchImpl,
+            sleep: async () => {},
+        });
+
+        await tick();
+        const component = { ...cancelComponent(), deferUpdate: () => ack };
+        await first.collector.handler(component);
+        await tick();
+        await tick();
+        assert.equal(interrupts, 1, 'interrupt is sent before Discord acknowledges');
+
+        resolvePost(successResponse());
+        firstResult = await job;
+        assert.equal(firstResult.status, 'cancelled');
+    });
+
+    // The first lease is released while deferUpdate is still pending.
+    const secondResult = await withForgeSession(async () => runForgeImageJob({
+        interaction: second.interaction,
+        serverIndex: 0,
+        sessionHash: 'second-session',
+        endpoint: 'http://forge.test',
+        fnIndex: 1338,
+        abortFnIndex: 46,
+        data: [],
+        cancelCustomId: 'cancel_img2img_interaction-second',
+        completionDelayMs: 0,
+        progress: { enabled: false },
+    }, {
+        axios: { post: async () => successResponse() },
+        fetchImpl,
+        sleep: async () => {},
+    }));
+
+    resolveAck();
+    await tick();
+    await tick();
+
+    assert.equal(secondResult.status, 'completed');
+    assert.equal(interrupts, 1, 'a late acknowledgement must not abort the next owner');
+});
+
+test('an interrupt transport failure is shown instead of a silent cancel', async () => {
+    const { interaction, edits, collector } = makeInteraction();
+    let resolvePost;
+    const delayedResponse = new Promise(resolve => { resolvePost = resolve; });
+
+    const job = runForgeImageJob({
+        interaction,
+        serverIndex: 0,
+        sessionHash: 'failed-interrupt',
+        endpoint: 'http://forge.test',
+        fnIndex: 1338,
+        abortFnIndex: 46,
+        data: [],
+        cancelCustomId: 'cancel_img2img_interaction-test',
+        completionDelayMs: 0,
+        progress: { enabled: false },
+    }, {
+        axios: { post: async () => delayedResponse },
+        fetchImpl: async url => {
+            if (String(url).includes('/run/predict/')) {
+                return { status: 500, text: async () => 'interrupt rejected' };
+            }
+            if (String(url).includes('/internal/progress')) return { status: 200, json: async () => ({ active: true }) };
+        return { status: 200, arrayBuffer: async () => Buffer.from('png') };
+        },
+        sleep: async () => {},
+    });
+
+    await tick();
+    await collector.handler(cancelComponent());
+    await tick();
+    resolvePost(successResponse());
+    const result = await job;
+
+    assert.equal(result.status, 'cancelled');
+    assert.match(edits.at(-1).content, /Forge interrupt failed/);
+    assert.match(edits.at(-1).content, /HTTP 500/);
+    assert.deepEqual(edits.at(-1).components, []);
 });
