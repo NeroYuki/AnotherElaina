@@ -110,6 +110,7 @@ Note: Flux Fill in Forge-native img2img still hits a shape mismatch (`mat1 and m
 
 ## Other real limitations / notes
 
-- Very long proxy requests can outlive the orchestrator's upstream wait: a four-reference Qwen run at 768px/12 steps completed on Forge (~9 minutes) but the client received a 504/502. Keep multi-reference smoke tests modest, or raise the orchestrator timeout.
+- Very long proxy requests used to outlive the orchestrator's flat 300s upstream read timeout: a four-reference Qwen run at 768px/12 steps completed on Forge (~9 minutes) but the client received a 504/502. The proxy no longer imposes a read/total deadline on upstream responses; connect and pool timeouts stay at 10s, write at 60s, and a client disconnect closes the upstream stream. An orchestrator restart is required for that change. Failed upstream sends are now recorded in the orchestrator request log instead of being silent.
+- Progress polling is best-effort: `utils/forge_progress.js` checks `response.ok`, reads the body as text, logs the status and a body preview, and aborts after 15s. Both `/wd_create` commands and the shared image job use it, so a proxy 5xx/plain-text progress body can no longer throw a `SyntaxError` or stall the polling loop.
 - `/wd_create` and `/wd_create_adv` PiD support is SDXL integrated only. Non-SDXL PiD generation currently uses `/wd_img2img` or `/wd_ref2img` postpass.
 - Discord command registration is still required before users can invoke `/wd_ref2img` and `/wd_ref2img_adv`; this report and the working tree do not register them.

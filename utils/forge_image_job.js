@@ -11,6 +11,7 @@ const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 const { default: axios } = require('axios');
 const { serviceHeaders } = require('./proxy_config');
 const { workloadHeaders } = require('./orchestrator_workload');
+const { fetchProgressJson } = require('./forge_progress');
 
 const SD_HEADERS = serviceHeaders('sdwebui');
 const _nodeFetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
@@ -247,16 +248,15 @@ async function runForgeImageJob({
         if (!shouldUpdate()) return;
         let completed = false;
         try {
-            const response = await fetchImpl(`${endpoint}/internal/progress`, {
-                method: 'POST',
-                body: JSON.stringify({
+            const progressObject = await fetchProgressJson(
+                `${endpoint}/internal/progress`,
+                {
                     id_task: `task(${currentSessionHash})`,
                     id_live_preview: currentPreviewId,
-                }),
-                headers: { 'Content-Type': 'application/json' },
-            });
-            const progressObject = await response.json();
-            if (!shouldUpdate()) return;
+                },
+                { fetchImpl, headers: SD_HEADERS, logger },
+            );
+            if (!shouldUpdate() || !progressObject) return;
             if (progressObject?.completed) {
                 completed = true;
                 return;

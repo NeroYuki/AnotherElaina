@@ -31,6 +31,7 @@ const { load_profile } = require('../utils/profile_helper.js');
 const { enrichImagePrompts } = require('../utils/image_prompt');
 const { withForgeSession } = require('../utils/forge_session');
 const { runImagePromptBatch, isImagePromptBatchCancelled, ImagePromptBatchCancelled } = require('../utils/image_prompt_batch');
+const { fetchProgressJson } = require('../utils/forge_progress');
 const { get_model_family_defaults } = require('../utils/model_defaults');
 const { clamp, calculateOptimalGrid, parseImageCount, parse_common_setting } = require('../utils/common_helper');
 const { is_pid_upscaler, prepare_pid_upscale } = require('../utils/forge_pid');
@@ -774,17 +775,6 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             }
         }
 
-        const option_progress = () => ({
-            method: 'POST',
-            body: JSON.stringify({
-                id_task: `task(${progress_session_hash})`,
-                id_live_preview: current_preview_id,
-            }),
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-
         console.log(`requesting: ${WORKER_ENDPOINT}/run/predict/`)
 
         // setting up a message ref in case the command run over the 15 minutes interaction limit
@@ -885,31 +875,32 @@ currently cached models: ${cached_model.map(x => check_model_filename(x)).join('
             setTimeout(async () => {
                 if (isDone || isCancelled) return
                 try {
-                    await fetch(`${WORKER_ENDPOINT}/internal/progress`, option_progress())
-                        .then(async (res) => res.json())
-                        .then(async (progress_res_obj) => {
-                            if (progress_res_obj.completed) return
-                            if (progress_res_obj.queued) {
-                                await updateInteractionReply({}, 'queued').catch(err => {
-                                    console.log(err)
-                                })
-                                return
-                            }
-                            current_preview_id = progress_res_obj.id_live_preview
-                            const img_dataURI = progress_res_obj.live_preview
+                    const progress_res_obj = await fetchProgressJson(
+                        `${WORKER_ENDPOINT}/internal/progress`,
+                        {
+                            id_task: `task(${progress_session_hash})`,
+                            id_live_preview: current_preview_id,
+                        },
+                        { fetchImpl: fetch, logger: console },
+                    )
+                    if (!progress_res_obj || progress_res_obj.completed) return
+                    if (progress_res_obj.queued) {
+                        await updateInteractionReply({}, 'queued').catch(err => {
+                            console.log(err)
+                        })
+                        return
+                    }
+                    current_preview_id = progress_res_obj.id_live_preview
+                    const img_dataURI = progress_res_obj.live_preview
 
-                            await updateInteractionReply({
-                                img: img_dataURI ? Buffer.from(img_dataURI.split(",")[1], 'base64') : null,
-                                img_name: 'progress_img.png',
-                                progress: progress_res_obj.progress,
-                                eta: progress_res_obj.eta
-                            }, 'progress').catch(err => {
-                                console.log(err)
-                            })
-                        })
-                        .catch(err => {
-                            throw err
-                        })
+                    await updateInteractionReply({
+                        img: img_dataURI ? Buffer.from(img_dataURI.split(",")[1], 'base64') : null,
+                        img_name: 'progress_img.png',
+                        progress: progress_res_obj.progress,
+                        eta: progress_res_obj.eta
+                    }, 'progress').catch(err => {
+                        console.log(err)
+                    })
                 }
                 catch (err) {
                     console.log(err)

@@ -11,9 +11,10 @@ const COMMAND_NAMES = { simple: 'wd_create', advanced: 'wd_create_adv' };
 const ORIGINAL_PROMPT = 'trigger, <lora:dynamic_lora:0.75>, __wildcard__';
 const PROCESSED_PROMPT = 'trigger, <lora:dynamic_lora:0.75>, resolved';
 
-function startFileServer() {
+function startFileServer({ failFirstProgress = false } = {}) {
     const progressRequests = [];
     const abortRequests = [];
+    let progressFailures = 0;
     const server = http.createServer((req, res) => {
         if (req.method === 'POST') {
             let body = '';
@@ -22,7 +23,15 @@ function startFileServer() {
                 let parsed = {};
                 try { parsed = JSON.parse(body); }
                 catch { parsed = {}; }
-                if (req.url.startsWith('/internal/progress')) progressRequests.push(parsed);
+                if (req.url.startsWith('/internal/progress')) {
+                    progressRequests.push(parsed);
+                    if (failFirstProgress && progressFailures === 0) {
+                        progressFailures += 1;
+                        res.writeHead(504, { 'Content-Type': 'text/plain' });
+                        res.end("Upstream 'sdwebui-forge-neo' timed out.");
+                        return;
+                    }
+                }
                 else if (req.url.startsWith('/run/predict')) abortRequests.push(parsed);
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ completed: true }));
@@ -37,6 +46,7 @@ function startFileServer() {
             url: `http://127.0.0.1:${server.address().port}`,
             progressRequests,
             abortRequests,
+            get progressFailures() { return progressFailures; },
             close: () => new Promise(done => server.close(done)),
         }));
     });
@@ -312,8 +322,8 @@ async function runCommand({ commandName, server, prompt = ORIGINAL_PROMPT, bulkS
     }
 }
 
-async function withServer(callback) {
-    const server = await startFileServer();
+async function withServer(callback, options) {
+    const server = await startFileServer(options);
     try { return await callback(server); }
     finally { await server.close(); }
 }
@@ -478,3 +488,24 @@ test('per-image progress polling uses the per-variant task id and never the abor
         assert.equal(result.collector.stopped, true);
     });
 });
+
+for (const commandName of ['simple', 'advanced']) {
+    test(`${commandName}: a text/plain progress 504 does not fail the command`, async () => {
+        await withServer(async server => {
+            const result = await runCommand({
+                commandName,
+                server,
+                bulkSize: 2,
+                enrichment: enrichmentForEach(ORIGINAL_PROMPT, 2),
+            });
+
+            assert.ok(server.progressFailures >= 1, 'the injected non-JSON progress failure was served');
+            assert.ok(result.posts.length >= 1, 'the generation request still ran');
+            assert.equal(
+                result.edits.some(edit => /Error while creating image/.test(String(edit.content))),
+                false,
+                'the progress parse failure must not surface as a command error',
+            );
+        }, { failFirstProgress: true });
+    });
+}

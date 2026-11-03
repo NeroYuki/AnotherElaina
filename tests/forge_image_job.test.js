@@ -226,6 +226,46 @@ test('progress polling timer is cleared on success and failure', async () => {
     }
 });
 
+test('progress polling survives a non-JSON upstream error', async () => {
+    const { interaction } = makeInteraction();
+    const logs = [];
+    const result = await runForgeImageJob({
+        interaction,
+        sessionHash: 'session',
+        endpoint: 'http://forge.test',
+        fnIndex: 1338,
+        data: [],
+        cancelCustomId: 'cancel_img2img_progress-error-test',
+        completionDelayMs: 0,
+        progress: { enabled: true, initialDelay: 0, increment: 100 },
+        logger: { log: (...args) => logs.push(args.map(value => String(value)).join(' ')) },
+    }, {
+        axios: {
+            async post() {
+                await new Promise(resolve => setTimeout(resolve, 60));
+                return successResponse();
+            },
+        },
+        fetchImpl: async url => {
+            if (String(url).includes('/internal/progress')) {
+                return {
+                    status: 504,
+                    ok: false,
+                    text: async () => "Upstream 'sdwebui-forge-neo' timed out.",
+                };
+            }
+            return { status: 200, arrayBuffer: async () => Buffer.from('png') };
+        },
+        sleep: async () => {},
+    });
+
+    assert.equal(result.status, 'completed');
+    assert.ok(
+        logs.some(line => line.includes("Upstream 'sdwebui-forge-neo' timed out")),
+        `expected the progress failure to be logged, got: ${logs.join('\n')}`,
+    );
+});
+
 test('postpass replaces the delivered image and uses a new task session', async () => {
     const { interaction, edits } = makeInteraction();
     let posts = 0;
