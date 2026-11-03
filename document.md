@@ -165,6 +165,44 @@ Two extra scripts are also available (in both `/wd_img2img` and `/wd_img2img_adv
 
 Both of these run on the ComfyUI backend (see the "Generation Model Quick Rundown" for the required Flux Fill / Flux Kontext checkpoints).
 
+### Reference Editing (/wd_ref2img, /wd_ref2img_adv)
+
+These commands use the reference/edit conditioning built into Qwen 2.1, Klein, Anima, MOSS, Krea2 and Flux Kontext instead of plain denoising. Select a reference-capable `checkpoint` (the menu only lists installed models that work). The primary `image` is the edit target/first reference; `reference_2`, `reference_3` and `reference_4` add up to three more references (maximum four images).
+
+- Flux Dev has no reference conditioning. If you select Flux Dev (or it is the active model), ref2img automatically loads the installed Flux Kontext checkpoint instead and tells you it did so.
+- `reference_layout: Native` (default) sends the first image as the normal img2img input and the remaining images through Forge's native ImageStitch references. `Horizontal`, `Vertical` and `Grid` build one combined reference collage instead.
+- `edit_variant`: `General` (default) or `Identity` for Krea2. Identity selects `krea2_identity_edit_v2`; General selects `krea2_general_edit_v2`. An explicit edit LoRA tag in your prompt is never duplicated and a second Krea edit LoRA is never added at weight 1.
+- Anima and MOSS require their installed edit LoRAs (`AnimeEditV2` / `moss_image_edit_lora_rank_64_bf16`); these are added automatically and an explicit tag in your prompt is left untouched.
+- Reference commands default `denoising_strength` to 1 and do not use ControlNet attachments or extra scripts. References are never also sent to ControlNet.
+
+Prompts still accept ordinary LoRAs and wildcard syntax. For example:
+
+```
+/wd_ref2img_adv image: [target] reference_2: [second image] prompt: put the character from reference 2 into a rainy city street, cinematic lighting
+```
+
+### PiD 4x upscaling
+
+`PiD` is available in the `upscaler`/`upscaler_mode` choice for `/wd_create`, `/wd_create_adv`, `/wd_img2img`, `/wd_img2img_adv`, `/wd_ref2img` and `/wd_ref2img_adv`. It produces a fixed 4x result using the installed distilled SDXL PiD checkpoint.
+
+- SDXL checkpoints use Forge's native integrated PiD pass. Hires Fix is disabled automatically for that request because the two passes cannot run together.
+- Non-SDXL reference workflows (Qwen 2.1, Klein, Anima, MOSS, Krea2) and non-SDXL img2img use a PiD postpass: the base image is generated first, then a temporary standalone PiD img2img pass upscales the RGB result. The original checkpoint, preset and companion modules are restored afterwards on success, failure or cancellation.
+- PiD is not offered in `/wd_create`/`/wd_create_adv` for non-SDXL checkpoints yet; use the img2img or reference command for those model families.
+- Keep the base width/height at 1024px or less in each direction, use multiples of 8, and keep the 4x output within 4096px. PiD cannot be combined with Hires Fix, Tiled Latent Upscale, Native Outpaint or a Flux Comfy script. Native `/wd_upscale` (Extras) never receives PiD; use the generation commands for it.
+- On this installation PiD works while Forge keeps `--sage`. Forge Neo's `backend/attention.py` now falls back to PyTorch SDPA whenever the active diffusion engine is PiD (`dynamic_args.pid`), so the PiD pass never uses SageAttention. Other models keep Sage. Without this Forge change, PiD with `--sage` emits `Encountered NaN in Latent` and blank images. Backups: `G:\AIStuff\sd-webui-forge-neo\tmp\attention-before-pid-sage-bypass-20261103.py`.
+
+### Image prompt enhancement
+
+The optional image prompt enhancer can add compatible detail without replacing your prompt. It keeps your entire original prompt byte-for-byte, including LoRA tags, trigger phrases and wildcard syntax, and only appends validated newly generated details. It never adds new control syntax or model adapters.
+
+Configure it with `/wd_setting set`:
+
+- `image_prompt_quality`: `Off` (default), `Standard` (Gemma 12B) or `High` (Qwen 27B).
+- `image_prompt_batch`: `All` (default, one shared enhancement used for the whole batch) or `Each` (one separate enhancement per generated image).
+- `image_prompt_style`: `Auto` (tags for ordinary SD/XL/Anima, natural language for other families and reference/edit workflows), `Tags`, or `Natural`.
+
+Enhancement runs before the Forge model lease, and the LLM is unloaded and verified before image generation starts. If enhancement or unload fails, no image request is submitted and no Forge model is changed. `Each` keeps the total image limit, sends the images sequentially, and advances deterministic seeds per image; random seeds stay random.
+
 ### Inpainting (/wd_inpaint)
 
 This is pretty much "redraw a specific area of an image". It can be used for multitude of purposes: Fixing generation output like bad hands or face, change certain feature / subject in the picture, object removal, !>nudify the subject   . The bot provide 2 way to define that inpaint area. Manually via mask or Automatically via SegmentAnything + GroundingDINO
@@ -195,6 +233,9 @@ green overlay on the image is the detection, select one that cover the part you 
 #### Manual area masking
 
 If you use the mask from automatic mode, set `mask_color` to "raw"
+
+!!! note Anima inpainting
+	When the active checkpoint is Anima, `/wd_inpaint` automatically uses the installed 006 inpaint ControlNet (`animaLllite_006-inpainting`) with the `inpaint_noobai` preprocessor at 1024 resolution. That preprocessor black-fills the white-mask edit pixels, which is the format this older 3-channel LLLite model expects. The command's default `fill` preprocessor is not passed through as an override; select `inpaint_noobai` explicitly if you supply a saved ControlNet config. Other incompatible preprocessors or ControlNet models fail with a clear message instead of producing an incorrect mask. Anima reference edit mode is disabled for the inpaint request and restored afterwards.
 
 ### Video Generation (/wd_txt2vid, /wd_img2vid, /wd_vid_upscale)
 
@@ -274,8 +315,8 @@ Powered by TRELLIS, it can convert an image into a 3d model and output a video o
 - **Krea2 Raw Int8 ConvRot**: Currently the state-of-the-art for open-weight image generation. Use natural language prompt
 - **Krea2 Turbo NVFP4**: 🏆 Faster variant of Krea2, basically the recommended model for anyone who is new to image generation. Use natural language prompt
 - **Pixelwave Flux v3 Q8**: First major finetune effort of Flux, quality is subjective
-- **Flux Fill.dev Q6_K**: the Flux Fill model, made for (re)painting and outpainting — this is the model used by the `Flux Outpaint` extra script
-- **Flux Kontext.dev Q6_K**: an experimental Flux variant that takes the surrounding "context" into account when generating — this is the model used by the `Flux Kontext` extra script
+- **Flux Fill.dev Q8_0**: the Flux Fill model, made for (re)painting; used by the Flux inpaint workflow. The Flux Outpaint extra script uses the separate Nunchaku Fill path
+- **Flux Kontext.dev Q8_0**: reference/edit Flux variant that takes surrounding image context into account. Available in the ref2img checkpoint menu; Flux Dev selections in ref2img automatically use this model
 - **Flux.dev Q6_K**: 🪦 6-bit quant of the model. slightly worse than Q8 version but was recommended to use if one is generating Flux image with resolution above 2 megapixels or if one is using controlnets
 
 **Other families** (accessible via /wd_modelchange `experimental_checkpoint`, may be unstable):
@@ -284,7 +325,7 @@ Powered by TRELLIS, it can convert an image into a 3d model and output a video o
 - **Anima Preview / Anima Base v1 / WAI Anima v1**: anime-focused experimental models, use booru prompt style with limited natural language understanding
 - **Z Image Turbo**: Z Image Turbo general-purpose model with highly refined result but not really creative, use natural language prompt
 - **Qwen Image 2.1 / Turbo / Uncensored Int8 ConvRot**: use natural-language prompts for generation and native image editing with the same checkpoints. Normal and Uncensored default to 40 steps; Turbo defaults to 8 steps, with CFG 1. The older Nunchaku Qwen checkpoints are retired. [Model reference](https://huggingface.co/Qwen/Qwen-Image-2.1), [Turbo reference](https://huggingface.co/Qwen/Qwen-Image-2.1-Turbo).
-- **MOSS Image Base / SFT BF16**: text-to-image models with natural-language, tag, and layout prompts. Defaults are Euler / Simple, 50 steps, CFG 3, and shift 5. [Model reference](https://huggingface.co/OpenMOSS-Team/MOSS-Image-Base).
+- **MOSS Image Base / SFT BF16 / SFT Int8 ConvRot**: text-to-image models with natural-language, tag, and layout prompts. Defaults are Euler / Simple, 36 steps, CFG 3, and shift 5. The Int8 ConvRot variant is the smaller experimental quant. [Model reference](https://huggingface.co/OpenMOSS-Team/MOSS-Image-Base).
 - **Neta Lumina v1 / NetaYume Lumina v3**: Lumina-lineage models (NetaYume being the v3 iteration)
 
 **SD1.x (1.5) family:** 512x512 to 768x768 resolution is recommended, poor language understanding, mediocre anatomy, its fast though (pretty much all of the derivitive model below use booru prompt style due to how poor the language understanding is)
@@ -535,6 +576,7 @@ Your personal generation settings, persisted across generations until you change
 - `hires_positive` / `hires_negative` — extra prompt text appended only during the hi-res fix pass
 - `hires_cfg` / `hires_shift` — CFG scale / distilled shift override for the hi-res pass
 - `seedvr2_model` — apply a SeedVR2 upscaler to every txt2img/img2img result automatically; `seedvr2_resolution` sets the target resolution of the shortest side (default 1600). Set the model to `Disable` to turn this off
+- `image_prompt_quality` / `image_prompt_batch` / `image_prompt_style` — control the image prompt enhancer: off/standard/high quality, all/each batch behavior, and auto/tags/natural addition style. See the Image prompt enhancement section above
 
 !!! info SeedVR2 — quality over speed
 	SeedVR2 is a diffusion-based upscaler, which makes it **much more compute-intensive** than the classic upscalers in /wd_upscale (R-ESRGAN etc.), but also a much better upscaler: instead of just sharpening pixels, it actively reconstructs fine detail. Use it when **quality is the priority** (e.g. for your final image), not when you want a quick upscale. There are 4 model options, from smallest to biggest:
