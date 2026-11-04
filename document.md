@@ -307,7 +307,7 @@ The primary `image` is the edit target/first reference. `reference_2`, `referenc
 | Klein (Flux2) | 9B NVFP4, 9B Int8 ConvRot, 4B | `klein_do_reference` | None |
 | Anima | Base, Aesthetic, Turbo, WAI | `anima_do_reference` | `AnimeEditV2` (added automatically). Every Anima reference edit runs a mandatory Qwen 27B instruction pass; the edit LoRA follows the rewritten instruction far more reliably than a terse tag or command. |
 | MOSS | Base, SFT BF16, SFT Int8 ConvRot | `moss_do_reference` (`Moss-Image-Edit`; `Disable` outside reference) | `moss_image_edit_lora_rank_64_bf16` (added automatically). SFT Int8 ConvRot is automatically replaced by SFT BF16 for reference edits; the edit LoRA does not apply reliably to the int8 checkpoint. MOSS also runs the mandatory Qwen 27B instruction pass, which expands vague outfit/style requests into concrete visual targets. |
-| Krea 2 | Turbo, Raw | `krea2_do_reference` | `krea2_general_edit_v2` for General; `krea2_identity_edit_v2` for Identity |
+| Krea 2 | Turbo, Raw | `krea2_do_reference` | `krea2_general_edit_v2` for General; `krea2_identity_edit_v2` for Identity. Use `edit_variant: Identity` when image 1's character identity must be preserved across a multi-reference transfer; General prioritizes the edit instruction. |
 | Flux Kontext | `Flux Kontext.dev Q8_0` | native reference/context path | None |
 | Flux Dev | Not reference-capable | Automatically replaced by the installed Flux Kontext checkpoint; the bot tells you it did so | None |
 | SD1.x / SDXL / Illustrious / Pony / other families | Not reference-capable in this workflow | Use img2img, inpaint, or a model from the table above | — |
