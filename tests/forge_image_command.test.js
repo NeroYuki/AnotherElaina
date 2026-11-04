@@ -125,6 +125,28 @@ test('Flux Dev is mapped to Flux Kontext for reference commands', () => {
     assert.equal(resolve_reference_checkpoint('krea2_turbo_int8_convrot.safetensors'), 'krea2_turbo_int8_convrot.safetensors');
 });
 
+test('MOSS int8 checkpoints are mapped to their BF16 equivalent for reference commands', () => {
+    const { MOSS_REFERENCE_MODEL, resolve_reference_checkpoint, is_moss_int8_checkpoint } = loaded.shared;
+    assert.equal(is_moss_int8_checkpoint('moss_image_sft_int8_convrot.safetensors'), true);
+    assert.equal(is_moss_int8_checkpoint('moss_image_sft_bf16.safetensors'), false);
+    assert.equal(resolve_reference_checkpoint('moss_image_sft_int8_convrot.safetensors'), MOSS_REFERENCE_MODEL);
+    assert.equal(resolve_reference_checkpoint('moss_image_sft_bf16.safetensors'), 'moss_image_sft_bf16.safetensors');
+});
+
+test('family defaults keep Klein CFG at 1 while using distilled/shift values for Flux and Z-Image', () => {
+    const { resolve_family_cfg } = loaded.shared;
+    assert.equal(resolve_family_cfg({ cfg: 1, dcfg: null }), 1);
+    assert.equal(resolve_family_cfg({ cfg: null, dcfg: 3 }), 3);
+    assert.equal(resolve_family_cfg({ cfg: 1, dcfg: 9 }), 9);
+    assert.equal(resolve_family_cfg({ cfg: 4, dcfg: null }), 4);
+    assert.equal(resolve_family_cfg({ cfg: null, dcfg: null }), null);
+
+    const { get_model_family_defaults } = require('../utils/model_defaults');
+    assert.equal(resolve_family_cfg(get_model_family_defaults('flux-2-klein-9b-kv-int8-convrot.safetensors', 'i2i')), 1);
+    assert.equal(resolve_family_cfg(get_model_family_defaults('flux1-dev-Q8_0.gguf', 'i2i')), 3);
+    assert.equal(resolve_family_cfg(get_model_family_defaults('wai_nsfw_illustrious_v120.safetensors', 'i2i')), null);
+});
+
 test('img2img commands retain extra scripts and ControlNet options', () => {
     for (const [name, command] of Object.entries({ wd_img2img: loaded.img2img, wd_img2img_adv: loaded.img2img_adv })) {
         const json = command.data.toJSON();

@@ -126,6 +126,20 @@ Live smoke results:
 - MOSS SFT 512x512/36 steps with the compiled layout: 51.5 s. The preview rendered `EXPLORE` at the top and the mountain in the lower center as specified.
 - SDXL `pastelmix` 512x512/8 steps with the Coupler conversion: 27.9 s. The regions were applied, but SDXL's text rendering is inaccurate; MOSS remains the intended model for literal text layouts.
 
+## Reference-edit fixes
+
+Reference commands now handle three model-specific edge cases:
+
+- **MOSS int8:** `moss_image_sft_int8_convrot` cannot apply the bf16 edit LoRA. Reference requests are automatically redirected to `moss_image_sft_bf16` (or the matching BF16 variant) and the channel is told about the substitution. If the BF16 checkpoint cannot be loaded, the command fails instead of silently using int8.
+- **Anima:** `AnimeEditV2` follows explicit instructions much more reliably than a bare command. `prepareReferencePrompt` wraps the user prompt as `Edit the image: ... Apply only the requested changes and keep everything else unchanged.` before appending the edit LoRA. The wrapping is idempotent and preserves explicit instructions.
+- **Klein CFG:** the family-default resolver treated `cfg: 1` as "use dcfg", but Klein has no `dcfg`, so reference edits inherited the generic CFG 7. This produced colorful artifacts and mottled backgrounds. Klein now keeps CFG 1; Flux/Z-Image/Krea still use their distilled or shift values. Families with neither value (SD1.x/SDXL) now keep the caller's CFG instead of being forced to 1.
+
+Live validation after the fixes:
+
+- Anima Aesthetic v1.1, 1152x2048, ER SDE/Beta, wrapped prompt: dress changed to red; the wrapper is what made the edit follow the instruction.
+- MOSS Image SFT BF16, 1152x2048, 36 steps: dress changed to red; the int8 checkpoint produced an unedited copy.
+- Flux2 Klein 9B KV Int8, 1152x2048, 4 steps: clean red-dress edit at CFG 1; CFG 7 reproduced the artifact pattern.
+
 ## Other real limitations / notes
 
 - Very long proxy requests used to outlive the orchestrator's flat 300s upstream read timeout: a four-reference Qwen run at 768px/12 steps completed on Forge (~9 minutes) but the client received a 504/502. The proxy no longer imposes a read/total deadline on upstream responses; connect and pool timeouts stay at 10s, write at 60s, and a client disconnect closes the upstream stream. An orchestrator restart is required for that change. Failed upstream sends are now recorded in the orchestrator request log instead of being silent.

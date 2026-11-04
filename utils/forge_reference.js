@@ -47,10 +47,29 @@ function explicitEditLoras(prompt, family) {
     return candidates.filter(Boolean).filter(name => names.includes(basename(name)));
 }
 
+// Anima's edit LoRA behaves much more reliably when it receives an explicit
+// instruction sentence instead of a bare tag or terse command. The model still
+// follows the requested change; the wrapper only supplies the missing context.
+const ANIMA_EDIT_PREFIX = 'Edit the image: ';
+const ANIMA_EDIT_SUFFIX = ' Apply only the requested changes and keep everything else unchanged.';
+
+function prepareAnimaEditInstruction(prompt) {
+    const text = String(prompt ?? '').trim();
+    if (!text) return text;
+    const hasPrefix = /^edit (?:the|this) image\s*:/i.test(text);
+    const hasSuffix = /(?:apply only the requested changes|keep everything else unchanged)\.?$/i.test(text);
+    if (hasSuffix) return `${hasPrefix ? '' : ANIMA_EDIT_PREFIX}${text}`;
+    const body = text.replace(/[,;:\s]+$/g, '');
+    const separator = /[.!?]$/.test(body) ? '' : '.';
+    return `${hasPrefix ? '' : ANIMA_EDIT_PREFIX}${body}${separator}${ANIMA_EDIT_SUFFIX}`;
+}
+
 function prepareReferencePrompt(prompt, model, options = {}) {
     const policy = getReferencePolicy(model, { ...options, workflow: 'reference' });
-    if (!policy.lora || explicitEditLoras(prompt, policy.family).length) return prompt;
-    return `${prompt}${prompt && !/\s$/.test(prompt) ? ' ' : ''}<lora:${policy.lora.name}:${policy.lora.weight}>`;
+    let prepared = prompt;
+    if (policy.family === 'anima') prepared = prepareAnimaEditInstruction(prepared);
+    if (!policy.lora || explicitEditLoras(prepared, policy.family).length) return prepared;
+    return `${prepared}${prepared && !/\s$/.test(prepared) ? ' ' : ''}<lora:${policy.lora.name}:${policy.lora.weight}>`;
 }
 
 // The caller holds withForgeSession across this callback and all model/CN
@@ -133,4 +152,13 @@ async function prepareReferenceInputs({ images, layout = 'native', session_hash,
     return { attachment: `data:image/png;base64,${primary.toString('base64')}`, references, imageCount: buffers.length, layout };
 }
 
-module.exports = { SETTING_KEYS, EDIT_LORAS, REFERENCE_LAYOUTS, getReferencePolicy, prepareReferencePrompt, withForgeImageMode, prepareReferenceInputs };
+module.exports = {
+    SETTING_KEYS,
+    EDIT_LORAS,
+    REFERENCE_LAYOUTS,
+    getReferencePolicy,
+    prepareAnimaEditInstruction,
+    prepareReferencePrompt,
+    withForgeImageMode,
+    prepareReferenceInputs,
+};

@@ -7,6 +7,7 @@ const {
     EDIT_LORAS,
     REFERENCE_LAYOUTS,
     getReferencePolicy,
+    prepareAnimaEditInstruction,
     prepareReferencePrompt,
     withForgeImageMode,
     prepareReferenceInputs,
@@ -70,15 +71,49 @@ test('reference policy covers only reference-capable families and their edit LoR
     assert.throws(() => getReferencePolicy(QWEN, { workflow: 'reference', editVariant: 'other' }), /Unknown reference edit variant/)
 })
 
-test('prepareReferencePrompt injects the edit LoRA once and preserves explicit weights', () => {
-    assert.equal(prepareReferencePrompt('a cat', ANIMA), 'a cat <lora:AnimeEditV2:1>')
-    assert.equal(prepareReferencePrompt('a cat, ', ANIMA), 'a cat, <lora:AnimeEditV2:1>')
-    assert.equal(prepareReferencePrompt('a cat <lora:AnimeEditV2:0.4>', ANIMA), 'a cat <lora:AnimeEditV2:0.4>')
-    assert.equal(prepareReferencePrompt('a cat <lora:krea2_identity_edit_v2:0.7>', KREA, { editVariant: 'identity' }), 'a cat <lora:krea2_identity_edit_v2:0.7>')
-    assert.equal(prepareReferencePrompt('a cat <lora:krea2_general_edit_v2:0.7>', KREA, { editVariant: 'identity' }), 'a cat <lora:krea2_general_edit_v2:0.7>', 'never add the other Krea edit LoRA at weight 1')
-    assert.equal(prepareReferencePrompt('a cat <lora:krea2_identity_edit_v2:0.7>', KREA, { editVariant: 'general' }), 'a cat <lora:krea2_identity_edit_v2:0.7>', 'explicit identity tags suppress general injection')
+test('prepareReferencePrompt wraps Anima edits as explicit instructions and injects the LoRA once', () => {
+    assert.equal(
+        prepareReferencePrompt('a cat', ANIMA),
+        'Edit the image: a cat. Apply only the requested changes and keep everything else unchanged. <lora:AnimeEditV2:1>',
+    )
+    assert.equal(
+        prepareReferencePrompt('a cat, ', ANIMA),
+        'Edit the image: a cat. Apply only the requested changes and keep everything else unchanged. <lora:AnimeEditV2:1>',
+    )
+    assert.equal(
+        prepareReferencePrompt('a cat <lora:AnimeEditV2:0.4>', ANIMA),
+        'Edit the image: a cat <lora:AnimeEditV2:0.4>. Apply only the requested changes and keep everything else unchanged.',
+    )
+    assert.equal(
+        prepareReferencePrompt('a cat <lora:krea2_identity_edit_v2:0.7>', KREA, { editVariant: 'identity' }),
+        'a cat <lora:krea2_identity_edit_v2:0.7>',
+    )
+    assert.equal(
+        prepareReferencePrompt('a cat <lora:krea2_general_edit_v2:0.7>', KREA, { editVariant: 'identity' }),
+        'a cat <lora:krea2_general_edit_v2:0.7>',
+        'never add the other Krea edit LoRA at weight 1',
+    )
+    assert.equal(
+        prepareReferencePrompt('a cat <lora:krea2_identity_edit_v2:0.7>', KREA, { editVariant: 'general' }),
+        'a cat <lora:krea2_identity_edit_v2:0.7>',
+        'explicit identity tags suppress general injection',
+    )
     assert.equal(prepareReferencePrompt('a cat', QWEN), 'a cat')
     assert.equal(prepareReferencePrompt('a cat', KONTEXT), 'a cat')
+})
+
+test('Anima edit wrapping is idempotent and preserves explicit instructions', () => {
+    const once = prepareAnimaEditInstruction('make her dress red')
+    assert.equal(once, 'Edit the image: make her dress red. Apply only the requested changes and keep everything else unchanged.')
+    assert.equal(prepareAnimaEditInstruction(once), once)
+    assert.equal(
+        prepareAnimaEditInstruction('Edit this image: change the background'),
+        'Edit this image: change the background. Apply only the requested changes and keep everything else unchanged.',
+    )
+    assert.equal(
+        prepareAnimaEditInstruction('Change the background. Apply only the requested changes and keep everything else unchanged.'),
+        'Edit the image: Change the background. Apply only the requested changes and keep everything else unchanged.',
+    )
 })
 
 test('withForgeImageMode flips the reference option and restores it after success', async () => {

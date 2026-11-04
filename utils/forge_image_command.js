@@ -99,13 +99,32 @@ const REFERENCE_SUPPORTED_MODELS = [
 ];
 const REFERENCE_SUPPORTED_VALUES = new Set(REFERENCE_SUPPORTED_MODELS.map(item => item.value));
 const KONTEXT_MODEL = model_selection_kontext?.[0]?.value || 'comfy_sym\\flux1-kontext-dev-Q8_0.gguf';
+const MOSS_REFERENCE_MODEL = (model_selection_moss || [])
+    .find(item => basename(item.value) === 'moss_image_sft_bf16.safetensors')?.value
+    || (model_selection_moss || [])
+        .find(item => basename(item.value) === 'moss_image_base_bf16.safetensors')?.value
+    || 'moss_image_sft_bf16.safetensors';
 
-// Flux Dev has no native reference/edit conditioning. For reference commands,
-// transparently use the installed Flux Kontext checkpoint instead.
+function is_moss_int8_checkpoint(model) {
+    return /^moss_image_.*int8_convrot\.safetensors$/i.test(basename(model));
+}
+
+function moss_bf16_equivalent(model) {
+    if (!is_moss_int8_checkpoint(model)) return null;
+    const candidate = basename(model).replace(/_int8_convrot\.safetensors$/i, '_bf16.safetensors');
+    return (model_selection_moss || [])
+        .find(item => basename(item.value) === candidate)?.value || MOSS_REFERENCE_MODEL;
+}
+
+// Flux Dev has no native reference/edit conditioning, and MOSS int8
+// checkpoints cannot apply the bf16 edit LoRA. For reference commands,
+// transparently use a compatible checkpoint instead.
 function resolve_reference_checkpoint(model) {
     if (!model) return model;
     const name = basename(model);
-    return name.startsWith('flux1-dev') ? KONTEXT_MODEL : model;
+    if (name.startsWith('flux1-dev')) return KONTEXT_MODEL;
+    if (is_moss_int8_checkpoint(model)) return moss_bf16_equivalent(model);
+    return model;
 }
 
 // Reference layout/reference-edit only supports the families implemented by
@@ -630,6 +649,16 @@ function adjust_dimensions(width, height, attachmentOption) {
     return { width: nextWidth, height: nextHeight };
 }
 
+function resolve_family_cfg(defaults) {
+    if (!defaults) return null;
+    // Families with cfg=1 and a separate distilled/shift value (Flux, Z-Image,
+    // Krea) put the shift in cfg_scale. Klein also has cfg=1 but no dcfg, so it
+    // must keep a real CFG of 1 rather than falling through to the generic 7.
+    if (defaults.cfg === null || defaults.cfg === undefined) return defaults.dcfg ?? null;
+    if (defaults.cfg === 1 && defaults.dcfg !== null && defaults.dcfg !== undefined) return defaults.dcfg;
+    return defaults.cfg;
+}
+
 function apply_forced_img2img_defaults(model, target) {
     if (model === 'anima-turbo-v1_0.safetensors') {
         Object.assign(target, { sampler: 'ER SDE', scheduler: 'SGM Uniform', cfg_scale: 1, sampling_step: 8 });
@@ -710,7 +739,12 @@ async function execute_forge_image_command(interaction, client, config = {}, dep
             if (replacement !== originalReferenceModel) {
                 if (request.checkpoint) request.checkpoint = replacement;
                 referenceReplacement = replacement;
-                await interaction.channel?.send?.(`Flux Dev is not a reference-edit checkpoint; using Flux Kontext (${replacement}) for this request.`);
+                const reason = basename(originalReferenceModel).startsWith('flux1-dev')
+                    ? 'Flux Dev is not a reference-edit checkpoint'
+                    : is_moss_int8_checkpoint(originalReferenceModel)
+                        ? 'MOSS int8 checkpoints cannot apply the edit LoRA'
+                        : 'The selected checkpoint is not compatible with reference editing';
+                await interaction.channel?.send?.(`${reason}; using **${replacement}** for this request.`);
             }
         }
 
@@ -855,8 +889,8 @@ async function execute_forge_image_command(interaction, client, config = {}, dep
             try {
                 activeModel = await choose_and_apply_model({
                     api, interaction, request, frozenModel, frozenWasActive, outpaintTarget,
-                    strict: reference && !!request.checkpoint,
-                    forceModel: reference && !!request.checkpoint,
+                    strict: reference && (!!request.checkpoint || !!referenceReplacement),
+                    forceModel: reference && (!!request.checkpoint || !!referenceReplacement),
                 });
             }
             catch (error) {
@@ -984,7 +1018,7 @@ async function execute_forge_image_command(interaction, client, config = {}, dep
                     if (!request.user_scheduler && !profile?.scheduler && familyDefaults.scheduler) request.scheduler = familyDefaults.scheduler;
                     if (request.user_step === null && !profile?.sampling_step && familyDefaults.step !== null) request.sampling_step = familyDefaults.step;
                     if (request.cfg_scale !== 1 && request.user_cfg === null && !profile?.cfg_scale) {
-                        const familyCfg = familyDefaults.cfg !== 1 ? (familyDefaults.cfg ?? 1) : familyDefaults.dcfg;
+                        const familyCfg = resolve_family_cfg(familyDefaults);
                         if (familyCfg !== null) request.cfg_scale = familyCfg;
                     }
                 }
@@ -995,7 +1029,7 @@ async function execute_forge_image_command(interaction, client, config = {}, dep
                     if (familyDefaults.sampler) request.sampler = familyDefaults.sampler;
                     if (familyDefaults.scheduler) request.scheduler = familyDefaults.scheduler;
                     if (familyDefaults.step !== null) request.sampling_step = familyDefaults.step;
-                    const familyCfg = familyDefaults.cfg !== 1 ? (familyDefaults.cfg ?? 1) : familyDefaults.dcfg;
+                    const familyCfg = resolve_family_cfg(familyDefaults);
                     if (familyCfg !== null) request.cfg_scale = familyCfg;
                 }
                 apply_forced_img2img_defaults(activeModel, request);
@@ -1371,7 +1405,11 @@ module.exports = {
     REFERENCE_EDIT_VARIANTS,
     REFERENCE_CHECKPOINT_SELECTION,
     KONTEXT_MODEL,
+    MOSS_REFERENCE_MODEL,
+    is_moss_int8_checkpoint,
+    moss_bf16_equivalent,
     resolve_reference_checkpoint,
+    resolve_family_cfg,
     read_image_command_request,
     build_generation_options,
     build_img2img_payload,

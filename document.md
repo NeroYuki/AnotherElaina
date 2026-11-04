@@ -305,14 +305,16 @@ The primary `image` is the edit target/first reference. `reference_2`, `referenc
 |---|---|---|---|
 | Qwen 2.1 | Standard, Turbo, Uncensored | `qwen21_do_reference` | None |
 | Klein (Flux2) | 9B NVFP4, 9B Int8 ConvRot, 4B | `klein_do_reference` | None |
-| Anima | Base, Aesthetic, Turbo, WAI | `anima_do_reference` | `AnimeEditV2` (added automatically) |
-| MOSS | Base, SFT BF16, SFT Int8 ConvRot | `moss_do_reference` (`Moss-Image-Edit`; `Disable` outside reference) | `moss_image_edit_lora_rank_64_bf16` (added automatically) |
+| Anima | Base, Aesthetic, Turbo, WAI | `anima_do_reference` | `AnimeEditV2` (added automatically). The bot wraps the prompt as an explicit edit instruction because the edit LoRA follows instructions far more reliably than terse tags. |
+| MOSS | Base, SFT BF16, SFT Int8 ConvRot | `moss_do_reference` (`Moss-Image-Edit`; `Disable` outside reference) | `moss_image_edit_lora_rank_64_bf16` (added automatically). SFT Int8 ConvRot is automatically replaced by SFT BF16 for reference edits; the edit LoRA does not apply reliably to the int8 checkpoint. |
 | Krea 2 | Turbo, Raw | `krea2_do_reference` | `krea2_general_edit_v2` for General; `krea2_identity_edit_v2` for Identity |
 | Flux Kontext | `Flux Kontext.dev Q8_0` | native reference/context path | None |
 | Flux Dev | Not reference-capable | Automatically replaced by the installed Flux Kontext checkpoint; the bot tells you it did so | None |
 | SD1.x / SDXL / Illustrious / Pony / other families | Not reference-capable in this workflow | Use img2img, inpaint, or a model from the table above | — |
 
 The bot checks the required edit LoRA is visible to Forge before generation. If it is missing, the request fails with a clear message instead of producing an unedited image. An explicit `<lora:...>` tag in your prompt is detected and not duplicated. A second Krea edit LoRA is not added at weight 1 over your existing one.
+
+Klein reference edits use the family CFG of 1; the generic CFG value is not applied, which avoids the colorful artifacts and mottled backgrounds that appear at higher CFG. Anima prompts are wrapped as `Edit the image: ... Apply only the requested changes and keep everything else unchanged.` before the edit LoRA is appended. Write the change itself in natural language, for example `make her dress red`; the bot supplies the surrounding instruction.
 
 Reference commands default `denoising_strength` to 1. They do not use ControlNet attachments or extra scripts, and references are never also sent to ControlNet. Prompts still accept ordinary LoRAs and wildcard syntax.
 
