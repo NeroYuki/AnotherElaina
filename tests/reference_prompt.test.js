@@ -7,14 +7,17 @@ const {
     parseInstructionResponse,
     preserveControlTokens,
     controlTokens,
+    systemPrompt,
     rewriteAnimaEditPrompt,
+    rewriteEditInstruction,
 } = require('../utils/reference_prompt');
 const {
     prepareReferencePromptWithLLM,
 } = require('../utils/forge_reference');
-const { model_selection_qwen21 } = require('../utils/ai_server_config');
+const { model_selection_qwen21, model_selection_moss } = require('../utils/ai_server_config');
 
 const ANIMA = 'anima-base-v1.safetensors';
+const MOSS = model_selection_moss[0].value;
 const QWEN = model_selection_qwen21[0].value;
 
 function fakeProvider(responses) {
@@ -58,6 +61,23 @@ test('preserves LoRA, wildcard, and profile tokens missing from the rewrite', ()
     );
 });
 
+test('family prompts make MOSS requests concrete and keep Anima instruction-focused', () => {
+    assert.match(systemPrompt('moss'), /concrete visual descriptions/);
+    assert.match(systemPrompt('moss'), /removed or replaced/);
+    assert.match(systemPrompt('anima'), /direct natural-language instruction/);
+});
+
+test('rewrites a MOSS request with Qwen and names the target family', async () => {
+    const provider = fakeProvider([{ instruction: 'Replace her outfit with a white t-shirt and blue jeans, removing the maid headdress and apron.' }]);
+    const result = await rewriteEditInstruction(
+        { prompt: 'change her to casual clothes', images: [], family: 'moss' },
+        { provider, unload: false, retryInvalid: false },
+    );
+    assert.match(result, /white t-shirt/);
+    assert.match(provider.requests[0].messages[0].content, /MOSS-Image Edit/);
+    assert.match(provider.requests[0].messages[1].content[0].text, /MOSS-Image/);
+});
+
 test('rewrites an Anima request with Qwen and returns the instruction', async () => {
     const provider = fakeProvider([{ instruction: 'Change the dress to a vivid red color.' }]);
     const result = await rewriteAnimaEditPrompt(
@@ -82,7 +102,7 @@ test('retries once when the Anima instruction response is invalid', async () => 
     assert.match(provider.requests[1].messages.at(-1).content, /That response was invalid/);
 });
 
-test('prepareReferencePromptWithLLM uses the rewrite for Anima and skips it for other families', async () => {
+test('prepareReferencePromptWithLLM rewrites Anima and MOSS but skips other families', async () => {
     const calls = [];
     const deps = {
         rewriteAnimaEditPrompt: async input => {
@@ -95,8 +115,14 @@ test('prepareReferencePromptWithLLM uses the rewrite for Anima and skips it for 
     assert.equal(anima, 'Change the dress to red. Keep the character, pose, and background unchanged. <lora:AnimeEditV2:1>');
     assert.equal(calls.length, 1);
     assert.equal(calls[0].prompt, 'make her dress red');
+    assert.equal(calls[0].family, 'anima');
+
+    const moss = await prepareReferencePromptWithLLM('change her to casual clothes', MOSS, {}, deps);
+    assert.equal(moss, 'Change the dress to red. Keep the character, pose, and background unchanged. <lora:moss_image_edit_lora_rank_64_bf16:1>');
+    assert.equal(calls.length, 2);
+    assert.equal(calls[1].family, 'moss');
 
     const qwen = await prepareReferencePromptWithLLM('a cat', QWEN, {}, deps);
     assert.equal(qwen, 'a cat');
-    assert.equal(calls.length, 1);
+    assert.equal(calls.length, 2);
 });

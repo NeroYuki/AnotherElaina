@@ -76,23 +76,27 @@ function prepareReferencePrompt(prompt, model, options = {}) {
     return appendEditLora(prepared, policy);
 }
 
+const LLM_EDIT_FAMILIES = new Set(['anima', 'moss']);
+
 /**
- * Async production path. Anima requests go through a mandatory Qwen 27B
- * instruction pass; other families keep the deterministic prompt policy.
+ * Async production path. Anima and MOSS requests go through a mandatory Qwen
+ * 27B instruction pass; other families keep the deterministic prompt policy.
  */
 async function prepareReferencePromptWithLLM(prompt, model, options = {}, deps = {}) {
     const policy = getReferencePolicy(model, { ...options, workflow: 'reference' });
     let prepared = prompt;
-    if (policy.family === 'anima') {
-        const rewrite = deps.rewriteAnimaEditPrompt
-            || require('./reference_prompt').rewriteAnimaEditPrompt;
+    if (LLM_EDIT_FAMILIES.has(policy.family)) {
+        const rewrite = deps.rewriteEditInstruction
+            || deps.rewriteAnimaEditPrompt
+            || require('./reference_prompt').rewriteEditInstruction;
         prepared = await rewrite({
             prompt,
             images: options.images || [],
+            family: policy.family,
             onProgress: options.onProgress || (() => {}),
         }, deps.referencePrompt);
         prepared = String(prepared || '').trim();
-        if (!prepared) throw new Error('The Anima instruction pass returned an empty instruction.');
+        if (!prepared) throw new Error('The edit instruction pass returned an empty instruction.');
         if (!/(?:keep .*unchanged|apply only)/i.test(prepared)) {
             prepared = `${prepared.replace(/[.!?]$/, '')}. Keep the character, pose, and background unchanged.`;
         }
