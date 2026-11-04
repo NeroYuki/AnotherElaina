@@ -133,6 +133,26 @@ test('MOSS int8 checkpoints are mapped to their BF16 equivalent for reference co
     assert.equal(resolve_reference_checkpoint('moss_image_sft_bf16.safetensors'), 'moss_image_sft_bf16.safetensors');
 });
 
+test('reference dimensions align to the model VAE and ImageStitch grids', () => {
+    const { align_reference_dimensions } = loaded.shared;
+    assert.deepEqual(
+        align_reference_dimensions('qwen21', 1776, 2048),
+        { width: 1792, height: 2048 },
+    );
+    assert.deepEqual(
+        align_reference_dimensions('qwen21', 1104, 1264),
+        { width: 1120, height: 1280 },
+    );
+    assert.deepEqual(
+        align_reference_dimensions('anima', 1104, 1264, { referenceCount: 2, layout: 'native' }),
+        { width: 1088, height: 1280 },
+    );
+    assert.deepEqual(
+        align_reference_dimensions('anima', 1104, 1264, { referenceCount: 1, layout: 'native' }),
+        { width: 1104, height: 1264 },
+    );
+});
+
 test('family defaults keep Klein CFG at 1 while using distilled/shift values for Flux and Z-Image', () => {
     const { resolve_family_cfg } = loaded.shared;
     assert.equal(resolve_family_cfg({ cfg: 1, dcfg: null }), 1);

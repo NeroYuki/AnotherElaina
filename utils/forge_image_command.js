@@ -622,6 +622,22 @@ async function choose_and_apply_model({
     return active;
 }
 
+function align_reference_dimensions(family, width, height, { referenceCount = 1, layout = 'native' } = {}) {
+    let nextWidth = width;
+    let nextHeight = height;
+    if ((family === 'anima' || family === 'krea') && referenceCount > 1 && layout === 'native') {
+        nextWidth = Math.max(64, Math.round(nextWidth / 64) * 64);
+        nextHeight = Math.max(64, Math.round(nextHeight / 64) * 64);
+    }
+    if (family === 'qwen21') {
+        // Qwen 2.1's VAE encoder requires even latent dimensions and the
+        // official pipeline rounds output dimensions to multiples of 32.
+        nextWidth = Math.max(32, Math.round(nextWidth / 32) * 32);
+        nextHeight = Math.max(32, Math.round(nextHeight / 32) * 32);
+    }
+    return { width: nextWidth, height: nextHeight };
+}
+
 function adjust_dimensions(width, height, attachmentOption) {
     let nextWidth = width;
     let nextHeight = height;
@@ -849,14 +865,14 @@ async function execute_forge_image_command(interaction, client, config = {}, dep
         const sessionHash = crypt.randomBytes(16).toString('base64');
         const requestedDimensions = adjust_dimensions(request.width, request.height, attachmentOption);
         const matchReferenceSize = referencePolicy?.family === 'anima' || referencePolicy?.family === 'krea';
-        if (matchReferenceSize && referenceBuffers.length > 1 && request.reference_layout === 'native') {
-            // ImageStitch rounds reference images to multiples of 64. Anima
-            // concatenates reference latents along the temporal axis, and Krea
-            // is sensitive to mixed reference resolutions, so the target and
-            // every reference must share the same grid.
-            requestedDimensions.width = Math.max(64, Math.round(requestedDimensions.width / 64) * 64);
-            requestedDimensions.height = Math.max(64, Math.round(requestedDimensions.height / 64) * 64);
-        }
+        const alignedDimensions = align_reference_dimensions(
+            referencePolicy?.family,
+            requestedDimensions.width,
+            requestedDimensions.height,
+            { referenceCount: referenceBuffers.length, layout: request.reference_layout },
+        );
+        requestedDimensions.width = alignedDimensions.width;
+        requestedDimensions.height = alignedDimensions.height;
         let preparedReference = null;
         let serverIndex = -1;        if (reference) {
             serverIndex = api.get_worker_server(request.force_server_selection);
@@ -1441,6 +1457,7 @@ module.exports = {
     is_moss_int8_checkpoint,
     moss_bf16_equivalent,
     resolve_reference_checkpoint,
+    align_reference_dimensions,
     resolve_family_cfg,
     read_image_command_request,
     build_generation_options,
