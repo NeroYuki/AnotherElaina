@@ -758,9 +758,10 @@ async function execute_forge_image_command(interaction, client, config = {}, dep
 
         // Validate the edit policy (and resolve the LoRA trigger) before
         // spending an LLM call, but do it against the frozen model.
+        let referencePolicy = null;
         if (reference) {
             try {
-                require_reference_function('getReferencePolicy', deps)(frozenModel, {
+                referencePolicy = require_reference_function('getReferencePolicy', deps)(frozenModel, {
                     workflow: 'reference',
                     editVariant: request.edit_variant,
                 });
@@ -846,6 +847,14 @@ async function execute_forge_image_command(interaction, client, config = {}, dep
 
         const sessionHash = crypt.randomBytes(16).toString('base64');
         const requestedDimensions = adjust_dimensions(request.width, request.height, attachmentOption);
+        if (referencePolicy?.family === 'anima' && referenceBuffers.length > 1 && request.reference_layout === 'native') {
+            // ImageStitch rounds reference images to multiples of 64. Anima
+            // concatenates reference latents along the temporal axis, so the
+            // target must use the same grid or the forward pass receives
+            // mismatched H/W tensors.
+            requestedDimensions.width = Math.max(64, Math.round(requestedDimensions.width / 64) * 64);
+            requestedDimensions.height = Math.max(64, Math.round(requestedDimensions.height / 64) * 64);
+        }
         let preparedReference = null;
         let serverIndex = -1;        if (reference) {
             serverIndex = api.get_worker_server(request.force_server_selection);
@@ -863,6 +872,10 @@ async function execute_forge_image_command(interaction, client, config = {}, dep
                     direct_url: server_pool[serverIndex].direct_url,
                     width: requestedDimensions.width,
                     height: requestedDimensions.height,
+                    max_side: referencePolicy?.family === 'anima'
+                        ? Math.max(requestedDimensions.width, requestedDimensions.height, REFERENCE_MAX_SIDE)
+                        : REFERENCE_MAX_SIDE,
+                    match_output_size: referencePolicy?.family === 'anima',
                 });
             }
             catch (error) {
@@ -1279,10 +1292,13 @@ async function execute_forge_image_command(interaction, client, config = {}, dep
                 if (reference && preparedReference?.layout && preparedReference.layout !== request.reference_layout) {
                     console.warn(`Reference helper normalized layout ${request.reference_layout} -> ${preparedReference.layout}`);
                 }
+                const referenceMaxSide = referencePolicy?.family === 'anima' && references.length > 0
+                    ? Math.max(requestedDimensions.width, requestedDimensions.height, REFERENCE_MAX_SIDE)
+                    : REFERENCE_MAX_SIDE;
                 const generationOptions = build_generation_options({
                     pid: pidConfig,
                     references,
-                    reference_max_side: REFERENCE_MAX_SIDE,
+                    reference_max_side: referenceMaxSide,
                 });
 
                 const payload = build_img2img_payload({

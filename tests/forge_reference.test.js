@@ -202,6 +202,26 @@ test('prepareReferenceInputs uploads only additional native references', async (
     assert.match(prepared.references[0].image.url, /^http:\/\/direct\.test\/file=\/tmp\/ref1\.png/)
 })
 
+test('prepareReferenceInputs can match native extra references to the output dimensions', async () => {
+    const uploaded = [];
+    const images = [await png(100, 80), await png(90, 120), await png(64, 64)];
+    await prepareReferenceInputs({
+        images, layout: 'native', session_hash: 'session', endpoint: 'http://forge.test',
+        width: 512, height: 512, match_output_size: true,
+    }, {
+        upload: async buffer => {
+            uploaded.push(buffer);
+            return `/tmp/ref${uploaded.length}.png`;
+        },
+    });
+    assert.equal(uploaded.length, 2);
+    for (const buffer of uploaded) {
+        const metadata = await sharp(buffer).metadata();
+        assert.equal(metadata.width, 512);
+        assert.equal(metadata.height, 512);
+    }
+});
+
 test('prepareReferenceInputs stitches layouts in order and honours output dimensions', async () => {
     const images = [await png(100, 100, '#ff0000'), await png(100, 100, '#00ff00'), await png(100, 100, '#0000ff'), await png(100, 100, '#ffffff')]
     for (const layout of ['grid', 'horizontal', 'vertical']) {

@@ -153,11 +153,20 @@ async function pngReference(input, maxSide) {
     return sharp(image).extend({ top: 0, left: 0, right, bottom, background: '#ffffff' }).png().toBuffer();
 }
 
-async function prepareReferenceInputs({ images, layout = 'native', session_hash, endpoint, direct_url, width, height, max_side = 1024 }, deps = {}) {
+async function prepareReferenceInputs({
+    images, layout = 'native', session_hash, endpoint, direct_url, width, height,
+    max_side = 1024, match_output_size = false,
+}, deps = {}) {
     if (!Array.isArray(images) || !images.length || images.length > 4) throw new Error('Supply between one and four reference images.');
     if (layout === 'auto') layout = 'native';
     if (!REFERENCE_LAYOUTS.includes(layout)) throw new Error('Unknown reference layout.');
     if (!Number.isInteger(max_side) || max_side < 64 || max_side > 2048) throw new Error('Reference maximum side must be between 64 and 2048 pixels.');
+    const hasOutputSize = width !== undefined || height !== undefined;
+    if (hasOutputSize) {
+        if (!Number.isInteger(width) || !Number.isInteger(height) || width < 64 || height < 64 || width > 2048 || height > 2048) {
+            throw new Error('Reference output dimensions must be 64–2048 pixels.');
+        }
+    }
     const buffers = [];
     for (const image of images) buffers.push(await pngReference(image, max_side));
     let primary = buffers[0];
@@ -165,7 +174,14 @@ async function prepareReferenceInputs({ images, layout = 'native', session_hash,
     if (layout === 'native') {
         const upload = deps.upload || uploadPngBufferToGradio;
         for (let index = 1; index < buffers.length; index++) {
-            const path = await upload(buffers[index], session_hash, endpoint);
+            let buffer = buffers[index];
+            // Anima concatenates reference latents along the temporal axis and
+            // requires every reference to share the target spatial size. MOSS
+            // and the other families can consume different reference sizes.
+            if (match_output_size && hasOutputSize) {
+                buffer = await sharp(buffer).resize(width, height, { fit: 'contain', background: '#ffffff' }).png().toBuffer();
+            }
+            const path = await upload(buffer, session_hash, endpoint);
             references.push({ image: { ...convert_upload_path_to_file_data(path, direct_url || endpoint), mime_type: 'image/png', meta: { _type: 'gradio.FileData' } }, caption: null });
         }
     }

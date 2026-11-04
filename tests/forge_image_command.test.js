@@ -352,6 +352,7 @@ test('reference executor freezes the model, runs LLM outside the lease and forwa
     assert.equal(typeof calls.prompt.options.onProgress, 'function');
     assert.equal(calls.referenceInputs.layout, 'native');
     assert.equal(calls.referenceInputs.images.length, 2);
+    assert.equal(calls.referenceInputs.match_output_size, true);
     assert.equal(calls.enrich.model, 'anima-base-v1.safetensors');
     assert.equal(calls.enrich.workflow, 'ref2img');
     assert.equal(calls.mode.workflow, 'reference');
