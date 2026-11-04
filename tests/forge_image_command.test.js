@@ -288,8 +288,8 @@ test('reference executor freezes the model, runs LLM outside the lease and forwa
             calls.policy = { model, policy };
             return { family: 'anima' };
         },
-        prepareReferencePrompt: (prompt, model) => {
-            calls.prompt = { prompt, model };
+        prepareReferencePromptWithLLM: async (prompt, model, options) => {
+            calls.prompt = { prompt, model, options };
             return `${prompt} <lora:anime_edit:1>`;
         },
         prepareReferenceInputs: async input => {
@@ -348,6 +348,8 @@ test('reference executor freezes the model, runs LLM outside the lease and forwa
     assert.equal(calls.lease, 1);
     assert.equal(calls.prompt.model, 'anima-base-v1.safetensors');
     assert.match(calls.prompt.prompt, /make it blue/);
+    assert.equal(calls.prompt.options.images.length, 2);
+    assert.equal(typeof calls.prompt.options.onProgress, 'function');
     assert.equal(calls.referenceInputs.layout, 'native');
     assert.equal(calls.referenceInputs.images.length, 2);
     assert.equal(calls.enrich.model, 'anima-base-v1.safetensors');

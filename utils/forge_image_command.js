@@ -764,9 +764,6 @@ async function execute_forge_image_command(interaction, client, config = {}, dep
                     workflow: 'reference',
                     editVariant: request.edit_variant,
                 });
-                request.prompt = require_reference_function('prepareReferencePrompt', deps)(request.prompt, frozenModel, {
-                    editVariant: request.edit_variant,
-                });
             }
             catch (error) {
                 await interaction.editReply({ content: error.message });
@@ -827,6 +824,23 @@ async function execute_forge_image_command(interaction, client, config = {}, dep
                 });
                 if (!buffer) return;
                 referenceBuffers.push(buffer);
+            }
+        }
+
+        if (reference) {
+            try {
+                const preparePrompt = require_reference_function('prepareReferencePromptWithLLM', deps);
+                request.prompt = await preparePrompt(request.prompt, frozenModel, {
+                    editVariant: request.edit_variant,
+                    images: referenceBuffers,
+                    onProgress: message => interaction.editReply({ content: message }).catch(error => {
+                        console.log('Unable to update reference instruction progress', error);
+                    }),
+                });
+            }
+            catch (error) {
+                await interaction.editReply({ content: error.message });
+                return;
             }
         }
 

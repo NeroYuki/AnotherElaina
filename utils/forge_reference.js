@@ -64,12 +64,43 @@ function prepareAnimaEditInstruction(prompt) {
     return `${hasPrefix ? '' : ANIMA_EDIT_PREFIX}${body}${separator}${ANIMA_EDIT_SUFFIX}`;
 }
 
+function appendEditLora(prepared, policy) {
+    if (!policy.lora || explicitEditLoras(prepared, policy.family).length) return prepared;
+    return `${prepared}${prepared && !/\s$/.test(prepared) ? ' ' : ''}<lora:${policy.lora.name}:${policy.lora.weight}>`;
+}
+
 function prepareReferencePrompt(prompt, model, options = {}) {
     const policy = getReferencePolicy(model, { ...options, workflow: 'reference' });
     let prepared = prompt;
     if (policy.family === 'anima') prepared = prepareAnimaEditInstruction(prepared);
-    if (!policy.lora || explicitEditLoras(prepared, policy.family).length) return prepared;
-    return `${prepared}${prepared && !/\s$/.test(prepared) ? ' ' : ''}<lora:${policy.lora.name}:${policy.lora.weight}>`;
+    return appendEditLora(prepared, policy);
+}
+
+/**
+ * Async production path. Anima requests go through a mandatory Qwen 27B
+ * instruction pass; other families keep the deterministic prompt policy.
+ */
+async function prepareReferencePromptWithLLM(prompt, model, options = {}, deps = {}) {
+    const policy = getReferencePolicy(model, { ...options, workflow: 'reference' });
+    let prepared = prompt;
+    if (policy.family === 'anima') {
+        const rewrite = deps.rewriteAnimaEditPrompt
+            || require('./reference_prompt').rewriteAnimaEditPrompt;
+        prepared = await rewrite({
+            prompt,
+            images: options.images || [],
+            onProgress: options.onProgress || (() => {}),
+        }, deps.referencePrompt);
+        prepared = String(prepared || '').trim();
+        if (!prepared) throw new Error('The Anima instruction pass returned an empty instruction.');
+        if (!/(?:keep .*unchanged|apply only)/i.test(prepared)) {
+            prepared = `${prepared.replace(/[.!?]$/, '')}. Keep the character, pose, and background unchanged.`;
+        }
+    }
+    else {
+        prepared = prepareReferencePrompt(prompt, model, options);
+    }
+    return appendEditLora(prepared, policy);
 }
 
 // The caller holds withForgeSession across this callback and all model/CN
@@ -159,6 +190,7 @@ module.exports = {
     getReferencePolicy,
     prepareAnimaEditInstruction,
     prepareReferencePrompt,
+    prepareReferencePromptWithLLM,
     withForgeImageMode,
     prepareReferenceInputs,
 };
