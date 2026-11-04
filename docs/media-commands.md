@@ -77,7 +77,7 @@ Common options:
 | `ref` | optional attachment | Additional image/video/audio reference using the hybrid model. |
 | `preset` | `Fast` (0.4 MP), `Standard`/`std` (0.8 MP), `High` (1.0 MP); default Standard | Preserves the image's aspect ratio while fitting the target megapixel budget. |
 | `length` | 1–60 seconds, default 5 | Over 15 seconds uses the H3 Extender. |
-| `seed`, `steps`, `do_upscale`, `no_optimize`, `prompt_quality` | same as text-to-video | `steps` defaults to 8 without a reference; references use 20. |
+| `seed`, `steps`, `do_upscale`, `no_optimize`, `prompt_quality` | same as text-to-video | `steps` defaults to 8 with Turbo. A reference or `no_optimize` uses 20. |
 
 The opening image is connected to H3's first-frame input. `last_image` is
 optional; when present, it anchors the end of the full video. With a reference
@@ -112,7 +112,7 @@ B25–49 INT8 model. Both use native `MiniMaxH3ReferenceToVideo` with
 ### Video post-processing
 
 ```text
-/wd_vid_upscale video:[attach clip.mp4] color_correction:hm-mvgd-hm ref_image:[attach color-reference.png] upscaler:2x-AnimeSharpV4_RCAN.safetensors frame_interpolation:rife49.pth fps_multiplier:2
+/wd_vid_upscale video:[attach clip.mp4] color_correction:hm-mvgd-hm ref_image:[attach color-reference.png] upscaler:AnimeSharp v4 2× frame_interpolation:RIFE49 fps_multiplier:2
 ```
 
 Common options:
@@ -136,7 +136,7 @@ sharpen or restyle edges; it is not a guarantee of restored information.
 ### Image to 3D model
 
 ```text
-/wd_img2model image:[attach character.png] recipe:trellis_1024_cascade seed:12345 download_glb:true
+/wd_img2model image:[attach character.png] recipe:TRELLIS 1024 cascade seed:12345 download_glb:true
 ```
 
 Common options:

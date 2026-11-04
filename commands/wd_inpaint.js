@@ -33,6 +33,32 @@ const normalize_model_name = value => typeof value === 'string'
     ? value.trim().replaceAll('\\', '/').split('/').pop().toLowerCase()
     : ''
 
+function get_gradio_file_path(file) {
+    if (!file) return null
+    if (typeof file === 'string') {
+        return file.startsWith('data:') ? null : file
+    }
+    if (typeof file.path === 'string' && file.path) return file.path
+    return null
+}
+
+async function fetch_gradio_file(endpoint, file, label) {
+    if (typeof file === 'string' && file.startsWith('data:image/')) {
+        const buffer = dataUriToBuffer(file)
+        if (!buffer || buffer.length === 0) throw new Error(`${label} returned an empty inline image`)
+        return buffer
+    }
+    const file_path = get_gradio_file_path(file)
+    if (!file_path) throw new Error(`${label} returned no file path`)
+    const response = await fetch(`${endpoint}/file=${encodeURI(file_path)}`)
+    if (!response || response.status !== 200) {
+        throw new Error(`${label} download failed with status ${response?.status ?? 'unknown'}`)
+    }
+    const buffer = Buffer.from(await response.arrayBuffer())
+    if (buffer.length === 0) throw new Error(`${label} download returned an empty file`)
+    return buffer
+}
+
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('wd_inpaint')
@@ -357,41 +383,56 @@ module.exports = {
         let attachment = await loadImage(attachment_option.proxyURL,
             /*getBuffer:*/ false, /*noDataURIHeader*/ false, /*safeMode*/ true).catch((err) => {
             console.log(err)
-            interaction.editReply({ content: "Failed to retrieve image", ephemeral: true });
+            interaction.editReply({ content: "Failed to retrieve image", ephemeral: true }).catch(() => {});
             return
         })
 
+        if (segment_anything_prompt && !attachment) return
+
         let attachment_upload_path = await uploadDiscordImageToGradio(attachment_option.proxyURL, session_hash, WORKER_ENDPOINT).catch((err) => {
             console.log(err)
-            interaction.editReply({ content: "Failed to upload image to server", ephemeral: true });
+            interaction.editReply({ content: "Failed to upload image to server", ephemeral: true }).catch(() => {});
             return
         })
         //console.log(attachment_upload_path)
 
         if (segment_anything_prompt) {
-            // let the madness begin
-            interaction.editReply({ content: "Starting auto segmentation process" });
-            let boundingBox = await groundingDino_execute(segment_anything_prompt, attachment_upload_path, session_hash, is_swinb, dino_threshold).catch(err => {
+            if (!attachment_upload_path) return
+
+            await interaction.editReply({ content: "Starting auto segmentation process" })
+                .catch(err => console.log('Failed to update auto segmentation status', err))
+
+            let boundingBox = null
+            try {
+                boundingBox = await groundingDino_execute(segment_anything_prompt, attachment_upload_path, session_hash, is_swinb, dino_threshold)
+            }
+            catch (err) {
                 console.log(err)
-                interaction.editReply({ content: "Failed to get bounding box", ephemeral: true });
+                await interaction.editReply({ content: "Failed to get bounding box", ephemeral: true }).catch(() => {})
                 return
-            })
+            }
 
-            console.log(boundingBox)
+            const bb_count = Number(boundingBox?.bb_num)
+            if (!Number.isInteger(bb_count) || bb_count < 1) {
+                console.log('GroundingDINO returned no usable bounding boxes', boundingBox)
+                await interaction.editReply({ content: "No bounding box found, try a different segment_anything_prompt", ephemeral: true }).catch(() => {})
+                return
+            }
 
-            const rows = new Array(Math.ceil(Math.min(boundingBox.bb_num, 20) / 5))
+            const shown_bb_count = Math.min(bb_count, 20)
+            const rows = new Array(Math.ceil(shown_bb_count / 5))
 
             for (let i = 0; i < rows.length; i++) {
                 rows[i] = new MessageActionRow()
             }
-                
-            for (let i = 0; i < Math.min(boundingBox.bb_num, 20); i++) {
+
+            for (let i = 0; i < shown_bb_count; i++) {
                 rows[Math.floor(i / 5)].addComponents(
                     new MessageButton()
                         .setCustomId(`bbSelect_${i}_${interaction.id}`)
                         .setLabel(`${i}`)
                         .setStyle('SECONDARY'))
-            }  
+            }
 
             // for the last action row, add a button to submit the selected bounding box
             rows.push(new MessageActionRow().addComponents(
@@ -400,138 +441,213 @@ module.exports = {
                     .setLabel(`Submit`)
                     .setStyle('SUCCESS')))
 
-
             let bb_img = null
-            // all server is remote
-            const bb_res = await fetch(`${boundingBox.bb.url}`).catch(err => {
-                throw 'Error while fetching image on remote server'
-            })
-            if (bb_res && bb_res.status === 200) {
-                bb_img = Buffer.from(await bb_res.arrayBuffer())
+            try {
+                bb_img = await fetch_gradio_file(WORKER_ENDPOINT, boundingBox.bb, 'bounding box preview')
             }
-            else {
-                interaction.editReply({ content: "Failed to fetch bounding box image", ephemeral: true });
+            catch (err) {
+                console.log(err)
+                await interaction.editReply({ content: "Failed to fetch bounding box image", ephemeral: true }).catch(() => {})
                 return
             }
-            const bb_img_name = `preview_annotation.png`
-            await interaction.channel.send({files: [{attachment: bb_img, name: bb_img_name}]})
-            let bb_select_msg = await interaction.channel.send({content: "Please select your desired bounding box before submit", components: rows})
 
-            const bb_filter = i => i.user.id === user.id;
+            let bb_select_msg = null
+            try {
+                const bb_img_name = `preview_annotation.png`
+                await interaction.channel.send({ files: [{ attachment: bb_img, name: bb_img_name }] })
+                bb_select_msg = await interaction.channel.send({ content: "Please select your desired bounding box before submit", components: rows })
+            }
+            catch (err) {
+                console.log(err)
+                await interaction.editReply({ content: "Failed to show bounding box selection", ephemeral: true }).catch(() => {})
+                return
+            }
 
-            const bb_collector = interaction.channel.createMessageComponentCollector({ bb_filter, time: 800000 });
-
+            const bb_filter = i => i.user.id === interaction.user.id
+            const bb_collector = bb_select_msg.createMessageComponentCollector({ filter: bb_filter, time: 800000 })
             const bb_indices = []
 
             bb_collector.on('collect', async i => {
-                if (i.customId.startsWith('bbSelect') && i.customId.endsWith(interaction.id)) {
-                    const bb_index = i.customId.split('_')[1]
-                    i.deferUpdate();
-                    // add to bb_indices, change the button to primary and text to deselect, edit bb_select_msg with the altered button
-                    if (bb_indices.includes(bb_index)) {
-                        bb_indices.splice(bb_indices.indexOf(bb_index), 1)
-                        rows[Math.floor(bb_index / 5)].components[bb_index % 5].setStyle('SECONDARY')
+                try {
+                    if (i.customId.startsWith('bbSelect') && i.customId.endsWith(interaction.id)) {
+                        const bb_index = i.customId.split('_')[1]
+                        const bb_index_num = Number(bb_index)
+                        await i.deferUpdate()
+                        if (bb_collector.ended) return
+                        if (!Number.isInteger(bb_index_num) || bb_index_num < 0 || bb_index_num >= shown_bb_count) {
+                            await interaction.editReply({ content: "Invalid bounding box selected", ephemeral: true }).catch(() => {})
+                            return
+                        }
+                        // add to bb_indices, change the button to primary and text to deselect, edit bb_select_msg with the altered button
+                        if (bb_indices.includes(bb_index)) {
+                            bb_indices.splice(bb_indices.indexOf(bb_index), 1)
+                            rows[Math.floor(bb_index_num / 5)].components[bb_index_num % 5].setStyle('SECONDARY')
+                        }
+                        else {
+                            bb_indices.push(bb_index)
+                            rows[Math.floor(bb_index_num / 5)].components[bb_index_num % 5].setStyle('PRIMARY')
+                        }
+                        await bb_select_msg.edit({ content: "Please select your desired bounding box, press the same button again to deselect", components: rows })
+                            .catch(err => console.log('Failed to update bounding box selection', err))
+                        return
                     }
-                    else {
-                        bb_indices.push(bb_index)
-                        rows[Math.floor(bb_index / 5)].components[bb_index % 5].setStyle('PRIMARY')
+
+                    if (!(i.customId.startsWith('bbSubmit_') && i.customId.endsWith(interaction.id))) {
+                        return
                     }
-                    bb_select_msg.edit({content: "Please select your desired bounding box, press the same button again to deselect", components: rows})
-                } 
-                else if (i.customId.startsWith('bbSubmit_') && i.customId.endsWith(interaction.id)) {
-                    // get the bounding box index
-                    i.deferUpdate();
+
+                    await i.deferUpdate()
+                    if (bb_collector.ended) return
                     if (bb_indices.length === 0) {
-                        interaction.editReply({ content: "No bounding box selected, please select at least one before submit", ephemeral: true });
+                        await interaction.editReply({ content: "No bounding box selected, please select at least one before submit", ephemeral: true }).catch(() => {})
                         return
                     }
 
                     bb_collector.stop()
-                    // continue the process
-                    let segment_output = await segmentAnything_execute(segment_anything_prompt, bb_indices, attachment_upload_path, session_hash, is_swinb, dino_threshold).catch(err => {
-                        console.log(err)
-                        interaction.editReply({ content: "Failed to segment image", ephemeral: true });
-                        return
-                    })
 
-                    let img_buffers = [null, null, null]
-                    const file_dirs = segment_output.map(x => x.image.url)
-                    // console.log(file_dirs)
-                    // console.dir(segment_output, {depth: null})
+                    let segment_output = null
+                    try {
+                        segment_output = await segmentAnything_execute(segment_anything_prompt, bb_indices, attachment_upload_path, session_hash, is_swinb, dino_threshold)
+                    }
+                    catch (err) {
+                        console.log(err)
+                        await interaction.editReply({ content: "Failed to segment image", ephemeral: true }).catch(() => {})
+                        return
+                    }
 
                     const is_multiple_box = bb_indices.length > 1
-                    if (is_multiple_box) {
-                        interaction.channel.send("⚠️ Due to issues with showing transparent layers when there are multiple bounding box selected, we will instead show the cut out image of the segmentation result")
+                    const segment_start = is_multiple_box ? 6 : 0
+                    const segment_end = is_multiple_box ? 9 : 3
+                    const segment_candidates = Array.isArray(segment_output)
+                        ? segment_output.slice(segment_start, segment_end)
+                        : []
+
+                    if (segment_candidates.length !== 3 || segment_candidates.some(candidate => !candidate)) {
+                        console.log('SegmentAnything returned no usable results', segment_output)
+                        await interaction.editReply({ content: "Failed to segment image", ephemeral: true }).catch(() => {})
+                        return
                     }
 
-                    for (let i = (is_multiple_box ? 6 : 0); i < (is_multiple_box ? 9 : 3); i++) {
-                        // all server is remote
-                        const img_res = await fetch(`${file_dirs[i]}`).catch(err => {
-                            throw 'Error while fetching image on remote server'
-                        })
+                    if (is_multiple_box) {
+                        await interaction.channel.send("⚠️ Due to issues with showing transparent layers when there are multiple bounding box selected, we will instead show the cut out image of the segmentation result")
+                            .catch(err => console.log('Failed to send multi-box notice', err))
+                    }
 
-                        if (img_res && img_res.status === 200) {
-                            img_buffers.push(Buffer.from(await img_res.arrayBuffer()))
+                    const img_buffers = []
+                    try {
+                        for (const segment of segment_candidates) {
+                            img_buffers.push(await fetch_gradio_file(
+                                WORKER_ENDPOINT,
+                                segment?.image ?? segment,
+                                'segmentation preview',
+                            ))
                         }
                     }
+                    catch (err) {
+                        console.log(err)
+                        await interaction.editReply({ content: "Failed to fetch segmentation preview", ephemeral: true }).catch(() => {})
+                        return
+                    }
 
-                    img_buffers = img_buffers.filter(x => x != null)
                     const seg_row = new MessageActionRow()
-
-                    for (let i = 0; i < 3; i++) {
+                    for (let i = 0; i < img_buffers.length; i++) {
                         seg_row.addComponents(
                             new MessageButton()
                                 .setCustomId(`segSelect_${i}_${interaction.id}`)
                                 .setLabel(`Select ${i}`)
                                 .setStyle('PRIMARY'))
-                    }  
-        
-                    interaction.channel.send({files: img_buffers.map((x, i) => {return {attachment: x, name: `segment_output_${i}.png`}}), components: [seg_row]})
-        
-                    const seg_filter = i => i.user.id === user.id;
-        
-                    const seg_collector = interaction.channel.createMessageComponentCollector({ seg_filter, time: 800000 });
+                    }
 
-                            
+                    let seg_select_msg
+                    try {
+                        seg_select_msg = await interaction.channel.send({
+                            files: img_buffers.map((x, i) => { return { attachment: x, name: `segment_output_${i}.png` } }),
+                            components: [seg_row],
+                        })
+                    }
+                    catch (err) {
+                        console.log(err)
+                        await interaction.editReply({ content: "Failed to send segmentation preview", ephemeral: true }).catch(() => {})
+                        return
+                    }
+
+                    const seg_filter = i => i.user.id === interaction.user.id
+                    const seg_collector = seg_select_msg.createMessageComponentCollector({ filter: seg_filter, time: 800000 })
+
                     seg_collector.on('collect', async i => {
-                        if (i.customId.startsWith('segSelect') && i.customId.endsWith(interaction.id)) {
-                            // get the bounding box index
-                            const seg_index = i.customId.split('_')[1]
-                            i.deferUpdate();
-                            seg_collector.stop()
-                            // continue the process with optional mask expanding option
-
-                            let expanded_mask = await expandMask(segment_output, attachment_upload_path, seg_index, session_hash, mask_increase_padding).catch(err => {
-                                console.log(err)
-                                interaction.editReply({ content: "Failed to expand mask", ephemeral: true });
+                        try {
+                            if (!(i.customId.startsWith('segSelect') && i.customId.endsWith(interaction.id))) {
                                 return
-                            })
-
-                            let final_mask_buffer = null
-                            const final_mask_dir = expanded_mask[1].image.path
-                            // all server is remote
-
-                            const mask_res = await fetch(`${WORKER_ENDPOINT}/file=${final_mask_dir}`).catch(err => {
-                                throw 'Error while fetching image on remote server'
-                            })
-
-                            if (mask_res && mask_res.status === 200) {
-                                mask_upload_path = final_mask_dir
-                                final_mask_buffer = Buffer.from(await mask_res.arrayBuffer())
                             }
 
-                            interaction.channel.send({files: [{attachment: final_mask_buffer, name: `final_mask.png`}]})
+                            const seg_index = i.customId.split('_')[1]
+                            const seg_index_num = Number(seg_index)
+                            await i.deferUpdate()
+                            if (seg_collector.ended) return
+                            if (!Number.isInteger(seg_index_num) || seg_index_num < 0 || seg_index_num >= img_buffers.length) {
+                                await interaction.editReply({ content: "Invalid mask selected", ephemeral: true }).catch(() => {})
+                                return
+                            }
+
+                            seg_collector.stop()
+
+                            let expanded_mask = null
+                            try {
+                                expanded_mask = await expandMask(segment_output, attachment_upload_path, seg_index, session_hash, mask_increase_padding)
+                            }
+                            catch (err) {
+                                console.log(err)
+                                await interaction.editReply({ content: "Failed to expand mask", ephemeral: true }).catch(() => {})
+                                return
+                            }
+
+                            const final_mask_entry = Array.isArray(expanded_mask) ? expanded_mask[1] : null
+                            const final_mask_file = final_mask_entry?.image ?? final_mask_entry
+                            const final_mask_dir = get_gradio_file_path(final_mask_file)
+                            if (!final_mask_dir) {
+                                console.log('Mask expansion returned no final mask', expanded_mask)
+                                await interaction.editReply({ content: "Failed to expand mask", ephemeral: true }).catch(() => {})
+                                return
+                            }
+
+                            let final_mask_buffer = null
+                            try {
+                                final_mask_buffer = await fetch_gradio_file(WORKER_ENDPOINT, final_mask_file, 'final mask')
+                            }
+                            catch (err) {
+                                console.log(err)
+                                await interaction.editReply({ content: "Failed to fetch final mask", ephemeral: true }).catch(() => {})
+                                return
+                            }
+
+                            mask_upload_path = final_mask_dir
                             mask_data = final_mask_buffer
                             mask_data_uri = "data:image/png;base64," + final_mask_buffer.toString('base64')
-                            //console.log(mask_data_uri)
 
-                            await unloadAllModel(session_hash)
+                            await interaction.channel.send({ files: [{ attachment: final_mask_buffer, name: `final_mask.png` }] })
+                                .catch(err => console.log('Failed to send final mask preview', err))
+
+                            try {
+                                await unloadAllModel(session_hash)
+                            }
+                            catch (err) {
+                                console.log('Failed to unload segmentation model', err)
+                            }
+
                             execute_inpaint().catch(err => {
                                 console.log(err)
                                 interaction.editReply({ content: 'Error while creating image: ' + err, components: [] }).catch(() => {})
                             })
                         }
+                        catch (err) {
+                            console.log('Automatic mask selection failed', err)
+                            await interaction.editReply({ content: "Failed to process selected mask", ephemeral: true }).catch(() => {})
+                        }
                     })
+                }
+                catch (err) {
+                    console.log('Automatic segmentation selection failed', err)
+                    await interaction.editReply({ content: "Failed to process segmentation selection", ephemeral: true }).catch(() => {})
                 }
             })
         }

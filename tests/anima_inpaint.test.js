@@ -14,26 +14,18 @@ const {
 
 const CONTROLNET_SOURCE = require.resolve('../utils/controlnet_execute.js');
 
-// controlnet_execute normally calls the real network through node-fetch. In the
-// test context we replace that one dynamic import with an injected mock while
-// keeping the module's request-building code intact.
+// Replace the network transport while keeping the request builders intact.
 function load_controlnet_for(cached_model, fetch_impl) {
-    let source = fs.readFileSync(CONTROLNET_SOURCE, 'utf8');
-    source = source.replace(
-        "const _nodeFetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));",
-        'const _nodeFetch = (...args) => globalThis.__fetch(...args);',
-    );
-
+    const source = fs.readFileSync(CONTROLNET_SOURCE, 'utf8');
     const module = { exports: {} };
     vm.runInNewContext(source, {
         module,
         exports: module.exports,
         Buffer,
         console: { log() {} },
-        __fetch: fetch_impl,
         require(name) {
             if (name === '../utils/ai_server_config.js') return ai_config;
-            if (name === './proxy_config') return { serviceHeaders: () => ({ 'X-Test-Service': 'sdwebui' }) };
+            if (name === './forge_control_fetch') return { fetchForgeControl: fetch_impl };
             if (name === './model_change.js') return { cached_model: [cached_model] };
             if (name === './anima_inpaint.js') return require('../utils/anima_inpaint');
             throw new Error(`Unexpected dependency in controlnet_execute: ${name}`);

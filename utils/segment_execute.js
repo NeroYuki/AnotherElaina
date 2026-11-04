@@ -2,16 +2,7 @@
 
 const { server_pool } = require("./ai_server_config")
 const { convert_upload_path_to_file_data } = require("./common_helper")
-const { serviceHeaders } = require("./proxy_config")
-
-const SD_HEADERS = serviceHeaders('sdwebui');
-// All requests in this module target the sdwebui backend, so inject the proxy
-// routing header automatically on every fetch.
-const _nodeFetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
-const fetch = (url, options = {}) => _nodeFetch(url, {
-    ...options,
-    headers: { ...SD_HEADERS, ...(options.headers || {}) },
-});
+const { fetchForgeControl: fetch } = require('./forge_control_fetch')
 
 function groundingDino_execute(prompt, image_path, session_hash, useSwinB = false, threshold = 0.3) {
     // should return array of bouding boxes coordinates
@@ -36,7 +27,7 @@ function groundingDino_execute(prompt, image_path, session_hash, useSwinB = fals
         }
 
         try {
-            await fetch(`${server_pool[0].url}/run/predict/`, option_adetailer)
+            await fetch(`${server_pool[0].url}/run/predict/`, option_adetailer, true)
                 .then(res => {
                     console.log(res.status)
                     if (res.status !== 200) {
@@ -89,7 +80,7 @@ function segmentAnything_execute(prompt, boundingBoxes, image_path, session_hash
         }
 
         try {
-            await fetch(`${server_pool[0].url}/run/predict/`, option_adetailer)
+            await fetch(`${server_pool[0].url}/run/predict/`, option_adetailer, true)
                 .then(res => {
                     console.log(res.status)
                     if (res.status !== 200) {
@@ -99,7 +90,6 @@ function segmentAnything_execute(prompt, boundingBoxes, image_path, session_hash
                 })
                 .then(res => res.json())
                 .then(data => {
-                    console.log(data)
                     resolve(data.data[0]);
                 })
         }
