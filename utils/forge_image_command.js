@@ -834,6 +834,7 @@ async function execute_forge_image_command(interaction, client, config = {}, dep
                 request.prompt = await preparePrompt(request.prompt, frozenModel, {
                     editVariant: request.edit_variant,
                     images: referenceBuffers,
+                    layout: request.reference_layout,
                     onProgress: message => interaction.editReply({ content: message }).catch(error => {
                         console.log('Unable to update reference instruction progress', error);
                     }),
@@ -847,11 +848,12 @@ async function execute_forge_image_command(interaction, client, config = {}, dep
 
         const sessionHash = crypt.randomBytes(16).toString('base64');
         const requestedDimensions = adjust_dimensions(request.width, request.height, attachmentOption);
-        if (referencePolicy?.family === 'anima' && referenceBuffers.length > 1 && request.reference_layout === 'native') {
+        const matchReferenceSize = referencePolicy?.family === 'anima' || referencePolicy?.family === 'krea';
+        if (matchReferenceSize && referenceBuffers.length > 1 && request.reference_layout === 'native') {
             // ImageStitch rounds reference images to multiples of 64. Anima
-            // concatenates reference latents along the temporal axis, so the
-            // target must use the same grid or the forward pass receives
-            // mismatched H/W tensors.
+            // concatenates reference latents along the temporal axis, and Krea
+            // is sensitive to mixed reference resolutions, so the target and
+            // every reference must share the same grid.
             requestedDimensions.width = Math.max(64, Math.round(requestedDimensions.width / 64) * 64);
             requestedDimensions.height = Math.max(64, Math.round(requestedDimensions.height / 64) * 64);
         }
@@ -872,10 +874,10 @@ async function execute_forge_image_command(interaction, client, config = {}, dep
                     direct_url: server_pool[serverIndex].direct_url,
                     width: requestedDimensions.width,
                     height: requestedDimensions.height,
-                    max_side: referencePolicy?.family === 'anima'
+                    max_side: matchReferenceSize
                         ? Math.max(requestedDimensions.width, requestedDimensions.height, REFERENCE_MAX_SIDE)
                         : REFERENCE_MAX_SIDE,
-                    match_output_size: referencePolicy?.family === 'anima',
+                    match_output_size: matchReferenceSize,
                 });
             }
             catch (error) {
@@ -1292,7 +1294,7 @@ async function execute_forge_image_command(interaction, client, config = {}, dep
                 if (reference && preparedReference?.layout && preparedReference.layout !== request.reference_layout) {
                     console.warn(`Reference helper normalized layout ${request.reference_layout} -> ${preparedReference.layout}`);
                 }
-                const referenceMaxSide = referencePolicy?.family === 'anima' && references.length > 0
+                const referenceMaxSide = matchReferenceSize && references.length > 0
                     ? Math.max(requestedDimensions.width, requestedDimensions.height, REFERENCE_MAX_SIDE)
                     : REFERENCE_MAX_SIDE;
                 const generationOptions = build_generation_options({

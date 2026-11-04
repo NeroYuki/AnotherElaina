@@ -14,11 +14,19 @@ const {
 const {
     prepareReferencePromptWithLLM,
 } = require('../utils/forge_reference');
-const { model_selection_qwen21, model_selection_moss } = require('../utils/ai_server_config');
+const {
+    model_selection_qwen21,
+    model_selection_moss,
+    model_selection_krea,
+    model_selection_flux_klein_9b,
+} = require('../utils/ai_server_config');
 
 const ANIMA = 'anima-base-v1.safetensors';
 const MOSS = model_selection_moss[0].value;
 const QWEN = model_selection_qwen21[0].value;
+const KREA = model_selection_krea[0].value;
+const KLEIN = model_selection_flux_klein_9b[0].value;
+const TWO_IMAGES = [Buffer.from('first'), Buffer.from('second')];
 
 function fakeProvider(responses) {
     const requests = [];
@@ -67,6 +75,18 @@ test('family prompts make MOSS requests concrete and keep Anima instruction-focu
     assert.match(systemPrompt('anima'), /direct natural-language instruction/);
 });
 
+test('multi-reference prompts use the target model image-index syntax', () => {
+    const qwen = systemPrompt('qwen21', { layout: 'native', referenceCount: 2 });
+    assert.match(qwen, /<image1>, <image2>/);
+    assert.match(qwen, /Never use \[image 1\]/);
+    const krea = systemPrompt('krea', { layout: 'native', referenceCount: 2 });
+    assert.match(krea, /image 1, image 2/);
+    assert.doesNotMatch(krea, /<image1>/);
+    const panels = systemPrompt('klein', { layout: 'horizontal', referenceCount: 2 });
+    assert.match(panels, /left-to-right/);
+    assert.match(panels, /panels by position/);
+});
+
 test('rewrites a MOSS request with Qwen and names the target family', async () => {
     const provider = fakeProvider([{ instruction: 'Replace her outfit with a white t-shirt and blue jeans, removing the maid headdress and apron.' }]);
     const result = await rewriteEditInstruction(
@@ -102,7 +122,7 @@ test('retries once when the Anima instruction response is invalid', async () => 
     assert.match(provider.requests[1].messages.at(-1).content, /That response was invalid/);
 });
 
-test('prepareReferencePromptWithLLM rewrites Anima and MOSS but skips other families', async () => {
+test('prepareReferencePromptWithLLM rewrites Anima/MOSS and multi-reference Qwen/Krea/Klein', async () => {
     const calls = [];
     const deps = {
         rewriteAnimaEditPrompt: async input => {
@@ -122,7 +142,46 @@ test('prepareReferencePromptWithLLM rewrites Anima and MOSS but skips other fami
     assert.equal(calls.length, 2);
     assert.equal(calls[1].family, 'moss');
 
-    const qwen = await prepareReferencePromptWithLLM('a cat', QWEN, {}, deps);
-    assert.equal(qwen, 'a cat');
+    const qwenSingle = await prepareReferencePromptWithLLM('a cat', QWEN, {}, deps);
+    assert.equal(qwenSingle, 'a cat');
     assert.equal(calls.length, 2);
+
+    const qwenMulti = await prepareReferencePromptWithLLM(
+        'put the character from [image 1] into the outfit and pose from [image 2]',
+        QWEN,
+        { images: TWO_IMAGES },
+        deps,
+    );
+    assert.equal(
+        qwenMulti,
+        'Change the dress to red. Apply only the requested changes and preserve the attributes that should stay unchanged.',
+    );
+    assert.equal(calls.length, 3);
+    assert.equal(calls[2].family, 'qwen21');
+    assert.equal(calls[2].referenceCount, 2);
+
+    const kreaMulti = await prepareReferencePromptWithLLM(
+        'put the character from image 1 into the outfit and pose from image 2',
+        KREA,
+        { images: TWO_IMAGES },
+        deps,
+    );
+    assert.equal(
+        kreaMulti,
+        'Change the dress to red. Apply only the requested changes and preserve the attributes that should stay unchanged. <lora:krea2_general_edit_v2:1>',
+    );
+    assert.equal(calls[3].family, 'krea');
+
+    const kleinMulti = await prepareReferencePromptWithLLM(
+        'put the character from image 1 into the outfit and pose from image 2',
+        KLEIN,
+        { images: TWO_IMAGES, layout: 'horizontal' },
+        deps,
+    );
+    assert.equal(
+        kleinMulti,
+        'Change the dress to red. Apply only the requested changes and preserve the attributes that should stay unchanged.',
+    );
+    assert.equal(calls[4].family, 'klein');
+    assert.equal(calls[4].layout, 'horizontal');
 });

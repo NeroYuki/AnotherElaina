@@ -1,9 +1,10 @@
 'use strict';
 
-// Mandatory instruction pass for reference edits. Anima's AnimeEditV2 and
-// MOSS-Image's edit LoRA both follow concrete natural-language instructions
-// much more reliably than a bare tag or a vague command, so the raw request is
-// rewritten before the image generation lease.
+// Mandatory instruction pass for reference edits. Reference models differ in
+// how they bind multiple images: Qwen 2.1 uses <image1>/<image2> tags, Krea 2
+// and Klein use ordered "image 1"/"image 2" references, and Anima/MOSS follow
+// plain natural-language instructions. The raw request is rewritten into the
+// target model's expected syntax before the image generation lease.
 
 const sharp = require('sharp');
 const { setTimeout: sleep } = require('node:timers/promises');
@@ -13,7 +14,14 @@ const { QUALITIES, queuePromptEnrichment, unloadEnrichmentModel } = require('./v
 
 const MAX_IMAGES = 4;
 const MAX_INSTRUCTION_LENGTH = 1200;
-const FAMILY_LABELS = Object.freeze({ anima: 'Anima', moss: 'MOSS-Image' });
+const FAMILY_LABELS = Object.freeze({
+    anima: 'Anima',
+    moss: 'MOSS-Image',
+    qwen21: 'Qwen-Image-2.1',
+    krea: 'Krea 2',
+    klein: 'FLUX.2 Klein',
+});
+const INDEX_TAG_FAMILIES = new Set(['qwen21']);
 
 const INSTRUCTION_SCHEMA = {
     type: 'object',
@@ -24,16 +32,44 @@ const INSTRUCTION_SCHEMA = {
     },
 };
 
-function systemPrompt(family) {
+function layoutLabel(layout) {
+    if (layout === 'horizontal') return 'left-to-right';
+    if (layout === 'vertical') return 'top-to-bottom';
+    if (layout === 'grid') return 'in a grid';
+    return 'separately';
+}
+
+function referenceRule(family, { layout = 'native', referenceCount = 1 } = {}) {
+    if (referenceCount <= 1) {
+        return '- A single reference image is supplied. Do not use image index tags; refer to the image naturally.';
+    }
+    if (layout === 'native') {
+        const syntax = INDEX_TAG_FAMILIES.has(family)
+            ? 'Use the exact tags <image1>, <image2>, ... for the separate reference images. Never use [image 1], "the first image", "image A", or similar.'
+            : 'Refer to the separate reference images as image 1, image 2, ... in the supplied order. Never use [image 1], "the first image", "image A", or similar.';
+        return `- Multiple separate reference images are supplied. Image 1 is the base/canvas: preserve its subject identity, face, hair, and any attribute the user did not ask to change. Images 2+ are donors: use only the attributes the user assigns to them (outfit, pose, object, background, style). ${syntax} State which attributes stay from image 1 and which come from each donor.`;
+    }
+    return `- The reference images are combined into one image arranged ${layoutLabel(layout)}. Refer to the panels by position (left/right/top/bottom or grid cell), not by image number. State which panel supplies the base subject and which panel supplies each donor attribute.`;
+}
+
+function systemPrompt(family, options = {}) {
     const label = FAMILY_LABELS[family] || 'image editing';
     const familyRule = family === 'moss'
         ? `- The target is ${label} Edit. It responds to concrete visual descriptions. When the request is vague (for example "casual clothes" or "summer"), specify the target garments, colors, and materials, and explicitly say which existing items should be removed or replaced. Do not invent unrelated objects or change the character's identity.`
-        : `- The target is ${label} Edit. It follows a direct natural-language instruction; keep the requested change and the character identity clear.`;
+        : family === 'qwen21'
+            ? `- The target is ${label} Edit. It uses indexed image slots for multi-reference editing; role assignment and preservation clauses matter more than decorative detail.`
+            : family === 'krea'
+                ? `- The target is ${label} Edit. Let the references carry exact identity, outfit, and texture; the prompt should assign roles and describe the desired final state.`
+                : family === 'klein'
+                    ? `- The target is ${label} Edit. Write a specific edit instruction, name the donor image for each transferred attribute, and describe the target state rather than restating the reference appearance.`
+                    : `- The target is ${label} Edit. It follows a direct natural-language instruction; keep the requested change and the character identity clear.`;
     return `You rewrite image-edit requests into one clear instruction for the ${label} Edit model. Return only JSON with exactly one key, instruction, whose value is a nonempty string.
 
 Rules:
 ${familyRule}
+${referenceRule(family, options)}
 - Preserve every requested change: subjects, colors, clothing, pose, expression, background, lighting, season, style, and any quoted text.
+- If the user assigns an attribute (pose, outfit, background, object, style) to a donor image, that attribute must change; do not also preserve it from image 1. Preserve only the attributes that remain with image 1.
 - Do not add unrelated changes, objects, characters, or constraints.
 - Write one direct instruction in natural language. Prefer "Change the dress to a vivid red color." over a tag list.
 - If the request is already a complete instruction, keep its meaning and improve clarity only.
@@ -81,13 +117,13 @@ function parseInstructionResponse(text) {
     return instruction;
 }
 
-function userContent({ prompt, imageCount, family }) {
+function userContent({ prompt, imageCount, referenceCount, layout, family }) {
     return [
         `Rewrite this user edit request for the ${FAMILY_LABELS[family] || 'image editing'} model.`,
         `User request:\n${JSON.stringify(String(prompt || ''))}`,
-        imageCount > 0
-            ? `Reference images supplied: ${imageCount}. Use them only to identify the subject, region, or attribute being edited.`
-            : 'No reference image is supplied; rely on the request alone.',
+        referenceCount > 1
+            ? `Reference images supplied: ${referenceCount}, arranged ${layoutLabel(layout)}. Use them only to identify the subject, region, or attribute each image supplies.`
+            : `Reference images supplied: ${imageCount}. Use them only to identify the subject, region, or attribute being edited.`,
         'Return the instruction JSON now.',
     ].join('\n\n');
 }
@@ -114,13 +150,15 @@ async function unloadInstructionModel(profile = QUALITIES.high, deps = {}) {
  * before returning unless unload:false is passed.
  */
 async function rewriteEditInstruction({
-    prompt, images = [], family = 'anima', onProgress = () => {},
+    prompt, images = [], family = 'anima', layout = 'native', referenceCount,
+    onProgress = () => {},
 }, {
     fetchImpl = globalThis.fetch, endpoint = PROXY_URL, sleepImpl = sleep,
     timeoutMs = 180_000, unloadTimeoutMs = 60_000, provider,
     profile = QUALITIES.high, unload = true, retryInvalid = true,
 } = {}) {
     const label = FAMILY_LABELS[family] || 'image editing';
+    const count = Number.isInteger(referenceCount) ? referenceCount : images.length;
     if (!String(prompt || '').trim()) throw new Error(`${label} reference editing requires a non-empty prompt.`);
     if (!Array.isArray(images) || images.length > MAX_IMAGES) {
         throw new Error(`${label} reference editing accepts at most ${MAX_IMAGES} reference images.`);
@@ -147,7 +185,10 @@ async function rewriteEditInstruction({
         }
         const usablePreviews = previews.filter(Boolean);
 
-        const content = [{ type: 'text', text: userContent({ prompt, imageCount: usablePreviews.length, family }) }];
+        const content = [{
+            type: 'text',
+            text: userContent({ prompt, imageCount: usablePreviews.length, referenceCount: count, layout, family }),
+        }];
         for (const [index, preview] of usablePreviews.entries()) {
             content.push(
                 { type: 'text', text: `Reference image ${index + 1} of ${usablePreviews.length}.` },
@@ -156,7 +197,7 @@ async function rewriteEditInstruction({
         }
 
         const messages = [
-            { role: 'system', content: systemPrompt(family) },
+            { role: 'system', content: systemPrompt(family, { layout, referenceCount: count }) },
             { role: 'user', content },
         ];
 

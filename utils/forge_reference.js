@@ -77,28 +77,39 @@ function prepareReferencePrompt(prompt, model, options = {}) {
 }
 
 const LLM_EDIT_FAMILIES = new Set(['anima', 'moss']);
+const MULTI_REFERENCE_LLM_FAMILIES = new Set(['qwen21', 'krea', 'klein']);
 
 /**
- * Async production path. Anima and MOSS requests go through a mandatory Qwen
- * 27B instruction pass; other families keep the deterministic prompt policy.
+ * Async production path. Anima/MOSS always go through the Qwen instruction
+ * pass; Qwen 2.1, Krea 2, and Klein go through it for multi-reference requests
+ * so roles and image-index syntax are explicit. Other cases keep the
+ * deterministic prompt policy.
  */
 async function prepareReferencePromptWithLLM(prompt, model, options = {}, deps = {}) {
     const policy = getReferencePolicy(model, { ...options, workflow: 'reference' });
+    const images = options.images || [];
+    const layout = options.layout || 'native';
+    const needsInstruction = LLM_EDIT_FAMILIES.has(policy.family)
+        || (MULTI_REFERENCE_LLM_FAMILIES.has(policy.family) && images.length > 1);
     let prepared = prompt;
-    if (LLM_EDIT_FAMILIES.has(policy.family)) {
+    if (needsInstruction) {
         const rewrite = deps.rewriteEditInstruction
             || deps.rewriteAnimaEditPrompt
             || require('./reference_prompt').rewriteEditInstruction;
         prepared = await rewrite({
             prompt,
-            images: options.images || [],
+            images,
             family: policy.family,
+            layout,
+            referenceCount: images.length,
             onProgress: options.onProgress || (() => {}),
         }, deps.referencePrompt);
         prepared = String(prepared || '').trim();
         if (!prepared) throw new Error('The edit instruction pass returned an empty instruction.');
-        if (!/(?:keep .*unchanged|apply only)/i.test(prepared)) {
-            prepared = `${prepared.replace(/[.!?]$/, '')}. Keep the character, pose, and background unchanged.`;
+        if (!/(?:keep .*unchanged|preserve .*unchanged|apply only)/i.test(prepared)) {
+            prepared = images.length > 1
+                ? `${prepared.replace(/[.!?]$/, '')}. Apply only the requested changes and preserve the attributes that should stay unchanged.`
+                : `${prepared.replace(/[.!?]$/, '')}. Keep the character, pose, and background unchanged.`;
         }
     }
     else {
