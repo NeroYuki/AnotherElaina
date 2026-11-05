@@ -1134,7 +1134,6 @@ const model_selection_inpaint = [
 ]
 
 const model_selection_flux = [
-    { name: 'Flux.dev Q6_K', value: 'archive\\flux1-dev-Q6_K.gguf' },
     { name: 'Flux.dev Q8_0', value: 'flux1-dev-Q8_0.gguf'},
     { name: 'Flux Krea.dev Q8_0', value: 'flux1-krea-dev-Q8_0.gguf'},
     { name: 'Flux Fill.dev Q8_0', value: 'comfy_sym\\flux1-fill-dev-Q8_0.gguf'},
@@ -1155,7 +1154,6 @@ const model_selection_chroma = [
 ]
 
 const model_selection_flux_klein_9b = [
-    { name: 'Flux2 Klein 9B NVFP4', value: 'flux-2-klein-9b-nvfp4.safetensors'},
     { name: 'Flux2 Klein 9B Int8 ConvRot', value: 'flux-2-klein-9b-kv-int8-convrot.safetensors'}
 ]
 
@@ -1193,19 +1191,17 @@ const model_selection_lumina = [
 
 const model_selection_krea = [
     { name: 'Krea 2 Turbo', value: 'krea2_turbo_int8_convrot.safetensors'},
-    { name: 'Krea 2 Raw Int8 ConvRot', value: 'krea2_raw_int8_convrot.safetensors'},
+    { name: 'Krea 2 Turbo', value: 'krea2_turbo_int8_convrot.safetensors'},
+    { name: 'Krea Kroma v0.3.1 Turbo', value: 'krea_kroma_v0.3.1_turbo_opd_int8_convrot.safetensors'},
 ]
 
 const model_selection_curated = [
-    { name: 'Flux2 Klein 9B NVFP4', value: 'flux-2-klein-9b-nvfp4.safetensors'},
+    { name: 'Flux2 Klein 9B Int8 ConvRot', value: 'flux-2-klein-9b-kv-int8-convrot.safetensors'}
     { name: 'WAI-NSFW-IllustriousXL v16', value: 'wai_nsfw_illustrious_v160.safetensors'},
     { name: 'IllumiyumeXL V-pred v3.1' , value: 'illumiyumexl_vpred_v31.safetensors'},
     { name: 'Krea 2 Turbo', value: 'krea2_turbo_int8_convrot.safetensors'},
     { name: 'Pastel Mix v2.1', value: 'pastelmix.safetensors' },
-    { name: 'Qwen Image 2.1 Int8 ConvRot', value: 'qwen_image_2.1_int8_convrot.safetensors'},
     { name: 'Qwen Image 2.1 Turbo Int8 ConvRot', value: 'qwen_image_2.1_turbo_int8_convrot.safetensors'},
-    { name: 'Qwen Image 2.1 Uncensored Int8 ConvRot', value: 'qwen-image-2.1-UC-int8_convrot.safetensors'},
-    { name: 'MOSS Image Base BF16', value: 'moss_image_base_bf16.safetensors'},
     { name: 'MOSS Image SFT BF16', value: 'moss_image_sft_bf16.safetensors'},
 ]
 
