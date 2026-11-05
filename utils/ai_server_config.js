@@ -53,16 +53,6 @@ const server_pool = [
         is_online: true,
         queue: [],
     },
-    {
-        index: 1,
-        url: 'http://192.168.196.78:7860',
-        direct_url: 'http://192.168.196.78:7860',
-        service: 'sdwebui',
-        fn_index_create: 114,
-        fn_index_abort: 45,
-        fn_index_img2img: 212,
-        is_online: false,
-    }
 ]
 
 const get_data_controlnet = (preprocessor = "None", controlnet = "None", input, weight = 1, mode = "Balanced", resolution = 512, guide_start = 0, guide_end = 1, mask = null, t_a = 100, t_b = 200, type = "All") => {
@@ -1526,6 +1516,11 @@ function get_worker_server(force_server_selection) {
         server_index = force_server_selection
     }
 
+    if (!Number.isInteger(server_index) || server_index < 0 || server_index >= server_pool.length) {
+        console.log(`Server ${server_index} is not configured, returning -1`)
+        return -1
+    }
+
     // check if server is online
     if (!server_pool[server_index].is_online) {
         console.log(`Server ${server_index} is offline, returning -1`)
@@ -1537,10 +1532,17 @@ function get_worker_server(force_server_selection) {
 
 async function do_heartbeat() {
     for (let i = 0; i < server_pool.length; i++) {
-        // ping the server (through the proxy with the service header, when proxied)
+        // Probe service-level liveness through the proxy. Do not pin the
+        // heartbeat to a specific instance: a service can be alive on another
+        // GPU even when the affinity instance is idle or being replaced.
         const headers = server_pool[i].service ? serviceHeaders(server_pool[i].service) : {};
-        const res = await fetch(`${server_pool[i].url}/`, { method: 'HEAD', headers }).catch(() => {})
-        
+        delete headers['X-AI-Instance'];
+        const res = await fetch(`${server_pool[i].url}/`, {
+            method: 'HEAD',
+            headers,
+            signal: AbortSignal.timeout(15000),
+        }).catch(() => {})
+
         if (res && res.status === 200) {
             // server is alive
             server_pool[i].is_online = true
@@ -1552,10 +1554,9 @@ async function do_heartbeat() {
         }
     }
 
-    // check if all server is dead
-    if (server_pool.every(server => !server.is_online)) {
-        globalThis.sd_available = false
-    }
+    // Reflect the current state both ways so /ping can recover the presence
+    // indicator after an outage, not only clear it.
+    globalThis.sd_available = server_pool.some(server => server.is_online)
 }
 
 function initiate_server_heartbeat() {

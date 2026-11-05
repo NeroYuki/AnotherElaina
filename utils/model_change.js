@@ -61,7 +61,7 @@ async function sync_active_model() {
     try {
         const response = await axios.get(`${server_address}/sdapi/v1/options`, {
             headers: SD_HEADERS,
-            timeout: 5000,
+            timeout: 15000,
         })
         const active = normalize_checkpoint_name(response.data?.sd_model_checkpoint)
         if (!active) {

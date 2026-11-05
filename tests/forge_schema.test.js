@@ -528,7 +528,7 @@ test('helper payloads and fn indexes target the current Forge dependencies', () 
     assert.equal(pool.fn_fetch_wildcards, 1427);
     assert.equal(deps[1427].api_name, 'handle_message');
     assert.equal(deps[1427].inputs, 1);
-    assert.equal(server_pool[1].fn_index_create, 114);
+    assert.equal(server_pool.length, 1);
 });
 
 test('controlnet, annotation, and rembg positional helpers match their refreshed signatures', () => {
