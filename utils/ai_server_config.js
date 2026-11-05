@@ -1196,7 +1196,7 @@ const model_selection_krea = [
 ]
 
 const model_selection_curated = [
-    { name: 'Flux2 Klein 9B Int8 ConvRot', value: 'flux-2-klein-9b-kv-int8-convrot.safetensors'}
+    { name: 'Flux2 Klein 9B Int8 ConvRot', value: 'flux-2-klein-9b-kv-int8-convrot.safetensors'},
     { name: 'WAI-NSFW-IllustriousXL v16', value: 'wai_nsfw_illustrious_v160.safetensors'},
     { name: 'IllumiyumeXL V-pred v3.1' , value: 'illumiyumexl_vpred_v31.safetensors'},
     { name: 'Krea 2 Turbo', value: 'krea2_turbo_int8_convrot.safetensors'},
