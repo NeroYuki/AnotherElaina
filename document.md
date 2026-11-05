@@ -575,9 +575,6 @@ Use `segment_anything_prompt` for what the detector should **find in the origina
 
 ![Expanded SAM mask alongside the actual inpaint output with an emerald green lantern](https://iili.io/nsF4O6x.png)
 
-!!! note How this example was captured
-    Discord returned **Failed to get bounding box** during the combined test. The pictures show the real Swin-T detection from Forge, SAM ViT-H run separately on that box, and Forge inpainting with the expanded SAM mask. If detection fails in Discord, use a manual mask or attach a saved detector mask.
-
 See the original papers for more detail on how text finds a box and how a box becomes a mask. [GroundingDINO](https://arxiv.org/abs/2303.05499) · [Segment Anything](https://arxiv.org/abs/2304.02643)
 
 #### Anima Inpainting Guardrail
@@ -1000,9 +997,6 @@ Set **Pastel Mix v2.1** as the active checkpoint. Run the baseline, then repeat 
 
 ![Three Pastel Mix results at the same seed showing the uncached baseline and both cache modes at 0.2](https://iili.io/nsFPl72.png)
 
-!!! warning Verify the cache actually ran
-    Forge recorded both modes in the Pastel Mix generation metadata. The same tags on the tested SDXL checkpoint raised an extension error and returned uncached pixels. Compare output metadata and keep model loading out of any timing comparison.
-
 Further reading. [TeaCache paper](https://arxiv.org/abs/2411.19108)
 
 #### Extension Compatibility Guardrails
@@ -1291,7 +1285,3 @@ Besides prebuilt wildcards, you can use a saved generation profile as a wildcard
 - **Can the bot do anything besides generating images?** Yes. See [Non-WD Commands](https://github.com/NeroYuki/AnotherElaina/blob/llm-chat-rework/non-wd-commands.md) for chat, quizzes, osu!/osu!droid/Malody, Spotify genre lookups, and more.
 - **Are the video commands broken?** They are implemented with MiniMax H3 workflows, but they require the media service and models to be available. See [Media commands](https://github.com/NeroYuki/AnotherElaina/blob/llm-chat-rework/docs/media-commands.md). A missing/failed service is not the same as a missing command.
 - **Where can I see what the bot is doing?** `/ping` checks the AI server connection and `/server_stat` shows resource stats. The bot owner can use `/chat_config mode:Status` for current local chat configuration. `/ratestatus` reports legacy online-mode counters, not local model/GPU admission.
-
-### Maintainer Notes
-
-The user-facing behaviour above is implemented across the command and utility modules. For architecture, service routing, schema assumptions, and deployment limits, read [How it works](https://github.com/NeroYuki/AnotherElaina/blob/llm-chat-rework/docs/ai-how-it-works.md) instead of relying on operational notes in this page. Catalog definitions live in [utils/ai_server_config.js](https://github.com/NeroYuki/AnotherElaina/blob/llm-chat-rework/utils/ai_server_config.js); family defaults live in [utils/model_defaults.js](https://github.com/NeroYuki/AnotherElaina/blob/llm-chat-rework/utils/model_defaults.js). Reference policy and edit LoRAs are in [utils/forge_reference.js](https://github.com/NeroYuki/AnotherElaina/blob/llm-chat-rework/utils/forge_reference.js); PiD limits are in [utils/forge_pid.js](https://github.com/NeroYuki/AnotherElaina/blob/llm-chat-rework/utils/forge_pid.js).
