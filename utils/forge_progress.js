@@ -8,7 +8,14 @@
 // logged and skipped without affecting the generation request.
 
 const DEFAULT_PROGRESS_TIMEOUT_MS = 15000;
+const DEFAULT_RETRIES = 1;
+const RETRY_DELAY_MS = 250;
+const RETRYABLE_STATUS = new Set([502, 503, 504]);
 const BODY_PREVIEW_LIMIT = 240;
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 function previewBody(value) {
     const text = String(value ?? '').replace(/\s+/g, ' ').trim();
@@ -68,6 +75,8 @@ async function fetchProgressJson(url, payload, options = {}) {
         fetchImpl = globalThis.fetch,
         headers = {},
         timeoutMs = DEFAULT_PROGRESS_TIMEOUT_MS,
+        retries = DEFAULT_RETRIES,
+        retryDelayMs = RETRY_DELAY_MS,
         logger = console,
     } = options;
 
@@ -76,34 +85,47 @@ async function fetchProgressJson(url, payload, options = {}) {
         return null;
     }
 
-    const controller = typeof AbortController === 'function' ? new AbortController() : null;
-    let timer = null;
-    if (controller && timeoutMs > 0) {
-        timer = setTimeout(() => controller.abort(), timeoutMs);
-        timer.unref?.();
-    }
+    const attempts = Math.max(1, Number.isInteger(retries) ? retries + 1 : 1);
+    for (let attempt = 0; attempt < attempts; attempt++) {
+        const controller = typeof AbortController === 'function' ? new AbortController() : null;
+        let timer = null;
+        if (controller && timeoutMs > 0) {
+            timer = setTimeout(() => controller.abort(), timeoutMs);
+            timer.unref?.();
+        }
 
-    try {
-        const response = await fetchImpl(url, {
-            method: 'POST',
-            body: JSON.stringify(payload || {}),
-            headers: { 'Content-Type': 'application/json', ...headers },
-            ...(controller ? { signal: controller.signal } : {}),
-        });
-        return await readProgressBody(response, logger);
-    }
-    catch (error) {
-        if (error?.name === 'AbortError') {
-            logger?.log?.(`Progress poll timed out after ${timeoutMs}ms`);
+        try {
+            const response = await fetchImpl(url, {
+                method: 'POST',
+                body: JSON.stringify(payload || {}),
+                headers: { 'Content-Type': 'application/json', ...headers },
+                ...(controller ? { signal: controller.signal } : {}),
+            });
+            const status = Number(response?.status);
+            if (!responseIsOk(response) && RETRYABLE_STATUS.has(status) && attempt + 1 < attempts) {
+                // Drain the failed response so the pooled connection can be
+                // reused, then retry once. Transient 502/503/504 responses are
+                // common while Forge is loading or rotating a model instance.
+                try { await response.text?.(); } catch {}
+                await sleep(retryDelayMs);
+                continue;
+            }
+            return await readProgressBody(response, logger);
         }
-        else {
-            logger?.log?.(`Progress poll failed: ${error?.message || error}`);
+        catch (error) {
+            if (error?.name === 'AbortError') {
+                logger?.log?.(`Progress poll timed out after ${timeoutMs}ms`);
+            }
+            else {
+                logger?.log?.(`Progress poll failed: ${error?.message || error}`);
+            }
+            return null;
         }
-        return null;
+        finally {
+            if (timer) clearTimeout(timer);
+        }
     }
-    finally {
-        if (timer) clearTimeout(timer);
-    }
+    return null;
 }
 
 module.exports = {

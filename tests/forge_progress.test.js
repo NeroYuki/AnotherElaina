@@ -59,6 +59,24 @@ test('a 504 upstream timeout body is logged and skipped', async () => {
     assert.match(logger.messages.join('\n'), /Upstream 'sdwebui-forge-neo' timed out/);
 });
 
+test('a transient 502 is retried once before succeeding', async () => {
+    let calls = 0;
+    const result = await fetchProgressJson(
+        'http://proxy.test/internal/progress',
+        {},
+        {
+            fetchImpl: async () => {
+                calls += 1;
+                return calls === 1
+                    ? textResponse(502, "Upstream 'sdwebui-forge-neo' error: peer closed connection")
+                    : textResponse(200, '{"progress":0.7,"completed":false}');
+            },
+        },
+    );
+    assert.deepEqual(result, { progress: 0.7, completed: false });
+    assert.equal(calls, 2);
+});
+
 test('a 502 upstream error body is logged and skipped', async () => {
     const logger = collectLogger();
     const result = await fetchProgressJson(

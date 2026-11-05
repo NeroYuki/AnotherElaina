@@ -271,7 +271,13 @@ async function runForgeImageJob({
                     id_task: `task(${currentSessionHash})`,
                     id_live_preview: currentPreviewId,
                 },
-                { fetchImpl, headers: SD_HEADERS, logger },
+                {
+                    fetchImpl,
+                    headers: SD_HEADERS,
+                    logger,
+                    retries: progressOptions.retries,
+                    retryDelayMs: progressOptions.retryDelayMs,
+                },
             );
             if (!shouldUpdate() || !progressObject) return;
             if (progressObject?.completed) {

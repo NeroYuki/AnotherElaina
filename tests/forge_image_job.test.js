@@ -240,7 +240,7 @@ test('progress polling survives a non-JSON upstream error', async () => {
         data: [],
         cancelCustomId: 'cancel_img2img_progress-error-test',
         completionDelayMs: 0,
-        progress: { enabled: true, initialDelay: 0, increment: 100 },
+        progress: { enabled: true, initialDelay: 0, increment: 100, retries: 0 },
         logger: { log: (...args) => logs.push(args.map(value => String(value)).join(' ')) },
     }, {
         axios: {
